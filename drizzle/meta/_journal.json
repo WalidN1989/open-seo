@@ -316,6 +316,13 @@
       "when": 1788041944717,
       "tag": "0044_bouncy_doctor_strange",
       "breakpoints": true
+    },
+    {
+      "idx": 45,
+      "version": "6",
+      "when": 1788043227895,
+      "tag": "0045_stormy_vampiro",
+      "breakpoints": true
     }
   ]
 }

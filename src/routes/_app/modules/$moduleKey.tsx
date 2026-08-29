@@ -8,6 +8,13 @@ import {
   type BusinessModuleKey,
 } from "@/shared/business-modules";
 import { getStandardErrorMessage } from "@/client/lib/error-messages";
+import { LeadsWorkspace } from "@/client/features/business-modules/LeadsWorkspace";
+import { CrmWorkspace } from "@/client/features/business-modules/CrmWorkspace";
+import {
+  IntegrationsWorkspace,
+  VoiceWorkspace,
+  WhatsappWorkspace,
+} from "@/client/features/business-modules/CommunicationsWorkspace";
 
 export const Route = createFileRoute("/_app/modules/$moduleKey")({
   component: BusinessModulePage,
@@ -79,34 +86,44 @@ function BusinessModulePage() {
           </div>
         ) : (
           <>
-            <div>
-              <div className="flex items-center gap-3">
-                <h1 className="text-2xl font-bold tracking-tight">
-                  {module.label}
-                </h1>
-                <span className="badge badge-success badge-sm">Active</span>
-              </div>
-              <p className="mt-1 text-sm text-base-content/60">
-                {module.description}
-              </p>
-            </div>
+            {moduleKey === "leads" ? <LeadsWorkspace /> : null}
+            {moduleKey === "crm" ? <CrmWorkspace /> : null}
+            {moduleKey === "whatsapp" ? <WhatsappWorkspace /> : null}
+            {moduleKey === "voice" ? <VoiceWorkspace /> : null}
+            {moduleKey === "integrations" ? <IntegrationsWorkspace /> : null}
+            {businessModuleKeySchema.options.includes(moduleKey) ? null : (
+              <>
+                <div>
+                  <div className="flex items-center gap-3">
+                    <h1 className="text-2xl font-bold tracking-tight">
+                      {module.label}
+                    </h1>
+                    <span className="badge badge-success badge-sm">Active</span>
+                  </div>
+                  <p className="mt-1 text-sm text-base-content/60">
+                    {module.description}
+                  </p>
+                </div>
 
-            <section className="rounded-xl border border-base-300 p-6">
-              <h2 className="font-semibold">Foundation ready</h2>
-              <p className="mt-1 text-sm text-base-content/60">
-                The tenant boundary, entitlement check, and staff access guard
-                are active. Legacy workflows will be migrated into this module
-                incrementally without importing duplicate SEO features.
-              </p>
-              <ul className="mt-5 grid gap-3 sm:grid-cols-2">
-                {capabilities[moduleKey].map((capability) => (
-                  <li key={capability} className="flex gap-2 text-sm">
-                    <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-success" />
-                    {capability}
-                  </li>
-                ))}
-              </ul>
-            </section>
+                <section className="rounded-xl border border-base-300 p-6">
+                  <h2 className="font-semibold">Foundation ready</h2>
+                  <p className="mt-1 text-sm text-base-content/60">
+                    The tenant boundary, entitlement check, and staff access
+                    guard are active. Legacy workflows will be migrated into
+                    this module incrementally without importing duplicate SEO
+                    features.
+                  </p>
+                  <ul className="mt-5 grid gap-3 sm:grid-cols-2">
+                    {capabilities[moduleKey].map((capability) => (
+                      <li key={capability} className="flex gap-2 text-sm">
+                        <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-success" />
+                        {capability}
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              </>
+            )}
           </>
         )}
       </div>
