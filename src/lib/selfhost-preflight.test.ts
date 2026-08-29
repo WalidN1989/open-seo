@@ -25,7 +25,7 @@ describe("runSelfhostPreflight", () => {
 
     expect(result.failed).toBe(true);
     expect(itemFor(result, "AUTH_MODE")?.message).toContain(
-      "cloudflare_access, local_noauth, hosted",
+      "cloudflare_access, local_noauth, selfhosted, hosted",
     );
   });
 
@@ -83,6 +83,32 @@ describe("runSelfhostPreflight", () => {
     expect(item?.message).toContain("BETTER_AUTH_URL");
     expect(item?.message).toContain("GOOGLE_CLIENT_ID");
     expect(item?.message).not.toContain("BETTER_AUTH_SECRET,");
+  });
+
+  it("passes selfhosted account auth with direct Postgres", () => {
+    const result = runSelfhostPreflight({
+      AUTH_MODE: "selfhosted",
+      BETTER_AUTH_URL: "https://open-seo.example.com",
+      BETTER_AUTH_SECRET: "x".repeat(40),
+      DATABASE_PROVIDER: "postgres",
+      POSTGRES_DATABASE_URL: "postgresql://user:secret@example.com/open_seo",
+    });
+
+    expect(result.failed).toBe(false);
+    expect(itemFor(result, "AUTH_MODE")?.level).toBe("ok");
+    expect(itemFor(result, "Database")?.message).toBe("Postgres");
+  });
+
+  it("fails Postgres Docker mode without a direct connection URL", () => {
+    const result = runSelfhostPreflight({
+      AUTH_MODE: "local_noauth",
+      DATABASE_PROVIDER: "postgres",
+    });
+
+    expect(result.failed).toBe(true);
+    expect(itemFor(result, "Database")?.message).toContain(
+      "POSTGRES_DATABASE_URL",
+    );
   });
 
   it("mentions ALLOWED_HOST when unset", () => {

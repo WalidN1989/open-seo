@@ -11,7 +11,7 @@ import { pgDb } from "@/db/pg/client";
 import * as pgSchema from "@/db/pg/schema";
 import { getDatabaseProvider } from "@/db/provider";
 import { z } from "zod";
-import { isHostedAuthMode } from "@/lib/auth-mode";
+import { isHostedAuthMode, isUserAuthMode } from "@/lib/auth-mode";
 import { createApiKeyPlugin } from "@/lib/auth-api-key";
 import { createBaseAuthConfig } from "@/lib/auth-config";
 import {
@@ -40,10 +40,12 @@ function createAuth() {
   // Hosted needs the real configured URL (cookies, callbacks, /api/auth routes
   // all use it). Self-hosted only builds this instance to mint/refresh Search
   // Console tokens, which never read baseURL — so a placeholder is fine there.
-  const baseUrl = isHostedAuthMode(env.AUTH_MODE)
+  const baseUrl = isUserAuthMode(env.AUTH_MODE)
     ? getHostedBaseUrl()
     : "http://localhost";
-  const bypassEmail = Reflect.get(env, "BYPASS_EMAIL_VERIFICATION") === "true";
+  const selfHostedAuth = env.AUTH_MODE === "selfhosted";
+  const bypassEmail =
+    selfHostedAuth || Reflect.get(env, "BYPASS_EMAIL_VERIFICATION") === "true";
   const baseAuthConfig = createBaseAuthConfig();
 
   // Turnstile captcha on signup — hosted only. Enforcement is driven by the
@@ -97,7 +99,7 @@ function createAuth() {
     database,
     plugins: [
       ...baseAuthConfig.plugins,
-      ...(isHostedAuthMode(env.AUTH_MODE) ? [createApiKeyPlugin()] : []),
+      ...(isUserAuthMode(env.AUTH_MODE) ? [createApiKeyPlugin()] : []),
       ...(turnstileSecretKey
         ? [
             captcha({
@@ -127,7 +129,9 @@ function createAuth() {
             return { data: user };
           },
           after: async (user) => {
-            await syncHostedSignupContact(user);
+            if (isHostedAuthMode(env.AUTH_MODE)) {
+              await syncHostedSignupContact(user);
+            }
           },
         },
       },
@@ -279,6 +283,19 @@ export function hasHostedAuthConfig() {
       (Reflect.get(env, "BYPASS_EMAIL_VERIFICATION") === "true" ||
         hasHostedAuthEmailConfig())
     );
+  } catch {
+    return false;
+  }
+}
+
+export function hasUserAuthConfig() {
+  if (!isUserAuthMode(env.AUTH_MODE)) return false;
+  if (isHostedAuthMode(env.AUTH_MODE)) return hasHostedAuthConfig();
+
+  try {
+    getHostedBaseUrl();
+    getHostedSecret();
+    return getDatabaseProvider() === "postgres";
   } catch {
     return false;
   }

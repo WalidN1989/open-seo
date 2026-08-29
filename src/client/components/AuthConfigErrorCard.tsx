@@ -1,5 +1,5 @@
 import { ShieldAlert } from "lucide-react";
-import { isHostedClientAuthMode } from "@/lib/auth-mode";
+import { isHostedClientAuthMode, isUserClientAuthMode } from "@/lib/auth-mode";
 
 const CLOUDFLARE_SETUP_GUIDE_URL =
   "https://github.com/every-app/open-seo/blob/main/docs/SELF_HOSTING_CLOUDFLARE.md#2-configure-authentication-and-secrets";
@@ -14,6 +14,7 @@ export function AuthConfigErrorCard({
   onRetry,
 }: AuthConfigErrorCardProps) {
   const isHostedMode = isHostedClientAuthMode();
+  const isUserMode = isUserClientAuthMode();
 
   return (
     <div className="card w-full max-w-2xl bg-base-100 border border-base-300 shadow-xl">
@@ -27,12 +28,12 @@ export function AuthConfigErrorCard({
           <span>{message}</span>
         </div>
 
-        {isHostedMode ? (
+        {isUserMode ? (
           <p className="text-sm text-base-content/70">
-            Hosted mode requires{" "}
+            Account authentication requires{" "}
             <code className="mx-1">BETTER_AUTH_SECRET</code>
-            (32+ characters), <code className="mx-1">BETTER_AUTH_URL</code>, and
-            Google OAuth credentials on the deployment.
+            (32+ characters) and <code className="mx-1">BETTER_AUTH_URL</code>.
+            {isHostedMode ? " Hosted mode also requires Google OAuth." : null}
           </p>
         ) : (
           <p className="text-sm text-base-content/70">

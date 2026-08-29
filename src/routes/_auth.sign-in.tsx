@@ -26,11 +26,10 @@ export const Route = createFileRoute("/_auth/sign-in")({
 function SignInPage() {
   const search = Route.useSearch();
   const navigate = useNavigate();
-  const { redirectTo, oauthQuery, isHostedMode } = useAuthPageState(
-    search.redirect,
-  );
+  const { redirectTo, oauthQuery, isHostedMode, hasGoogleAuth } =
+    useAuthPageState(search.redirect);
   const authCallbackURL = redirectTo;
-  const [showEmailForm, setShowEmailForm] = useState(false);
+  const [showEmailForm, setShowEmailForm] = useState(!hasGoogleAuth);
   const [isStartingGoogle, setIsStartingGoogle] = useState(false);
   const [socialError, setSocialError] = useState<string | null>(null);
 
@@ -131,7 +130,7 @@ function SignInPage() {
                 : "text-sm text-base-content/50"
             }
           >
-            {showEmailForm ? (
+            {showEmailForm && hasGoogleAuth ? (
               <Link
                 to="/forgot-password"
                 search={getSignInSearch(redirectTo)}

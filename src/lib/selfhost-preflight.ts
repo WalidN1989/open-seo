@@ -14,7 +14,7 @@ type PreflightLevel = "ok" | "info" | "warn" | "fail";
 
 type PreflightItem = {
   // Stable identifier shared with /api/health's check map.
-  key: "auth" | "dataforseo" | "gsc" | "ai" | "runtime";
+  key: "auth" | "database" | "dataforseo" | "gsc" | "ai" | "runtime";
   name: string;
   level: PreflightLevel;
   message: string;
@@ -55,6 +55,34 @@ function checkAuthMode(env: EnvRecord, items: PreflightItem[]): void {
       message:
         "local_noauth — no auth, single admin user. Do not expose publicly without your own auth in front.",
     });
+    return;
+  }
+
+  if (mode === "selfhosted") {
+    const missing = ["BETTER_AUTH_URL", "BETTER_AUTH_SECRET"].filter(
+      (name) => !get(env, name),
+    );
+    const authSecret = get(env, "BETTER_AUTH_SECRET");
+    if (authSecret && authSecret.length < MIN_BETTER_AUTH_SECRET_LENGTH) {
+      missing.push(
+        `BETTER_AUTH_SECRET (${MIN_BETTER_AUTH_SECRET_LENGTH}+ characters)`,
+      );
+    }
+    items.push(
+      missing.length
+        ? {
+            key: "auth",
+            name: "AUTH_MODE",
+            level: "fail",
+            message: `selfhosted mode requires ${missing.join(", ")}.`,
+          }
+        : {
+            key: "auth",
+            name: "AUTH_MODE",
+            level: "ok",
+            message: "selfhosted — application accounts enabled",
+          },
+    );
     return;
   }
 
@@ -118,6 +146,36 @@ function checkAuthMode(env: EnvRecord, items: PreflightItem[]): void {
     level: "ok",
     message: modeLabel,
   });
+}
+
+function checkDatabase(env: EnvRecord, items: PreflightItem[]): void {
+  if (get(env, "DATABASE_PROVIDER") !== "postgres") {
+    items.push({
+      key: "database",
+      name: "Database",
+      level: "ok",
+      message: "D1-compatible local storage",
+    });
+    return;
+  }
+
+  const url = get(env, "POSTGRES_DATABASE_URL");
+  items.push(
+    url?.startsWith("postgres://") || url?.startsWith("postgresql://")
+      ? {
+          key: "database",
+          name: "Database",
+          level: "ok",
+          message: "Postgres",
+        }
+      : {
+          key: "database",
+          name: "Database",
+          level: "fail",
+          message:
+            "DATABASE_PROVIDER=postgres requires POSTGRES_DATABASE_URL in Docker mode.",
+        },
+  );
 }
 
 function checkDataForSeo(env: EnvRecord, items: PreflightItem[]): void {
@@ -219,6 +277,7 @@ function checkOptionalFeatures(env: EnvRecord, items: PreflightItem[]): void {
 export function runSelfhostChecks(env: EnvRecord): PreflightItem[] {
   const items: PreflightItem[] = [];
   checkAuthMode(env, items);
+  checkDatabase(env, items);
   checkDataForSeo(env, items);
   checkOptionalFeatures(env, items);
   return items;

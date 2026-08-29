@@ -3,7 +3,7 @@ import {
   getCurrentAuthRedirect,
   getOAuthSignedQuery,
 } from "@/lib/auth-redirect";
-import { isHostedClientAuthMode } from "@/lib/auth-mode";
+import { isHostedClientAuthMode, isUserClientAuthMode } from "@/lib/auth-mode";
 
 export const authRedirectSearchSchema = z.object({
   redirect: z.string().optional(),
@@ -15,12 +15,13 @@ export function useAuthPageState(redirect: string | undefined) {
     typeof window !== "undefined"
       ? getOAuthSignedQuery(window.location.search)
       : null;
-  const isHostedMode = isHostedClientAuthMode();
+  const isHostedMode = isUserClientAuthMode();
 
   return {
     redirectTo,
     oauthQuery,
     isHostedMode,
+    hasGoogleAuth: isHostedClientAuthMode(),
   };
 }
 

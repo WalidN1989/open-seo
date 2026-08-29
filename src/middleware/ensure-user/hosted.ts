@@ -1,14 +1,14 @@
-import { getAuth, hasHostedAuthConfig } from "@/lib/auth";
+import { getAuth, hasUserAuthConfig } from "@/lib/auth";
 import { getActiveOrganizationId } from "@/lib/auth-session";
 import { getOrCreateDefaultHostedOrganization } from "@/server/auth/default-hosted-organization";
 import { AppError } from "@/server/lib/errors";
 import type { EnsuredUserContext } from "./types";
 
 async function requireHostedSession(headers: Headers) {
-  if (!hasHostedAuthConfig()) {
+  if (!hasUserAuthConfig()) {
     throw new AppError(
       "AUTH_CONFIG_MISSING",
-      "Missing Better Auth hosted configuration",
+      "Missing Better Auth configuration",
     );
   }
 

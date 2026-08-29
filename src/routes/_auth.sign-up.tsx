@@ -15,6 +15,7 @@ import {
 import { getFieldError, getFormError } from "@/client/lib/forms";
 import { captureClientEvent } from "@/client/lib/posthog";
 import { authClient } from "@/lib/auth-client";
+import { isEmailVerificationBypassed } from "@/lib/auth-mode";
 import { getSignInSearch, getVerifyEmailSearch } from "@/lib/auth-redirect";
 import {
   HOSTED_PASSWORD_MAX_LENGTH,
@@ -51,9 +52,11 @@ export const Route = createFileRoute("/_auth/sign-up")({
 function SignUpPage() {
   const search = Route.useSearch();
   const navigate = useNavigate();
-  const { redirectTo, isHostedMode } = useAuthPageState(search.redirect);
+  const { redirectTo, isHostedMode, hasGoogleAuth } = useAuthPageState(
+    search.redirect,
+  );
   const postSignupRedirect = redirectTo === "/" ? "/onboarding" : redirectTo;
-  const [showEmailForm, setShowEmailForm] = useState(false);
+  const [showEmailForm, setShowEmailForm] = useState(!hasGoogleAuth);
   const google = useGoogleSignUp({ redirectTo, postSignupRedirect });
 
   // Turnstile is active only in hosted mode with a configured site key.
@@ -131,11 +134,15 @@ function SignUpPage() {
         captureClientEvent("auth:sign_up_success", {
           redirect_to: redirectTo,
         });
-        void navigate({
-          to: "/verify-email",
-          search: getVerifyEmailSearch(email, postSignupRedirect),
-          replace: true,
-        });
+        if (isEmailVerificationBypassed()) {
+          void navigate({ href: postSignupRedirect, replace: true });
+        } else {
+          void navigate({
+            to: "/verify-email",
+            search: getVerifyEmailSearch(email, postSignupRedirect),
+            replace: true,
+          });
+        }
       } catch {
         if (isTurnstileEnabled) captcha.reset();
         formApi.setErrorMap({

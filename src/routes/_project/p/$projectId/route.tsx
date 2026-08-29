@@ -17,6 +17,7 @@ import {
   getSignInSearch,
 } from "@/lib/auth-redirect";
 import { getProjectAccess } from "@/serverFunctions/projects";
+import { isHostedClientAuthMode } from "@/lib/auth-mode";
 
 export const Route = createFileRoute("/_project/p/$projectId")({
   // Everything under this subtree fetches its data client-side with
@@ -87,7 +88,7 @@ function ProjectLayout() {
   return (
     <AuthenticatedAppLayout
       projectId={projectId}
-      banner={authGate.isHostedMode ? <FreePlanBanner /> : undefined}
+      banner={isHostedClientAuthMode() ? <FreePlanBanner /> : undefined}
     >
       <Outlet />
     </AuthenticatedAppLayout>
