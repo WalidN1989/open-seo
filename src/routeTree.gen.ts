@@ -28,10 +28,13 @@ import { Route as AppProjectsRouteImport } from './routes/_app/projects'
 import { Route as AppBillingRouteImport } from './routes/_app/billing'
 import { Route as AppAiRouteImport } from './routes/_app/ai'
 import { Route as Char91DotwellKnownChar93OpenaiAppsChallengeRouteImport } from './routes/[.well-known]/openai-apps-challenge'
+import { Route as AppModulesRouteRouteImport } from './routes/_app/modules/route'
 import { Route as AuthenticatedOnboardingIndexRouteImport } from './routes/_authenticated.onboarding.index'
+import { Route as AppModulesIndexRouteImport } from './routes/_app/modules/index'
 import { Route as ApiAutumnSplatRouteImport } from './routes/api/autumn/$'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as AuthenticatedOnboardingChatRouteImport } from './routes/_authenticated.onboarding.chat'
+import { Route as AppModulesModuleKeyRouteImport } from './routes/_app/modules/$moduleKey'
 import { Route as AppHelpOpenrouterApiKeyRouteImport } from './routes/_app/help/openrouter-api-key'
 import { Route as AppHelpDataforseoApiKeyRouteImport } from './routes/_app/help/dataforseo-api-key'
 import { Route as ProjectPProjectIdRouteRouteImport } from './routes/_project/p/$projectId/route'
@@ -150,12 +153,22 @@ const Char91DotwellKnownChar93OpenaiAppsChallengeRoute =
     path: '/.well-known/openai-apps-challenge',
     getParentRoute: () => rootRouteImport,
   } as any)
+const AppModulesRouteRoute = AppModulesRouteRouteImport.update({
+  id: '/modules',
+  path: '/modules',
+  getParentRoute: () => AppRouteRoute,
+} as any)
 const AuthenticatedOnboardingIndexRoute =
   AuthenticatedOnboardingIndexRouteImport.update({
     id: '/onboarding/',
     path: '/onboarding/',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
+const AppModulesIndexRoute = AppModulesIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppModulesRouteRoute,
+} as any)
 const ApiAutumnSplatRoute = ApiAutumnSplatRouteImport.update({
   id: '/api/autumn/$',
   path: '/api/autumn/$',
@@ -172,6 +185,11 @@ const AuthenticatedOnboardingChatRoute =
     path: '/onboarding/chat',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
+const AppModulesModuleKeyRoute = AppModulesModuleKeyRouteImport.update({
+  id: '/$moduleKey',
+  path: '/$moduleKey',
+  getParentRoute: () => AppModulesRouteRoute,
+} as any)
 const AppHelpOpenrouterApiKeyRoute = AppHelpOpenrouterApiKeyRouteImport.update({
   id: '/help/openrouter-api-key',
   path: '/help/openrouter-api-key',
@@ -312,6 +330,7 @@ export interface FileRoutesByFullPath {
   '/forgot-password': typeof ForgotPasswordRoute
   '/reset-password': typeof ResetPasswordRoute
   '/verify-email': typeof VerifyEmailRoute
+  '/modules': typeof AppModulesRouteRouteWithChildren
   '/.well-known/openai-apps-challenge': typeof Char91DotwellKnownChar93OpenaiAppsChallengeRoute
   '/ai': typeof AppAiRoute
   '/billing': typeof AppBillingRoute
@@ -326,9 +345,11 @@ export interface FileRoutesByFullPath {
   '/p/$projectId': typeof ProjectPProjectIdRouteRouteWithChildren
   '/help/dataforseo-api-key': typeof AppHelpDataforseoApiKeyRoute
   '/help/openrouter-api-key': typeof AppHelpOpenrouterApiKeyRoute
+  '/modules/$moduleKey': typeof AppModulesModuleKeyRoute
   '/onboarding/chat': typeof AuthenticatedOnboardingChatRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/autumn/$': typeof ApiAutumnSplatRoute
+  '/modules/': typeof AppModulesIndexRoute
   '/onboarding/': typeof AuthenticatedOnboardingIndexRoute
   '/p/$projectId/audit': typeof ProjectPProjectIdAuditRouteWithChildren
   '/p/$projectId/backlinks': typeof ProjectPProjectIdBacklinksRoute
@@ -370,9 +391,11 @@ export interface FileRoutesByTo {
   '/api/health': typeof ApiHealthRoute
   '/help/dataforseo-api-key': typeof AppHelpDataforseoApiKeyRoute
   '/help/openrouter-api-key': typeof AppHelpOpenrouterApiKeyRoute
+  '/modules/$moduleKey': typeof AppModulesModuleKeyRoute
   '/onboarding/chat': typeof AuthenticatedOnboardingChatRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/autumn/$': typeof ApiAutumnSplatRoute
+  '/modules': typeof AppModulesIndexRoute
   '/onboarding': typeof AuthenticatedOnboardingIndexRoute
   '/p/$projectId/backlinks': typeof ProjectPProjectIdBacklinksRoute
   '/p/$projectId/brand-lookup': typeof ProjectPProjectIdBrandLookupRoute
@@ -402,6 +425,7 @@ export interface FileRoutesById {
   '/forgot-password': typeof ForgotPasswordRoute
   '/reset-password': typeof ResetPasswordRoute
   '/verify-email': typeof VerifyEmailRoute
+  '/_app/modules': typeof AppModulesRouteRouteWithChildren
   '/.well-known/openai-apps-challenge': typeof Char91DotwellKnownChar93OpenaiAppsChallengeRoute
   '/_app/ai': typeof AppAiRoute
   '/_app/billing': typeof AppBillingRoute
@@ -417,9 +441,11 @@ export interface FileRoutesById {
   '/_project/p/$projectId': typeof ProjectPProjectIdRouteRouteWithChildren
   '/_app/help/dataforseo-api-key': typeof AppHelpDataforseoApiKeyRoute
   '/_app/help/openrouter-api-key': typeof AppHelpOpenrouterApiKeyRoute
+  '/_app/modules/$moduleKey': typeof AppModulesModuleKeyRoute
   '/_authenticated/onboarding/chat': typeof AuthenticatedOnboardingChatRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/autumn/$': typeof ApiAutumnSplatRoute
+  '/_app/modules/': typeof AppModulesIndexRoute
   '/_authenticated/onboarding/': typeof AuthenticatedOnboardingIndexRoute
   '/_project/p/$projectId/audit': typeof ProjectPProjectIdAuditRouteWithChildren
   '/_project/p/$projectId/backlinks': typeof ProjectPProjectIdBacklinksRoute
@@ -450,6 +476,7 @@ export interface FileRouteTypes {
     | '/forgot-password'
     | '/reset-password'
     | '/verify-email'
+    | '/modules'
     | '/.well-known/openai-apps-challenge'
     | '/ai'
     | '/billing'
@@ -464,9 +491,11 @@ export interface FileRouteTypes {
     | '/p/$projectId'
     | '/help/dataforseo-api-key'
     | '/help/openrouter-api-key'
+    | '/modules/$moduleKey'
     | '/onboarding/chat'
     | '/api/auth/$'
     | '/api/autumn/$'
+    | '/modules/'
     | '/onboarding/'
     | '/p/$projectId/audit'
     | '/p/$projectId/backlinks'
@@ -508,9 +537,11 @@ export interface FileRouteTypes {
     | '/api/health'
     | '/help/dataforseo-api-key'
     | '/help/openrouter-api-key'
+    | '/modules/$moduleKey'
     | '/onboarding/chat'
     | '/api/auth/$'
     | '/api/autumn/$'
+    | '/modules'
     | '/onboarding'
     | '/p/$projectId/backlinks'
     | '/p/$projectId/brand-lookup'
@@ -539,6 +570,7 @@ export interface FileRouteTypes {
     | '/forgot-password'
     | '/reset-password'
     | '/verify-email'
+    | '/_app/modules'
     | '/.well-known/openai-apps-challenge'
     | '/_app/ai'
     | '/_app/billing'
@@ -554,9 +586,11 @@ export interface FileRouteTypes {
     | '/_project/p/$projectId'
     | '/_app/help/dataforseo-api-key'
     | '/_app/help/openrouter-api-key'
+    | '/_app/modules/$moduleKey'
     | '/_authenticated/onboarding/chat'
     | '/api/auth/$'
     | '/api/autumn/$'
+    | '/_app/modules/'
     | '/_authenticated/onboarding/'
     | '/_project/p/$projectId/audit'
     | '/_project/p/$projectId/backlinks'
@@ -732,12 +766,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof Char91DotwellKnownChar93OpenaiAppsChallengeRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_app/modules': {
+      id: '/_app/modules'
+      path: '/modules'
+      fullPath: '/modules'
+      preLoaderRoute: typeof AppModulesRouteRouteImport
+      parentRoute: typeof AppRouteRoute
+    }
     '/_authenticated/onboarding/': {
       id: '/_authenticated/onboarding/'
       path: '/onboarding'
       fullPath: '/onboarding/'
       preLoaderRoute: typeof AuthenticatedOnboardingIndexRouteImport
       parentRoute: typeof AuthenticatedRoute
+    }
+    '/_app/modules/': {
+      id: '/_app/modules/'
+      path: '/'
+      fullPath: '/modules/'
+      preLoaderRoute: typeof AppModulesIndexRouteImport
+      parentRoute: typeof AppModulesRouteRoute
     }
     '/api/autumn/$': {
       id: '/api/autumn/$'
@@ -759,6 +807,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/onboarding/chat'
       preLoaderRoute: typeof AuthenticatedOnboardingChatRouteImport
       parentRoute: typeof AuthenticatedRoute
+    }
+    '/_app/modules/$moduleKey': {
+      id: '/_app/modules/$moduleKey'
+      path: '/$moduleKey'
+      fullPath: '/modules/$moduleKey'
+      preLoaderRoute: typeof AppModulesModuleKeyRouteImport
+      parentRoute: typeof AppModulesRouteRoute
     }
     '/_app/help/openrouter-api-key': {
       id: '/_app/help/openrouter-api-key'
@@ -931,7 +986,22 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AppModulesRouteRouteChildren {
+  AppModulesModuleKeyRoute: typeof AppModulesModuleKeyRoute
+  AppModulesIndexRoute: typeof AppModulesIndexRoute
+}
+
+const AppModulesRouteRouteChildren: AppModulesRouteRouteChildren = {
+  AppModulesModuleKeyRoute: AppModulesModuleKeyRoute,
+  AppModulesIndexRoute: AppModulesIndexRoute,
+}
+
+const AppModulesRouteRouteWithChildren = AppModulesRouteRoute._addFileChildren(
+  AppModulesRouteRouteChildren,
+)
+
 interface AppRouteRouteChildren {
+  AppModulesRouteRoute: typeof AppModulesRouteRouteWithChildren
   AppAiRoute: typeof AppAiRoute
   AppBillingRoute: typeof AppBillingRoute
   AppProjectsRoute: typeof AppProjectsRoute
@@ -943,6 +1013,7 @@ interface AppRouteRouteChildren {
 }
 
 const AppRouteRouteChildren: AppRouteRouteChildren = {
+  AppModulesRouteRoute: AppModulesRouteRouteWithChildren,
   AppAiRoute: AppAiRoute,
   AppBillingRoute: AppBillingRoute,
   AppProjectsRoute: AppProjectsRoute,

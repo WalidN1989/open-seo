@@ -5,6 +5,7 @@ import {
   Globe,
   LayoutDashboard,
   Link2,
+  PackageOpen,
   MessageSquare,
   Search,
   Sparkles,
@@ -75,10 +76,16 @@ const aiNavItem = linkOptions({
   icon: Bot,
 });
 
+const businessModulesNavItem = linkOptions({
+  to: "/modules" as const,
+  label: "Business Modules",
+  icon: PackageOpen,
+});
+
 // Always-visible sidebar group (not project-scoped, unlike the groups below).
 export const connectNavGroup = {
   label: "Connect",
-  items: [aiNavItem],
+  items: [businessModulesNavItem, aiNavItem],
 };
 
 function getProjectNavItems(projectId: string) {
