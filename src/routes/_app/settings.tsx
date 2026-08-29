@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { ApiKeySettings } from "@/client/features/settings/ApiKeySettings";
 import { type ThemePreference, useThemePreference } from "@/client/lib/theme";
 import { authClient, useSession } from "@/lib/auth-client";
-import { isHostedClientAuthMode } from "@/lib/auth-mode";
+import { isUserClientAuthMode } from "@/lib/auth-mode";
 import { version } from "../../../package.json";
 
 export const Route = createFileRoute("/_app/settings")({
@@ -23,7 +23,7 @@ const THEME_OPTIONS: {
 ];
 
 function SettingsPage() {
-  const isHosted = isHostedClientAuthMode();
+  const hasUserAccounts = isUserClientAuthMode();
   const { themePreference, setThemePreference } = useThemePreference();
   const { data: session, isPending: isSessionPending } = useSession();
   const [isSaving, setIsSaving] = useState(false);
@@ -90,7 +90,7 @@ function SettingsPage() {
           </div>
         </section>
 
-        {isHosted ? (
+        {hasUserAccounts ? (
           <>
             <ApiKeySettings />
 
