@@ -40,4 +40,10 @@ else
   printf '%s' "$FINGERPRINT" > "$FP_FILE"
 fi
 
+# The Cloudflare Vite preview runtime does not automatically expose the host
+# process environment as Worker bindings. Materialize only OpenSEO's declared
+# runtime variables into the generated server bundle; the file remains inside
+# the container and is never included in the image or repository.
+pnpm exec tsx scripts/write-runtime-dev-vars.ts "$OUT_DIR/server/.dev.vars"
+
 exec pnpm exec vite preview --host 0.0.0.0 --port "${PORT:-3001}"
