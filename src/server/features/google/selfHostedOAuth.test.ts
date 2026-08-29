@@ -4,10 +4,12 @@ import {
   GA4_INTEGRATION,
   GSC_INTEGRATION,
   handleSelfHostedGoogleOAuthCallback,
+  handleSelfHostedGoogleOAuthCallbackRequest,
   type SelfHostedGoogleOAuthIntegration,
 } from "./selfHostedOAuth";
 
 const mocks = vi.hoisted(() => ({
+  env: {} as { AUTH_MODE?: string },
   getGoogleOAuthClientConfig: vi.fn(),
   hasSelfHostedGoogleOAuthConfig: vi.fn(),
   fetch: vi.fn(),
@@ -15,9 +17,10 @@ const mocks = vi.hoisted(() => ({
   insertValues: vi.fn(),
   updateSet: vi.fn(),
   getAuth: vi.fn(),
+  resolveUserContextFromHeaders: vi.fn(),
 }));
 
-vi.mock("cloudflare:workers", () => ({ env: {} }));
+vi.mock("cloudflare:workers", () => ({ env: mocks.env }));
 vi.mock("drizzle-orm", () => ({
   and: (...values: unknown[]) => values,
   eq: (...values: unknown[]) => values,
@@ -42,6 +45,9 @@ vi.mock("@/db", () => ({
   },
 }));
 vi.mock("@/lib/auth", () => ({ getAuth: mocks.getAuth }));
+vi.mock("@/middleware/ensure-user/resolve", () => ({
+  resolveUserContextFromHeaders: mocks.resolveUserContextFromHeaders,
+}));
 vi.mock("@/server/features/google/oauth-config", () => ({
   getGoogleOAuthClientConfig: mocks.getGoogleOAuthClientConfig,
   hasSelfHostedGoogleOAuthConfig: mocks.hasSelfHostedGoogleOAuthConfig,
@@ -80,6 +86,7 @@ function callbackRequest(
 
 describe("self-hosted Google OAuth providers", () => {
   beforeEach(() => {
+    mocks.env.AUTH_MODE = "selfhosted";
     mocks.getGoogleOAuthClientConfig.mockResolvedValue({
       clientId: "google-client-id",
       clientSecret: "google-client-secret",
@@ -93,6 +100,7 @@ describe("self-hosted Google OAuth providers", () => {
         secretConfig: "secret",
       }),
     });
+    mocks.resolveUserContextFromHeaders.mockResolvedValue(user);
     vi.stubGlobal("fetch", mocks.fetch);
   });
 
@@ -231,5 +239,29 @@ describe("self-hosted Google OAuth providers", () => {
         accessToken: "gsc-token",
       }),
     );
+  });
+
+  it("uses the authenticated application session for selfhosted callbacks", async () => {
+    const state = await authorizationState(GSC_INTEGRATION);
+    const idToken = `header.${btoa(JSON.stringify({ sub: "gsc-account-1" }))}.signature`;
+    mocks.fetch.mockResolvedValue(
+      new Response(
+        JSON.stringify({ access_token: "gsc-token", id_token: idToken }),
+        { status: 200 },
+      ),
+    );
+
+    const request = callbackRequest(GSC_INTEGRATION, state, {
+      code: "gsc-code",
+    });
+    const response = await handleSelfHostedGoogleOAuthCallbackRequest(
+      request,
+      GSC_INTEGRATION,
+    );
+
+    expect(mocks.resolveUserContextFromHeaders).toHaveBeenCalledWith(
+      request.headers,
+    );
+    expect(response.status).toBe(303);
   });
 });
