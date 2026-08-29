@@ -15,6 +15,7 @@ import {
   createOpenSeoOAuthProvider,
   type OpenSeoOAuthEnv,
 } from "@/server/mcp/oauth-provider";
+import { handleMcpApiKeyRequest } from "@/server/mcp/api-key-auth";
 import { requestWithPublicOrigin } from "@/server/mcp/public-origin";
 import { MCP_ROUTE } from "@/server/mcp/context";
 import { handleSelfHostedOpenSeoMcpRequest } from "@/server/mcp/transport";
@@ -29,6 +30,24 @@ import { GDPR_STORAGE_ERASURE_PATH } from "@/shared/gdpr-erasure";
 
 const appFetch = createStartHandler(defaultStreamHandler);
 const openSeoOAuthProvider = createOpenSeoOAuthProvider(appFetch);
+
+async function handleSelfHostedUserMcpRequest(
+  request: Request,
+  env: Env,
+  ctx: ExecutionContext,
+): Promise<Response> {
+  const response = await handleMcpApiKeyRequest(request, env, ctx);
+  return (
+    response ??
+    Response.json(
+      {
+        error: "invalid_api_key",
+        error_description: "An OpenSEO API key is required",
+      },
+      { status: 401 },
+    )
+  );
+}
 
 // Authorize an onboarding-chat connection in the Worker, before it reaches the
 // Durable Object. The DO instance name is the projectId (set client-side); we
@@ -165,6 +184,10 @@ function handleFetch(
       env as OpenSeoOAuthEnv,
       ctx,
     );
+  }
+
+  if (authMode === "selfhosted" && pathname === MCP_ROUTE) {
+    return handleSelfHostedUserMcpRequest(publicRequest, env, ctx);
   }
 
   if (
