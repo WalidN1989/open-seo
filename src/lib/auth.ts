@@ -119,6 +119,15 @@ function createAuth() {
           // has no shared credit pool to protect, so it's left untouched.
           before: async (user) => {
             if (
+              env.AUTH_MODE === "selfhosted" &&
+              !getSelfHostedAllowedEmails().has(user.email.trim().toLowerCase())
+            ) {
+              throw new APIError("FORBIDDEN", {
+                message:
+                  "This email address is not allowed on this deployment.",
+              });
+            }
+            if (
               isHostedAuthMode(env.AUTH_MODE) &&
               isDisposableEmailDomain(user.email)
             ) {
@@ -158,6 +167,16 @@ function createAuth() {
   });
 
   return auth;
+}
+
+function getSelfHostedAllowedEmails() {
+  const value = env.SELFHOSTED_ALLOWED_EMAILS?.trim() ?? "";
+  return new Set(
+    value
+      .split(",")
+      .map((email) => email.trim().toLowerCase())
+      .filter(Boolean),
+  );
 }
 
 let authInstance: ReturnType<typeof createAuth> | null = null;

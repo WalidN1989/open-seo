@@ -90,6 +90,7 @@ describe("runSelfhostPreflight", () => {
       AUTH_MODE: "selfhosted",
       BETTER_AUTH_URL: "https://open-seo.example.com",
       BETTER_AUTH_SECRET: "x".repeat(40),
+      SELFHOSTED_ALLOWED_EMAILS: "admin@example.com",
       DATABASE_PROVIDER: "postgres",
       POSTGRES_DATABASE_URL: "postgresql://user:secret@example.com/open_seo",
     });

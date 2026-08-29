@@ -59,9 +59,11 @@ function checkAuthMode(env: EnvRecord, items: PreflightItem[]): void {
   }
 
   if (mode === "selfhosted") {
-    const missing = ["BETTER_AUTH_URL", "BETTER_AUTH_SECRET"].filter(
-      (name) => !get(env, name),
-    );
+    const missing = [
+      "BETTER_AUTH_URL",
+      "BETTER_AUTH_SECRET",
+      "SELFHOSTED_ALLOWED_EMAILS",
+    ].filter((name) => !get(env, name));
     const authSecret = get(env, "BETTER_AUTH_SECRET");
     if (authSecret && authSecret.length < MIN_BETTER_AUTH_SECRET_LENGTH) {
       missing.push(

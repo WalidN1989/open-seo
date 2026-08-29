@@ -58,5 +58,8 @@ export function isEmailVerificationBypassed() {
   // verification and never marks users emailVerified, so the client must treat
   // the session as verified too — otherwise route guards and /verify-email
   // bounce each other in an infinite redirect loop.
-  return import.meta.env.BYPASS_EMAIL_VERIFICATION === "true";
+  return (
+    getAuthMode(import.meta.env.AUTH_MODE) === "selfhosted" ||
+    import.meta.env.BYPASS_EMAIL_VERIFICATION === "true"
+  );
 }

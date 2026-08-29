@@ -26,6 +26,7 @@ declare namespace Cloudflare {
     BETTER_AUTH_URL?: string;
     DATABASE_PROVIDER?: "d1" | "postgres";
     POSTGRES_DATABASE_URL?: string;
+    SELFHOSTED_ALLOWED_EMAILS?: string;
     HYPERDRIVE?: {
       connectionString: string;
     };
@@ -62,6 +63,7 @@ interface ImportMetaEnv {
     | "hosted";
   readonly DATABASE_PROVIDER?: "d1" | "postgres";
   readonly BYPASS_EMAIL_VERIFICATION?: string;
+  readonly SELFHOSTED_ALLOWED_EMAILS?: string;
   readonly POSTHOG_PUBLIC_KEY?: string;
   readonly POSTHOG_HOST?: string;
   readonly TURNSTILE_SITE_KEY?: string;
