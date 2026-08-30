@@ -1,0 +1,230 @@
+/**
+ * Presentation metadata for the Integrations marketplace, ported from the
+ * legacy CRM so a merchant sees the same catalogue they were shown there.
+ *
+ * Credentials are NOT part of this data. The legacy app stored provider
+ * secrets in the database; OpenSEO stores only a reference and reads the real
+ * value from the deployment environment, so an entry declares the environment
+ * suffixes it needs and the connect flow asks for the reference instead of the
+ * secret. Porting the old credential forms verbatim would undo that.
+ */
+
+export const integrationCategories = [
+  { key: "all", label: "All" },
+  { key: "channels", label: "Channels" },
+  { key: "ecommerce", label: "Ecommerce" },
+  { key: "payments", label: "Payments" },
+  { key: "crm", label: "CRM" },
+  { key: "automations", label: "Automations" },
+  { key: "data", label: "Data" },
+] as const;
+
+export type IntegrationCategory = Exclude<
+  (typeof integrationCategories)[number]["key"],
+  "all"
+>;
+
+/**
+ * `connectable` — a tenant can connect it today.
+ * `built_in`   — already part of the product, nothing to connect.
+ * `planned`    — on the roadmap; shown so the catalogue reads honestly rather
+ *                than implying the list is everything we will ever support.
+ */
+export type IntegrationState = "connectable" | "built_in" | "planned";
+
+export type IntegrationCatalogueEntry = {
+  key: string;
+  name: string;
+  tagline: string;
+  description: string;
+  category: IntegrationCategory;
+  state: IntegrationState;
+  /** Environment suffixes appended to the tenant's credential reference. */
+  credentialSuffixes?: readonly string[];
+  capabilities?: readonly string[];
+  howToConnect?: readonly string[];
+  notes?: readonly string[];
+};
+
+export const integrationCatalogue: readonly IntegrationCatalogueEntry[] = [
+  {
+    key: "webhooks",
+    name: "Webhooks",
+    tagline: "Push events to any system you run",
+    description:
+      "Send a signed JSON POST to your own endpoint whenever something happens — a customer messages you, a campaign lands, an order is captured. Every request carries an HMAC signature so you can verify it came from us.",
+    category: "automations",
+    state: "built_in",
+    notes: [
+      "Destinations must be HTTPS, cannot point at private-network hosts, and redirects are not followed.",
+      "Failed deliveries are retried automatically on a backoff.",
+    ],
+  },
+  {
+    key: "make",
+    name: "Make",
+    tagline: "Connect anything to your scenarios",
+    description:
+      "Trigger Make scenarios from workspace events and let Make drive work back into the workspace. Validated through its signing secret.",
+    category: "automations",
+    state: "connectable",
+    credentialSuffixes: ["SIGNING_SECRET"],
+    capabilities: ["scenarios", "signed webhooks", "app automation"],
+  },
+  {
+    key: "woocommerce",
+    name: "WooCommerce",
+    tagline: "Bring your WooCommerce store into the workspace",
+    description:
+      "Connect your store with REST API keys you generate yourself — no app review and no waiting for approval. Products, prices and stock stay current for the assistant.",
+    category: "ecommerce",
+    state: "connectable",
+    credentialSuffixes: ["BASE_URL", "CONSUMER_KEY", "CONSUMER_SECRET"],
+    capabilities: ["customers", "orders", "products"],
+    howToConnect: [
+      "In WooCommerce, go to Settings, Advanced, REST API and add a key with read access.",
+      "Set the store URL, consumer key and consumer secret on the deployment under your credential reference.",
+      "Connect here with that reference; the connection is verified with a real authenticated store request.",
+    ],
+  },
+  {
+    key: "shopify",
+    name: "Shopify",
+    tagline: "Bring your Shopify store into the workspace",
+    description:
+      "Connect a Shopify store with keys the merchant creates in Shopify's Dev Dashboard — nothing to install from us and no app-store review to wait for. Each variant syncs as its own row so per-variant prices and stock stay accurate.",
+    category: "ecommerce",
+    state: "planned",
+    credentialSuffixes: ["CLIENT_ID", "CLIENT_SECRET", "SHOP_DOMAIN"],
+    howToConnect: [
+      "At dev.shopify.com, sign in with the account that owns the store and create an app.",
+      "Add read_products and read_inventory scopes, release the version, then install the app on the store.",
+      "The app and the store must belong to the same Shopify organisation, or Shopify refuses the keys.",
+    ],
+  },
+  {
+    key: "hunter",
+    name: "Hunter.io",
+    tagline: "Find and verify business email addresses",
+    description:
+      "Run a bounded domain search from the Leads workspace, import discovered people as CRM contacts, and create deduplicated pipeline leads carrying source and confidence context.",
+    category: "data",
+    state: "connectable",
+    credentialSuffixes: ["API_KEY"],
+    capabilities: ["email finder", "email verifier", "domain search"],
+    notes: ["Requires active Leads, CRM and Integrations access together."],
+  },
+  {
+    key: "apify",
+    name: "Apify",
+    tagline: "Run actors and collect datasets",
+    description:
+      "Run an Apify actor with validated JSON input and inspect a bounded result preview, without the provider credential ever reaching the browser.",
+    category: "data",
+    state: "connectable",
+    credentialSuffixes: ["API_TOKEN"],
+    capabilities: ["actors", "datasets", "lead enrichment"],
+  },
+  {
+    key: "firecrawl",
+    name: "Firecrawl",
+    tagline: "Scrape and extract from any page",
+    description:
+      "Scrape an HTTPS page through Firecrawl and retain a tenant audit record of what was run and by whom.",
+    category: "data",
+    state: "connectable",
+    credentialSuffixes: ["API_KEY"],
+    capabilities: ["scrape", "crawl", "extract"],
+  },
+  {
+    key: "claude_haiku",
+    name: "Claude Haiku",
+    tagline: "The conversation engine for WhatsApp",
+    description:
+      "Opt a tenant into AI replies. The assistant is forbidden from inventing business facts, can create order enquiries and flag conversations for staff, keeps replying after tool calls, and falls back to deterministic rules when the model is unavailable.",
+    category: "channels",
+    state: "connectable",
+    credentialSuffixes: ["API_KEY"],
+    notes: [
+      "Deployment alone does not enable it: a tenant needs a connected claude_haiku integration.",
+      "Falls back to the platform ANTHROPIC_API_KEY when the connection sets no reference.",
+    ],
+  },
+  {
+    key: "custom",
+    name: "Custom API",
+    tagline: "Bring your own adapter",
+    description:
+      "A generic connection for a service with no first-class adapter yet, so a tenant can still store a credential reference and sign outbound webhooks.",
+    category: "automations",
+    state: "connectable",
+    credentialSuffixes: ["API_KEY"],
+  },
+  {
+    key: "instagram",
+    name: "Instagram",
+    tagline: "Manage Instagram DMs and comments",
+    description:
+      "Handle Instagram direct messages and comments in the same shared inbox as WhatsApp, through the Meta Graph API already in use.",
+    category: "channels",
+    state: "planned",
+    notes: [
+      "Unlocked by Meta business verification and App Review for instagram_manage_messages.",
+    ],
+  },
+  {
+    key: "messenger",
+    name: "Facebook Messenger",
+    tagline: "Messenger conversations in the shared inbox",
+    description:
+      "Bring Facebook Page conversations into the same inbox as WhatsApp, using the same Meta app and webhook.",
+    category: "channels",
+    state: "planned",
+    notes: ["Gated on App Review for pages_messaging."],
+  },
+  {
+    key: "google_sheets",
+    name: "Google Sheets",
+    tagline: "Sync contacts and orders to a spreadsheet",
+    description:
+      "Mirror contacts, orders and campaign results into a Google Sheet the team already works in.",
+    category: "data",
+    state: "planned",
+  },
+  {
+    key: "zoho",
+    name: "Zoho CRM",
+    tagline: "Keep contacts in sync with Zoho",
+    description:
+      "Two-way contact sync between Zoho CRM and the workspace, so sales and support see the same customer record.",
+    category: "crm",
+    state: "planned",
+  },
+  {
+    key: "hubspot",
+    name: "HubSpot",
+    tagline: "Keep contacts in sync with HubSpot",
+    description: "Two-way contact sync between HubSpot and the workspace.",
+    category: "crm",
+    state: "planned",
+  },
+  {
+    key: "payhere",
+    name: "PayHere",
+    tagline: "Sri Lankan payment links in chat",
+    description:
+      "Generate PayHere payment links inside a conversation and mark the order paid when the callback lands.",
+    category: "payments",
+    state: "planned",
+    notes: ["Needs a PayHere merchant account."],
+  },
+  {
+    key: "stripe",
+    name: "Stripe",
+    tagline: "Card payments for international customers",
+    description:
+      "Take card payments through Stripe Checkout links shared in a conversation, reconciled against the order.",
+    category: "payments",
+    state: "planned",
+  },
+] as const;

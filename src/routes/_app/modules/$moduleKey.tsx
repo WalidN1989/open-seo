@@ -10,7 +10,6 @@ import {
 import { getStandardErrorMessage } from "@/client/lib/error-messages";
 import { LeadsWorkspace } from "@/client/features/business-modules/LeadsWorkspace";
 import {
-  IntegrationsWorkspace,
   VoiceWorkspace,
   WhatsappWorkspace,
 } from "@/client/features/business-modules/CommunicationsWorkspace";
@@ -88,7 +87,6 @@ function BusinessModulePage() {
             {moduleKey === "leads" ? <LeadsWorkspace /> : null}
             {moduleKey === "whatsapp" ? <WhatsappWorkspace /> : null}
             {moduleKey === "voice" ? <VoiceWorkspace /> : null}
-            {moduleKey === "integrations" ? <IntegrationsWorkspace /> : null}
             {businessModuleKeySchema.options.includes(moduleKey) ? null : (
               <>
                 <div>

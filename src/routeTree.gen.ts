@@ -35,12 +35,14 @@ import { Route as ApiWhatsappConnectionIdRouteImport } from './routes/api/whatsa
 import { Route as ApiAutumnSplatRouteImport } from './routes/api/autumn/$'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as AuthenticatedOnboardingChatRouteImport } from './routes/_authenticated.onboarding.chat'
+import { Route as AppModulesIntegrationsRouteImport } from './routes/_app/modules/integrations'
 import { Route as AppModulesCrmRouteImport } from './routes/_app/modules/crm'
 import { Route as AppModulesModuleKeyRouteImport } from './routes/_app/modules/$moduleKey'
 import { Route as AppHelpOpenrouterApiKeyRouteImport } from './routes/_app/help/openrouter-api-key'
 import { Route as AppHelpDataforseoApiKeyRouteImport } from './routes/_app/help/dataforseo-api-key'
 import { Route as ProjectPProjectIdRouteRouteImport } from './routes/_project/p/$projectId/route'
 import { Route as ProjectPProjectIdIndexRouteImport } from './routes/_project/p/$projectId/index'
+import { Route as AppModulesIntegrationsIndexRouteImport } from './routes/_app/modules/integrations/index'
 import { Route as AppModulesCrmIndexRouteImport } from './routes/_app/modules/crm/index'
 import { Route as ApiGscOauthCallbackRouteImport } from './routes/api/gsc/oauth/callback'
 import { Route as ApiGa4OauthCallbackRouteImport } from './routes/api/ga4/oauth/callback'
@@ -55,6 +57,7 @@ import { Route as ProjectPProjectIdDomainRouteImport } from './routes/_project/p
 import { Route as ProjectPProjectIdBrandLookupRouteImport } from './routes/_project/p/$projectId/brand-lookup'
 import { Route as ProjectPProjectIdBacklinksRouteImport } from './routes/_project/p/$projectId/backlinks'
 import { Route as ProjectPProjectIdAuditRouteImport } from './routes/_project/p/$projectId/audit'
+import { Route as AppModulesIntegrationsConnectionsRouteImport } from './routes/_app/modules/integrations/connections'
 import { Route as AppModulesCrmMeetingsRouteImport } from './routes/_app/modules/crm/meetings'
 import { Route as AppModulesCrmInquiriesRouteImport } from './routes/_app/modules/crm/inquiries'
 import { Route as AppModulesCrmContactsRouteImport } from './routes/_app/modules/crm/contacts'
@@ -197,6 +200,11 @@ const AuthenticatedOnboardingChatRoute =
     path: '/onboarding/chat',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
+const AppModulesIntegrationsRoute = AppModulesIntegrationsRouteImport.update({
+  id: '/integrations',
+  path: '/integrations',
+  getParentRoute: () => AppModulesRouteRoute,
+} as any)
 const AppModulesCrmRoute = AppModulesCrmRouteImport.update({
   id: '/crm',
   path: '/crm',
@@ -227,6 +235,12 @@ const ProjectPProjectIdIndexRoute = ProjectPProjectIdIndexRouteImport.update({
   path: '/',
   getParentRoute: () => ProjectPProjectIdRouteRoute,
 } as any)
+const AppModulesIntegrationsIndexRoute =
+  AppModulesIntegrationsIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AppModulesIntegrationsRoute,
+  } as any)
 const AppModulesCrmIndexRoute = AppModulesCrmIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -304,6 +318,12 @@ const ProjectPProjectIdAuditRoute = ProjectPProjectIdAuditRouteImport.update({
   path: '/audit',
   getParentRoute: () => ProjectPProjectIdRouteRoute,
 } as any)
+const AppModulesIntegrationsConnectionsRoute =
+  AppModulesIntegrationsConnectionsRouteImport.update({
+    id: '/connections',
+    path: '/connections',
+    getParentRoute: () => AppModulesIntegrationsRoute,
+  } as any)
 const AppModulesCrmMeetingsRoute = AppModulesCrmMeetingsRouteImport.update({
   id: '/meetings',
   path: '/meetings',
@@ -389,6 +409,7 @@ export interface FileRoutesByFullPath {
   '/help/openrouter-api-key': typeof AppHelpOpenrouterApiKeyRoute
   '/modules/$moduleKey': typeof AppModulesModuleKeyRoute
   '/modules/crm': typeof AppModulesCrmRouteWithChildren
+  '/modules/integrations': typeof AppModulesIntegrationsRouteWithChildren
   '/onboarding/chat': typeof AuthenticatedOnboardingChatRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/autumn/$': typeof ApiAutumnSplatRoute
@@ -399,6 +420,7 @@ export interface FileRoutesByFullPath {
   '/modules/crm/contacts': typeof AppModulesCrmContactsRoute
   '/modules/crm/inquiries': typeof AppModulesCrmInquiriesRoute
   '/modules/crm/meetings': typeof AppModulesCrmMeetingsRoute
+  '/modules/integrations/connections': typeof AppModulesIntegrationsConnectionsRoute
   '/p/$projectId/audit': typeof ProjectPProjectIdAuditRouteWithChildren
   '/p/$projectId/backlinks': typeof ProjectPProjectIdBacklinksRoute
   '/p/$projectId/brand-lookup': typeof ProjectPProjectIdBrandLookupRoute
@@ -413,6 +435,7 @@ export interface FileRoutesByFullPath {
   '/api/ga4/oauth/callback': typeof ApiGa4OauthCallbackRoute
   '/api/gsc/oauth/callback': typeof ApiGscOauthCallbackRoute
   '/modules/crm/': typeof AppModulesCrmIndexRoute
+  '/modules/integrations/': typeof AppModulesIntegrationsIndexRoute
   '/p/$projectId/': typeof ProjectPProjectIdIndexRoute
   '/p/$projectId/rank-tracking/$configId': typeof ProjectPProjectIdRankTrackingConfigIdRoute
   '/p/$projectId/settings/context': typeof ProjectPProjectIdSettingsContextRoute
@@ -451,6 +474,7 @@ export interface FileRoutesByTo {
   '/modules/crm/contacts': typeof AppModulesCrmContactsRoute
   '/modules/crm/inquiries': typeof AppModulesCrmInquiriesRoute
   '/modules/crm/meetings': typeof AppModulesCrmMeetingsRoute
+  '/modules/integrations/connections': typeof AppModulesIntegrationsConnectionsRoute
   '/p/$projectId/backlinks': typeof ProjectPProjectIdBacklinksRoute
   '/p/$projectId/brand-lookup': typeof ProjectPProjectIdBrandLookupRoute
   '/p/$projectId/domain': typeof ProjectPProjectIdDomainRoute
@@ -462,6 +486,7 @@ export interface FileRoutesByTo {
   '/api/ga4/oauth/callback': typeof ApiGa4OauthCallbackRoute
   '/api/gsc/oauth/callback': typeof ApiGscOauthCallbackRoute
   '/modules/crm': typeof AppModulesCrmIndexRoute
+  '/modules/integrations': typeof AppModulesIntegrationsIndexRoute
   '/p/$projectId': typeof ProjectPProjectIdIndexRoute
   '/p/$projectId/rank-tracking/$configId': typeof ProjectPProjectIdRankTrackingConfigIdRoute
   '/p/$projectId/settings/context': typeof ProjectPProjectIdSettingsContextRoute
@@ -498,6 +523,7 @@ export interface FileRoutesById {
   '/_app/help/openrouter-api-key': typeof AppHelpOpenrouterApiKeyRoute
   '/_app/modules/$moduleKey': typeof AppModulesModuleKeyRoute
   '/_app/modules/crm': typeof AppModulesCrmRouteWithChildren
+  '/_app/modules/integrations': typeof AppModulesIntegrationsRouteWithChildren
   '/_authenticated/onboarding/chat': typeof AuthenticatedOnboardingChatRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/autumn/$': typeof ApiAutumnSplatRoute
@@ -508,6 +534,7 @@ export interface FileRoutesById {
   '/_app/modules/crm/contacts': typeof AppModulesCrmContactsRoute
   '/_app/modules/crm/inquiries': typeof AppModulesCrmInquiriesRoute
   '/_app/modules/crm/meetings': typeof AppModulesCrmMeetingsRoute
+  '/_app/modules/integrations/connections': typeof AppModulesIntegrationsConnectionsRoute
   '/_project/p/$projectId/audit': typeof ProjectPProjectIdAuditRouteWithChildren
   '/_project/p/$projectId/backlinks': typeof ProjectPProjectIdBacklinksRoute
   '/_project/p/$projectId/brand-lookup': typeof ProjectPProjectIdBrandLookupRoute
@@ -522,6 +549,7 @@ export interface FileRoutesById {
   '/api/ga4/oauth/callback': typeof ApiGa4OauthCallbackRoute
   '/api/gsc/oauth/callback': typeof ApiGscOauthCallbackRoute
   '/_app/modules/crm/': typeof AppModulesCrmIndexRoute
+  '/_app/modules/integrations/': typeof AppModulesIntegrationsIndexRoute
   '/_project/p/$projectId/': typeof ProjectPProjectIdIndexRoute
   '/_project/p/$projectId/rank-tracking/$configId': typeof ProjectPProjectIdRankTrackingConfigIdRoute
   '/_project/p/$projectId/settings/context': typeof ProjectPProjectIdSettingsContextRoute
@@ -555,6 +583,7 @@ export interface FileRouteTypes {
     | '/help/openrouter-api-key'
     | '/modules/$moduleKey'
     | '/modules/crm'
+    | '/modules/integrations'
     | '/onboarding/chat'
     | '/api/auth/$'
     | '/api/autumn/$'
@@ -565,6 +594,7 @@ export interface FileRouteTypes {
     | '/modules/crm/contacts'
     | '/modules/crm/inquiries'
     | '/modules/crm/meetings'
+    | '/modules/integrations/connections'
     | '/p/$projectId/audit'
     | '/p/$projectId/backlinks'
     | '/p/$projectId/brand-lookup'
@@ -579,6 +609,7 @@ export interface FileRouteTypes {
     | '/api/ga4/oauth/callback'
     | '/api/gsc/oauth/callback'
     | '/modules/crm/'
+    | '/modules/integrations/'
     | '/p/$projectId/'
     | '/p/$projectId/rank-tracking/$configId'
     | '/p/$projectId/settings/context'
@@ -617,6 +648,7 @@ export interface FileRouteTypes {
     | '/modules/crm/contacts'
     | '/modules/crm/inquiries'
     | '/modules/crm/meetings'
+    | '/modules/integrations/connections'
     | '/p/$projectId/backlinks'
     | '/p/$projectId/brand-lookup'
     | '/p/$projectId/domain'
@@ -628,6 +660,7 @@ export interface FileRouteTypes {
     | '/api/ga4/oauth/callback'
     | '/api/gsc/oauth/callback'
     | '/modules/crm'
+    | '/modules/integrations'
     | '/p/$projectId'
     | '/p/$projectId/rank-tracking/$configId'
     | '/p/$projectId/settings/context'
@@ -663,6 +696,7 @@ export interface FileRouteTypes {
     | '/_app/help/openrouter-api-key'
     | '/_app/modules/$moduleKey'
     | '/_app/modules/crm'
+    | '/_app/modules/integrations'
     | '/_authenticated/onboarding/chat'
     | '/api/auth/$'
     | '/api/autumn/$'
@@ -673,6 +707,7 @@ export interface FileRouteTypes {
     | '/_app/modules/crm/contacts'
     | '/_app/modules/crm/inquiries'
     | '/_app/modules/crm/meetings'
+    | '/_app/modules/integrations/connections'
     | '/_project/p/$projectId/audit'
     | '/_project/p/$projectId/backlinks'
     | '/_project/p/$projectId/brand-lookup'
@@ -687,6 +722,7 @@ export interface FileRouteTypes {
     | '/api/ga4/oauth/callback'
     | '/api/gsc/oauth/callback'
     | '/_app/modules/crm/'
+    | '/_app/modules/integrations/'
     | '/_project/p/$projectId/'
     | '/_project/p/$projectId/rank-tracking/$configId'
     | '/_project/p/$projectId/settings/context'
@@ -898,6 +934,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedOnboardingChatRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_app/modules/integrations': {
+      id: '/_app/modules/integrations'
+      path: '/integrations'
+      fullPath: '/modules/integrations'
+      preLoaderRoute: typeof AppModulesIntegrationsRouteImport
+      parentRoute: typeof AppModulesRouteRoute
+    }
     '/_app/modules/crm': {
       id: '/_app/modules/crm'
       path: '/crm'
@@ -939,6 +982,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/p/$projectId/'
       preLoaderRoute: typeof ProjectPProjectIdIndexRouteImport
       parentRoute: typeof ProjectPProjectIdRouteRoute
+    }
+    '/_app/modules/integrations/': {
+      id: '/_app/modules/integrations/'
+      path: '/'
+      fullPath: '/modules/integrations/'
+      preLoaderRoute: typeof AppModulesIntegrationsIndexRouteImport
+      parentRoute: typeof AppModulesIntegrationsRoute
     }
     '/_app/modules/crm/': {
       id: '/_app/modules/crm/'
@@ -1037,6 +1087,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/p/$projectId/audit'
       preLoaderRoute: typeof ProjectPProjectIdAuditRouteImport
       parentRoute: typeof ProjectPProjectIdRouteRoute
+    }
+    '/_app/modules/integrations/connections': {
+      id: '/_app/modules/integrations/connections'
+      path: '/connections'
+      fullPath: '/modules/integrations/connections'
+      preLoaderRoute: typeof AppModulesIntegrationsConnectionsRouteImport
+      parentRoute: typeof AppModulesIntegrationsRoute
     }
     '/_app/modules/crm/meetings': {
       id: '/_app/modules/crm/meetings'
@@ -1138,15 +1195,34 @@ const AppModulesCrmRouteWithChildren = AppModulesCrmRoute._addFileChildren(
   AppModulesCrmRouteChildren,
 )
 
+interface AppModulesIntegrationsRouteChildren {
+  AppModulesIntegrationsConnectionsRoute: typeof AppModulesIntegrationsConnectionsRoute
+  AppModulesIntegrationsIndexRoute: typeof AppModulesIntegrationsIndexRoute
+}
+
+const AppModulesIntegrationsRouteChildren: AppModulesIntegrationsRouteChildren =
+  {
+    AppModulesIntegrationsConnectionsRoute:
+      AppModulesIntegrationsConnectionsRoute,
+    AppModulesIntegrationsIndexRoute: AppModulesIntegrationsIndexRoute,
+  }
+
+const AppModulesIntegrationsRouteWithChildren =
+  AppModulesIntegrationsRoute._addFileChildren(
+    AppModulesIntegrationsRouteChildren,
+  )
+
 interface AppModulesRouteRouteChildren {
   AppModulesModuleKeyRoute: typeof AppModulesModuleKeyRoute
   AppModulesCrmRoute: typeof AppModulesCrmRouteWithChildren
+  AppModulesIntegrationsRoute: typeof AppModulesIntegrationsRouteWithChildren
   AppModulesIndexRoute: typeof AppModulesIndexRoute
 }
 
 const AppModulesRouteRouteChildren: AppModulesRouteRouteChildren = {
   AppModulesModuleKeyRoute: AppModulesModuleKeyRoute,
   AppModulesCrmRoute: AppModulesCrmRouteWithChildren,
+  AppModulesIntegrationsRoute: AppModulesIntegrationsRouteWithChildren,
   AppModulesIndexRoute: AppModulesIndexRoute,
 }
 

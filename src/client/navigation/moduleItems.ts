@@ -1,8 +1,10 @@
 import {
+  Blocks,
   Building2,
   CalendarDays,
   Inbox,
   LayoutDashboard,
+  Plug,
   UserRound,
 } from "lucide-react";
 import { linkOptions } from "@tanstack/react-router";
@@ -51,7 +53,27 @@ const crmNavGroups = [
   },
 ];
 
+const integrationsNavGroups = [
+  {
+    label: "Integrations",
+    items: [
+      linkOptions({
+        to: "/modules/integrations",
+        label: "Catalogue",
+        icon: Blocks,
+        activeOptions: { exact: true, includeSearch: false },
+      }),
+      linkOptions({
+        to: "/modules/integrations/connections",
+        label: "Connections",
+        icon: Plug,
+      }),
+    ],
+  },
+];
+
 export function getModuleNavGroups(moduleKey: string) {
   if (moduleKey === "crm") return crmNavGroups;
+  if (moduleKey === "integrations") return integrationsNavGroups;
   return [];
 }
