@@ -115,7 +115,54 @@ async function listVariants(organizationId: string, parentProductId: string) {
     .orderBy(asc(commerceProducts.name));
 }
 
+/**
+ * Upsert a product the provider owns. The external id is the identity, so a
+ * repeated sync updates the same row instead of adding another. Fields a
+ * person may have edited locally are deliberately NOT overwritten here beyond
+ * what the store is authoritative for: name, price, description and category.
+ */
+async function upsertExternalProduct(
+  organizationId: string,
+  input: {
+    externalSource: string;
+    externalId: string;
+    name: string;
+    sku: string;
+    description: string | null;
+    category: string | null;
+    salePriceMinor: number;
+  },
+) {
+  const now = new Date().toISOString();
+  const [row] = await db
+    .insert(commerceProducts)
+    .values({
+      id: crypto.randomUUID(),
+      organizationId,
+      ...input,
+      updatedAt: now,
+    })
+    .onConflictDoUpdate({
+      target: [
+        commerceProducts.organizationId,
+        commerceProducts.externalSource,
+        commerceProducts.externalId,
+      ],
+      set: {
+        name: input.name,
+        sku: input.sku,
+        description: input.description,
+        category: input.category,
+        salePriceMinor: input.salePriceMinor,
+        updatedAt: now,
+      },
+    })
+    .returning();
+  return row;
+}
+
 export const CommerceRepository = {
+  upsertExternalProduct,
   listProducts,
   getProduct,
   findProductBySku,

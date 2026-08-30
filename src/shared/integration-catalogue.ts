@@ -32,6 +32,11 @@ export type IntegrationCategory = Exclude<
  */
 export type IntegrationState = "connectable" | "built_in" | "planned";
 
+export type IntegrationFeature = {
+  title: string;
+  bullets: readonly string[];
+};
+
 export type IntegrationCatalogueEntry = {
   key: string;
   name: string;
@@ -44,6 +49,15 @@ export type IntegrationCatalogueEntry = {
   capabilities?: readonly string[];
   howToConnect?: readonly string[];
   notes?: readonly string[];
+  /** Long-form context shown on the provider's own page. */
+  detail?: {
+    headline: string;
+    intro: string;
+    features: readonly IntegrationFeature[];
+    requirements: readonly string[];
+  };
+  /** Only providers that can pull a catalogue show sync controls. */
+  supportsCatalogueSync?: boolean;
 };
 
 export const integrationCatalogue: readonly IntegrationCatalogueEntry[] = [
@@ -81,6 +95,40 @@ export const integrationCatalogue: readonly IntegrationCatalogueEntry[] = [
     state: "connectable",
     credentialSuffixes: ["BASE_URL", "CONSUMER_KEY", "CONSUMER_SECRET"],
     capabilities: ["customers", "orders", "products"],
+    supportsCatalogueSync: true,
+    detail: {
+      headline: "Your WooCommerce catalogue, inside the workspace",
+      intro:
+        "Connect your store and its products become the catalogue the whole workspace works from — searchable in chat, priced on orders, and counted in inventory. Authentication is REST API keys you generate in your own admin: no app review and no waiting for approval.",
+      features: [
+        {
+          title: "Products stay current",
+          bullets: [
+            "Names, prices, descriptions and categories come from your store.",
+            "Later syncs ask only for what changed since the last run.",
+          ],
+        },
+        {
+          title: "Stock arrives as movements",
+          bullets: [
+            "A stock difference is written to the ledger, not assigned over the top.",
+            "A sync that agrees with your store writes nothing at all.",
+          ],
+        },
+        {
+          title: "Keeps itself current",
+          bullets: [
+            "Choose an interval and the workspace syncs on its own.",
+            "Edit a price in WooCommerce and it appears here without anyone pressing a button.",
+          ],
+        },
+      ],
+      requirements: [
+        "A WooCommerce store served over HTTPS.",
+        "REST API keys with at least read permission.",
+        "The keys set on the deployment under your credential reference.",
+      ],
+    },
     howToConnect: [
       "In WooCommerce, go to Settings, Advanced, REST API and add a key with read access.",
       "Set the store URL, consumer key and consumer secret on the deployment under your credential reference.",

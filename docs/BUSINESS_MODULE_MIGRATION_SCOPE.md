@@ -482,6 +482,51 @@ settled before orders are used across tenants with different currencies.
 
 Not yet built: Business Analytics.
 
+##### Integrations: provider detail and real catalogue sync — done
+
+Requested alongside the commerce slices: the marketplace card opens a provider
+page with full context, and the panels on it are backed by real work rather
+than being decorative.
+
+- **Connection health is a real call.** `fetchStoreHealth` asks WooCommerce for
+  the product count and the answer is stored with the time it was taken, so the
+  page says when it was last checked instead of implying it is live. A failed
+  check is recorded as an error, not thrown away.
+- **Catalogue sync pulls the store into `commerce_products`.** Products are
+  keyed on the provider's own id, unique per organization, so a repeated run
+  updates the same rows rather than duplicating them. A product with no SKU
+  falls back to a provider-derived one, because a product with no identity
+  cannot be quoted.
+- **Prices convert to integer minor units at the boundary**, rounding rather
+  than truncating, so no float reaches the database.
+- **Stock arrives as a movement, not an assignment.** The difference between
+  the store's count and ours is written to the ledger, and a sync that agrees
+  with the store writes nothing at all. Stores that do not track stock are left
+  alone.
+- **Syncs run on their own.** `commerce.catalogueSync` is registered on the
+  scheduler's standard tier and picks up anything queued plus any auto-sync
+  connection whose interval has elapsed. Intervals are bounded between fifteen
+  minutes and a day: shorter would hammer a merchant's store, longer is
+  indistinguishable from off.
+- **A failing sync records the reason on the connection** instead of throwing
+  at the scheduler, so one broken store cannot stop the others.
+
+15 further tests cover price conversion, sync idempotency, the stock-as-movement
+rule, health recording, authorization and organization isolation — 60 commerce
+tests in total.
+
+Route `/modules/integrations/$providerKey`. The catalogue card is now a link
+into it; that is the only change to existing UI.
+
+**Credentials remain references, not stored secrets.** The legacy CRM stored
+store URL and API keys in its database; here the connection holds a reference
+and the deployment holds the values, so the detail page names the environment
+variables rather than asking for the secrets. This is a deliberate difference
+from the reference implementation, not an omission.
+
+Only WooCommerce syncs today. Shopify needs its own provider client and is
+listed in the catalogue as coming soon.
+
 Beyond this approved slice, Quotations, Purchase Orders, Returns, Expenses,
 Settlements, Unit Economics, Waybills, Documents, Goals and Tasks remain
 pending. Do not build them yet.

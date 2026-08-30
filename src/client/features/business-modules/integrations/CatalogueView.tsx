@@ -115,7 +115,11 @@ function IntegrationCard({
   connected: boolean;
 }) {
   return (
-    <section className="flex flex-col rounded-xl border border-base-300 bg-base-100 p-4">
+    <Link
+      to="/modules/integrations/$providerKey"
+      params={{ providerKey: entry.key }}
+      className="flex flex-col rounded-xl border border-base-300 bg-base-100 p-4 transition-colors hover:border-primary"
+    >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <h2 className="text-base font-semibold">{entry.name}</h2>
@@ -140,14 +144,13 @@ function IntegrationCard({
       ) : null}
 
       {entry.state === "connectable" ? (
-        <Link
-          to="/modules/integrations/connections"
+        <span
           className={`btn btn-sm mt-4 ${connected ? "btn-ghost" : "btn-primary"}`}
         >
           {connected ? "Manage" : "Connect"}
-        </Link>
+        </span>
       ) : null}
-    </section>
+    </Link>
   );
 }
 

@@ -271,7 +271,25 @@ async function setAuditStatus(
   return row ?? null;
 }
 
+/**
+ * Set a product's stock to a number the provider reports, expressed as a
+ * movement so the ledger still explains the change. Returns the delta applied,
+ * or null when the store already agrees with us.
+ */
+async function reconcileToQuantity(
+  organizationId: string,
+  productId: string,
+  targetQuantity: number,
+) {
+  const balance = await getBalance(organizationId, productId);
+  const current = balance?.quantityOnHand ?? 0;
+  const delta = targetQuantity - current;
+  if (delta === 0) return null;
+  return delta;
+}
+
 export const InventoryRepository = {
+  reconcileToQuantity,
   getBalance,
   listBalances,
   listLowStock,

@@ -2,10 +2,12 @@ import { createServerFn } from "@tanstack/react-start";
 import { CommerceService } from "@/server/features/commerce/services/CommerceService";
 import { InventoryService } from "@/server/features/commerce/services/InventoryService";
 import { OrderService } from "@/server/features/commerce/services/OrderService";
+import { CatalogueSyncService } from "@/server/features/commerce/services/CatalogueSyncService";
 import { requireAuthenticatedContext } from "@/serverFunctions/middleware";
 import {
   adjustStockSchema,
   auditIdSchema,
+  connectionIdSchema,
   convertOrderRequestSchema,
   createAuditSchema,
   createOrderSchema,
@@ -14,6 +16,7 @@ import {
   listOrdersSchema,
   orderIdSchema,
   recordAuditCountSchema,
+  setSyncScheduleSchema,
   listProductsSchema,
   productIdSchema,
   updateProductSchema,
@@ -187,6 +190,45 @@ export const convertWhatsappOrderRequest = createServerFn({ method: "POST" })
   .validator(convertOrderRequestSchema)
   .handler(({ context, data }) =>
     OrderService.convertOrderRequest(
+      context.organizationId,
+      context.userId,
+      data,
+    ),
+  );
+
+export const checkIntegrationHealth = createServerFn({ method: "POST" })
+  .middleware(requireAuthenticatedContext)
+  .validator(connectionIdSchema)
+  .handler(({ context, data }) =>
+    CatalogueSyncService.checkHealth(
+      context.organizationId,
+      context.userId,
+      data.connectionId,
+    ),
+  );
+
+export const syncIntegrationCatalogue = createServerFn({ method: "POST" })
+  .middleware(requireAuthenticatedContext)
+  .validator(connectionIdSchema)
+  .handler(async ({ context, data }) => {
+    // Queue then run: the row shows "running" immediately, and the scheduler
+    // would pick it up anyway if this request died mid-flight.
+    await CatalogueSyncService.queueSync(
+      context.organizationId,
+      context.userId,
+      data.connectionId,
+    );
+    return CatalogueSyncService.runSync(
+      context.organizationId,
+      data.connectionId,
+    );
+  });
+
+export const setIntegrationSyncSchedule = createServerFn({ method: "POST" })
+  .middleware(requireAuthenticatedContext)
+  .validator(setSyncScheduleSchema)
+  .handler(({ context, data }) =>
+    CatalogueSyncService.setSchedule(
       context.organizationId,
       context.userId,
       data,

@@ -322,7 +322,20 @@ export const integrationConnections = sqliteTable(
       .notNull()
       .default("disconnected"),
     credentialReference: text("credential_reference"),
+    // Health is the last real answer the provider gave us, kept so the UI can
+    // say when it was checked rather than implying it is checking live.
+    lastCheckedAt: text("last_checked_at"),
+    healthDetail: text("health_detail"),
     lastSyncedAt: text("last_synced_at"),
+    syncStatus: text("sync_status", {
+      enum: ["idle", "queued", "running", "error"],
+    })
+      .notNull()
+      .default("idle"),
+    syncError: text("sync_error"),
+    syncedCount: integer("synced_count").notNull().default(0),
+    autoSync: integer("auto_sync", { mode: "boolean" }).notNull().default(true),
+    syncIntervalMinutes: integer("sync_interval_minutes").notNull().default(60),
     createdAt: createdAt(),
     updatedAt: text("updated_at")
       .notNull()
@@ -731,6 +744,10 @@ export const commerceProducts = sqliteTable(
     salePriceMinor: integer("sale_price_minor").notNull().default(0),
     costPriceMinor: integer("cost_price_minor"),
     reorderThreshold: integer("reorder_threshold").notNull().default(0),
+    // Where the row came from, so a provider sync updates its own product
+    // instead of creating a duplicate on every run.
+    externalSource: text("external_source"),
+    externalId: text("external_id"),
     status: text("status", { enum: ["active", "archived"] })
       .notNull()
       .default("active"),
@@ -754,6 +771,11 @@ export const commerceProducts = sqliteTable(
       table.name,
     ),
     index("commerce_products_parent_idx").on(table.parentProductId),
+    uniqueIndex("commerce_products_external_idx").on(
+      table.organizationId,
+      table.externalSource,
+      table.externalId,
+    ),
   ],
 );
 

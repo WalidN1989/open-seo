@@ -59,6 +59,7 @@ import { Route as ProjectPProjectIdBrandLookupRouteImport } from './routes/_proj
 import { Route as ProjectPProjectIdBacklinksRouteImport } from './routes/_project/p/$projectId/backlinks'
 import { Route as ProjectPProjectIdAuditRouteImport } from './routes/_project/p/$projectId/audit'
 import { Route as AppModulesIntegrationsConnectionsRouteImport } from './routes/_app/modules/integrations/connections'
+import { Route as AppModulesIntegrationsProviderKeyRouteImport } from './routes/_app/modules/integrations.$providerKey'
 import { Route as AppModulesCrmProductsRouteImport } from './routes/_app/modules/crm/products'
 import { Route as AppModulesCrmOrdersRouteImport } from './routes/_app/modules/crm/orders'
 import { Route as AppModulesCrmMeetingsRouteImport } from './routes/_app/modules/crm/meetings'
@@ -335,6 +336,12 @@ const AppModulesIntegrationsConnectionsRoute =
     path: '/connections',
     getParentRoute: () => AppModulesIntegrationsRoute,
   } as any)
+const AppModulesIntegrationsProviderKeyRoute =
+  AppModulesIntegrationsProviderKeyRouteImport.update({
+    id: '/$providerKey',
+    path: '/$providerKey',
+    getParentRoute: () => AppModulesIntegrationsRoute,
+  } as any)
 const AppModulesCrmProductsRoute = AppModulesCrmProductsRouteImport.update({
   id: '/products',
   path: '/products',
@@ -456,6 +463,7 @@ export interface FileRoutesByFullPath {
   '/modules/crm/meetings': typeof AppModulesCrmMeetingsRoute
   '/modules/crm/orders': typeof AppModulesCrmOrdersRoute
   '/modules/crm/products': typeof AppModulesCrmProductsRouteWithChildren
+  '/modules/integrations/$providerKey': typeof AppModulesIntegrationsProviderKeyRoute
   '/modules/integrations/connections': typeof AppModulesIntegrationsConnectionsRoute
   '/p/$projectId/audit': typeof ProjectPProjectIdAuditRouteWithChildren
   '/p/$projectId/backlinks': typeof ProjectPProjectIdBacklinksRoute
@@ -515,6 +523,7 @@ export interface FileRoutesByTo {
   '/modules/crm/meetings': typeof AppModulesCrmMeetingsRoute
   '/modules/crm/orders': typeof AppModulesCrmOrdersRoute
   '/modules/crm/products': typeof AppModulesCrmProductsRouteWithChildren
+  '/modules/integrations/$providerKey': typeof AppModulesIntegrationsProviderKeyRoute
   '/modules/integrations/connections': typeof AppModulesIntegrationsConnectionsRoute
   '/p/$projectId/backlinks': typeof ProjectPProjectIdBacklinksRoute
   '/p/$projectId/brand-lookup': typeof ProjectPProjectIdBrandLookupRoute
@@ -580,6 +589,7 @@ export interface FileRoutesById {
   '/_app/modules/crm/meetings': typeof AppModulesCrmMeetingsRoute
   '/_app/modules/crm/orders': typeof AppModulesCrmOrdersRoute
   '/_app/modules/crm/products': typeof AppModulesCrmProductsRouteWithChildren
+  '/_app/modules/integrations/$providerKey': typeof AppModulesIntegrationsProviderKeyRoute
   '/_app/modules/integrations/connections': typeof AppModulesIntegrationsConnectionsRoute
   '/_project/p/$projectId/audit': typeof ProjectPProjectIdAuditRouteWithChildren
   '/_project/p/$projectId/backlinks': typeof ProjectPProjectIdBacklinksRoute
@@ -645,6 +655,7 @@ export interface FileRouteTypes {
     | '/modules/crm/meetings'
     | '/modules/crm/orders'
     | '/modules/crm/products'
+    | '/modules/integrations/$providerKey'
     | '/modules/integrations/connections'
     | '/p/$projectId/audit'
     | '/p/$projectId/backlinks'
@@ -704,6 +715,7 @@ export interface FileRouteTypes {
     | '/modules/crm/meetings'
     | '/modules/crm/orders'
     | '/modules/crm/products'
+    | '/modules/integrations/$providerKey'
     | '/modules/integrations/connections'
     | '/p/$projectId/backlinks'
     | '/p/$projectId/brand-lookup'
@@ -768,6 +780,7 @@ export interface FileRouteTypes {
     | '/_app/modules/crm/meetings'
     | '/_app/modules/crm/orders'
     | '/_app/modules/crm/products'
+    | '/_app/modules/integrations/$providerKey'
     | '/_app/modules/integrations/connections'
     | '/_project/p/$projectId/audit'
     | '/_project/p/$projectId/backlinks'
@@ -1165,6 +1178,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppModulesIntegrationsConnectionsRouteImport
       parentRoute: typeof AppModulesIntegrationsRoute
     }
+    '/_app/modules/integrations/$providerKey': {
+      id: '/_app/modules/integrations/$providerKey'
+      path: '/$providerKey'
+      fullPath: '/modules/integrations/$providerKey'
+      preLoaderRoute: typeof AppModulesIntegrationsProviderKeyRouteImport
+      parentRoute: typeof AppModulesIntegrationsRoute
+    }
     '/_app/modules/crm/products': {
       id: '/_app/modules/crm/products'
       path: '/products'
@@ -1313,12 +1333,15 @@ const AppModulesCrmRouteWithChildren = AppModulesCrmRoute._addFileChildren(
 )
 
 interface AppModulesIntegrationsRouteChildren {
+  AppModulesIntegrationsProviderKeyRoute: typeof AppModulesIntegrationsProviderKeyRoute
   AppModulesIntegrationsConnectionsRoute: typeof AppModulesIntegrationsConnectionsRoute
   AppModulesIntegrationsIndexRoute: typeof AppModulesIntegrationsIndexRoute
 }
 
 const AppModulesIntegrationsRouteChildren: AppModulesIntegrationsRouteChildren =
   {
+    AppModulesIntegrationsProviderKeyRoute:
+      AppModulesIntegrationsProviderKeyRoute,
     AppModulesIntegrationsConnectionsRoute:
       AppModulesIntegrationsConnectionsRoute,
     AppModulesIntegrationsIndexRoute: AppModulesIntegrationsIndexRoute,

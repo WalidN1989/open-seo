@@ -3,6 +3,7 @@ import { registerCronJob } from "./registry";
 import { reconcileStaleAudits } from "@/server/features/audit/services/auditReconciler";
 import { runScheduledRankChecks } from "@/server/features/rank-tracking/services/scheduledRankChecks";
 import { CommunicationsService } from "@/server/features/communications/services/CommunicationsService";
+import { CatalogueSyncService } from "@/server/features/commerce/services/CatalogueSyncService";
 
 let registered = false;
 
@@ -34,6 +35,14 @@ export function registerBusinessCronJobs() {
     tier: "slow",
     run: async (env) => {
       await withPgClient(() => runScheduledRankChecks(env));
+    },
+  });
+
+  registerCronJob({
+    name: "commerce.catalogueSync",
+    tier: "standard",
+    run: async () => {
+      await withPgClient(() => CatalogueSyncService.runDueSyncs());
     },
   });
 

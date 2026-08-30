@@ -119,3 +119,13 @@ export type ListOrdersInput = z.infer<typeof listOrdersSchema>;
 export type ConvertOrderRequestInput = z.infer<
   typeof convertOrderRequestSchema
 >;
+
+export const connectionIdSchema = z.object({ connectionId: z.string().min(1) });
+
+export const setSyncScheduleSchema = z.object({
+  connectionId: z.string().min(1),
+  autoSync: z.boolean(),
+  // Bounded: a one-minute schedule would hammer a merchant's store, and
+  // anything beyond a day is indistinguishable from off.
+  syncIntervalMinutes: z.number().int().min(15).max(1440),
+});
