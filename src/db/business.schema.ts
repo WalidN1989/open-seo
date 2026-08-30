@@ -209,6 +209,109 @@ export const crmLeads = sqliteTable(
   ],
 );
 
+export const crmSourceRuns = sqliteTable(
+  "crm_source_runs",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    // Which adapter produced these candidates, and what was asked of it.
+    provider: text("provider").notNull(),
+    query: text("query").notNull(),
+    location: text("location"),
+    status: text("status", {
+      enum: ["queued", "running", "complete", "error"],
+    })
+      .notNull()
+      .default("queued"),
+    error: text("error"),
+    candidateCount: integer("candidate_count").notNull().default(0),
+    promotedCount: integer("promoted_count").notNull().default(0),
+    startedByMemberId: text("started_by_member_id").references(
+      () => member.id,
+      {
+        onDelete: "set null",
+      },
+    ),
+    completedAt: text("completed_at"),
+    createdAt: createdAt(),
+    updatedAt: text("updated_at")
+      .notNull()
+      .default(sql`(current_timestamp)`),
+  },
+  (table) => [
+    index("crm_source_runs_org_created_idx").on(
+      table.organizationId,
+      table.createdAt,
+    ),
+  ],
+);
+
+export const crmSourceCandidates = sqliteTable(
+  "crm_source_candidates",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    runId: text("run_id")
+      .notNull()
+      .references(() => crmSourceRuns.id, { onDelete: "cascade" }),
+    // The provider's own id for this record. Together with the provider this
+    // is what makes re-running a search idempotent rather than duplicating.
+    externalId: text("external_id").notNull(),
+    provider: text("provider").notNull(),
+    companyName: text("company_name").notNull(),
+    contactName: text("contact_name"),
+    email: text("email"),
+    phone: text("phone"),
+    website: text("website"),
+    category: text("category"),
+    country: text("country"),
+    industry: text("industry"),
+    // What the source thought of it: a rating out of five, how many reviews
+    // that came from, and our own 0-100 read of how much to trust the record.
+    rating: integer("rating"),
+    reviewCount: integer("review_count"),
+    evidenceScore: integer("evidence_score").notNull().default(0),
+    profileUrl: text("profile_url"),
+    notes: text("notes"),
+    status: text("status", {
+      enum: ["new", "reviewing", "promoted", "rejected"],
+    })
+      .notNull()
+      .default("new"),
+    rejectedReason: text("rejected_reason"),
+    // Set once promoted, so a candidate can never become two leads.
+    leadId: text("lead_id").references(() => crmLeads.id, {
+      onDelete: "set null",
+    }),
+    reviewedByMemberId: text("reviewed_by_member_id").references(
+      () => member.id,
+      { onDelete: "set null" },
+    ),
+    reviewedAt: text("reviewed_at"),
+    createdAt: createdAt(),
+    updatedAt: text("updated_at")
+      .notNull()
+      .default(sql`(current_timestamp)`),
+  },
+  (table) => [
+    index("crm_source_candidates_org_status_idx").on(
+      table.organizationId,
+      table.status,
+    ),
+    // The idempotency guarantee: one candidate per provider record per tenant,
+    // however many times a search is re-run.
+    uniqueIndex("crm_source_candidates_org_provider_external_idx").on(
+      table.organizationId,
+      table.provider,
+      table.externalId,
+    ),
+  ],
+);
+
 export const crmActivities = sqliteTable(
   "crm_activities",
   {

@@ -114,6 +114,8 @@ export const {
   crmContacts,
   crmPipelineStages,
   crmLeads,
+  crmSourceRuns,
+  crmSourceCandidates,
   crmActivities,
   crmInquiries,
   crmInquiryLeads,

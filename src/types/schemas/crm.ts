@@ -4,6 +4,7 @@ export const leadPrioritySchema = z.enum(["low", "medium", "high", "urgent"]);
 export const createLeadSchema = z.object({
   title: z.string().trim().min(1).max(200),
   source: z.string().trim().max(100).optional(),
+  category: z.string().trim().max(100).optional(),
   priority: leadPrioritySchema.default("medium"),
   valueCents: z.number().int().min(0).max(1_000_000_000).default(0),
   contactId: z.string().min(1).optional(),
@@ -13,6 +14,9 @@ export const createLeadSchema = z.object({
   nextAction: z.string().trim().max(300).optional(),
   nextActionDue: z.string().datetime().optional(),
   notes: z.string().trim().max(10_000).optional(),
+  // Set when a lead arrives from a source with its own evidence score, so the
+  // review that produced it is not thrown away on promotion.
+  leadScore: z.number().int().min(0).max(100).optional(),
 });
 export const updateLeadSchema = createLeadSchema.partial().extend({
   id: z.string().min(1),
@@ -33,6 +37,8 @@ export const createCompanySchema = z.object({
   name: z.string().trim().min(1).max(200),
   website: z.string().trim().max(500).optional(),
   phone: z.string().trim().max(40).optional(),
+  industry: z.string().trim().max(100).optional(),
+  country: z.string().trim().max(100).optional(),
 });
 export const createActivitySchema = z.object({
   leadId: z.string().min(1),

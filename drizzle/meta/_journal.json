@@ -414,6 +414,13 @@
       "when": 1788103960773,
       "tag": "0058_exotic_kinsey_walden",
       "breakpoints": true
+    },
+    {
+      "idx": 59,
+      "version": "6",
+      "when": 1788104462814,
+      "tag": "0059_free_randall_flagg",
+      "breakpoints": true
     }
   ]
 }

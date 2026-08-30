@@ -1,6 +1,12 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { CrmService } from "@/server/features/crm/services/CrmService";
+import { SourceService } from "@/server/features/crm/services/SourceService";
+import {
+  promoteCandidateSchema,
+  rejectCandidateSchema,
+  startSourceRunSchema,
+} from "@/types/schemas/sources";
 import { requireAuthenticatedContext } from "@/serverFunctions/middleware";
 import {
   createActivitySchema,
@@ -96,4 +102,31 @@ export const createCrmActivity = createServerFn({ method: "POST" })
   .validator(createActivitySchema)
   .handler(({ context, data }) =>
     CrmService.createActivity(context.organizationId, context.userId, data),
+  );
+
+export const getSourcesWorkspace = createServerFn({ method: "GET" })
+  .middleware(requireAuthenticatedContext)
+  .handler(({ context }) =>
+    SourceService.getWorkspace(context.organizationId, context.userId),
+  );
+
+export const startSourceRun = createServerFn({ method: "POST" })
+  .middleware(requireAuthenticatedContext)
+  .validator(startSourceRunSchema)
+  .handler(({ context, data }) =>
+    SourceService.startRun(context.organizationId, context.userId, data),
+  );
+
+export const promoteSourceCandidate = createServerFn({ method: "POST" })
+  .middleware(requireAuthenticatedContext)
+  .validator(promoteCandidateSchema)
+  .handler(({ context, data }) =>
+    SourceService.promote(context.organizationId, context.userId, data),
+  );
+
+export const rejectSourceCandidate = createServerFn({ method: "POST" })
+  .middleware(requireAuthenticatedContext)
+  .validator(rejectCandidateSchema)
+  .handler(({ context, data }) =>
+    SourceService.reject(context.organizationId, context.userId, data),
   );

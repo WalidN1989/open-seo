@@ -10,6 +10,7 @@ import {
   Plug,
   ShoppingCart,
   UserRound,
+  Radar,
 } from "lucide-react";
 import { linkOptions } from "@tanstack/react-router";
 
@@ -39,6 +40,11 @@ const crmNavGroups = [
         label: "Leads",
         icon: ContactRound,
         activeOptions: { exact: true, includeSearch: false },
+      }),
+      linkOptions({
+        to: "/modules/crm/sources",
+        label: "Sources",
+        icon: Radar,
       }),
       linkOptions({
         to: "/modules/crm/contacts",
