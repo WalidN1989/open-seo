@@ -60,6 +60,7 @@ import { Route as ProjectPProjectIdBacklinksRouteImport } from './routes/_projec
 import { Route as ProjectPProjectIdAuditRouteImport } from './routes/_project/p/$projectId/audit'
 import { Route as AppModulesIntegrationsConnectionsRouteImport } from './routes/_app/modules/integrations/connections'
 import { Route as AppModulesCrmProductsRouteImport } from './routes/_app/modules/crm/products'
+import { Route as AppModulesCrmOrdersRouteImport } from './routes/_app/modules/crm/orders'
 import { Route as AppModulesCrmMeetingsRouteImport } from './routes/_app/modules/crm/meetings'
 import { Route as AppModulesCrmInventoryRouteImport } from './routes/_app/modules/crm/inventory'
 import { Route as AppModulesCrmInquiriesRouteImport } from './routes/_app/modules/crm/inquiries'
@@ -339,6 +340,11 @@ const AppModulesCrmProductsRoute = AppModulesCrmProductsRouteImport.update({
   path: '/products',
   getParentRoute: () => AppModulesCrmRoute,
 } as any)
+const AppModulesCrmOrdersRoute = AppModulesCrmOrdersRouteImport.update({
+  id: '/orders',
+  path: '/orders',
+  getParentRoute: () => AppModulesCrmRoute,
+} as any)
 const AppModulesCrmMeetingsRoute = AppModulesCrmMeetingsRouteImport.update({
   id: '/meetings',
   path: '/meetings',
@@ -448,6 +454,7 @@ export interface FileRoutesByFullPath {
   '/modules/crm/inquiries': typeof AppModulesCrmInquiriesRoute
   '/modules/crm/inventory': typeof AppModulesCrmInventoryRoute
   '/modules/crm/meetings': typeof AppModulesCrmMeetingsRoute
+  '/modules/crm/orders': typeof AppModulesCrmOrdersRoute
   '/modules/crm/products': typeof AppModulesCrmProductsRouteWithChildren
   '/modules/integrations/connections': typeof AppModulesIntegrationsConnectionsRoute
   '/p/$projectId/audit': typeof ProjectPProjectIdAuditRouteWithChildren
@@ -506,6 +513,7 @@ export interface FileRoutesByTo {
   '/modules/crm/inquiries': typeof AppModulesCrmInquiriesRoute
   '/modules/crm/inventory': typeof AppModulesCrmInventoryRoute
   '/modules/crm/meetings': typeof AppModulesCrmMeetingsRoute
+  '/modules/crm/orders': typeof AppModulesCrmOrdersRoute
   '/modules/crm/products': typeof AppModulesCrmProductsRouteWithChildren
   '/modules/integrations/connections': typeof AppModulesIntegrationsConnectionsRoute
   '/p/$projectId/backlinks': typeof ProjectPProjectIdBacklinksRoute
@@ -570,6 +578,7 @@ export interface FileRoutesById {
   '/_app/modules/crm/inquiries': typeof AppModulesCrmInquiriesRoute
   '/_app/modules/crm/inventory': typeof AppModulesCrmInventoryRoute
   '/_app/modules/crm/meetings': typeof AppModulesCrmMeetingsRoute
+  '/_app/modules/crm/orders': typeof AppModulesCrmOrdersRoute
   '/_app/modules/crm/products': typeof AppModulesCrmProductsRouteWithChildren
   '/_app/modules/integrations/connections': typeof AppModulesIntegrationsConnectionsRoute
   '/_project/p/$projectId/audit': typeof ProjectPProjectIdAuditRouteWithChildren
@@ -634,6 +643,7 @@ export interface FileRouteTypes {
     | '/modules/crm/inquiries'
     | '/modules/crm/inventory'
     | '/modules/crm/meetings'
+    | '/modules/crm/orders'
     | '/modules/crm/products'
     | '/modules/integrations/connections'
     | '/p/$projectId/audit'
@@ -692,6 +702,7 @@ export interface FileRouteTypes {
     | '/modules/crm/inquiries'
     | '/modules/crm/inventory'
     | '/modules/crm/meetings'
+    | '/modules/crm/orders'
     | '/modules/crm/products'
     | '/modules/integrations/connections'
     | '/p/$projectId/backlinks'
@@ -755,6 +766,7 @@ export interface FileRouteTypes {
     | '/_app/modules/crm/inquiries'
     | '/_app/modules/crm/inventory'
     | '/_app/modules/crm/meetings'
+    | '/_app/modules/crm/orders'
     | '/_app/modules/crm/products'
     | '/_app/modules/integrations/connections'
     | '/_project/p/$projectId/audit'
@@ -1160,6 +1172,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppModulesCrmProductsRouteImport
       parentRoute: typeof AppModulesCrmRoute
     }
+    '/_app/modules/crm/orders': {
+      id: '/_app/modules/crm/orders'
+      path: '/orders'
+      fullPath: '/modules/crm/orders'
+      preLoaderRoute: typeof AppModulesCrmOrdersRouteImport
+      parentRoute: typeof AppModulesCrmRoute
+    }
     '/_app/modules/crm/meetings': {
       id: '/_app/modules/crm/meetings'
       path: '/meetings'
@@ -1273,6 +1292,7 @@ interface AppModulesCrmRouteChildren {
   AppModulesCrmInquiriesRoute: typeof AppModulesCrmInquiriesRoute
   AppModulesCrmInventoryRoute: typeof AppModulesCrmInventoryRoute
   AppModulesCrmMeetingsRoute: typeof AppModulesCrmMeetingsRoute
+  AppModulesCrmOrdersRoute: typeof AppModulesCrmOrdersRoute
   AppModulesCrmProductsRoute: typeof AppModulesCrmProductsRouteWithChildren
   AppModulesCrmIndexRoute: typeof AppModulesCrmIndexRoute
 }
@@ -1283,6 +1303,7 @@ const AppModulesCrmRouteChildren: AppModulesCrmRouteChildren = {
   AppModulesCrmInquiriesRoute: AppModulesCrmInquiriesRoute,
   AppModulesCrmInventoryRoute: AppModulesCrmInventoryRoute,
   AppModulesCrmMeetingsRoute: AppModulesCrmMeetingsRoute,
+  AppModulesCrmOrdersRoute: AppModulesCrmOrdersRoute,
   AppModulesCrmProductsRoute: AppModulesCrmProductsRouteWithChildren,
   AppModulesCrmIndexRoute: AppModulesCrmIndexRoute,
 }

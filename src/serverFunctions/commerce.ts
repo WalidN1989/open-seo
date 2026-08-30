@@ -1,13 +1,18 @@
 import { createServerFn } from "@tanstack/react-start";
 import { CommerceService } from "@/server/features/commerce/services/CommerceService";
 import { InventoryService } from "@/server/features/commerce/services/InventoryService";
+import { OrderService } from "@/server/features/commerce/services/OrderService";
 import { requireAuthenticatedContext } from "@/serverFunctions/middleware";
 import {
   adjustStockSchema,
   auditIdSchema,
+  convertOrderRequestSchema,
   createAuditSchema,
+  createOrderSchema,
   createProductSchema,
   listMovementsSchema,
+  listOrdersSchema,
+  orderIdSchema,
   recordAuditCountSchema,
   listProductsSchema,
   productIdSchema,
@@ -120,5 +125,70 @@ export const revertInventoryAudit = createServerFn({ method: "POST" })
       context.organizationId,
       context.userId,
       data.auditId,
+    ),
+  );
+
+export const listCommerceOrders = createServerFn({ method: "GET" })
+  .middleware(requireAuthenticatedContext)
+  .validator(listOrdersSchema)
+  .handler(({ context, data }) =>
+    OrderService.listOrders(context.organizationId, context.userId, data),
+  );
+
+export const getCommerceOrder = createServerFn({ method: "GET" })
+  .middleware(requireAuthenticatedContext)
+  .validator(orderIdSchema)
+  .handler(({ context, data }) =>
+    OrderService.getOrder(context.organizationId, context.userId, data.orderId),
+  );
+
+export const createCommerceOrder = createServerFn({ method: "POST" })
+  .middleware(requireAuthenticatedContext)
+  .validator(createOrderSchema)
+  .handler(({ context, data }) =>
+    OrderService.createOrder(context.organizationId, context.userId, data),
+  );
+
+export const confirmCommerceOrder = createServerFn({ method: "POST" })
+  .middleware(requireAuthenticatedContext)
+  .validator(orderIdSchema)
+  .handler(({ context, data }) =>
+    OrderService.confirmOrder(
+      context.organizationId,
+      context.userId,
+      data.orderId,
+    ),
+  );
+
+export const cancelCommerceOrder = createServerFn({ method: "POST" })
+  .middleware(requireAuthenticatedContext)
+  .validator(orderIdSchema)
+  .handler(({ context, data }) =>
+    OrderService.cancelOrder(
+      context.organizationId,
+      context.userId,
+      data.orderId,
+    ),
+  );
+
+export const returnCommerceOrder = createServerFn({ method: "POST" })
+  .middleware(requireAuthenticatedContext)
+  .validator(orderIdSchema)
+  .handler(({ context, data }) =>
+    OrderService.returnOrder(
+      context.organizationId,
+      context.userId,
+      data.orderId,
+    ),
+  );
+
+export const convertWhatsappOrderRequest = createServerFn({ method: "POST" })
+  .middleware(requireAuthenticatedContext)
+  .validator(convertOrderRequestSchema)
+  .handler(({ context, data }) =>
+    OrderService.convertOrderRequest(
+      context.organizationId,
+      context.userId,
+      data,
     ),
   );

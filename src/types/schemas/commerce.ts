@@ -83,3 +83,39 @@ export type AdjustStockInput = z.infer<typeof adjustStockSchema>;
 export type CreateAuditInput = z.infer<typeof createAuditSchema>;
 export type RecordAuditCountInput = z.infer<typeof recordAuditCountSchema>;
 export type ListMovementsInput = z.infer<typeof listMovementsSchema>;
+
+export const orderLineSchema = z.object({
+  productId: z.string().min(1).optional(),
+  // Free-text lines are allowed (a delivery charge, a one-off), so a line
+  // needs a description even when it has no product.
+  description: z.string().trim().min(1).max(300),
+  quantity: z.number().int().min(1).max(1_000_000),
+  unitPriceMinor: minorUnits,
+});
+
+export const createOrderSchema = z.object({
+  contactId: z.string().min(1).optional(),
+  note: z.string().trim().max(2000).optional(),
+  discountMinor: minorUnits.default(0),
+  deliveryMinor: minorUnits.default(0),
+  taxMinor: minorUnits.default(0),
+  // Totals are never accepted from the caller; they are derived from these.
+  lines: z.array(orderLineSchema).min(1).max(200),
+});
+
+export const orderIdSchema = z.object({ orderId: z.string().min(1) });
+
+export const listOrdersSchema = z.object({
+  limit: z.number().int().min(1).max(200).default(50),
+});
+
+export const convertOrderRequestSchema = z.object({
+  requestId: z.string().min(1),
+});
+
+export type OrderLineInput = z.infer<typeof orderLineSchema>;
+export type CreateOrderInput = z.infer<typeof createOrderSchema>;
+export type ListOrdersInput = z.infer<typeof listOrdersSchema>;
+export type ConvertOrderRequestInput = z.infer<
+  typeof convertOrderRequestSchema
+>;

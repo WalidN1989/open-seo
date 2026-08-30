@@ -136,4 +136,6 @@ export const {
   commerceStockMovements,
   commerceInventoryAudits,
   commerceInventoryAuditItems,
+  commerceOrders,
+  commerceOrderLines,
 } = schema;

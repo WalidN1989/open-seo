@@ -35,6 +35,7 @@ import {
   updateWhatsappConversation,
   runIntegrationAction,
 } from "@/serverFunctions/communications";
+import { convertWhatsappOrderRequest } from "@/serverFunctions/commerce";
 import { getStandardErrorMessage } from "@/client/lib/error-messages";
 import { createWhatsappConnectionSchema } from "@/types/schemas/communications";
 import { integrationProviders } from "@/shared/integration-providers";
@@ -443,10 +444,12 @@ export function WhatsappWorkspace() {
         <Panel title="Order requests" icon={FileText}>
           {data.orders.length ? (
             data.orders.map((item) => (
-              <Row
+              <OrderRequestRow
                 key={item.id}
-                title={item.summary}
+                id={item.id}
+                summary={item.summary}
                 detail={`${item.status} · $${(item.amountCents / 100).toFixed(2)}`}
+                convertedOrderId={item.externalOrderId}
               />
             ))
           ) : (
@@ -1047,6 +1050,58 @@ function Panel({
     </section>
   );
 }
+/**
+ * An order request is an enquiry. Turning it into an order is an explicit act
+ * by a person — never something an AI reply does — and it produces a DRAFT, so
+ * no stock moves until someone confirms it.
+ */
+function OrderRequestRow({
+  id,
+  summary,
+  detail,
+  convertedOrderId,
+}: {
+  id: string;
+  summary: string;
+  detail: string;
+  convertedOrderId: string | null;
+}) {
+  const queryClient = useQueryClient();
+  const convert = useMutation({
+    mutationFn: () => convertWhatsappOrderRequest({ data: { requestId: id } }),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["whatsapp", "workspace"] }),
+        queryClient.invalidateQueries({ queryKey: ["commerce", "orders"] }),
+      ]);
+      toast.success("Draft order created");
+    },
+    onError: (error) => toast.error(getStandardErrorMessage(error)),
+  });
+
+  return (
+    <div className="flex items-center justify-between gap-3 p-4">
+      <div className="min-w-0">
+        <p className="truncate font-medium">{summary}</p>
+        <p className="text-sm text-base-content/60">{detail}</p>
+      </div>
+      {convertedOrderId ? (
+        <span className="badge badge-ghost badge-sm shrink-0">
+          Order created
+        </span>
+      ) : (
+        <button
+          className="btn btn-outline btn-xs shrink-0"
+          disabled={convert.isPending}
+          onClick={() => convert.mutate()}
+        >
+          Create draft order
+        </button>
+      )}
+    </div>
+  );
+}
+
 function Row({ title, detail }: { title: string; detail: string }) {
   return (
     <div className="p-4">

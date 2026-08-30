@@ -847,3 +847,105 @@ export const commerceInventoryAuditItems = pgTable(
     index("commerce_inventory_audit_items_org_idx").on(table.organizationId),
   ],
 );
+
+/**
+ * Commerce: orders.
+ *
+ * An order belongs to a CRM contact — the contact is the spine, and Orders is
+ * the transaction view over it. Payment and fulfilment are separate states
+ * because a paid order can be unfulfilled and a fulfilled order unpaid; one
+ * combined status cannot express either.
+ *
+ * Every amount is integer minor units and every total is derived server-side
+ * from the lines, never accepted from the caller.
+ */
+export const commerceOrders = pgTable(
+  "commerce_orders",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    // Kept when a contact is removed: an order is a financial record and must
+    // not disappear because the customer row did.
+    contactId: text("contact_id").references(() => crmContacts.id, {
+      onDelete: "set null",
+    }),
+    orderNumber: text("order_number").notNull(),
+    status: text("status", {
+      enum: ["draft", "confirmed", "cancelled", "returned"],
+    })
+      .notNull()
+      .default("draft"),
+    paymentStatus: text("payment_status", {
+      enum: ["unpaid", "partial", "paid", "refunded"],
+    })
+      .notNull()
+      .default("unpaid"),
+    fulfilmentStatus: text("fulfilment_status", {
+      enum: ["unfulfilled", "fulfilled", "returned"],
+    })
+      .notNull()
+      .default("unfulfilled"),
+    subtotalMinor: integer("subtotal_minor").notNull().default(0),
+    discountMinor: integer("discount_minor").notNull().default(0),
+    deliveryMinor: integer("delivery_minor").notNull().default(0),
+    taxMinor: integer("tax_minor").notNull().default(0),
+    totalMinor: integer("total_minor").notNull().default(0),
+    note: text("note"),
+    // A provider import is deduplicated on its own stable id, so replaying an
+    // import cannot create the same order twice.
+    externalSource: text("external_source"),
+    externalId: text("external_id"),
+    createdByUserId: text("created_by_user_id"),
+    confirmedAt: text("confirmed_at"),
+    cancelledAt: text("cancelled_at"),
+    createdAt: createdAt(),
+    updatedAt: text("updated_at").notNull().default(isoNow),
+  },
+  (table) => [
+    uniqueIndex("commerce_orders_org_number_idx").on(
+      table.organizationId,
+      table.orderNumber,
+    ),
+    uniqueIndex("commerce_orders_external_idx").on(
+      table.organizationId,
+      table.externalSource,
+      table.externalId,
+    ),
+    index("commerce_orders_org_status_idx").on(
+      table.organizationId,
+      table.status,
+    ),
+    index("commerce_orders_contact_idx").on(table.contactId),
+  ],
+);
+
+export const commerceOrderLines = pgTable(
+  "commerce_order_lines",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    orderId: text("order_id")
+      .notNull()
+      .references(() => commerceOrders.id, { onDelete: "cascade" }),
+    // Kept when a product is removed, for the same reason as the contact.
+    productId: text("product_id").references(() => commerceProducts.id, {
+      onDelete: "set null",
+    }),
+    // Snapshotted at the time of sale: renaming or repricing a product later
+    // must not rewrite what was actually sold.
+    description: text("description").notNull(),
+    sku: text("sku"),
+    quantity: integer("quantity").notNull().default(1),
+    unitPriceMinor: integer("unit_price_minor").notNull().default(0),
+    lineTotalMinor: integer("line_total_minor").notNull().default(0),
+    createdAt: createdAt(),
+  },
+  (table) => [
+    index("commerce_order_lines_order_idx").on(table.orderId),
+    index("commerce_order_lines_org_idx").on(table.organizationId),
+  ],
+);

@@ -435,6 +435,53 @@ workflow works.
 
 Not yet built: Orders, Business Analytics.
 
+##### Slice 3 of 4: Orders — done
+
+Tables `commerce_orders` and `commerce_order_lines` in both dialects
+(`drizzle/0051_*`, `drizzle-pg/0029_*`), passing `schema-parity.test.ts`.
+
+- **Totals are derived server-side and never accepted from the caller.** The
+  schema has no total field to send; subtotal comes from quantity times unit
+  price per line, then discount, delivery and tax. A discount larger than the
+  goods is refused rather than invoicing a negative amount.
+- **Payment and fulfilment are separate states**, because a paid order can be
+  unfulfilled and a fulfilled order unpaid, and one combined status cannot say
+  either.
+- **Lines snapshot the description and SKU**, so renaming or repricing a
+  product later cannot rewrite what was sold. Product and contact references
+  are `set null` on delete: an order is a financial record and must survive the
+  removal of either.
+- **Confirm, cancel and return each move stock exactly once.** The order id is
+  the idempotency key against the same unique movement index Inventory uses, so
+  a retried confirm cannot deduct twice. Cancelling a draft moves nothing,
+  because a draft never took the stock. A free-text line moves nothing either.
+- **Provider imports deduplicate on a stable external id**, unique per
+  organization, so a replayed WooCommerce import returns the existing order
+  instead of creating a second one.
+- **A WhatsApp order request converts explicitly, and only to a draft.** The
+  request records the order it produced, so converting twice returns the same
+  order. Nothing is deducted until a person confirms it, and no AI reply can
+  create an order.
+
+45 commerce tests now cover money arithmetic, the lifecycle, exactly-once stock
+movement, provider and enquiry idempotency, authorization and organization
+isolation. Route `/modules/crm/orders` with draft creation, line and total
+breakdown, and confirm/cancel/return. One additive CRM sidebar entry.
+
+The order-requests panel in the WhatsApp workspace gained a "Create draft
+order" action and a converted marker. This is the one change to existing UI in
+this slice: the approved scope requires the conversion to be an explicit human
+action, which needs somewhere to click. The row keeps its existing structure
+and the button is additive.
+
+**Known gap, deliberate: orders carry no currency.** The approved field list
+does not include one and a guessed default would write a wrong value into every
+row, so it was left out rather than invented. This matters for a tenant
+trading in a currency other than the one a reader assumes, and should be
+settled before orders are used across tenants with different currencies.
+
+Not yet built: Business Analytics.
+
 Beyond this approved slice, Quotations, Purchase Orders, Returns, Expenses,
 Settlements, Unit Economics, Waybills, Documents, Goals and Tasks remain
 pending. Do not build them yet.

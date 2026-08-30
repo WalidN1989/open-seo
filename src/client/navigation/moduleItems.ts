@@ -8,6 +8,7 @@ import {
   LayoutDashboard,
   Package,
   Plug,
+  ShoppingCart,
   UserRound,
 } from "lucide-react";
 import { linkOptions } from "@tanstack/react-router";
@@ -68,6 +69,11 @@ const crmNavGroups = [
         to: "/modules/crm/inventory",
         label: "Inventory",
         icon: ClipboardList,
+      }),
+      linkOptions({
+        to: "/modules/crm/orders",
+        label: "Orders",
+        icon: ShoppingCart,
       }),
     ],
   },
