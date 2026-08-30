@@ -37,11 +37,12 @@ async function ensureStages(organizationId: string) {
 
 async function getLeadsWorkspace(organizationId: string, userId: string) {
   await BusinessModuleService.requireAccess(organizationId, userId, "leads");
-  const [leads, stages] = await Promise.all([
+  const [leads, stages, members] = await Promise.all([
     CrmRepository.listLeads(organizationId),
     ensureStages(organizationId),
+    BusinessModuleRepository.listMembers(organizationId),
   ]);
-  return { leads, stages };
+  return { leads, stages, members };
 }
 
 async function createLead(

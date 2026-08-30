@@ -16,6 +16,7 @@ export const createLeadSchema = z.object({
 });
 export const updateLeadSchema = createLeadSchema.partial().extend({
   id: z.string().min(1),
+  assignedMemberId: z.string().min(1).optional().nullable(),
   status: z.string().trim().min(1).max(50).optional(),
   leadScore: z.number().int().min(0).max(100).optional(),
   lostReason: z.string().trim().max(500).optional().nullable(),

@@ -4,14 +4,17 @@ import { Plus, Target } from "lucide-react";
 import { toast } from "sonner";
 import {
   createCrmLead,
+  createCrmActivity,
   getLeadsWorkspace,
   updateCrmLead,
 } from "@/serverFunctions/crm";
 import { getStandardErrorMessage } from "@/client/lib/error-messages";
+import { leadPrioritySchema } from "@/types/schemas/crm";
 
 export function LeadsWorkspace() {
   const queryClient = useQueryClient();
   const [showCreate, setShowCreate] = useState(false);
+  const [activityLeadId, setActivityLeadId] = useState<string | null>(null);
   const query = useQuery({
     queryKey: ["crm", "leads"],
     queryFn: () => getLeadsWorkspace(),
@@ -21,7 +24,10 @@ export function LeadsWorkspace() {
       title: string;
       source?: string;
       valueCents: number;
-    }) => createCrmLead({ data: { ...input, priority: "medium" } }),
+      assignedMemberId?: string;
+      priority: "low" | "medium" | "high" | "urgent";
+      nextAction?: string;
+    }) => createCrmLead({ data: input }),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["crm", "leads"] });
       setShowCreate(false);
@@ -30,9 +36,25 @@ export function LeadsWorkspace() {
     onError: (error) =>
       toast.error(getStandardErrorMessage(error, "Could not create lead")),
   });
+  const activityMutation = useMutation({
+    mutationFn: (input: { leadId: string; subject: string; notes?: string }) =>
+      createCrmActivity({
+        data: { ...input, activityType: "note" },
+      }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["crm", "leads"] });
+      setActivityLeadId(null);
+      toast.success("Lead activity recorded");
+    },
+    onError: (error) =>
+      toast.error(getStandardErrorMessage(error, "Could not record activity")),
+  });
   const moveMutation = useMutation({
-    mutationFn: (input: { id: string; stageId: string }) =>
-      updateCrmLead({ data: input }),
+    mutationFn: (input: {
+      id: string;
+      stageId?: string;
+      assignedMemberId?: string | null;
+    }) => updateCrmLead({ data: input }),
     onSuccess: async () =>
       queryClient.invalidateQueries({ queryKey: ["crm", "leads"] }),
     onError: (error) =>
@@ -103,6 +125,7 @@ export function LeadsWorkspace() {
 
       {showCreate ? (
         <CreateLeadForm
+          members={data.members}
           pending={createMutation.isPending}
           onSubmit={(input) => createMutation.mutate(input)}
         />
@@ -164,6 +187,25 @@ export function LeadsWorkspace() {
                         </div>
                         <select
                           className="select select-bordered select-xs mt-3 w-full"
+                          value={row.lead.assignedMemberId ?? ""}
+                          disabled={moveMutation.isPending}
+                          onChange={(event) =>
+                            moveMutation.mutate({
+                              id: row.lead.id,
+                              assignedMemberId:
+                                event.currentTarget.value || null,
+                            })
+                          }
+                        >
+                          <option value="">Unassigned</option>
+                          {data.members.map((member) => (
+                            <option key={member.id} value={member.id}>
+                              {member.name || member.email}
+                            </option>
+                          ))}
+                        </select>
+                        <select
+                          className="select select-bordered select-xs mt-3 w-full"
                           value={stage.id}
                           disabled={moveMutation.isPending}
                           onChange={(event) =>
@@ -179,6 +221,41 @@ export function LeadsWorkspace() {
                             </option>
                           ))}
                         </select>
+                        <button
+                          className="btn btn-ghost btn-xs mt-2 w-full"
+                          onClick={() => setActivityLeadId(row.lead.id)}
+                        >
+                          Add note
+                        </button>
+                        {activityLeadId === row.lead.id ? (
+                          <form
+                            className="mt-2 space-y-2"
+                            onSubmit={(event) => {
+                              event.preventDefault();
+                              const form = new FormData(event.currentTarget);
+                              activityMutation.mutate({
+                                leadId: row.lead.id,
+                                subject: fieldValue(form, "subject"),
+                                notes: fieldValue(form, "notes") || undefined,
+                              });
+                            }}
+                          >
+                            <input
+                              required
+                              name="subject"
+                              className="input input-bordered input-xs w-full"
+                              placeholder="Activity subject"
+                            />
+                            <input
+                              name="notes"
+                              className="input input-bordered input-xs w-full"
+                              placeholder="Notes"
+                            />
+                            <button className="btn btn-primary btn-xs w-full">
+                              Save activity
+                            </button>
+                          </form>
+                        ) : null}
                       </article>
                     ))
                   )}
@@ -204,26 +281,37 @@ function Stat({ label, value }: { label: string; value: string }) {
 }
 
 function CreateLeadForm({
+  members,
   pending,
   onSubmit,
 }: {
   pending: boolean;
+  members: Array<{ id: string; name: string | null; email: string }>;
   onSubmit: (input: {
     title: string;
     source?: string;
     valueCents: number;
+    assignedMemberId?: string;
+    priority: "low" | "medium" | "high" | "urgent";
+    nextAction?: string;
   }) => void;
 }) {
   return (
     <form
-      className="grid gap-3 rounded-xl border border-primary/30 bg-primary/5 p-4 md:grid-cols-[2fr_1fr_1fr_auto]"
+      className="grid gap-3 rounded-xl border border-primary/30 bg-primary/5 p-4 md:grid-cols-3"
       onSubmit={(event) => {
         event.preventDefault();
         const form = new FormData(event.currentTarget);
+        const priority = leadPrioritySchema.safeParse(
+          fieldValue(form, "priority"),
+        );
         onSubmit({
           title: fieldValue(form, "title"),
           source: fieldValue(form, "source") || undefined,
           valueCents: Math.round(Number(form.get("value") ?? 0) * 100),
+          assignedMemberId: fieldValue(form, "assignedMemberId") || undefined,
+          priority: priority.success ? priority.data : "medium",
+          nextAction: fieldValue(form, "nextAction") || undefined,
         });
       }}
     >
@@ -233,6 +321,34 @@ function CreateLeadForm({
         maxLength={200}
         className="input input-bordered input-sm w-full"
         placeholder="Lead or opportunity name"
+      />
+      <select
+        name="priority"
+        className="select select-bordered select-sm w-full"
+        defaultValue="medium"
+      >
+        <option value="low">Low priority</option>
+        <option value="medium">Medium priority</option>
+        <option value="high">High priority</option>
+        <option value="urgent">Urgent</option>
+      </select>
+      <select
+        name="assignedMemberId"
+        className="select select-bordered select-sm w-full"
+        defaultValue=""
+      >
+        <option value="">Unassigned</option>
+        {members.map((member) => (
+          <option key={member.id} value={member.id}>
+            {member.name || member.email}
+          </option>
+        ))}
+      </select>
+      <input
+        name="nextAction"
+        maxLength={300}
+        className="input input-bordered input-sm w-full"
+        placeholder="Next action"
       />
       <input
         name="source"

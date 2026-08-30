@@ -68,10 +68,12 @@ async function createLead(organizationId: string, input: CreateLeadInput) {
 
 async function validateLeadRelations(
   organizationId: string,
-  input: Pick<
-    CreateLeadInput,
-    "contactId" | "companyId" | "stageId" | "assignedMemberId"
-  >,
+  input: {
+    contactId?: string | null;
+    companyId?: string | null;
+    stageId?: string | null;
+    assignedMemberId?: string | null;
+  },
 ) {
   const checks = await Promise.all([
     input.contactId
