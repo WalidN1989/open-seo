@@ -160,7 +160,9 @@ describe("catalogue sync", () => {
     ]);
     mocks.reconcileToQuantity.mockResolvedValue(null);
     await CatalogueSyncService.runSync(ORG, "conn_1");
-    expect(mocks.applyMovements).toHaveBeenCalledWith(ORG, []);
+    // Not "called with an empty list" — not called at all. A sync that agrees
+    // with the store touches the ledger in no way whatsoever.
+    expect(mocks.applyMovements).not.toHaveBeenCalled();
   });
 
   it("ignores stock for a store that does not track it", async () => {

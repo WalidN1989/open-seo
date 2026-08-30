@@ -150,11 +150,10 @@ async function runSync(organizationId: string, connectionId: string) {
         : null;
 
     let synced = 0;
-    const movements: StockMovementDraft[] = [];
     const startPage = Math.max(1, connection.syncCursor || 1);
     // A run that starts at page one is a fresh pass, so the running total
     // restarts rather than accumulating across syncs forever.
-    if (startPage === 1) connection.syncedCount = 0;
+    const baseCount = startPage === 1 ? 0 : (connection.syncedCount ?? 0);
     const lastPage = Math.min(startPage + PAGES_PER_RUN - 1, MAX_PAGES);
     let finished = true;
 
@@ -176,6 +175,26 @@ async function runSync(organizationId: string, connectionId: string) {
         modifiedAfter,
       );
       if (products.length === 0) break;
+
+      // Checkpoint before the page's work, not after the whole run. A run that
+      // dies part-way used to leave the cursor untouched and start again from
+      // page one on every retry, so a catalogue larger than one run could
+      // never finish — it re-imported the same first pages forever.
+      await IntegrationSyncRepository.setSyncState(
+        organizationId,
+        connectionId,
+        {
+          syncStatus: "running",
+          syncError: null,
+          syncCursor: page,
+          syncedCount: baseCount + synced,
+        },
+      );
+
+      // Scoped to the page it belongs to. Sharing one array across pages and
+      // clearing it after each apply hands the repository a reference that is
+      // emptied out from under it.
+      const movements: StockMovementDraft[] = [];
 
       for (const wooProduct of products) {
         // A product with no SKU cannot be identified in a catalogue, and the
@@ -219,12 +238,16 @@ async function runSync(organizationId: string, connectionId: string) {
         });
       }
 
+      // Stock is applied per page for the same reason as the checkpoint: work
+      // that is not durable when the process dies has to be redone.
+      if (movements.length > 0) {
+        await InventoryRepository.applyMovements(organizationId, movements);
+      }
+
       if (products.length < PAGE_SIZE) break;
     }
 
-    await InventoryRepository.applyMovements(organizationId, movements);
-
-    const syncedTotal = (connection.syncedCount || 0) + synced;
+    const syncedTotal = baseCount + synced;
     if (!finished) {
       // Partway through. The state row was already set to queued above; only
       // the running total is added here, and lastSyncedAt is deliberately not
