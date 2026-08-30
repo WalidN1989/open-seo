@@ -38,6 +38,7 @@ import { deliverWebhook, validateWebhookUrl } from "../providers/webhooks";
 import { speakWithDeepgram, transcribeWithDeepgram } from "../providers/voice";
 import { generateWhatsappAiReply } from "../providers/whatsapp-ai";
 import { testIntegrationConnection } from "../providers/integrations";
+import { generateVoiceAgentReply } from "../providers/voice-ai";
 import { BusinessAuditRepository } from "@/server/features/business-modules/repositories/BusinessAuditRepository";
 
 async function whatsappWorkspace(organizationId: string, userId: string) {
@@ -397,6 +398,42 @@ async function transcribeVoiceAudio(
     speaker: "user",
     transcript: result.transcript,
   });
+  if (
+    agent.modelProvider === "anthropic" &&
+    agent.textToSpeechProvider === "deepgram"
+  ) {
+    try {
+      const history =
+        await CommunicationsRepository.getVoiceConversationMessages(
+          organizationId,
+          input.conversationId,
+        );
+      const generated = await generateVoiceAgentReply({
+        agentName: agent.name,
+        credentialReference: agent.credentialReference,
+        history,
+      });
+      const speech = await speakWithDeepgram(
+        agent.credentialReference,
+        generated.reply,
+      );
+      await CommunicationsRepository.appendVoiceTranscript(organizationId, {
+        conversationId: input.conversationId,
+        speaker: "agent",
+        transcript: generated.reply,
+      });
+      return { ...result, ...speech, reply: generated.reply };
+    } catch (error) {
+      console.error("Voice agent response failed after transcription", error);
+      return {
+        ...result,
+        replyError:
+          error instanceof Error
+            ? error.message
+            : "The voice agent could not respond.",
+      };
+    }
+  }
   return result;
 }
 

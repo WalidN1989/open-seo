@@ -607,6 +607,24 @@ async function getVoiceConversation(
   return conversation;
 }
 
+async function getVoiceConversationMessages(
+  organizationId: string,
+  conversationId: string,
+) {
+  return db
+    .select()
+    .from(voiceConversationMessages)
+    .where(
+      and(
+        eq(voiceConversationMessages.organizationId, organizationId),
+        eq(voiceConversationMessages.conversationId, conversationId),
+      ),
+    )
+    .orderBy(desc(voiceConversationMessages.createdAt))
+    .limit(24)
+    .then((rows) => rows.toReversed());
+}
+
 async function appendVoiceTranscript(
   organizationId: string,
   input: z.infer<typeof appendVoiceTranscriptSchema>,
@@ -819,6 +837,7 @@ export const CommunicationsRepository = {
   getVoiceWorkspace,
   getVoiceAgent,
   getVoiceConversation,
+  getVoiceConversationMessages,
   getWebhookDelivery,
   getWebhookEndpoint,
   listWebhookEndpointsForEvent,

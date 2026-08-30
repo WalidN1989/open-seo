@@ -428,6 +428,21 @@ export function VoiceWorkspace() {
     onSuccess: async (result) => {
       await client.invalidateQueries({ queryKey: ["voice"] });
       toast.success(`Heard: ${result.transcript}`);
+      if ("replyError" in result && result.replyError) {
+        toast.warning(
+          `Transcript saved, but the agent could not reply: ${result.replyError}`,
+        );
+      }
+      if ("audioBase64" in result && result.audioBase64) {
+        const audio = new Audio(
+          `data:${result.mimeType};base64,${result.audioBase64}`,
+        );
+        await audio.play().catch(() => {
+          toast.warning(
+            "The reply is ready, but browser audio playback was blocked.",
+          );
+        });
+      }
     },
     onError: showError,
   });
