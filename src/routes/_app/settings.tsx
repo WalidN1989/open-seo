@@ -5,6 +5,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { AccountSettings } from "@/client/features/settings/AccountSettings";
 import { ApiKeySettings } from "@/client/features/settings/ApiKeySettings";
+import { CurrencySettings } from "@/client/features/business-modules/CurrencySettings";
 import { TeamSettings } from "@/client/features/settings/TeamSettings";
 import { type ThemePreference, useThemePreference } from "@/client/lib/theme";
 import { authClient, useSession } from "@/lib/auth-client";
@@ -133,6 +134,8 @@ function SettingsPage() {
                 </div>
               </section>
             ) : null}
+
+            <CurrencySettings />
 
             <ApiKeySettings />
 

@@ -9,8 +9,10 @@ import {
   updateCommerceProduct,
 } from "@/serverFunctions/commerce";
 import { getStandardErrorMessage } from "@/client/lib/error-messages";
+import { useWorkspaceCurrency } from "@/client/hooks/useWorkspaceCurrency";
 
 export function CrmProductDetailView() {
+  const money = useWorkspaceCurrency();
   const { productId } = useParams({
     from: "/_app/modules/crm/products/$productId",
   });
@@ -109,14 +111,14 @@ export function CrmProductDetailView() {
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <Detail
               label="Sale price"
-              value={formatMinor(query.data.product.salePriceMinor)}
+              value={money.format(query.data.product.salePriceMinor)}
             />
             <Detail
               label="Cost price"
               value={
                 query.data.product.costPriceMinor === null
                   ? "—"
-                  : formatMinor(query.data.product.costPriceMinor)
+                  : money.format(query.data.product.costPriceMinor)
               }
             />
             <Detail
@@ -253,7 +255,7 @@ export function CrmProductDetailView() {
                     <div className="min-w-0">
                       <p className="truncate font-medium">{variant.name}</p>
                       <p className="truncate text-xs text-base-content/50">
-                        {variant.sku} · {formatMinor(variant.salePriceMinor)}
+                        {variant.sku} · {money.format(variant.salePriceMinor)}
                       </p>
                     </div>
                   </Link>
@@ -276,8 +278,4 @@ function Detail({ label, value }: { label: string; value: string }) {
       <p className="mt-1 text-lg font-semibold">{value}</p>
     </div>
   );
-}
-
-function formatMinor(minor: number) {
-  return (minor / 100).toFixed(2);
 }

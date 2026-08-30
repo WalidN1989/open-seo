@@ -11,15 +11,13 @@ import {
   returnCommerceOrder,
 } from "@/serverFunctions/commerce";
 import { getStandardErrorMessage } from "@/client/lib/error-messages";
+import { useWorkspaceCurrency } from "@/client/hooks/useWorkspaceCurrency";
 import { ErrorState, Loading } from "./inventoryShared";
 
 const ORDERS_KEY = ["commerce", "orders"];
 
-function formatMinor(minor: number) {
-  return (minor / 100).toFixed(2);
-}
-
 export function CrmOrdersView() {
+  const money = useWorkspaceCurrency();
   const queryClient = useQueryClient();
   const [creating, setCreating] = useState(false);
   const [openOrderId, setOpenOrderId] = useState<string | null>(null);
@@ -164,7 +162,7 @@ export function CrmOrdersView() {
                   </div>
                   <div className="flex items-center gap-3">
                     <span className="font-medium">
-                      {formatMinor(order.totalMinor)}
+                      {money.format(order.totalMinor)}
                     </span>
                     <OrderStatus status={order.status} />
                   </div>
@@ -182,6 +180,7 @@ export function CrmOrdersView() {
 }
 
 function OrderDetail({ orderId, status }: { orderId: string; status: string }) {
+  const money = useWorkspaceCurrency();
   const queryClient = useQueryClient();
   const detail = useQuery({
     queryKey: ["commerce", "order", orderId],
@@ -252,10 +251,10 @@ function OrderDetail({ orderId, status }: { orderId: string; status: string }) {
                 </td>
                 <td className="text-right">{line.quantity}</td>
                 <td className="text-right">
-                  {formatMinor(line.unitPriceMinor)}
+                  {money.format(line.unitPriceMinor)}
                 </td>
                 <td className="text-right">
-                  {formatMinor(line.lineTotalMinor)}
+                  {money.format(line.lineTotalMinor)}
                 </td>
               </tr>
             ))}
@@ -265,20 +264,20 @@ function OrderDetail({ orderId, status }: { orderId: string; status: string }) {
 
       {order ? (
         <dl className="grid gap-1 text-sm sm:max-w-xs sm:justify-self-end">
-          <Row label="Subtotal" value={formatMinor(order.subtotalMinor)} />
+          <Row label="Subtotal" value={money.format(order.subtotalMinor)} />
           {order.discountMinor > 0 ? (
             <Row
               label="Discount"
-              value={`-${formatMinor(order.discountMinor)}`}
+              value={`-${money.format(order.discountMinor)}`}
             />
           ) : null}
           {order.deliveryMinor > 0 ? (
-            <Row label="Delivery" value={formatMinor(order.deliveryMinor)} />
+            <Row label="Delivery" value={money.format(order.deliveryMinor)} />
           ) : null}
           {order.taxMinor > 0 ? (
-            <Row label="Tax" value={formatMinor(order.taxMinor)} />
+            <Row label="Tax" value={money.format(order.taxMinor)} />
           ) : null}
-          <Row label="Total" value={formatMinor(order.totalMinor)} strong />
+          <Row label="Total" value={money.format(order.totalMinor)} strong />
         </dl>
       ) : null}
 

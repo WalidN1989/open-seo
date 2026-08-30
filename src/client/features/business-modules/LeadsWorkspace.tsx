@@ -14,9 +14,11 @@ import {
 import { getStandardErrorMessage } from "@/client/lib/error-messages";
 import { leadPrioritySchema } from "@/types/schemas/crm";
 import { LeadsTable } from "./leads/LeadsTable";
+import { useWorkspaceCurrency } from "@/client/hooks/useWorkspaceCurrency";
 
 export function LeadsWorkspace() {
   const queryClient = useQueryClient();
+  const money = useWorkspaceCurrency();
   // The board is kept; the table is the default because a wide, dense list
   // is what you scan a pipeline with. Neither replaces the other.
   const [view, setView] = useState<"table" | "board">("table");
@@ -164,14 +166,7 @@ export function LeadsWorkspace() {
             data.leads.filter((row) => row.stage?.stageType === "open").length,
           )}
         />
-        <Stat
-          label="Pipeline value"
-          value={new Intl.NumberFormat(undefined, {
-            style: "currency",
-            currency: "AUD",
-            maximumFractionDigits: 0,
-          }).format(totalValue / 100)}
-        />
+        <Stat label="Pipeline value" value={money.format(totalValue, true)} />
         <Stat
           label="Needs action"
           value={String(
@@ -290,13 +285,7 @@ export function LeadsWorkspace() {
                           </span>
                         </div>
                         <div className="mt-3 flex items-center justify-between text-xs">
-                          <span>
-                            {new Intl.NumberFormat(undefined, {
-                              style: "currency",
-                              currency: "AUD",
-                              maximumFractionDigits: 0,
-                            }).format(row.lead.valueCents / 100)}
-                          </span>
+                          <span>{money.format(row.lead.valueCents, true)}</span>
                           <span>Score {row.lead.leadScore}</span>
                         </div>
                         <select
@@ -492,7 +481,7 @@ function CreateLeadForm({
         min="0"
         step="0.01"
         className="input input-bordered input-sm w-full"
-        placeholder="Value (AUD)"
+        placeholder="Value"
       />
       <button className="btn btn-primary btn-sm" disabled={pending}>
         <Target className="size-4" /> Create

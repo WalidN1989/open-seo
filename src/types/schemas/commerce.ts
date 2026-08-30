@@ -36,6 +36,16 @@ export const updateProductSchema = createProductSchema.partial().extend({
   costPriceMinor: minorUnits.optional().nullable(),
 });
 
+export const setCurrencySchema = z.object({
+  // Validated as a shape, not against the list: a workspace may legitimately
+  // use a currency the list does not name.
+  currency: z
+    .string()
+    .trim()
+    .toUpperCase()
+    .regex(/^[A-Z]{3}$/, "Use a three-letter currency code, such as LKR."),
+});
+
 export const productIdSchema = z.object({ id: z.string().min(1) });
 
 export const listProductsSchema = z.object({

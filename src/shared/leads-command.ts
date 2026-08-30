@@ -91,15 +91,3 @@ export const DUE_TONE_CLASS: Record<DueInfo["tone"], string> = {
   soon: "text-warning",
   later: "text-base-content/60",
 };
-
-/** Money is stored in integer minor units, so never divide before display. */
-export function formatMinorUnits(minor: number | null | undefined): string {
-  if (!minor) return "—";
-  const major = minor / 100;
-  // Abbreviate only once the rounding is small relative to the number. At
-  // 1,500 a "2k" is a 33% lie about the value of a deal, which is worse than
-  // a slightly wider column.
-  return major >= 10_000
-    ? `${Math.round(major / 1000)}k`
-    : major.toLocaleString(undefined, { maximumFractionDigits: 0 });
-}

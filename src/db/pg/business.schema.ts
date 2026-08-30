@@ -38,6 +38,24 @@ export const organizationModuleEntitlements = pgTable(
   ],
 );
 
+export const businessSettings = pgTable(
+  "business_settings",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    // Every stored amount is an integer in this currency's smallest unit.
+    // Changing it relabels existing figures; it does not convert them.
+    currency: text("currency").notNull().default("AUD"),
+    createdAt: createdAt(),
+    updatedAt: text("updated_at").notNull().default(isoNow),
+  },
+  (table) => [
+    uniqueIndex("business_settings_org_idx").on(table.organizationId),
+  ],
+);
+
 export const memberModulePermissions = pgTable(
   "member_module_permissions",
   {

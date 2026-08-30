@@ -41,6 +41,26 @@ export const organizationModuleEntitlements = sqliteTable(
   ],
 );
 
+export const businessSettings = sqliteTable(
+  "business_settings",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    // Every stored amount is an integer in this currency's smallest unit.
+    // Changing it relabels existing figures; it does not convert them.
+    currency: text("currency").notNull().default("AUD"),
+    createdAt: createdAt(),
+    updatedAt: text("updated_at")
+      .notNull()
+      .default(sql`(current_timestamp)`),
+  },
+  (table) => [
+    uniqueIndex("business_settings_org_idx").on(table.organizationId),
+  ],
+);
+
 export const memberModulePermissions = sqliteTable(
   "member_module_permissions",
   {

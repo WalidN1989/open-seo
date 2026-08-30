@@ -7,6 +7,7 @@ import {
   PRIORITY_META,
   type LeadHealth,
 } from "@/shared/leads-command";
+import { useWorkspaceCurrency } from "@/client/hooks/useWorkspaceCurrency";
 import {
   LEAD_COLUMNS,
   LeadCell,
@@ -61,6 +62,7 @@ export function LeadsTable({
   members: ReadonlyArray<{ id: string; name: string | null; email: string }>;
   onOpenLead?: (leadId: string) => void;
 }) {
+  const money = useWorkspaceCurrency();
   const [hidden, setHidden] = useState<Set<ColumnKey>>(defaultHidden);
   const [sort, setSort] = useState<Sort>(null);
   const [search, setSearch] = useState("");
@@ -321,6 +323,7 @@ export function LeadsTable({
                         row={row}
                         column={column.key}
                         members={memberLookup}
+                        formatMoney={money.format}
                       />
                     </td>
                   ))}

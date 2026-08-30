@@ -5,7 +5,6 @@ import {
   PRIORITY_META,
   computeHealth,
   dueInfo,
-  formatMinorUnits,
   timeAgo,
   type LeadHealth,
   type LeadPriority,
@@ -222,10 +221,12 @@ export function LeadCell({
   row,
   column,
   members,
+  formatMoney,
 }: {
   row: LeadRow;
   column: ColumnKey;
   members: MemberLookup;
+  formatMoney: (minor: number | null | undefined, compact?: boolean) => string;
 }) {
   switch (column) {
     case "company":
@@ -312,7 +313,7 @@ export function LeadCell({
     case "value":
       return (
         <span className="tabular-nums">
-          {formatMinorUnits(row.lead.valueCents)}
+          {formatMoney(row.lead.valueCents, true)}
         </span>
       );
     case "score":

@@ -108,6 +108,7 @@ export const {
   telemetryState,
   organizationModuleEntitlements,
   memberModulePermissions,
+  businessSettings,
   businessAuditEvents,
   crmCompanies,
   crmContacts,

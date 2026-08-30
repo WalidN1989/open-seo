@@ -8,16 +8,9 @@ import {
 } from "@/serverFunctions/commerce";
 import { getStandardErrorMessage } from "@/client/lib/error-messages";
 import { ProductEditModal } from "./ProductEditModal";
+import { useWorkspaceCurrency } from "@/client/hooks/useWorkspaceCurrency";
 
 const PRODUCTS_KEY = ["commerce", "products"];
-
-/**
- * Prices are held in minor units everywhere below the form. These two helpers
- * are the only place a major-unit string and minor-unit integer meet.
- */
-function formatMinor(minor: number) {
-  return (minor / 100).toFixed(2);
-}
 
 /** FormData yields string | File | null; only a string is meaningful here. */
 function fieldValue(form: FormData, name: string) {
@@ -35,6 +28,7 @@ const PAGE_SIZE = 50;
 
 export function CrmProductsView() {
   const queryClient = useQueryClient();
+  const money = useWorkspaceCurrency();
   const [search, setSearch] = useState("");
   const [adding, setAdding] = useState(false);
   const [page, setPage] = useState(0);
@@ -239,7 +233,7 @@ export function CrmProductsView() {
                 </div>
                 <div className="text-right">
                   <p className="font-medium">
-                    {formatMinor(product.salePriceMinor)}
+                    {money.format(product.salePriceMinor)}
                   </p>
                   {product.status === "archived" ? (
                     <span className="badge badge-ghost badge-xs">Archived</span>

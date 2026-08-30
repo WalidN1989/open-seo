@@ -253,6 +253,13 @@
       "when": 1788099047840,
       "tag": "0035_large_black_bird",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1788103961388,
+      "tag": "0036_military_wildside",
+      "breakpoints": true
     }
   ]
 }

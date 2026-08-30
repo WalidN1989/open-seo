@@ -1,10 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  computeHealth,
-  dueInfo,
-  formatMinorUnits,
-  timeAgo,
-} from "./leads-command";
+import { computeHealth, dueInfo, timeAgo } from "./leads-command";
 
 const NOW = new Date("2026-08-30T12:00:00.000Z");
 
@@ -106,12 +101,5 @@ describe("compact display", () => {
     expect(timeAgo(daysAgo(14))).toBe("2w");
     expect(timeAgo(daysAgo(60))).toBe("2mo");
     expect(timeAgo(null)).toBe("—");
-  });
-
-  it("renders minor units as major units without floating point cents", () => {
-    expect(formatMinorUnits(150_000)).toBe("1,500");
-    expect(formatMinorUnits(1_200_000)).toBe("12k");
-    expect(formatMinorUnits(0)).toBe("—");
-    expect(formatMinorUnits(null)).toBe("—");
   });
 });
