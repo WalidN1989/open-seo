@@ -7,6 +7,9 @@ const INTERVALS = [
   { value: 1440, label: "Check once a day" },
 ];
 
+/** Matches the server's reclaim threshold. */
+const STALE_RUN_MS = 4 * 60_000;
+
 type SyncConnection = {
   syncedCount: number;
   syncStatus: string;
@@ -15,6 +18,7 @@ type SyncConnection = {
   autoSync: boolean;
   syncIntervalMinutes: number;
   healthDetail: string | null;
+  updatedAt: string;
 };
 
 /**
@@ -40,6 +44,12 @@ export function CatalogueSyncPanel({
 }) {
   const inFlight =
     connection.syncStatus === "running" || connection.syncStatus === "queued";
+  // A run whose process died leaves "running" behind. The scheduler reclaims
+  // it, but leaving the button disabled until then makes a stuck sync look
+  // unrecoverable, so offer the retry as soon as it is plainly not running.
+  const stalled =
+    connection.syncStatus === "running" &&
+    Date.now() - new Date(connection.updatedAt).getTime() > STALE_RUN_MS;
   // The health check counts the store; syncedCount counts what has landed
   // here. Together they turn "0 imported" into visible progress.
   const storeTotal = Number(
@@ -73,16 +83,24 @@ export function CatalogueSyncPanel({
       ) : null}
       <button
         className="btn btn-outline btn-xs mt-3 w-full"
-        disabled={syncPending || inFlight}
+        disabled={syncPending || (inFlight && !stalled)}
         onClick={onSync}
       >
         <RefreshCw className="size-3" />
-        {connection.syncStatus === "running"
-          ? "Syncing..."
-          : connection.syncStatus === "queued"
-            ? "Queued..."
-            : "Sync now"}
+        {stalled
+          ? "Retry sync"
+          : connection.syncStatus === "running"
+            ? "Syncing..."
+            : connection.syncStatus === "queued"
+              ? "Queued..."
+              : "Sync now"}
       </button>
+      {stalled ? (
+        <p className="mt-2 text-xs text-warning">
+          This run stopped responding, most likely a restart part-way through.
+          Retrying picks it up from a clean pass.
+        </p>
+      ) : null}
 
       <label className="mt-4 flex items-center justify-between gap-2 text-xs">
         <span>Keep in sync automatically</span>

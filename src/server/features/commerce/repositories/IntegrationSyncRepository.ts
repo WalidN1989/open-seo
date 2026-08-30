@@ -90,8 +90,42 @@ async function setSchedule(
  * Deliberately not organization-scoped — the scheduler acts for no tenant, and
  * every other read in this file is scoped.
  */
-/** A sync still "running" after this long is taken to have died. */
-const STALE_RUN_MS = 15 * 60_000;
+/**
+ * A sync still "running" after this long is taken to have died. Runs are
+ * bounded to a handful of pages and finish in seconds, so minutes of silence
+ * means the process went away — a deploy, a restart, a worker timeout.
+ */
+const STALE_RUN_MS = 4 * 60_000;
+
+/**
+ * Whether the scheduler should pick this connection up. Pure so the rules —
+ * especially reclaiming a dead run — can be tested without a database.
+ */
+export function isSyncDue(
+  row: {
+    syncStatus: string;
+    autoSync: boolean;
+    lastSyncedAt: string | null;
+    syncIntervalMinutes: number;
+    updatedAt: string;
+  },
+  now: number,
+): boolean {
+  if (row.syncStatus === "queued") return true;
+  // A run that died mid-flight leaves "running" behind and nothing else ever
+  // clears it. Reclaim it once it is plainly not running any more, or the
+  // catalogue silently stops syncing for good. Anything fresher is left alone:
+  // two schedulers on one catalogue would fight over the cursor.
+  if (row.syncStatus === "running") {
+    return now - new Date(row.updatedAt).getTime() >= STALE_RUN_MS;
+  }
+  if (!row.autoSync) return false;
+  if (!row.lastSyncedAt) return true;
+  return (
+    now - new Date(row.lastSyncedAt).getTime() >=
+    row.syncIntervalMinutes * 60_000
+  );
+}
 
 async function listDueSyncs(limit: number) {
   const now = Date.now();
@@ -111,22 +145,7 @@ async function listDueSyncs(limit: number) {
     )
     .limit(limit * 4);
 
-  return rows
-    .filter((row) => {
-      if (row.syncStatus === "queued") return true;
-      // A run that died mid-flight leaves "running" behind and nothing else
-      // ever clears it. Reclaim it once it is plainly not running any more,
-      // or the catalogue silently stops syncing for good.
-      if (row.syncStatus === "running") {
-        const since = now - new Date(row.updatedAt).getTime();
-        return since >= STALE_RUN_MS;
-      }
-      if (!row.autoSync) return false;
-      if (!row.lastSyncedAt) return true;
-      const elapsed = now - new Date(row.lastSyncedAt).getTime();
-      return elapsed >= row.syncIntervalMinutes * 60_000;
-    })
-    .slice(0, limit);
+  return rows.filter((row) => isSyncDue(row, now)).slice(0, limit);
 }
 
 export const IntegrationSyncRepository = {
