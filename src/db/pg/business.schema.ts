@@ -329,6 +329,11 @@ export const integrationConnections = pgTable(
     // Where a paged sync got to. A large catalogue cannot finish inside one
     // request, so a run stops at a page boundary and the next one resumes.
     syncCursor: integer("sync_cursor").notNull().default(0),
+    // Later syncs ask only for what changed. That is right for a schedule and
+    // wrong for a person pressing the button, who means "fetch it all again" —
+    // and it is the only way a new field backfills onto products the store has
+    // not touched since.
+    fullResync: boolean("full_resync").notNull().default(false),
     autoSync: boolean("auto_sync").notNull().default(true),
     syncIntervalMinutes: integer("sync_interval_minutes").notNull().default(60),
     createdAt: createdAt(),

@@ -16,6 +16,49 @@ async function credentials(connection: IntegrationRecord) {
   return { baseUrl, consumerKey, consumerSecret };
 }
 
+const NAMED_ENTITIES: Record<string, string> = {
+  amp: "&",
+  lt: "<",
+  gt: ">",
+  quot: '"',
+  apos: "'",
+  nbsp: " ",
+  hellip: "\u2026",
+  mdash: "\u2014",
+  ndash: "\u2013",
+  rsquo: "\u2019",
+  lsquo: "\u2018",
+  rdquo: "\u201d",
+  ldquo: "\u201c",
+};
+
+/**
+ * WooCommerce returns names, categories and descriptions as rendered HTML.
+ * Stored verbatim they show up as literal <p> tags and &#8217; in the product
+ * form and anywhere the assistant quotes them, so they are reduced to plain
+ * text here, at the boundary, rather than in each place that displays them.
+ */
+export function plainText(value: string | null | undefined): string {
+  if (!value) return "";
+  return value
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/p>/gi, "\n")
+    .replace(/<[^>]*>/g, "")
+    .replace(/&#(\d+);/g, (_match, code: string) =>
+      String.fromCodePoint(Number(code)),
+    )
+    .replace(/&#x([0-9a-f]+);/gi, (_match, code: string) =>
+      String.fromCodePoint(Number.parseInt(code, 16)),
+    )
+    .replace(
+      /&([a-z]+);/gi,
+      (match, name: string) => NAMED_ENTITIES[name.toLowerCase()] ?? match,
+    )
+    .replace(/[ \t]+/g, " ")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
 /**
  * WooCommerce returns prices as decimal strings in major units. They are
  * converted to integer minor units here, at the boundary, so no float ever

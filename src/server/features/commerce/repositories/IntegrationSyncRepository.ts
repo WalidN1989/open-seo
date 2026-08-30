@@ -49,6 +49,7 @@ async function setSyncState(
     syncedCount?: number;
     lastSyncedAt?: string;
     syncCursor?: number;
+    fullResync?: boolean;
   },
 ) {
   const [row] = await db

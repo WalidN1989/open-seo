@@ -356,3 +356,63 @@ describe("a catalogue too large for one request", () => {
     );
   });
 });
+
+describe("full resync", () => {
+  it("asks only for recent changes on a scheduled run", async () => {
+    mocks.getConnection.mockResolvedValue({
+      ...CONNECTION,
+      lastSyncedAt: "2026-08-01T00:00:00.000Z",
+      fullResync: false,
+    });
+    await CatalogueSyncService.runSync(ORG, CONNECTION.id);
+    expect(mocks.fetchProductPage.mock.calls[0][3]).toEqual(expect.any(String));
+  });
+
+  it("ignores the incremental filter when a full resync was asked for", async () => {
+    // A product the store has not touched since import is never returned by
+    // the incremental filter, so a newly added field would never backfill.
+    mocks.getConnection.mockResolvedValue({
+      ...CONNECTION,
+      lastSyncedAt: "2026-08-01T00:00:00.000Z",
+      fullResync: true,
+    });
+    await CatalogueSyncService.runSync(ORG, CONNECTION.id);
+    expect(mocks.fetchProductPage.mock.calls[0][3]).toBeNull();
+  });
+
+  it("clears the flag once the pass completes", async () => {
+    mocks.getConnection.mockResolvedValue({ ...CONNECTION, fullResync: true });
+    mocks.fetchProductPage.mockImplementation((_c: unknown, page: number) =>
+      Promise.resolve(page === 1 ? [wooProduct()] : []),
+    );
+    await CatalogueSyncService.runSync(ORG, CONNECTION.id);
+    const calls = mocks.setSyncState.mock.calls;
+    expect(calls[calls.length - 1][2]).toMatchObject({ fullResync: false });
+  });
+
+  it("keeps the flag set while the pass is still running", async () => {
+    // Cleared halfway, the remaining pages would silently switch back to the
+    // incremental filter and skip most of the catalogue.
+    mocks.getConnection.mockResolvedValue({ ...CONNECTION, fullResync: true });
+    mocks.fetchProductPage.mockImplementation(() =>
+      Promise.resolve(
+        Array.from({ length: 50 }, (_, index) =>
+          wooProduct({ id: index, sku: `SKU-${index}` }),
+        ),
+      ),
+    );
+    await CatalogueSyncService.runSync(ORG, CONNECTION.id);
+    for (const call of mocks.setSyncState.mock.calls) {
+      expect(call[2].fullResync).not.toBe(false);
+    }
+  });
+
+  it("requests a full pass when someone presses sync", async () => {
+    await CatalogueSyncService.queueSync(ORG, USER, CONNECTION.id);
+    expect(mocks.setSyncState).toHaveBeenCalledWith(
+      ORG,
+      CONNECTION.id,
+      expect.objectContaining({ fullResync: true, syncCursor: 0 }),
+    );
+  });
+});

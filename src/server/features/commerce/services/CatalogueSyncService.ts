@@ -10,6 +10,7 @@ import { IntegrationSyncRepository } from "../repositories/IntegrationSyncReposi
 import {
   fetchProductPage,
   fetchStoreHealth,
+  plainText,
   toMinorUnits,
 } from "../providers/woocommerce";
 
@@ -87,8 +88,9 @@ async function queueSync(
       syncStatus: "queued",
       syncError: null,
       // Pressing the button means "refresh everything", so a fresh pass starts
-      // at page one rather than resuming a half-finished one.
+      // at page one and ignores the incremental filter.
       syncCursor: 0,
+      fullResync: true,
     }),
   );
 }
@@ -137,12 +139,15 @@ async function runSync(organizationId: string, connectionId: string) {
   });
 
   try {
-    // Incremental after the first run: ask only for what changed.
-    const modifiedAfter = connection.lastSyncedAt
-      ? new Date(
-          new Date(connection.lastSyncedAt).getTime() - 5 * 60_000,
-        ).toISOString()
-      : null;
+    // Incremental after the first run: ask only for what changed. A full
+    // resync overrides that, which is how a newly added field reaches products
+    // the store itself has not touched since they were first imported.
+    const modifiedAfter =
+      connection.lastSyncedAt && !connection.fullResync
+        ? new Date(
+            new Date(connection.lastSyncedAt).getTime() - 5 * 60_000,
+          ).toISOString()
+        : null;
 
     let synced = 0;
     const movements: StockMovementDraft[] = [];
@@ -181,13 +186,13 @@ async function runSync(organizationId: string, connectionId: string) {
           {
             externalSource: WOOCOMMERCE,
             externalId: String(wooProduct.id),
-            name: wooProduct.name,
+            name: plainText(wooProduct.name) || wooProduct.name,
             sku,
             description:
-              wooProduct.short_description?.trim() ||
-              wooProduct.description?.trim() ||
+              plainText(wooProduct.short_description) ||
+              plainText(wooProduct.description) ||
               null,
-            category: wooProduct.categories?.[0]?.name ?? null,
+            category: plainText(wooProduct.categories?.[0]?.name) || null,
             salePriceMinor: toMinorUnits(
               wooProduct.price ?? wooProduct.regular_price,
             ),
@@ -242,6 +247,7 @@ async function runSync(organizationId: string, connectionId: string) {
           syncError: null,
           syncedCount: syncedTotal,
           syncCursor: 0,
+          fullResync: false,
           lastSyncedAt: new Date().toISOString(),
         },
       ),
@@ -254,6 +260,7 @@ async function runSync(organizationId: string, connectionId: string) {
         {
           syncStatus: "error",
           syncCursor: 0,
+          fullResync: false,
           syncError:
             error instanceof Error
               ? error.message.slice(0, 300)

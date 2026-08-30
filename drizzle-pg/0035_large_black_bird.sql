@@ -1,0 +1,1 @@
+ALTER TABLE "integration_connections" ADD COLUMN "full_resync" boolean DEFAULT false NOT NULL;
