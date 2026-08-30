@@ -1,11 +1,14 @@
 import { BusinessModuleRepository } from "@/server/features/business-modules/repositories/BusinessModuleRepository";
 import { BusinessModuleService } from "@/server/features/business-modules/services/BusinessModuleService";
+import { CommunicationsService } from "@/server/features/communications/services/CommunicationsService";
 import { AppError } from "@/server/lib/errors";
 import type {
   CreateActivityInput,
   CreateCompanyInput,
   CreateContactInput,
+  CreateInquiryInput,
   CreateLeadInput,
+  CreateMeetingInput,
   UpdateLeadInput,
 } from "@/types/schemas/crm";
 import { CrmRepository } from "../repositories/CrmRepository";
@@ -58,7 +61,18 @@ async function createLead(
   if (!(await CrmRepository.validateLeadRelations(organizationId, candidate))) {
     throw new AppError("FORBIDDEN");
   }
-  return CrmRepository.createLead(organizationId, candidate);
+  const lead = await CrmRepository.createLead(organizationId, candidate);
+  await CommunicationsService.emitBusinessEvent(
+    organizationId,
+    "lead.created",
+    {
+      leadId: lead.id,
+      title: lead.title,
+      stageId: lead.stageId,
+      source: lead.source,
+    },
+  );
+  return lead;
 }
 
 async function updateLead(
@@ -77,16 +91,27 @@ async function updateLead(
   }
   const row = await CrmRepository.updateLead(organizationId, input);
   if (!row) throw new AppError("NOT_FOUND");
+  await CommunicationsService.emitBusinessEvent(
+    organizationId,
+    "lead.updated",
+    {
+      leadId: row.id,
+      stageId: row.stageId,
+      status: row.status,
+    },
+  );
   return row;
 }
 
 async function getCrmWorkspace(organizationId: string, userId: string) {
   await BusinessModuleService.requireAccess(organizationId, userId, "crm");
-  const [contacts, companies] = await Promise.all([
+  const [contacts, companies, inquiries, meetings] = await Promise.all([
     CrmRepository.listContacts(organizationId),
     CrmRepository.listCompanies(organizationId),
+    CrmRepository.listInquiries(organizationId),
+    CrmRepository.listMeetings(organizationId),
   ]);
-  return { contacts, companies };
+  return { contacts, companies, inquiries, meetings };
 }
 
 async function createContact(
@@ -108,7 +133,13 @@ async function createContact(
   ) {
     throw new AppError("FORBIDDEN");
   }
-  return CrmRepository.createContact(organizationId, input);
+  const contact = await CrmRepository.createContact(organizationId, input);
+  await CommunicationsService.emitBusinessEvent(
+    organizationId,
+    "contact.created",
+    { contactId: contact.id, companyId: contact.companyId },
+  );
+  return contact;
 }
 
 async function createCompany(
@@ -122,7 +153,13 @@ async function createCompany(
     "crm",
     "manage",
   );
-  return CrmRepository.createCompany(organizationId, input);
+  const company = await CrmRepository.createCompany(organizationId, input);
+  await CommunicationsService.emitBusinessEvent(
+    organizationId,
+    "company.created",
+    { companyId: company.id, name: company.name },
+  );
+  return company;
 }
 
 async function listActivities(
@@ -166,11 +203,70 @@ async function createActivity(
   return CrmRepository.createActivity(organizationId, membership.id, input);
 }
 
+async function createInquiry(
+  organizationId: string,
+  userId: string,
+  input: CreateInquiryInput,
+) {
+  await BusinessModuleService.requireAccess(
+    organizationId,
+    userId,
+    "crm",
+    "manage",
+  );
+  const inquiry = await CrmRepository.createInquiry(organizationId, input);
+  await CommunicationsService.emitBusinessEvent(
+    organizationId,
+    "inquiry.created",
+    { inquiryId: inquiry.id, title: inquiry.title, product: inquiry.product },
+  );
+  return inquiry;
+}
+
+async function createMeeting(
+  organizationId: string,
+  userId: string,
+  input: CreateMeetingInput,
+) {
+  await BusinessModuleService.requireAccess(
+    organizationId,
+    userId,
+    "crm",
+    "manage",
+  );
+  const relationsValid = await CrmRepository.validateLeadRelations(
+    organizationId,
+    { assignedMemberId: input.assignedMemberId },
+  );
+  const leadValid = input.leadId
+    ? await CrmRepository.leadBelongsToOrganization(
+        organizationId,
+        input.leadId,
+      )
+    : true;
+  if (!relationsValid || !leadValid) {
+    throw new AppError("FORBIDDEN");
+  }
+  const meeting = await CrmRepository.createMeeting(organizationId, input);
+  await CommunicationsService.emitBusinessEvent(
+    organizationId,
+    "meeting.created",
+    {
+      meetingId: meeting.id,
+      leadId: meeting.leadId,
+      startsAt: meeting.startsAt,
+    },
+  );
+  return meeting;
+}
+
 export const CrmService = {
   createActivity,
   createCompany,
   createContact,
+  createInquiry,
   createLead,
+  createMeeting,
   getCrmWorkspace,
   getLeadsWorkspace,
   listActivities,

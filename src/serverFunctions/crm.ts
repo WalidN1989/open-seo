@@ -6,7 +6,9 @@ import {
   createActivitySchema,
   createCompanySchema,
   createContactSchema,
+  createInquirySchema,
   createLeadSchema,
+  createMeetingSchema,
   updateLeadSchema,
 } from "@/types/schemas/crm";
 
@@ -48,6 +50,19 @@ export const createCrmCompany = createServerFn({ method: "POST" })
   .validator(createCompanySchema)
   .handler(({ context, data }) =>
     CrmService.createCompany(context.organizationId, context.userId, data),
+  );
+export const createCrmInquiry = createServerFn({ method: "POST" })
+  .middleware(requireAuthenticatedContext)
+  .validator(createInquirySchema)
+  .handler(({ context, data }) =>
+    CrmService.createInquiry(context.organizationId, context.userId, data),
+  );
+
+export const createCrmMeeting = createServerFn({ method: "POST" })
+  .middleware(requireAuthenticatedContext)
+  .validator(createMeetingSchema)
+  .handler(({ context, data }) =>
+    CrmService.createMeeting(context.organizationId, context.userId, data),
   );
 
 export const getCrmLeadActivities = createServerFn({ method: "POST" })

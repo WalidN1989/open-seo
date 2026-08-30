@@ -49,9 +49,32 @@ export const createActivitySchema = z.object({
   outcome: z.string().trim().max(100).optional(),
   occurredAt: z.string().datetime().optional(),
 });
+export const createInquirySchema = z.object({
+  title: z.string().trim().min(1).max(200),
+  description: z.string().trim().max(10_000).optional(),
+  product: z.string().trim().max(200).optional(),
+  targetValueCents: z.number().int().min(0).max(1_000_000_000).default(0),
+});
+export const createMeetingSchema = z
+  .object({
+    title: z.string().trim().min(1).max(200),
+    leadId: z.string().min(1).optional(),
+    assignedMemberId: z.string().min(1).optional(),
+    startsAt: z.string().datetime(),
+    endsAt: z.string().datetime().optional(),
+    location: z.string().trim().max(300).optional(),
+    meetingUrl: z.url().max(2048).optional().or(z.literal("")),
+    notes: z.string().trim().max(10_000).optional(),
+  })
+  .refine(
+    (value) => !value.endsAt || value.endsAt >= value.startsAt,
+    "Meeting end must be after its start.",
+  );
 
 export type CreateLeadInput = z.infer<typeof createLeadSchema>;
 export type UpdateLeadInput = z.infer<typeof updateLeadSchema>;
 export type CreateContactInput = z.infer<typeof createContactSchema>;
 export type CreateCompanyInput = z.infer<typeof createCompanySchema>;
 export type CreateActivityInput = z.infer<typeof createActivitySchema>;
+export type CreateInquiryInput = z.infer<typeof createInquirySchema>;
+export type CreateMeetingInput = z.infer<typeof createMeetingSchema>;

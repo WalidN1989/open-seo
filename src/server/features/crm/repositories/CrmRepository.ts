@@ -4,7 +4,9 @@ import {
   crmActivities,
   crmCompanies,
   crmContacts,
+  crmInquiries,
   crmLeads,
+  crmMeetings,
   crmPipelineStages,
   member,
 } from "@/db/schema";
@@ -13,6 +15,8 @@ import type {
   CreateCompanyInput,
   CreateContactInput,
   CreateLeadInput,
+  CreateInquiryInput,
+  CreateMeetingInput,
   UpdateLeadInput,
 } from "@/types/schemas/crm";
 
@@ -274,16 +278,63 @@ async function createActivity(
   return row;
 }
 
+async function listInquiries(organizationId: string) {
+  return db
+    .select()
+    .from(crmInquiries)
+    .where(eq(crmInquiries.organizationId, organizationId))
+    .orderBy(desc(crmInquiries.updatedAt));
+}
+
+async function createInquiry(
+  organizationId: string,
+  input: CreateInquiryInput,
+) {
+  const [row] = await db
+    .insert(crmInquiries)
+    .values({ id: crypto.randomUUID(), organizationId, ...input })
+    .returning();
+  return row;
+}
+
+async function listMeetings(organizationId: string) {
+  return db
+    .select()
+    .from(crmMeetings)
+    .where(eq(crmMeetings.organizationId, organizationId))
+    .orderBy(desc(crmMeetings.startsAt));
+}
+
+async function createMeeting(
+  organizationId: string,
+  input: CreateMeetingInput,
+) {
+  const [row] = await db
+    .insert(crmMeetings)
+    .values({
+      id: crypto.randomUUID(),
+      organizationId,
+      ...input,
+      meetingUrl: input.meetingUrl || null,
+    })
+    .returning();
+  return row;
+}
+
 export const CrmRepository = {
   createActivity,
   createCompany,
   createContact,
+  createInquiry,
   createLead,
+  createMeeting,
   createStages,
   listActivities,
   listCompanies,
   listContacts,
+  listInquiries,
   listLeads,
+  listMeetings,
   listStages,
   leadBelongsToOrganization,
   updateLead,

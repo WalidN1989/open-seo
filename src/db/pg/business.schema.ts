@@ -628,12 +628,14 @@ export const webhookDeliveries = pgTable(
       .notNull()
       .references(() => webhookEndpoints.id, { onDelete: "cascade" }),
     eventType: text("event_type").notNull(),
+    payloadJson: text("payload_json").notNull().default("{}"),
     status: text("status").notNull().default("pending"),
     responseStatus: integer("response_status"),
     attemptCount: integer("attempt_count").notNull().default(0),
     lastAttemptAt: text("last_attempt_at"),
     nextAttemptAt: text("next_attempt_at"),
     errorMessage: text("error_message"),
+    responseBody: text("response_body"),
     createdAt: createdAt(),
   },
   (table) => [

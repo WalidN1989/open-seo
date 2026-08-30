@@ -1,10 +1,15 @@
+/* oxlint-disable max-lines */
 import { and, desc, eq } from "drizzle-orm";
 import { db } from "@/db";
 import {
   integrationConnections,
+  crmContacts,
   voiceAgentConfigs,
+  voiceConversationMessages,
   voiceConversations,
+  webhookDeliveries,
   webhookEndpoints,
+  webhookSubscriptions,
   whatsappAutomationRules,
   whatsappCampaigns,
   whatsappConnections,
@@ -17,8 +22,14 @@ import type { z } from "zod";
 import type {
   createIntegrationSchema,
   createVoiceAgentSchema,
+  appendVoiceTranscriptSchema,
+  startVoiceConversationSchema,
   createWhatsappConnectionSchema,
+  createWhatsappAutomationSchema,
+  createWhatsappCampaignSchema,
+  createWhatsappOrderSchema,
   createWhatsappTemplateSchema,
+  createWebhookEndpointSchema,
 } from "@/types/schemas/communications";
 import type {
   InboundWhatsappMessage,
@@ -254,8 +265,66 @@ async function createWhatsappTemplate(
   return row;
 }
 
+async function whatsappEntityBelongsToOrganization(
+  organizationId: string,
+  entity: "connection" | "template" | "conversation" | "contact",
+  id: string,
+) {
+  const tables = {
+    connection: whatsappConnections,
+    template: whatsappTemplates,
+    conversation: whatsappConversations,
+    contact: crmContacts,
+  } as const;
+  const table = tables[entity];
+  const [row] = await db
+    .select({ id: table.id })
+    .from(table)
+    .where(and(eq(table.id, id), eq(table.organizationId, organizationId)))
+    .limit(1);
+  return Boolean(row);
+}
+
+async function createWhatsappCampaign(
+  organizationId: string,
+  input: z.infer<typeof createWhatsappCampaignSchema>,
+) {
+  const [row] = await db
+    .insert(whatsappCampaigns)
+    .values({ id: crypto.randomUUID(), organizationId, ...input })
+    .returning();
+  return row;
+}
+
+async function createWhatsappAutomation(
+  organizationId: string,
+  input: z.infer<typeof createWhatsappAutomationSchema>,
+) {
+  const [row] = await db
+    .insert(whatsappAutomationRules)
+    .values({
+      id: crypto.randomUUID(),
+      organizationId,
+      ...input,
+      status: "active",
+    })
+    .returning();
+  return row;
+}
+
+async function createWhatsappOrder(
+  organizationId: string,
+  input: z.infer<typeof createWhatsappOrderSchema>,
+) {
+  const [row] = await db
+    .insert(whatsappOrderRequests)
+    .values({ id: crypto.randomUUID(), organizationId, ...input })
+    .returning();
+  return row;
+}
+
 async function getVoiceWorkspace(organizationId: string) {
-  const [agents, conversations] = await Promise.all([
+  const [agents, conversations, messages] = await Promise.all([
     db
       .select()
       .from(voiceAgentConfigs)
@@ -266,8 +335,14 @@ async function getVoiceWorkspace(organizationId: string) {
       .from(voiceConversations)
       .where(eq(voiceConversations.organizationId, organizationId))
       .orderBy(desc(voiceConversations.startedAt)),
+    db
+      .select()
+      .from(voiceConversationMessages)
+      .where(eq(voiceConversationMessages.organizationId, organizationId))
+      .orderBy(desc(voiceConversationMessages.createdAt))
+      .limit(500),
   ]);
-  return { agents, conversations };
+  return { agents, conversations, messages };
 }
 
 async function createVoiceAgent(
@@ -281,8 +356,101 @@ async function createVoiceAgent(
   return row;
 }
 
+async function getVoiceAgent(organizationId: string, agentConfigId: string) {
+  const [agent] = await db
+    .select()
+    .from(voiceAgentConfigs)
+    .where(
+      and(
+        eq(voiceAgentConfigs.id, agentConfigId),
+        eq(voiceAgentConfigs.organizationId, organizationId),
+      ),
+    )
+    .limit(1);
+  return agent;
+}
+
+async function contactBelongsToOrganization(
+  organizationId: string,
+  contactId: string,
+) {
+  const [contact] = await db
+    .select({ id: crmContacts.id })
+    .from(crmContacts)
+    .where(
+      and(
+        eq(crmContacts.id, contactId),
+        eq(crmContacts.organizationId, organizationId),
+      ),
+    )
+    .limit(1);
+  return Boolean(contact);
+}
+
+async function startVoiceConversation(
+  organizationId: string,
+  input: z.infer<typeof startVoiceConversationSchema>,
+) {
+  const [conversation] = await db
+    .insert(voiceConversations)
+    .values({
+      id: crypto.randomUUID(),
+      organizationId,
+      ...input,
+      channel: "browser",
+      startedAt: new Date().toISOString(),
+    })
+    .returning();
+  return conversation;
+}
+
+async function getVoiceConversation(
+  organizationId: string,
+  conversationId: string,
+) {
+  const [conversation] = await db
+    .select()
+    .from(voiceConversations)
+    .where(
+      and(
+        eq(voiceConversations.id, conversationId),
+        eq(voiceConversations.organizationId, organizationId),
+      ),
+    )
+    .limit(1);
+  return conversation;
+}
+
+async function appendVoiceTranscript(
+  organizationId: string,
+  input: z.infer<typeof appendVoiceTranscriptSchema>,
+) {
+  const [message] = await db
+    .insert(voiceConversationMessages)
+    .values({ id: crypto.randomUUID(), organizationId, ...input })
+    .returning();
+  return message;
+}
+
+async function endVoiceConversation(
+  organizationId: string,
+  conversationId: string,
+) {
+  const [conversation] = await db
+    .update(voiceConversations)
+    .set({ status: "completed", endedAt: new Date().toISOString() })
+    .where(
+      and(
+        eq(voiceConversations.id, conversationId),
+        eq(voiceConversations.organizationId, organizationId),
+      ),
+    )
+    .returning();
+  return conversation;
+}
+
 async function getIntegrationsWorkspace(organizationId: string) {
-  const [connections, webhooks] = await Promise.all([
+  const [connections, webhooks, subscriptions, deliveries] = await Promise.all([
     db
       .select()
       .from(integrationConnections)
@@ -293,8 +461,138 @@ async function getIntegrationsWorkspace(organizationId: string) {
       .from(webhookEndpoints)
       .where(eq(webhookEndpoints.organizationId, organizationId))
       .orderBy(desc(webhookEndpoints.createdAt)),
+    db
+      .select()
+      .from(webhookSubscriptions)
+      .where(eq(webhookSubscriptions.organizationId, organizationId)),
+    db
+      .select()
+      .from(webhookDeliveries)
+      .where(eq(webhookDeliveries.organizationId, organizationId))
+      .orderBy(desc(webhookDeliveries.createdAt))
+      .limit(50),
   ]);
-  return { connections, webhooks };
+  return { connections, webhooks, subscriptions, deliveries };
+}
+
+async function createWebhookEndpoint(
+  organizationId: string,
+  input: z.infer<typeof createWebhookEndpointSchema>,
+) {
+  const endpointId = crypto.randomUUID();
+  const [endpoint] = await db
+    .insert(webhookEndpoints)
+    .values({
+      id: endpointId,
+      organizationId,
+      name: input.name,
+      direction: "outbound",
+      url: input.url,
+      secretReference: input.secretReference,
+    })
+    .returning();
+  await db.insert(webhookSubscriptions).values(
+    input.eventTypes.map((eventType) => ({
+      id: crypto.randomUUID(),
+      organizationId,
+      endpointId,
+      eventType,
+    })),
+  );
+  return endpoint;
+}
+
+async function getWebhookEndpoint(organizationId: string, endpointId: string) {
+  const [endpoint] = await db
+    .select()
+    .from(webhookEndpoints)
+    .where(
+      and(
+        eq(webhookEndpoints.id, endpointId),
+        eq(webhookEndpoints.organizationId, organizationId),
+      ),
+    )
+    .limit(1);
+  return endpoint;
+}
+
+async function listWebhookEndpointsForEvent(
+  organizationId: string,
+  eventType: string,
+) {
+  return db
+    .select({ endpoint: webhookEndpoints })
+    .from(webhookSubscriptions)
+    .innerJoin(
+      webhookEndpoints,
+      eq(webhookSubscriptions.endpointId, webhookEndpoints.id),
+    )
+    .where(
+      and(
+        eq(webhookSubscriptions.organizationId, organizationId),
+        eq(webhookSubscriptions.eventType, eventType),
+        eq(webhookEndpoints.status, "active"),
+      ),
+    );
+}
+
+async function createWebhookDelivery(
+  organizationId: string,
+  endpointId: string,
+  eventType: string,
+  payloadJson: string,
+) {
+  const [delivery] = await db
+    .insert(webhookDeliveries)
+    .values({
+      id: crypto.randomUUID(),
+      organizationId,
+      endpointId,
+      eventType,
+      payloadJson,
+    })
+    .returning();
+  return delivery;
+}
+
+async function getWebhookDelivery(organizationId: string, deliveryId: string) {
+  const [delivery] = await db
+    .select()
+    .from(webhookDeliveries)
+    .where(
+      and(
+        eq(webhookDeliveries.id, deliveryId),
+        eq(webhookDeliveries.organizationId, organizationId),
+      ),
+    )
+    .limit(1);
+  return delivery;
+}
+
+async function updateWebhookDelivery(
+  organizationId: string,
+  deliveryId: string,
+  values: {
+    status: string;
+    responseStatus?: number;
+    responseBody?: string;
+    attemptCount: number;
+    lastAttemptAt: string;
+    nextAttemptAt?: string | null;
+    errorMessage?: string | null;
+  },
+) {
+  const [delivery] = await db
+    .update(webhookDeliveries)
+    .set(values)
+    .where(
+      and(
+        eq(webhookDeliveries.id, deliveryId),
+        eq(webhookDeliveries.organizationId, organizationId),
+      ),
+    )
+    .returning();
+  return delivery;
 }
 
 async function createIntegration(
@@ -314,18 +612,34 @@ async function createIntegration(
 }
 
 export const CommunicationsRepository = {
+  appendVoiceTranscript,
   completeWhatsappMessage,
+  contactBelongsToOrganization,
   createIntegration,
   createQueuedWhatsappMessage,
   createVoiceAgent,
+  createWebhookDelivery,
+  createWebhookEndpoint,
   createWhatsappConnection,
+  createWhatsappAutomation,
+  createWhatsappCampaign,
+  createWhatsappOrder,
   createWhatsappTemplate,
+  endVoiceConversation,
   getIntegrationsWorkspace,
   getVoiceWorkspace,
+  getVoiceAgent,
+  getVoiceConversation,
+  getWebhookDelivery,
+  getWebhookEndpoint,
+  listWebhookEndpointsForEvent,
   getWhatsappWorkspace,
   getWhatsappConnectionById,
   getWhatsappConversationForSend,
   ingestWhatsappMessage,
   markWhatsappConnectionConnected,
+  startVoiceConversation,
   updateWhatsappDelivery,
+  updateWebhookDelivery,
+  whatsappEntityBelongsToOrganization,
 };

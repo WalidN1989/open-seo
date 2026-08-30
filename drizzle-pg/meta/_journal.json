@@ -176,6 +176,13 @@
       "when": 1788062593841,
       "tag": "0024_panoramic_morgan_stark",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1788063136801,
+      "tag": "0025_adorable_landau",
+      "breakpoints": true
     }
   ]
 }

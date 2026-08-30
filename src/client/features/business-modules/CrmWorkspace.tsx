@@ -1,17 +1,21 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { Building2, Plus, UserRound } from "lucide-react";
+import { Building2, CalendarDays, Inbox, Plus, UserRound } from "lucide-react";
 import { toast } from "sonner";
 import {
   createCrmCompany,
   createCrmContact,
+  createCrmInquiry,
+  createCrmMeeting,
   getCrmWorkspace,
 } from "@/serverFunctions/crm";
 import { getStandardErrorMessage } from "@/client/lib/error-messages";
 
 export function CrmWorkspace() {
   const queryClient = useQueryClient();
-  const [mode, setMode] = useState<"contact" | "company" | null>(null);
+  const [mode, setMode] = useState<
+    "contact" | "company" | "inquiry" | "meeting" | null
+  >(null);
   const query = useQuery({
     queryKey: ["crm", "workspace"],
     queryFn: () => getCrmWorkspace(),
@@ -40,6 +44,35 @@ export function CrmWorkspace() {
     },
     onError: (error) => toast.error(getStandardErrorMessage(error)),
   });
+  const inquiryMutation = useMutation({
+    mutationFn: (data: {
+      title: string;
+      product?: string;
+      description?: string;
+      targetValueCents: number;
+    }) => createCrmInquiry({ data }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["crm", "workspace"] });
+      setMode(null);
+      toast.success("Inquiry created");
+    },
+    onError: (error) => toast.error(getStandardErrorMessage(error)),
+  });
+  const meetingMutation = useMutation({
+    mutationFn: (data: {
+      title: string;
+      startsAt: string;
+      endsAt?: string;
+      location?: string;
+      meetingUrl?: string;
+    }) => createCrmMeeting({ data }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["crm", "workspace"] });
+      setMode(null);
+      toast.success("Meeting scheduled");
+    },
+    onError: (error) => toast.error(getStandardErrorMessage(error)),
+  });
   if (query.isLoading)
     return (
       <div className="flex justify-center py-16">
@@ -64,6 +97,18 @@ export function CrmWorkspace() {
           </p>
         </div>
         <div className="flex gap-2">
+          <button
+            className="btn btn-ghost btn-sm"
+            onClick={() => setMode("meeting")}
+          >
+            <CalendarDays className="size-4" /> Meeting
+          </button>
+          <button
+            className="btn btn-ghost btn-sm"
+            onClick={() => setMode("inquiry")}
+          >
+            <Inbox className="size-4" /> Inquiry
+          </button>
           <button
             className="btn btn-outline btn-sm"
             onClick={() => setMode("company")}
@@ -101,6 +146,37 @@ export function CrmWorkspace() {
               name: data.name,
               website: data.website,
               phone: data.phone,
+            })
+          }
+        />
+      ) : null}
+      {mode === "inquiry" ? (
+        <InlineForm
+          fields={["title", "product", "targetValue", "description"]}
+          pending={inquiryMutation.isPending}
+          onSubmit={(data) =>
+            inquiryMutation.mutate({
+              title: data.title,
+              product: data.product,
+              description: data.description,
+              targetValueCents: Math.round(Number(data.targetValue || 0) * 100),
+            })
+          }
+        />
+      ) : null}
+      {mode === "meeting" ? (
+        <InlineForm
+          fields={["title", "startsAt", "endsAt", "location", "meetingUrl"]}
+          pending={meetingMutation.isPending}
+          onSubmit={(data) =>
+            meetingMutation.mutate({
+              title: data.title,
+              startsAt: new Date(data.startsAt).toISOString(),
+              endsAt: data.endsAt
+                ? new Date(data.endsAt).toISOString()
+                : undefined,
+              location: data.location,
+              meetingUrl: data.meetingUrl,
             })
           }
         />
@@ -170,6 +246,57 @@ export function CrmWorkspace() {
           </div>
         </section>
       </div>
+      <div className="grid gap-6 lg:grid-cols-2">
+        <section className="rounded-xl border border-base-300">
+          <div className="border-b border-base-300 p-4">
+            <h2 className="font-semibold">
+              Inquiries{" "}
+              <span className="badge badge-sm ml-1">
+                {query.data!.inquiries.length}
+              </span>
+            </h2>
+          </div>
+          <div className="divide-y divide-base-300">
+            {query.data!.inquiries.length ? (
+              query.data!.inquiries.map((inquiry) => (
+                <div key={inquiry.id} className="p-4">
+                  <p className="font-medium">{inquiry.title}</p>
+                  <p className="text-xs text-base-content/50">
+                    {inquiry.product ?? "General"} · {inquiry.status}
+                  </p>
+                </div>
+              ))
+            ) : (
+              <Empty text="No inquiries yet" />
+            )}
+          </div>
+        </section>
+        <section className="rounded-xl border border-base-300">
+          <div className="border-b border-base-300 p-4">
+            <h2 className="font-semibold">
+              Meetings{" "}
+              <span className="badge badge-sm ml-1">
+                {query.data!.meetings.length}
+              </span>
+            </h2>
+          </div>
+          <div className="divide-y divide-base-300">
+            {query.data!.meetings.length ? (
+              query.data!.meetings.map((meeting) => (
+                <div key={meeting.id} className="p-4">
+                  <p className="font-medium">{meeting.title}</p>
+                  <p className="text-xs text-base-content/50">
+                    {new Date(meeting.startsAt).toLocaleString()} ·{" "}
+                    {meeting.status}
+                  </p>
+                </div>
+              ))
+            ) : (
+              <Empty text="No meetings scheduled" />
+            )}
+          </div>
+        </section>
+      </div>
     </div>
   );
 }
@@ -200,6 +327,11 @@ function InlineForm({
         <input
           key={field}
           name={field}
+          type={
+            field === "startsAt" || field === "endsAt"
+              ? "datetime-local"
+              : "text"
+          }
           required={index === 0}
           className="input input-bordered input-sm min-w-40 flex-1"
           placeholder={field.replace(/([A-Z])/g, " $1")}
