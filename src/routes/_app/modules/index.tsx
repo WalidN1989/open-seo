@@ -1,5 +1,6 @@
-import { Link, createFileRoute } from "@tanstack/react-router";
+import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect } from "react";
 import {
   Blocks,
   Bot,
@@ -34,6 +35,7 @@ const icons = {
 } satisfies Record<BusinessModuleKey, typeof Blocks>;
 
 function BusinessModulesPage() {
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const accessQuery = useQuery({
     queryKey: ["business-modules"],
@@ -56,6 +58,25 @@ function BusinessModulesPage() {
   });
   const canManageStaff =
     accessQuery.data?.some((module) => module.canConfigureEntitlement) ?? false;
+  const firstAvailableModule = accessQuery.data?.find(
+    (module) => module.enabled && module.permission,
+  );
+
+  useEffect(() => {
+    if (!accessQuery.isSuccess || canManageStaff || !firstAvailableModule)
+      return;
+    void navigate(
+      firstAvailableModule.key === "crm"
+        ? { to: "/modules/crm", replace: true }
+        : firstAvailableModule.key === "integrations"
+          ? { to: "/modules/integrations", replace: true }
+          : {
+              to: "/modules/$moduleKey",
+              params: { moduleKey: firstAvailableModule.key },
+              replace: true,
+            },
+    );
+  }, [accessQuery.isSuccess, canManageStaff, firstAvailableModule, navigate]);
   const staffQuery = useQuery({
     queryKey: ["business-modules", "staff"],
     queryFn: () => getBusinessModuleStaffAccess(),
@@ -86,6 +107,9 @@ function BusinessModulesPage() {
         getStandardErrorMessage(error, "We couldn't update staff access."),
       ),
   });
+  const leadsModule = accessQuery.data?.find(
+    (module) => module.key === "leads",
+  );
 
   return (
     <div className="h-full overflow-auto bg-base-100 px-4 py-8 pb-24 md:px-6 md:py-12 md:pb-8">
@@ -99,7 +123,8 @@ function BusinessModulesPage() {
           </p>
         </div>
 
-        {accessQuery.isLoading ? (
+        {accessQuery.isLoading ||
+        (accessQuery.isSuccess && !canManageStaff && firstAvailableModule) ? (
           <div className="flex justify-center py-16">
             <span className="loading loading-spinner loading-md" />
           </div>
@@ -110,67 +135,105 @@ function BusinessModulesPage() {
               "We couldn't load the business modules.",
             )}
           </div>
+        ) : !canManageStaff ? (
+          <div className="alert alert-info">
+            No business capabilities are available for this account. Ask a
+            workspace owner or administrator to update your access.
+          </div>
         ) : (
           <div className="grid gap-4 md:grid-cols-2">
-            {(accessQuery.data ?? []).map((module) => {
-              const Icon = icons[module.key];
-              return (
-                <article
-                  key={module.key}
-                  className="rounded-xl border border-base-300 bg-base-100 p-5"
-                >
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex min-w-0 gap-3">
-                      <span className="rounded-lg bg-base-200 p-2">
-                        <Icon className="size-5" />
-                      </span>
-                      <div>
-                        <h2 className="font-semibold">{module.label}</h2>
-                        <p className="mt-1 text-sm text-base-content/60">
-                          {module.description}
-                        </p>
+            {(accessQuery.data ?? [])
+              .filter((module) => module.key !== "leads")
+              .map((module) => {
+                const Icon = icons[module.key];
+                return (
+                  <article
+                    key={module.key}
+                    className="rounded-xl border border-base-300 bg-base-100 p-5"
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex min-w-0 gap-3">
+                        <span className="rounded-lg bg-base-200 p-2">
+                          <Icon className="size-5" />
+                        </span>
+                        <div>
+                          <h2 className="font-semibold">{module.label}</h2>
+                          <p className="mt-1 text-sm text-base-content/60">
+                            {module.description}
+                          </p>
+                        </div>
                       </div>
-                    </div>
-                    <span
-                      className={`badge badge-sm ${module.enabled ? "badge-success" : "badge-ghost"}`}
-                    >
-                      {module.enabled ? "Active" : "Inactive"}
-                    </span>
-                  </div>
-
-                  <div className="mt-5 flex items-center justify-between gap-3">
-                    {module.enabled && module.permission ? (
-                      <Link
-                        to="/modules/$moduleKey"
-                        params={{ moduleKey: module.key }}
-                        className="btn btn-primary btn-sm"
+                      <span
+                        className={`badge badge-sm ${module.enabled ? "badge-success" : "badge-ghost"}`}
                       >
-                        Open
-                      </Link>
-                    ) : (
-                      <span className="text-xs text-base-content/50">
-                        Not available to this staff member
+                        {module.enabled ? "Active" : "Inactive"}
                       </span>
-                    )}
-                    {module.canConfigureEntitlement ? (
-                      <input
-                        type="checkbox"
-                        className="toggle toggle-primary toggle-sm"
-                        checked={module.enabled}
-                        disabled={entitlementMutation.isPending}
-                        aria-label={`${module.enabled ? "Disable" : "Enable"} ${module.label}`}
-                        onChange={(event) =>
-                          entitlementMutation.mutate({
-                            moduleKey: module.key,
-                            enabled: event.currentTarget.checked,
-                          })
-                        }
-                      />
+                    </div>
+
+                    <div className="mt-5 flex items-center justify-between gap-3">
+                      {module.enabled && module.permission ? (
+                        <Link
+                          to="/modules/$moduleKey"
+                          params={{ moduleKey: module.key }}
+                          className="btn btn-primary btn-sm"
+                        >
+                          Open
+                        </Link>
+                      ) : (
+                        <span className="text-xs text-base-content/50">
+                          Not available to this staff member
+                        </span>
+                      )}
+                      {module.canConfigureEntitlement ? (
+                        <input
+                          type="checkbox"
+                          className="toggle toggle-primary toggle-sm"
+                          checked={module.enabled}
+                          disabled={entitlementMutation.isPending}
+                          aria-label={`${module.enabled ? "Disable" : "Enable"} ${module.label}`}
+                          onChange={(event) =>
+                            entitlementMutation.mutate({
+                              moduleKey: module.key,
+                              enabled: event.currentTarget.checked,
+                            })
+                          }
+                        />
+                      ) : null}
+                    </div>
+                    {module.key === "crm" && leadsModule ? (
+                      <div className="mt-4 flex items-center justify-between gap-3 border-t border-base-300 pt-4">
+                        <div>
+                          <div className="text-sm font-medium">Leads</div>
+                          <div className="text-xs text-base-content/50">
+                            Capture, qualify, assign, and track prospects.
+                          </div>
+                        </div>
+                        {leadsModule.canConfigureEntitlement ? (
+                          <input
+                            type="checkbox"
+                            className="toggle toggle-primary toggle-sm"
+                            checked={leadsModule.enabled}
+                            disabled={entitlementMutation.isPending}
+                            aria-label={`${leadsModule.enabled ? "Disable" : "Enable"} Leads`}
+                            onChange={(event) =>
+                              entitlementMutation.mutate({
+                                moduleKey: "leads",
+                                enabled: event.currentTarget.checked,
+                              })
+                            }
+                          />
+                        ) : (
+                          <span
+                            className={`badge badge-sm ${leadsModule.enabled ? "badge-success" : "badge-ghost"}`}
+                          >
+                            {leadsModule.enabled ? "Active" : "Inactive"}
+                          </span>
+                        )}
+                      </div>
                     ) : null}
-                  </div>
-                </article>
-              );
-            })}
+                  </article>
+                );
+              })}
           </div>
         )}
 

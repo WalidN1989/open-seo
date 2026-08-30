@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { Blocks, Bot, LayoutGrid, MessagesSquare, PlugZap } from "lucide-react";
+import { Blocks, Bot, MessagesSquare, PlugZap } from "lucide-react";
 import { getBusinessModuleAccess } from "@/serverFunctions/business-modules";
 import {
   businessModuleCatalog,
@@ -119,14 +119,6 @@ export function ModuleSwitcher({
             </Link>
           );
         })}
-        <Link
-          to="/modules"
-          onClick={onNavigate}
-          className="mt-1 flex items-center gap-2.5 rounded-md px-3 py-1.5 text-sm text-base-content/60 transition-colors hover:bg-base-300/30 hover:text-base-content"
-        >
-          <LayoutGrid className="size-4 shrink-0" />
-          <span>Manage access</span>
-        </Link>
       </nav>
     </div>
   );

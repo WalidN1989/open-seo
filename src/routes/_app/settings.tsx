@@ -1,5 +1,6 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { Monitor, Moon, Sun } from "lucide-react";
+import { Link, createFileRoute } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
+import { Monitor, Moon, SlidersHorizontal, Sun } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { AccountSettings } from "@/client/features/settings/AccountSettings";
@@ -9,6 +10,7 @@ import { type ThemePreference, useThemePreference } from "@/client/lib/theme";
 import { authClient, useSession } from "@/lib/auth-client";
 import { isUserClientAuthMode } from "@/lib/auth-mode";
 import { version } from "../../../package.json";
+import { getBusinessModuleAccess } from "@/serverFunctions/business-modules";
 
 export const Route = createFileRoute("/_app/settings")({
   component: SettingsPage,
@@ -31,6 +33,13 @@ function SettingsPage() {
   const [isSaving, setIsSaving] = useState(false);
 
   const analyticsEnabled = session?.user?.analyticsOptedOut !== true;
+  const businessAccess = useQuery({
+    queryKey: ["business-modules", "settings-access"],
+    queryFn: () => getBusinessModuleAccess(),
+    enabled: hasUserAccounts,
+  });
+  const canManageBusinessAccess =
+    businessAccess.data?.some((item) => item.canConfigureEntitlement) ?? false;
 
   async function updateAnalyticsPreference(enabled: boolean) {
     setIsSaving(true);
@@ -97,6 +106,28 @@ function SettingsPage() {
             <AccountSettings />
 
             <TeamSettings />
+
+            {canManageBusinessAccess ? (
+              <section className="space-y-3">
+                <h2 className="flex items-center gap-2 text-sm font-medium text-base-content/50">
+                  <SlidersHorizontal className="size-4" /> Business Access
+                </h2>
+                <div className="flex items-center justify-between gap-6 rounded-lg border border-base-300 p-4">
+                  <div>
+                    <p className="text-sm font-medium">
+                      Capabilities and permissions
+                    </p>
+                    <p className="mt-1 text-sm text-base-content/60">
+                      Choose what this organization and each staff member can
+                      use.
+                    </p>
+                  </div>
+                  <Link to="/modules" className="btn btn-outline btn-sm">
+                    Manage
+                  </Link>
+                </div>
+              </section>
+            ) : null}
 
             <ApiKeySettings />
 

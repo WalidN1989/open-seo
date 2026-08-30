@@ -265,6 +265,12 @@ pipeline.
   customer-facing capabilities. The sidebar calls this area "Business" and
   reserves "module" for internal architecture. This preserves the existing
   OpenSEO theme and workspace UI.
+- **Business Access is owner/admin configuration.** It is linked from Settings,
+  removed from the day-to-day module sidebar, and regular staff who visit the
+  route are sent to their first permitted workspace. CRM and Leads share one
+  access card; the independent Leads entitlement remains available as a nested
+  CRM capability. The staff-permission table still exposes separate columns
+  because those grants are intentionally independent.
 - **The integrations marketplace**: sixteen entries with categories, search and
   state, connection state read from the workspace.
 - **Account settings**: display name, email change, password change, reset link.
