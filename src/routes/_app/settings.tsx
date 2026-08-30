@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { Monitor, Moon, Sun } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { AccountSettings } from "@/client/features/settings/AccountSettings";
 import { ApiKeySettings } from "@/client/features/settings/ApiKeySettings";
 import { type ThemePreference, useThemePreference } from "@/client/lib/theme";
 import { authClient, useSession } from "@/lib/auth-client";
@@ -92,6 +93,8 @@ function SettingsPage() {
 
         {hasUserAccounts ? (
           <>
+            <AccountSettings />
+
             <ApiKeySettings />
 
             <section className="space-y-3">
