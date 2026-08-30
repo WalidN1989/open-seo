@@ -64,8 +64,8 @@ function BusinessModulePage() {
   });
 
   return (
-    <div className="h-full overflow-auto bg-base-100 px-4 py-8 pb-24 md:px-6 md:py-12 md:pb-8">
-      <div className="mx-auto max-w-4xl space-y-6">
+    <div className="h-full overflow-auto bg-base-100 px-4 py-6 pb-24 md:px-6 md:py-7 md:pb-8">
+      <div className="mx-auto w-full max-w-[1500px] space-y-4">
         <Link to="/modules" className="btn btn-ghost btn-sm -ml-2">
           <ArrowLeft className="size-4" />
           Business
@@ -91,12 +91,12 @@ function BusinessModulePage() {
               <>
                 <div>
                   <div className="flex items-center gap-3">
-                    <h1 className="text-2xl font-bold tracking-tight">
+                    <h1 className="text-3xl font-semibold tracking-tight">
                       {module.label}
                     </h1>
                     <span className="badge badge-success badge-sm">Active</span>
                   </div>
-                  <p className="mt-1 text-sm text-base-content/60">
+                  <p className="mt-1 text-base leading-6 text-base-content/65">
                     {module.description}
                   </p>
                 </div>

@@ -997,11 +997,13 @@ function Workspace({
   children: React.ReactNode;
 }) {
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">{title}</h1>
-          <p className="text-sm text-base-content/60">{subtitle}</p>
+          <h1 className="text-3xl font-semibold tracking-tight">{title}</h1>
+          <p className="mt-1 text-base leading-6 text-base-content/65">
+            {subtitle}
+          </p>
         </div>
         <div className="flex gap-2">{actions}</div>
       </div>
@@ -1013,9 +1015,14 @@ function Metrics({ items }: { items: Array<[string, number]> }) {
   return (
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
       {items.map(([label, value]) => (
-        <div key={label} className="rounded-xl border border-base-300 p-4">
-          <p className="text-xs uppercase text-base-content/50">{label}</p>
-          <p className="text-2xl font-semibold">{value}</p>
+        <div
+          key={label}
+          className="rounded-xl border border-base-300 bg-base-100 p-4"
+        >
+          <p className="text-xs font-medium uppercase tracking-wide text-base-content/60">
+            {label}
+          </p>
+          <p className="mt-1 text-2xl font-semibold">{value}</p>
         </div>
       ))}
     </div>
@@ -1032,7 +1039,7 @@ function Panel({
 }) {
   return (
     <section className="rounded-xl border border-base-300">
-      <div className="flex items-center gap-2 border-b border-base-300 p-4">
+      <div className="flex items-center gap-2 border-b border-base-300 px-4 py-3.5">
         <Icon className="size-4" />
         <h2 className="font-semibold">{title}</h2>
       </div>
@@ -1044,12 +1051,12 @@ function Row({ title, detail }: { title: string; detail: string }) {
   return (
     <div className="p-4">
       <p className="font-medium">{title}</p>
-      <p className="text-xs text-base-content/50">{detail}</p>
+      <p className="text-sm text-base-content/60">{detail}</p>
     </div>
   );
 }
 function Empty({ text }: { text: string }) {
-  return <p className="p-8 text-center text-sm text-base-content/40">{text}</p>;
+  return <p className="p-6 text-center text-sm text-base-content/60">{text}</p>;
 }
 function Loading() {
   return (

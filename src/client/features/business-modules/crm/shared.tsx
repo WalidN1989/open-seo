@@ -119,8 +119,8 @@ export function CrmQueryState({
 
 export function CrmStat({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-xl border border-base-300 p-4">
-      <p className="text-xs uppercase tracking-wide text-base-content/50">
+    <div className="rounded-xl border border-base-300 bg-base-100 p-4">
+      <p className="text-xs font-medium uppercase tracking-wide text-base-content/60">
         {label}
       </p>
       <p className="mt-1 text-2xl font-semibold">{value}</p>
@@ -129,7 +129,7 @@ export function CrmStat({ label, value }: { label: string; value: number }) {
 }
 
 function Empty({ text }: { text: string }) {
-  return <p className="p-8 text-center text-sm text-base-content/50">{text}</p>;
+  return <p className="p-6 text-center text-sm text-base-content/60">{text}</p>;
 }
 
 export function CrmPanel({
@@ -143,8 +143,8 @@ export function CrmPanel({
 }) {
   return (
     <section className="rounded-xl border border-base-300">
-      <div className="border-b border-base-300 p-4">
-        <h2 className="font-semibold">
+      <div className="border-b border-base-300 px-4 py-3.5">
+        <h2 className="text-base font-semibold">
           {title} <span className="badge badge-sm ml-1">{count}</span>
         </h2>
       </div>

@@ -60,9 +60,14 @@ function SettingsPage() {
   }
 
   return (
-    <div className="h-full overflow-auto bg-base-100 px-4 py-8 pb-24 md:px-6 md:py-12 md:pb-8">
-      <div className="mx-auto max-w-3xl space-y-10">
-        <h1 className="text-2xl font-bold tracking-tight">Settings</h1>
+    <div className="h-full overflow-auto bg-base-100 px-4 py-6 pb-24 md:px-6 md:py-7 md:pb-8">
+      <div className="mx-auto w-full max-w-5xl space-y-8">
+        <div>
+          <h1 className="text-3xl font-semibold tracking-tight">Settings</h1>
+          <p className="mt-1 text-base leading-6 text-base-content/65">
+            Manage your account, team, access, and product preferences.
+          </p>
+        </div>
 
         <section className="space-y-3">
           <h2 className="text-sm font-medium text-base-content/50">

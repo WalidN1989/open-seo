@@ -271,6 +271,13 @@ pipeline.
   access card; the independent Leads entitlement remains available as a nested
   CRM capability. The staff-permission table still exposes separate columns
   because those grants are intentionally independent.
+- **Business workspaces use the available viewport.** CRM, Leads, WhatsApp,
+  Voice Agent, Integrations and Settings now share a wider, denser workspace
+  rhythm inspired by Neon's dashboard structure while retaining OpenSEO's
+  existing palette and controls. Page titles and supporting copy have stronger
+  size and contrast, cards use tighter vertical spacing, and the integrations
+  catalogue adds a fourth column on very wide screens so more useful content
+  stays visible without making tablet or mobile layouts cramped.
 - **The integrations marketplace**: sixteen entries with categories, search and
   state, connection state read from the workspace.
 - **Account settings**: display name, email change, password change, reset link.

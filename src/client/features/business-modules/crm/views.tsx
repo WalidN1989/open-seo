@@ -31,8 +31,10 @@ function CrmHeader({
     <div className="space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">{title}</h1>
-          <p className="text-sm text-base-content/60">{description}</p>
+          <h1 className="text-3xl font-semibold tracking-tight">{title}</h1>
+          <p className="mt-1 text-base leading-6 text-base-content/65">
+            {description}
+          </p>
         </div>
         <div className="flex gap-2">
           <button
@@ -161,7 +163,7 @@ export function CrmOverviewView() {
   );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <CrmHeader
         crm={crm}
         title="CRM"
@@ -173,7 +175,7 @@ export function CrmOverviewView() {
         <CrmStat label="Open inquiries" value={openInquiries.length} />
         <CrmStat label="Upcoming meetings" value={upcomingMeetings.length} />
       </div>
-      <div className="grid gap-6 xl:grid-cols-2">
+      <div className="grid gap-4 xl:grid-cols-2">
         <CrmPanel title="Contacts" count={workspace.contacts.length}>
           <ContactRows workspace={workspace} />
         </CrmPanel>

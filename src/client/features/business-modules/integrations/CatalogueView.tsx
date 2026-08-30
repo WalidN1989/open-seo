@@ -46,10 +46,10 @@ export function IntegrationsCatalogueView() {
   }, [category, search]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div>
-        <h1 className="text-2xl font-bold">Integrations</h1>
-        <p className="text-sm text-base-content/60">
+        <h1 className="text-3xl font-semibold tracking-tight">Integrations</h1>
+        <p className="mt-1 text-base leading-6 text-base-content/65">
           Connect the tools you already run. Credentials are read from the
           deployment and never stored in the workspace database.
         </p>
@@ -88,7 +88,7 @@ export function IntegrationsCatalogueView() {
         </div>
       ) : null}
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
         {visible.map((entry) => (
           <IntegrationCard
             key={entry.key}
@@ -115,16 +115,16 @@ function IntegrationCard({
   connected: boolean;
 }) {
   return (
-    <section className="flex flex-col rounded-xl border border-base-300 p-5">
+    <section className="flex flex-col rounded-xl border border-base-300 bg-base-100 p-4">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <h2 className="font-semibold">{entry.name}</h2>
-          <p className="text-xs text-base-content/50">{entry.tagline}</p>
+          <h2 className="text-base font-semibold">{entry.name}</h2>
+          <p className="text-sm text-base-content/60">{entry.tagline}</p>
         </div>
         <StateBadge entry={entry} connected={connected} />
       </div>
 
-      <p className="mt-3 grow text-sm text-base-content/70">
+      <p className="mt-3 grow text-sm leading-5 text-base-content/75">
         {entry.description}
       </p>
 
