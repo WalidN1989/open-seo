@@ -217,6 +217,8 @@ export function WhatsappWorkspace() {
         <SimpleForm
           fields={[
             "displayPhoneNumber",
+            "phoneNumberId",
+            "businessAccountId",
             "externalAccountId",
             "credentialReference",
           ]}

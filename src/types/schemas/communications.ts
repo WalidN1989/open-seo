@@ -5,7 +5,12 @@ export const createWhatsappConnectionSchema = z.object({
   displayPhoneNumber: z.string().trim().max(40).optional(),
   externalAccountId: z.string().trim().max(200).optional(),
   credentialReference: z.string().trim().max(500).optional(),
+  // Meta's own identifiers. phone_number_id is what an inbound webhook is
+  // routed by, so a Meta connection created without one receives nothing.
+  phoneNumberId: z.string().trim().max(200).optional(),
+  businessAccountId: z.string().trim().max(200).optional(),
 });
+
 export const createWhatsappTemplateSchema = z.object({
   name: z.string().trim().min(1).max(100),
   languageCode: z.string().trim().min(2).max(10).default("en"),

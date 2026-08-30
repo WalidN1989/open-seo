@@ -1,6 +1,7 @@
 /* oxlint-disable max-lines, max-depth, max-params */
 import type { z } from "zod";
 import { BusinessModuleService } from "@/server/features/business-modules/services/BusinessModuleService";
+import { AppError } from "@/server/lib/errors";
 import {
   decryptCredentials,
   encryptCredentials,
@@ -100,6 +101,15 @@ async function createWhatsappConnection(
     "whatsapp",
     "admin",
   );
+  // A Meta connection is routed by phone_number_id. Creating one without it
+  // produces a connection that looks configured and silently receives nothing,
+  // so it is refused at the boundary rather than discovered later.
+  if (input.provider === "meta_cloud" && !input.phoneNumberId) {
+    throw new AppError(
+      "VALIDATION_ERROR",
+      "A Meta connection needs its phone number ID from WhatsApp Manager, or it cannot receive messages.",
+    );
+  }
   const connection = await CommunicationsRepository.createWhatsappConnection(
     organizationId,
     input,
