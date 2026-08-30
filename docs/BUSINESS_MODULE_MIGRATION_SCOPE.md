@@ -243,6 +243,22 @@ pipeline.
 
 ### Done
 
+- **A provider is connected from its own page.** The Connect button on a
+  provider detail page was a link to the connections list, so the page that
+  explains how to connect could not connect. It now takes the name and
+  credential reference in place, creates the connection, and verifies it with
+  a real authenticated request, reporting what the provider said. Updating a
+  reference and removing a connection did not exist and are added — both
+  admin-only, organization-scoped and audited. Changing a reference resets the
+  connection to unverified, because the keys it reads are no longer the ones
+  that were checked. (`17cf951`)
+- **Leads has a dense table beside its board.** Nineteen columns, sorting, a
+  search box, stage/health/priority filter chips, and a column picker that
+  persists per browser. The board is kept; the toggle chooses between them.
+  Health is computed from status, score and silence rather than stored, so a
+  lead marked hot that nobody has touched in a month reads cold. Added
+  `crm_companies.industry`, `crm_companies.country` and `crm_leads.category`
+  to both dialects. (`259323c`)
 - Tenant module entitlements, staff permissions, Leads and CRM workspaces, the
   WhatsApp inbox/templates/campaigns/automations and order-request surfaces,
   signed Meta/Twilio callbacks, provider delivery, browser voice capture,
@@ -541,6 +557,22 @@ pending. Do not build them yet.
   a copyable link, but no Loops template is configured, so the link is the
   mechanism today.
 - The credential and account items under Pending human touch below.
+
+## Sources module: not yet built
+
+Agreed 2026-08-30. The Leads table deliberately omits the acquisition-specific
+columns from the `mastercrmaus` reference — directory profile links, source
+rating, review counts, evidence score. They describe _where a lead came from_,
+not the lead, and belong to a sources module that does not exist yet.
+
+That module is: a run of a provider search (Apify or Firecrawl, both already
+connectable), the candidates it returned, a review queue, and an idempotent
+promotion of a reviewed candidate into a lead and its company/contact. Promotion
+must be idempotent on (organization, source, external id) so re-running a search
+cannot duplicate a lead that was already promoted.
+
+Until it exists, leads arrive by hand, by Hunter.io domain import, or by
+promotion from an inquiry.
 
 ## Deferred hardening
 
