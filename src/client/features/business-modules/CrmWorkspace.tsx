@@ -8,6 +8,7 @@ import {
   createCrmInquiry,
   createCrmMeeting,
   getCrmWorkspace,
+  promoteCrmInquiry,
 } from "@/serverFunctions/crm";
 import { getStandardErrorMessage } from "@/client/lib/error-messages";
 
@@ -70,6 +71,18 @@ export function CrmWorkspace() {
       await queryClient.invalidateQueries({ queryKey: ["crm", "workspace"] });
       setMode(null);
       toast.success("Meeting scheduled");
+    },
+    onError: (error) => toast.error(getStandardErrorMessage(error)),
+  });
+  const promoteInquiryMutation = useMutation({
+    mutationFn: (inquiryId: string) =>
+      promoteCrmInquiry({ data: { inquiryId, priority: "medium" } }),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["crm", "workspace"] }),
+        queryClient.invalidateQueries({ queryKey: ["crm", "leads"] }),
+      ]);
+      toast.success("Inquiry promoted to the Leads pipeline");
     },
     onError: (error) => toast.error(getStandardErrorMessage(error)),
   });
@@ -259,11 +272,25 @@ export function CrmWorkspace() {
           <div className="divide-y divide-base-300">
             {query.data!.inquiries.length ? (
               query.data!.inquiries.map((inquiry) => (
-                <div key={inquiry.id} className="p-4">
-                  <p className="font-medium">{inquiry.title}</p>
-                  <p className="text-xs text-base-content/50">
-                    {inquiry.product ?? "General"} · {inquiry.status}
-                  </p>
+                <div
+                  key={inquiry.id}
+                  className="flex items-center justify-between gap-3 p-4"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate font-medium">{inquiry.title}</p>
+                    <p className="text-xs text-base-content/50">
+                      {inquiry.product ?? "General"} · {inquiry.status}
+                    </p>
+                  </div>
+                  {inquiry.status === "open" ? (
+                    <button
+                      className="btn btn-primary btn-xs"
+                      disabled={promoteInquiryMutation.isPending}
+                      onClick={() => promoteInquiryMutation.mutate(inquiry.id)}
+                    >
+                      Promote to lead
+                    </button>
+                  ) : null}
                 </div>
               ))
             ) : (

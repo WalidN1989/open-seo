@@ -9,6 +9,7 @@ import {
   createInquirySchema,
   createLeadSchema,
   createMeetingSchema,
+  promoteInquirySchema,
   updateLeadSchema,
 } from "@/types/schemas/crm";
 
@@ -63,6 +64,13 @@ export const createCrmMeeting = createServerFn({ method: "POST" })
   .validator(createMeetingSchema)
   .handler(({ context, data }) =>
     CrmService.createMeeting(context.organizationId, context.userId, data),
+  );
+
+export const promoteCrmInquiry = createServerFn({ method: "POST" })
+  .middleware(requireAuthenticatedContext)
+  .validator(promoteInquirySchema)
+  .handler(({ context, data }) =>
+    CrmService.promoteInquiry(context.organizationId, context.userId, data),
   );
 
 export const getCrmLeadActivities = createServerFn({ method: "POST" })

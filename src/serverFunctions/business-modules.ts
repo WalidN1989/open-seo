@@ -47,6 +47,12 @@ export const getBusinessModuleStaffAccess = createServerFn({ method: "GET" })
     ),
   );
 
+export const getBusinessModuleAuditTrail = createServerFn({ method: "GET" })
+  .middleware(requireAuthenticatedContext)
+  .handler(async ({ context }) =>
+    BusinessModuleService.getAuditTrail(context.organizationId, context.userId),
+  );
+
 export const setBusinessModuleStaffPermission = createServerFn({
   method: "POST",
 })

@@ -183,6 +183,13 @@
       "when": 1788063136801,
       "tag": "0025_adorable_landau",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1788065552674,
+      "tag": "0026_tearful_vance_astro",
+      "breakpoints": true
     }
   ]
 }

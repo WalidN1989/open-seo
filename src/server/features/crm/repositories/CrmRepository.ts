@@ -5,6 +5,7 @@ import {
   crmCompanies,
   crmContacts,
   crmInquiries,
+  crmInquiryLeads,
   crmLeads,
   crmMeetings,
   crmPipelineStages,
@@ -297,6 +298,49 @@ async function createInquiry(
   return row;
 }
 
+async function getInquiry(organizationId: string, inquiryId: string) {
+  const [row] = await db
+    .select()
+    .from(crmInquiries)
+    .where(
+      and(
+        eq(crmInquiries.organizationId, organizationId),
+        eq(crmInquiries.id, inquiryId),
+      ),
+    )
+    .limit(1);
+  return row ?? null;
+}
+
+async function linkInquiryToLead(
+  organizationId: string,
+  inquiryId: string,
+  leadId: string,
+) {
+  await db.insert(crmInquiryLeads).values({
+    id: crypto.randomUUID(),
+    organizationId,
+    inquiryId,
+    leadId,
+    role: "promoted",
+  });
+  const [inquiry] = await db
+    .update(crmInquiries)
+    .set({
+      wonLeadId: leadId,
+      status: "won",
+      updatedAt: new Date().toISOString(),
+    })
+    .where(
+      and(
+        eq(crmInquiries.organizationId, organizationId),
+        eq(crmInquiries.id, inquiryId),
+      ),
+    )
+    .returning();
+  return inquiry;
+}
+
 async function listMeetings(organizationId: string) {
   return db
     .select()
@@ -339,4 +383,6 @@ export const CrmRepository = {
   leadBelongsToOrganization,
   updateLead,
   validateLeadRelations,
+  getInquiry,
+  linkInquiryToLead,
 };

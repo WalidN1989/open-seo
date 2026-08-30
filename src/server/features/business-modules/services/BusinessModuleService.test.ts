@@ -8,9 +8,16 @@ const repository = vi.hoisted(() => ({
   setEntitlement: vi.fn(),
   setMemberPermission: vi.fn(),
 }));
+const auditRepository = vi.hoisted(() => ({
+  list: vi.fn(),
+  record: vi.fn(),
+}));
 
 vi.mock("../repositories/BusinessModuleRepository", () => ({
   BusinessModuleRepository: repository,
+}));
+vi.mock("../repositories/BusinessAuditRepository", () => ({
+  BusinessAuditRepository: auditRepository,
 }));
 
 import { BusinessModuleService } from "./BusinessModuleService";
@@ -76,5 +83,20 @@ describe("BusinessModuleService", () => {
       BusinessModuleService.setEntitlement("org-1", "user-1", "crm", true),
     ).rejects.toMatchObject({ code: "FORBIDDEN" });
     expect(repository.setEntitlement).not.toHaveBeenCalled();
+  });
+
+  it("records privileged entitlement changes in the tenant audit trail", async () => {
+    repository.findMembership.mockResolvedValue({
+      id: "owner-1",
+      role: "owner",
+    });
+    await BusinessModuleService.setEntitlement("org-1", "user-1", "crm", true);
+    expect(auditRepository.record).toHaveBeenCalledWith({
+      organizationId: "org-1",
+      actorUserId: "user-1",
+      action: "module.enabled",
+      targetType: "module",
+      targetId: "crm",
+    });
   });
 });

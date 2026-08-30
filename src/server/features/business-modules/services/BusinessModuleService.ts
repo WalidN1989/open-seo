@@ -6,6 +6,7 @@ import {
   type BusinessModulePermission,
 } from "@/shared/business-modules";
 import { BusinessModuleRepository } from "../repositories/BusinessModuleRepository";
+import { BusinessAuditRepository } from "../repositories/BusinessAuditRepository";
 
 const permissionRank: Record<BusinessModulePermission, number> = {
   view: 1,
@@ -87,6 +88,13 @@ async function setEntitlement(
     moduleKey,
     enabled,
   );
+  await BusinessAuditRepository.record({
+    organizationId,
+    actorUserId: userId,
+    action: enabled ? "module.enabled" : "module.disabled",
+    targetType: "module",
+    targetId: moduleKey,
+  });
   return { moduleKey, enabled };
 }
 
@@ -168,11 +176,33 @@ async function setStaffPermission(
       moduleKey,
     );
   }
+  await BusinessAuditRepository.record({
+    organizationId,
+    actorUserId: userId,
+    action: permission
+      ? "staff.permission.updated"
+      : "staff.permission.removed",
+    targetType: "member",
+    targetId: memberId,
+    metadata: { moduleKey, permission },
+  });
   return { memberId, moduleKey, permission };
+}
+
+async function getAuditTrail(organizationId: string, userId: string) {
+  const requester = await BusinessModuleRepository.findMembership(
+    organizationId,
+    userId,
+  );
+  if (!requester || !isOrganizationAdmin(requester.role)) {
+    throw new AppError("FORBIDDEN");
+  }
+  return BusinessAuditRepository.list(organizationId);
 }
 
 export const BusinessModuleService = {
   getAccess,
+  getAuditTrail,
   getStaffAccess,
   requireAccess,
   setEntitlement,

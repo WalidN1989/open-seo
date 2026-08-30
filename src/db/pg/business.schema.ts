@@ -645,3 +645,26 @@ export const webhookDeliveries = pgTable(
     ),
   ],
 );
+
+export const businessAuditEvents = pgTable(
+  "business_audit_events",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    actorUserId: text("actor_user_id").notNull(),
+    action: text("action").notNull(),
+    targetType: text("target_type").notNull(),
+    targetId: text("target_id"),
+    metadataJson: text("metadata_json").notNull().default("{}"),
+    createdAt: createdAt(),
+  },
+  (table) => [
+    index("business_audit_events_org_created_idx").on(
+      table.organizationId,
+      table.createdAt,
+    ),
+    index("business_audit_events_actor_idx").on(table.actorUserId),
+  ],
+);

@@ -10,6 +10,7 @@ import {
 import { toast } from "sonner";
 import {
   getBusinessModuleAccess,
+  getBusinessModuleAuditTrail,
   getBusinessModuleStaffAccess,
   setBusinessModuleEntitlement,
   setBusinessModuleStaffPermission,
@@ -43,6 +44,9 @@ function BusinessModulesPage() {
       setBusinessModuleEntitlement({ data: input }),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["business-modules"] });
+      await queryClient.invalidateQueries({
+        queryKey: ["business-modules", "audit"],
+      });
       toast.success("Module access updated");
     },
     onError: (error) =>
@@ -57,6 +61,11 @@ function BusinessModulesPage() {
     queryFn: () => getBusinessModuleStaffAccess(),
     enabled: canManageStaff,
   });
+  const auditQuery = useQuery({
+    queryKey: ["business-modules", "audit"],
+    queryFn: () => getBusinessModuleAuditTrail(),
+    enabled: canManageStaff,
+  });
   const staffPermissionMutation = useMutation({
     mutationFn: (input: {
       memberId: string;
@@ -66,6 +75,9 @@ function BusinessModulesPage() {
     onSuccess: async () => {
       await queryClient.invalidateQueries({
         queryKey: ["business-modules", "staff"],
+      });
+      await queryClient.invalidateQueries({
+        queryKey: ["business-modules", "audit"],
       });
       toast.success("Staff access updated");
     },
@@ -243,6 +255,35 @@ function BusinessModulesPage() {
                   ))}
                 </tbody>
               </table>
+            </div>
+          </section>
+        ) : null}
+        {canManageStaff && auditQuery.data?.length ? (
+          <section className="space-y-3 pt-4">
+            <div>
+              <h2 className="text-lg font-semibold">Audit trail</h2>
+              <p className="text-sm text-base-content/60">
+                Recent module and staff-access changes for this organization.
+              </p>
+            </div>
+            <div className="divide-y divide-base-300 overflow-hidden rounded-xl border border-base-300">
+              {auditQuery.data.slice(0, 20).map((event) => (
+                <div
+                  key={event.id}
+                  className="flex flex-wrap items-center justify-between gap-2 p-3 text-sm"
+                >
+                  <div>
+                    <span className="font-medium">{event.action}</span>
+                    <span className="ml-2 text-base-content/50">
+                      {event.targetType}
+                      {event.targetId ? ` · ${event.targetId}` : ""}
+                    </span>
+                  </div>
+                  <time className="text-xs text-base-content/50">
+                    {new Date(event.createdAt).toLocaleString()}
+                  </time>
+                </div>
+              ))}
             </div>
           </section>
         ) : null}

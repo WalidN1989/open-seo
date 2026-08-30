@@ -1,5 +1,6 @@
 import { BusinessModuleRepository } from "@/server/features/business-modules/repositories/BusinessModuleRepository";
 import { BusinessModuleService } from "@/server/features/business-modules/services/BusinessModuleService";
+import { BusinessAuditRepository } from "@/server/features/business-modules/repositories/BusinessAuditRepository";
 import { CommunicationsService } from "@/server/features/communications/services/CommunicationsService";
 import { AppError } from "@/server/lib/errors";
 import type {
@@ -9,6 +10,7 @@ import type {
   CreateInquiryInput,
   CreateLeadInput,
   CreateMeetingInput,
+  PromoteInquiryInput,
   UpdateLeadInput,
 } from "@/types/schemas/crm";
 import { CrmRepository } from "../repositories/CrmRepository";
@@ -72,6 +74,14 @@ async function createLead(
       source: lead.source,
     },
   );
+  await BusinessAuditRepository.record({
+    organizationId,
+    actorUserId: userId,
+    action: "lead.created",
+    targetType: "lead",
+    targetId: lead.id,
+    metadata: { stageId: lead.stageId, source: lead.source },
+  });
   return lead;
 }
 
@@ -100,6 +110,14 @@ async function updateLead(
       status: row.status,
     },
   );
+  await BusinessAuditRepository.record({
+    organizationId,
+    actorUserId: userId,
+    action: "lead.updated",
+    targetType: "lead",
+    targetId: row.id,
+    metadata: { stageId: row.stageId, status: row.status },
+  });
   return row;
 }
 
@@ -139,6 +157,13 @@ async function createContact(
     "contact.created",
     { contactId: contact.id, companyId: contact.companyId },
   );
+  await BusinessAuditRepository.record({
+    organizationId,
+    actorUserId: userId,
+    action: "contact.created",
+    targetType: "contact",
+    targetId: contact.id,
+  });
   return contact;
 }
 
@@ -159,6 +184,13 @@ async function createCompany(
     "company.created",
     { companyId: company.id, name: company.name },
   );
+  await BusinessAuditRepository.record({
+    organizationId,
+    actorUserId: userId,
+    action: "company.created",
+    targetType: "company",
+    targetId: company.id,
+  });
   return company;
 }
 
@@ -200,7 +232,20 @@ async function createActivity(
   ) {
     throw new AppError("NOT_FOUND");
   }
-  return CrmRepository.createActivity(organizationId, membership.id, input);
+  const activity = await CrmRepository.createActivity(
+    organizationId,
+    membership.id,
+    input,
+  );
+  await BusinessAuditRepository.record({
+    organizationId,
+    actorUserId: userId,
+    action: "lead.activity.created",
+    targetType: "lead",
+    targetId: input.leadId,
+    metadata: { activityId: activity.id, activityType: activity.activityType },
+  });
+  return activity;
 }
 
 async function createInquiry(
@@ -220,6 +265,13 @@ async function createInquiry(
     "inquiry.created",
     { inquiryId: inquiry.id, title: inquiry.title, product: inquiry.product },
   );
+  await BusinessAuditRepository.record({
+    organizationId,
+    actorUserId: userId,
+    action: "inquiry.created",
+    targetType: "inquiry",
+    targetId: inquiry.id,
+  });
   return inquiry;
 }
 
@@ -257,7 +309,74 @@ async function createMeeting(
       startsAt: meeting.startsAt,
     },
   );
+  await BusinessAuditRepository.record({
+    organizationId,
+    actorUserId: userId,
+    action: "meeting.created",
+    targetType: "meeting",
+    targetId: meeting.id,
+    metadata: { leadId: meeting.leadId, startsAt: meeting.startsAt },
+  });
   return meeting;
+}
+
+async function promoteInquiry(
+  organizationId: string,
+  userId: string,
+  input: PromoteInquiryInput,
+) {
+  await Promise.all([
+    BusinessModuleService.requireAccess(
+      organizationId,
+      userId,
+      "crm",
+      "manage",
+    ),
+    BusinessModuleService.requireAccess(
+      organizationId,
+      userId,
+      "leads",
+      "manage",
+    ),
+  ]);
+  const inquiry = await CrmRepository.getInquiry(
+    organizationId,
+    input.inquiryId,
+  );
+  if (!inquiry) throw new AppError("NOT_FOUND");
+  if (inquiry.wonLeadId) throw new AppError("CONFLICT");
+  if (
+    !(await CrmRepository.validateLeadRelations(organizationId, {
+      assignedMemberId: input.assignedMemberId,
+    }))
+  ) {
+    throw new AppError("FORBIDDEN");
+  }
+  const stages = await ensureStages(organizationId);
+  const lead = await CrmRepository.createLead(organizationId, {
+    title: inquiry.title,
+    source: "CRM inquiry",
+    priority: input.priority,
+    valueCents: inquiry.targetValueCents,
+    stageId: stages[0]?.id,
+    assignedMemberId: input.assignedMemberId,
+    notes: [inquiry.product, inquiry.description].filter(Boolean).join("\n\n"),
+  });
+  await CrmRepository.linkInquiryToLead(organizationId, inquiry.id, lead.id);
+  await CommunicationsService.emitBusinessEvent(
+    organizationId,
+    "inquiry.promoted",
+    { inquiryId: inquiry.id, leadId: lead.id },
+  );
+  await BusinessAuditRepository.record({
+    organizationId,
+    actorUserId: userId,
+    action: "inquiry.promoted",
+    targetType: "lead",
+    targetId: lead.id,
+    metadata: { inquiryId: inquiry.id },
+  });
+  return lead;
 }
 
 export const CrmService = {
@@ -270,5 +389,6 @@ export const CrmService = {
   getCrmWorkspace,
   getLeadsWorkspace,
   listActivities,
+  promoteInquiry,
   updateLead,
 };

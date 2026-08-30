@@ -55,6 +55,11 @@ export const createInquirySchema = z.object({
   product: z.string().trim().max(200).optional(),
   targetValueCents: z.number().int().min(0).max(1_000_000_000).default(0),
 });
+export const promoteInquirySchema = z.object({
+  inquiryId: z.string().min(1),
+  assignedMemberId: z.string().min(1).optional(),
+  priority: leadPrioritySchema.default("medium"),
+});
 export const createMeetingSchema = z
   .object({
     title: z.string().trim().min(1).max(200),
@@ -77,4 +82,5 @@ export type CreateContactInput = z.infer<typeof createContactSchema>;
 export type CreateCompanyInput = z.infer<typeof createCompanySchema>;
 export type CreateActivityInput = z.infer<typeof createActivitySchema>;
 export type CreateInquiryInput = z.infer<typeof createInquirySchema>;
+export type PromoteInquiryInput = z.infer<typeof promoteInquirySchema>;
 export type CreateMeetingInput = z.infer<typeof createMeetingSchema>;
