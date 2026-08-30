@@ -1,4 +1,4 @@
-/* oxlint-disable max-lines, max-depth */
+/* oxlint-disable max-lines, max-depth, max-params */
 import type { z } from "zod";
 import { BusinessModuleService } from "@/server/features/business-modules/services/BusinessModuleService";
 import { getOptionalEnvValue } from "@/server/lib/runtime-env";
@@ -48,6 +48,24 @@ import { generateVoiceAgentReply } from "../providers/voice-ai";
 import { BusinessAuditRepository } from "@/server/features/business-modules/repositories/BusinessAuditRepository";
 import { BusinessModuleRepository } from "@/server/features/business-modules/repositories/BusinessModuleRepository";
 
+async function auditMutation(
+  organizationId: string,
+  userId: string,
+  action: string,
+  targetType: string,
+  targetId: string,
+  metadata?: Record<string, unknown>,
+) {
+  await BusinessAuditRepository.record({
+    organizationId,
+    actorUserId: userId,
+    action,
+    targetType,
+    targetId,
+    metadata,
+  });
+}
+
 async function whatsappWorkspace(organizationId: string, userId: string) {
   await BusinessModuleService.requireAccess(organizationId, userId, "whatsapp");
   const [workspace, members] = await Promise.all([
@@ -67,10 +85,19 @@ async function createWhatsappConnection(
     "whatsapp",
     "admin",
   );
-  return CommunicationsRepository.createWhatsappConnection(
+  const connection = await CommunicationsRepository.createWhatsappConnection(
     organizationId,
     input,
   );
+  await auditMutation(
+    organizationId,
+    userId,
+    "whatsapp.connection.created",
+    "whatsapp_connection",
+    connection.id,
+    { provider: connection.provider },
+  );
+  return connection;
 }
 async function createWhatsappTemplate(
   organizationId: string,
@@ -83,7 +110,19 @@ async function createWhatsappTemplate(
     "whatsapp",
     "manage",
   );
-  return CommunicationsRepository.createWhatsappTemplate(organizationId, input);
+  const template = await CommunicationsRepository.createWhatsappTemplate(
+    organizationId,
+    input,
+  );
+  await auditMutation(
+    organizationId,
+    userId,
+    "whatsapp.template.created",
+    "whatsapp_template",
+    template.id,
+    { status: template.status },
+  );
+  return template;
 }
 
 async function updateWhatsappConversation(
@@ -160,7 +199,18 @@ async function createWhatsappCampaign(
   if (!connectionValid || !templateValid) {
     throw new Error("WhatsApp connection or template not found.");
   }
-  return CommunicationsRepository.createWhatsappCampaign(organizationId, input);
+  const campaign = await CommunicationsRepository.createWhatsappCampaign(
+    organizationId,
+    input,
+  );
+  await auditMutation(
+    organizationId,
+    userId,
+    "whatsapp.campaign.created",
+    "whatsapp_campaign",
+    campaign.id,
+  );
+  return campaign;
 }
 
 async function launchWhatsappCampaign(
@@ -241,6 +291,14 @@ async function launchWhatsappCampaign(
     sent,
     failed,
   });
+  await auditMutation(
+    organizationId,
+    userId,
+    "whatsapp.campaign.launched",
+    "whatsapp_campaign",
+    context.campaign.id,
+    { sent, failed },
+  );
   return { campaignId: context.campaign.id, sent, failed };
 }
 
@@ -262,10 +320,18 @@ async function createWhatsappAutomation(
       input.responseTemplateId,
     );
   if (!templateValid) throw new Error("WhatsApp template not found.");
-  return CommunicationsRepository.createWhatsappAutomation(
+  const automation = await CommunicationsRepository.createWhatsappAutomation(
     organizationId,
     input,
   );
+  await auditMutation(
+    organizationId,
+    userId,
+    "whatsapp.automation.created",
+    "whatsapp_automation",
+    automation.id,
+  );
+  return automation;
 }
 
 async function createWhatsappOrder(
@@ -306,6 +372,14 @@ async function createWhatsappOrder(
     orderId: order.id,
     amountCents: order.amountCents,
   });
+  await auditMutation(
+    organizationId,
+    userId,
+    "whatsapp.order.created",
+    "whatsapp_order",
+    order.id,
+    { amountCents: order.amountCents },
+  );
   return order;
 }
 async function voiceWorkspace(organizationId: string, userId: string) {
@@ -323,7 +397,19 @@ async function createVoiceAgent(
     "voice",
     "admin",
   );
-  return CommunicationsRepository.createVoiceAgent(organizationId, input);
+  const agent = await CommunicationsRepository.createVoiceAgent(
+    organizationId,
+    input,
+  );
+  await auditMutation(
+    organizationId,
+    userId,
+    "voice.agent.created",
+    "voice_agent",
+    agent.id,
+    { modelProvider: agent.modelProvider },
+  );
+  return agent;
 }
 
 async function startVoiceConversation(
@@ -357,6 +443,14 @@ async function startVoiceConversation(
     conversationId: conversation.id,
     agentConfigId: conversation.agentConfigId,
   });
+  await auditMutation(
+    organizationId,
+    userId,
+    "voice.conversation.started",
+    "voice_conversation",
+    conversation.id,
+    { agentConfigId: conversation.agentConfigId },
+  );
   return conversation;
 }
 
@@ -404,6 +498,13 @@ async function endVoiceConversation(
   await emitBusinessEvent(organizationId, "voice.conversation.completed", {
     conversationId: input.conversationId,
   });
+  await auditMutation(
+    organizationId,
+    userId,
+    "voice.conversation.completed",
+    "voice_conversation",
+    input.conversationId,
+  );
   return conversation;
 }
 
@@ -546,7 +647,19 @@ async function createIntegration(
     "integrations",
     "admin",
   );
-  return CommunicationsRepository.createIntegration(organizationId, input);
+  const connection = await CommunicationsRepository.createIntegration(
+    organizationId,
+    input,
+  );
+  await auditMutation(
+    organizationId,
+    userId,
+    "integration.created",
+    "integration_connection",
+    connection.id,
+    { providerKey: connection.providerKey },
+  );
+  return connection;
 }
 
 async function testIntegration(
@@ -850,7 +963,7 @@ async function sendWhatsappMessage(
       context.conversation.externalConversationId,
       input.body,
     );
-    return CommunicationsRepository.completeWhatsappMessage(
+    const message = await CommunicationsRepository.completeWhatsappMessage(
       organizationId,
       queued.id,
       {
@@ -859,6 +972,15 @@ async function sendWhatsappMessage(
         sentAt: new Date().toISOString(),
       },
     );
+    await auditMutation(
+      organizationId,
+      userId,
+      "whatsapp.message.sent",
+      "whatsapp_message",
+      queued.id,
+      { conversationId: context.conversation.id },
+    );
+    return message;
   } catch (error) {
     await CommunicationsRepository.completeWhatsappMessage(
       organizationId,
@@ -881,7 +1003,19 @@ async function createWebhookEndpoint(
     "admin",
   );
   validateWebhookUrl(input.url);
-  return CommunicationsRepository.createWebhookEndpoint(organizationId, input);
+  const endpoint = await CommunicationsRepository.createWebhookEndpoint(
+    organizationId,
+    input,
+  );
+  await auditMutation(
+    organizationId,
+    userId,
+    "webhook.endpoint.created",
+    "webhook_endpoint",
+    endpoint.id,
+    { eventTypes: input.eventTypes },
+  );
+  return endpoint;
 }
 
 async function executeWebhookDelivery(
