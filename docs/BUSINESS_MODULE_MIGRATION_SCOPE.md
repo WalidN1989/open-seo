@@ -48,3 +48,23 @@ and multi-organization workflows.
 
 The `SEO-Master` repository is used only as the reference for its voice-agent
 workflow. Its SEO and CMS modules are explicitly excluded.
+
+## Provider secret references
+
+Connection records store a secret prefix, never the secret itself. Railway (or
+another deployment environment) supplies the corresponding variables:
+
+- Meta WhatsApp: `<PREFIX>_ACCESS_TOKEN`, `<PREFIX>_APP_SECRET`, and
+  `<PREFIX>_VERIFY_TOKEN`.
+- Twilio WhatsApp: `<PREFIX>_AUTH_TOKEN`; the account SID and sender number are
+  non-secret connection metadata.
+- Deepgram voice: `<PREFIX>_DEEPGRAM_API_KEY`.
+- Signed outbound webhooks: `<PREFIX>_SIGNING_SECRET`.
+- Future provider adapters follow the suffixes shown in the Integrations
+  catalogue for Apify, Firecrawl, Hunter.io, Make, and WooCommerce.
+
+Meta and Twilio callbacks use `/api/whatsapp/<connection-id>`. Provider
+signatures are verified before a message, conversation, or delivery status is
+written. Webhook destinations must use HTTPS, cannot point at private-network
+hosts, do not follow redirects, and receive the `X-OpenSEO-*` signature,
+timestamp, event, and delivery headers.

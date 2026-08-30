@@ -25,12 +25,14 @@ import {
   getIntegrationsWorkspace,
   getVoiceWorkspace,
   getWhatsappWorkspace,
+  retryWebhookDelivery,
   sendWhatsappMessage,
   startVoiceConversation,
   transcribeVoiceAudio,
 } from "@/serverFunctions/communications";
 import { getStandardErrorMessage } from "@/client/lib/error-messages";
 import { createWhatsappConnectionSchema } from "@/types/schemas/communications";
+import { integrationProviders } from "@/shared/integration-providers";
 
 export function WhatsappWorkspace() {
   const client = useQueryClient();
@@ -590,6 +592,15 @@ export function IntegrationsWorkspace() {
     },
     onError: showError,
   });
+  const retryDelivery = useMutation({
+    mutationFn: (deliveryId: string) =>
+      retryWebhookDelivery({ data: { deliveryId } }),
+    onSuccess: async () => {
+      await client.invalidateQueries({ queryKey: ["integrations"] });
+      toast.success("Webhook delivery retried");
+    },
+    onError: showError,
+  });
   if (query.isLoading) return <Loading />;
   if (query.isError) return <ErrorBox error={query.error} />;
   return (
@@ -668,14 +679,34 @@ export function IntegrationsWorkspace() {
           )}
         </Panel>
       </div>
+      <Panel title="Available provider adapters" icon={Cable}>
+        {integrationProviders.map((provider) => (
+          <Row
+            key={provider.key}
+            title={provider.name}
+            detail={provider.capabilities.join(" · ")}
+          />
+        ))}
+      </Panel>
       <Panel title="Recent webhook deliveries" icon={Webhook}>
         {query.data!.deliveries.length ? (
           query.data!.deliveries.map((item) => (
-            <Row
-              key={item.id}
-              title={item.eventType}
-              detail={`${item.status} · ${item.attemptCount} attempt${item.attemptCount === 1 ? "" : "s"}${item.responseStatus ? ` · HTTP ${item.responseStatus}` : ""}`}
-            />
+            <div key={item.id} className="flex items-center gap-2 pr-4">
+              <div className="min-w-0 flex-1">
+                <Row
+                  title={item.eventType}
+                  detail={`${item.status} · ${item.attemptCount} attempt${item.attemptCount === 1 ? "" : "s"}${item.responseStatus ? ` · HTTP ${item.responseStatus}` : ""}`}
+                />
+              </div>
+              {item.status === "failed" ? (
+                <button
+                  className="btn btn-ghost btn-xs"
+                  onClick={() => retryDelivery.mutate(item.id)}
+                >
+                  Retry
+                </button>
+              ) : null}
+            </div>
           ))
         ) : (
           <Empty text="No webhook deliveries yet." />
