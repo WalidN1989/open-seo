@@ -21,6 +21,7 @@ import type {
   transcribeVoiceAudioSchema,
   endVoiceConversationSchema,
   launchWhatsappCampaignSchema,
+  updateWhatsappConversationSchema,
 } from "@/types/schemas/communications";
 import { CommunicationsRepository } from "../repositories/CommunicationsRepository";
 import {
@@ -40,10 +41,15 @@ import { generateWhatsappAiReply } from "../providers/whatsapp-ai";
 import { testIntegrationConnection } from "../providers/integrations";
 import { generateVoiceAgentReply } from "../providers/voice-ai";
 import { BusinessAuditRepository } from "@/server/features/business-modules/repositories/BusinessAuditRepository";
+import { BusinessModuleRepository } from "@/server/features/business-modules/repositories/BusinessModuleRepository";
 
 async function whatsappWorkspace(organizationId: string, userId: string) {
   await BusinessModuleService.requireAccess(organizationId, userId, "whatsapp");
-  return CommunicationsRepository.getWhatsappWorkspace(organizationId);
+  const [workspace, members] = await Promise.all([
+    CommunicationsRepository.getWhatsappWorkspace(organizationId),
+    BusinessModuleRepository.listMembers(organizationId),
+  ]);
+  return { ...workspace, members };
 }
 async function createWhatsappConnection(
   organizationId: string,
@@ -73,6 +79,54 @@ async function createWhatsappTemplate(
     "manage",
   );
   return CommunicationsRepository.createWhatsappTemplate(organizationId, input);
+}
+
+async function updateWhatsappConversation(
+  organizationId: string,
+  userId: string,
+  input: z.infer<typeof updateWhatsappConversationSchema>,
+) {
+  await BusinessModuleService.requireAccess(
+    organizationId,
+    userId,
+    "whatsapp",
+    "manage",
+  );
+  const [contactValid, memberValid] = await Promise.all([
+    input.contactId
+      ? CommunicationsRepository.contactBelongsToOrganization(
+          organizationId,
+          input.contactId,
+        )
+      : true,
+    input.assignedMemberId
+      ? CommunicationsRepository.memberBelongsToOrganization(
+          organizationId,
+          input.assignedMemberId,
+        )
+      : true,
+  ]);
+  if (!contactValid || !memberValid)
+    throw new Error("Contact or assignee not found.");
+  const conversation =
+    await CommunicationsRepository.updateWhatsappConversation(
+      organizationId,
+      input,
+    );
+  if (!conversation) throw new Error("WhatsApp conversation not found.");
+  await BusinessAuditRepository.record({
+    organizationId,
+    actorUserId: userId,
+    action: "whatsapp.conversation.updated",
+    targetType: "whatsapp_conversation",
+    targetId: conversation.id,
+    metadata: {
+      assignedMemberId: conversation.assignedMemberId,
+      contactId: conversation.contactId,
+      status: conversation.status,
+    },
+  });
+  return conversation;
 }
 
 async function createWhatsappCampaign(
@@ -945,6 +999,7 @@ export const CommunicationsService = {
   testWebhookEndpoint,
   testIntegration,
   transcribeVoiceAudio,
+  updateWhatsappConversation,
   verifyMetaWebhook,
   voiceWorkspace,
   whatsappWorkspace,

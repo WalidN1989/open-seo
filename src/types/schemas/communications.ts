@@ -21,6 +21,12 @@ export const sendWhatsappMessageSchema = z.object({
   conversationId: z.string().min(1),
   body: z.string().trim().min(1).max(4096),
 });
+export const updateWhatsappConversationSchema = z.object({
+  conversationId: z.string().min(1),
+  assignedMemberId: z.string().min(1).nullable().optional(),
+  contactId: z.string().min(1).nullable().optional(),
+  status: z.enum(["open", "pending", "closed"]).optional(),
+});
 export const createWhatsappCampaignSchema = z.object({
   name: z.string().trim().min(1).max(150),
   connectionId: z.string().min(1),

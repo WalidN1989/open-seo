@@ -4,6 +4,7 @@ import { db } from "@/db";
 import {
   integrationConnections,
   crmContacts,
+  member,
   voiceAgentConfigs,
   voiceConversationMessages,
   voiceConversations,
@@ -30,6 +31,7 @@ import type {
   createWhatsappOrderSchema,
   createWhatsappTemplateSchema,
   createWebhookEndpointSchema,
+  updateWhatsappConversationSchema,
 } from "@/types/schemas/communications";
 import type {
   InboundWhatsappMessage,
@@ -283,6 +285,7 @@ async function getWhatsappWorkspace(organizationId: string) {
   const [
     connections,
     conversations,
+    contacts,
     templates,
     campaigns,
     automations,
@@ -297,6 +300,11 @@ async function getWhatsappWorkspace(organizationId: string) {
       .from(whatsappConversations)
       .where(eq(whatsappConversations.organizationId, organizationId))
       .orderBy(desc(whatsappConversations.lastMessageAt)),
+    db
+      .select()
+      .from(crmContacts)
+      .where(eq(crmContacts.organizationId, organizationId))
+      .orderBy(desc(crmContacts.updatedAt)),
     db
       .select()
       .from(whatsappTemplates)
@@ -320,11 +328,30 @@ async function getWhatsappWorkspace(organizationId: string) {
   return {
     connections,
     conversations,
+    contacts,
     templates,
     campaigns,
     automations,
     orders,
   };
+}
+
+async function updateWhatsappConversation(
+  organizationId: string,
+  input: z.infer<typeof updateWhatsappConversationSchema>,
+) {
+  const { conversationId, ...changes } = input;
+  const [row] = await db
+    .update(whatsappConversations)
+    .set(changes)
+    .where(
+      and(
+        eq(whatsappConversations.id, conversationId),
+        eq(whatsappConversations.organizationId, organizationId),
+      ),
+    )
+    .returning();
+  return row ?? null;
 }
 
 async function createWhatsappConnection(
@@ -571,6 +598,20 @@ async function contactBelongsToOrganization(
     )
     .limit(1);
   return Boolean(contact);
+}
+
+async function memberBelongsToOrganization(
+  organizationId: string,
+  memberId: string,
+) {
+  const [membership] = await db
+    .select({ id: member.id })
+    .from(member)
+    .where(
+      and(eq(member.id, memberId), eq(member.organizationId, organizationId)),
+    )
+    .limit(1);
+  return Boolean(membership);
 }
 
 async function startVoiceConversation(
@@ -842,6 +883,7 @@ export const CommunicationsRepository = {
   getWebhookEndpoint,
   listWebhookEndpointsForEvent,
   listMatchingWhatsappAutomations,
+  memberBelongsToOrganization,
   getWhatsappWorkspace,
   getWhatsappCampaignContext,
   getWhatsappConnectionById,
@@ -852,6 +894,7 @@ export const CommunicationsRepository = {
   markWhatsappConnectionConnected,
   startVoiceConversation,
   updateWhatsappCampaign,
+  updateWhatsappConversation,
   updateIntegrationStatus,
   updateWhatsappDelivery,
   updateWebhookDelivery,

@@ -31,10 +31,19 @@ import {
   sendWhatsappMessage,
   startVoiceConversation,
   transcribeVoiceAudio,
+  updateWhatsappConversation,
 } from "@/serverFunctions/communications";
 import { getStandardErrorMessage } from "@/client/lib/error-messages";
 import { createWhatsappConnectionSchema } from "@/types/schemas/communications";
 import { integrationProviders } from "@/shared/integration-providers";
+
+const whatsappConversationStatuses = ["open", "pending", "closed"] as const;
+
+function isWhatsappConversationStatus(
+  value: string,
+): value is (typeof whatsappConversationStatuses)[number] {
+  return whatsappConversationStatuses.some((status) => status === value);
+}
 
 export function WhatsappWorkspace() {
   const client = useQueryClient();
@@ -84,6 +93,19 @@ export function WhatsappWorkspace() {
       await client.invalidateQueries({ queryKey: ["whatsapp"] });
       setReplyTo(null);
       toast.success("Message sent");
+    },
+    onError: showError,
+  });
+  const updateConversation = useMutation({
+    mutationFn: (data: {
+      conversationId: string;
+      assignedMemberId?: string | null;
+      contactId?: string | null;
+      status?: "open" | "pending" | "closed";
+    }) => updateWhatsappConversation({ data }),
+    onSuccess: async () => {
+      await client.invalidateQueries({ queryKey: ["whatsapp"] });
+      toast.success("Conversation updated");
     },
     onError: showError,
   });
@@ -280,6 +302,68 @@ export function WhatsappWorkspace() {
                 >
                   Reply
                 </button>
+              </div>
+              <div className="grid gap-2 sm:grid-cols-3">
+                <select
+                  aria-label="Linked CRM contact"
+                  className="select select-bordered select-xs w-full"
+                  value={item.contactId ?? ""}
+                  disabled={updateConversation.isPending}
+                  onChange={(event) =>
+                    updateConversation.mutate({
+                      conversationId: item.id,
+                      contactId: event.currentTarget.value || null,
+                    })
+                  }
+                >
+                  <option value="">No CRM contact</option>
+                  {data.contacts.map((contact) => (
+                    <option key={contact.id} value={contact.id}>
+                      {[contact.firstName, contact.lastName]
+                        .filter(Boolean)
+                        .join(" ") ||
+                        contact.whatsappPhone ||
+                        contact.phone}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  aria-label="Assigned team member"
+                  className="select select-bordered select-xs w-full"
+                  value={item.assignedMemberId ?? ""}
+                  disabled={updateConversation.isPending}
+                  onChange={(event) =>
+                    updateConversation.mutate({
+                      conversationId: item.id,
+                      assignedMemberId: event.currentTarget.value || null,
+                    })
+                  }
+                >
+                  <option value="">Unassigned</option>
+                  {data.members.map((member) => (
+                    <option key={member.id} value={member.id}>
+                      {member.name || member.email}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  aria-label="Conversation status"
+                  className="select select-bordered select-xs w-full"
+                  value={item.status}
+                  disabled={updateConversation.isPending}
+                  onChange={(event) => {
+                    const status = event.currentTarget.value;
+                    if (isWhatsappConversationStatus(status))
+                      updateConversation.mutate({
+                        conversationId: item.id,
+                        status,
+                      });
+                  }}
+                >
+                  <option value="open">Open</option>
+                  <option value="pending">Pending</option>
+                  <option value="closed">Closed</option>
+                </select>
               </div>
               {replyTo === item.id ? (
                 <SimpleForm
