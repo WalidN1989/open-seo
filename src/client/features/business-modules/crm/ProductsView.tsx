@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { Package, Plus } from "lucide-react";
 import {
@@ -8,6 +7,7 @@ import {
   listCommerceProducts,
 } from "@/serverFunctions/commerce";
 import { getStandardErrorMessage } from "@/client/lib/error-messages";
+import { ProductEditModal } from "./ProductEditModal";
 
 const PRODUCTS_KEY = ["commerce", "products"];
 
@@ -31,17 +31,28 @@ function parseMajorToMinor(value: string) {
   return Math.round(amount * 100);
 }
 
+const PAGE_SIZE = 50;
+
 export function CrmProductsView() {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [adding, setAdding] = useState(false);
+  const [page, setPage] = useState(0);
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   const query = useQuery({
-    queryKey: [...PRODUCTS_KEY, search],
+    queryKey: [...PRODUCTS_KEY, search, page],
     queryFn: () =>
       listCommerceProducts({
-        data: { limit: 100, search: search.trim() || undefined },
+        data: {
+          limit: PAGE_SIZE,
+          offset: page * PAGE_SIZE,
+          search: search.trim() || undefined,
+        },
       }),
+    // Keeps the current page on screen while the next one loads, instead of
+    // flashing the empty state between pages.
+    placeholderData: (previous) => previous,
   });
 
   const create = useMutation({
@@ -60,7 +71,11 @@ export function CrmProductsView() {
     onError: (error) => toast.error(getStandardErrorMessage(error)),
   });
 
-  const products = query.data ?? [];
+  const products = query.data?.products ?? [];
+  const total = query.data?.total ?? 0;
+  const firstShown = total === 0 ? 0 : page * PAGE_SIZE + 1;
+  const lastShown = page * PAGE_SIZE + products.length;
+  const hasMore = lastShown < total;
 
   return (
     <div className="space-y-6">
@@ -81,7 +96,12 @@ export function CrmProductsView() {
 
       <input
         value={search}
-        onChange={(event) => setSearch(event.target.value)}
+        onChange={(event) => {
+          setSearch(event.target.value);
+          // Otherwise a search run from page 4 lands on an empty page 4 of
+          // the new, shorter result set.
+          setPage(0);
+        }}
         placeholder="Search by name, SKU, barcode or ISBN..."
         className="input input-bordered input-sm w-full max-w-md"
       />
@@ -149,10 +169,38 @@ export function CrmProductsView() {
 
       <section className="rounded-xl border border-base-300">
         <div className="border-b border-base-300 p-4">
-          <h2 className="font-semibold">
-            Products{" "}
-            <span className="badge badge-sm ml-1">{products.length}</span>
-          </h2>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="font-semibold">
+              Products{" "}
+              <span className="badge badge-sm ml-1">
+                {total.toLocaleString()}
+              </span>
+            </h2>
+            {total > 0 ? (
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-base-content/50">
+                  {firstShown.toLocaleString()}-{lastShown.toLocaleString()} of{" "}
+                  {total.toLocaleString()}
+                </span>
+                <div className="join">
+                  <button
+                    className="btn btn-outline btn-xs join-item"
+                    disabled={page === 0}
+                    onClick={() => setPage((current) => current - 1)}
+                  >
+                    Previous
+                  </button>
+                  <button
+                    className="btn btn-outline btn-xs join-item"
+                    disabled={!hasMore}
+                    onClick={() => setPage((current) => current + 1)}
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            ) : null}
+          </div>
         </div>
         {query.isLoading ? (
           <p className="p-8 text-center text-sm text-base-content/50">
@@ -171,11 +219,11 @@ export function CrmProductsView() {
         ) : (
           <div className="divide-y divide-base-300">
             {products.map((product) => (
-              <Link
+              <button
                 key={product.id}
-                to="/modules/crm/products/$productId"
-                params={{ productId: product.id }}
-                className="flex items-center justify-between gap-3 p-4 hover:bg-base-200"
+                type="button"
+                onClick={() => setEditingId(product.id)}
+                className="flex w-full items-center justify-between gap-3 p-4 text-left hover:bg-base-200"
               >
                 <div className="flex min-w-0 items-center gap-3">
                   <span className="rounded-lg bg-base-200 p-2">
@@ -197,11 +245,43 @@ export function CrmProductsView() {
                     <span className="badge badge-ghost badge-xs">Archived</span>
                   ) : null}
                 </div>
-              </Link>
+              </button>
             ))}
           </div>
         )}
+
+        {/* A second pager under a long list, so nobody scrolls back up. */}
+        {total > PAGE_SIZE ? (
+          <div className="flex items-center justify-between gap-2 border-t border-base-300 p-3">
+            <span className="text-xs text-base-content/50">
+              Page {page + 1} of {Math.max(1, Math.ceil(total / PAGE_SIZE))}
+            </span>
+            <div className="join">
+              <button
+                className="btn btn-outline btn-xs join-item"
+                disabled={page === 0}
+                onClick={() => setPage((current) => current - 1)}
+              >
+                Previous
+              </button>
+              <button
+                className="btn btn-outline btn-xs join-item"
+                disabled={!hasMore}
+                onClick={() => setPage((current) => current + 1)}
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        ) : null}
       </section>
+
+      {editingId ? (
+        <ProductEditModal
+          productId={editingId}
+          onClose={() => setEditingId(null)}
+        />
+      ) : null}
     </div>
   );
 }

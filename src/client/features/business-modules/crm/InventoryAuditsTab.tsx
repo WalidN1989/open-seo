@@ -253,7 +253,7 @@ function AuditDetail({ auditId, status }: { auditId: string; status: string }) {
             <option value="" disabled>
               Select a product
             </option>
-            {(products.data ?? []).map((product) => (
+            {(products.data?.products ?? []).map((product) => (
               <option key={product.id} value={product.id}>
                 {product.name} ({product.sku})
               </option>

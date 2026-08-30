@@ -191,6 +191,7 @@ async function runSync(organizationId: string, connectionId: string) {
             salePriceMinor: toMinorUnits(
               wooProduct.price ?? wooProduct.regular_price,
             ),
+            productUrl: wooProduct.permalink?.trim() || null,
           },
         );
         synced += 1;

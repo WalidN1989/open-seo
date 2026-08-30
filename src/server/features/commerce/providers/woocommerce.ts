@@ -39,6 +39,7 @@ const wooProductSchema = z.object({
   stock_quantity: z.number().nullable().optional(),
   manage_stock: z.boolean().optional(),
   status: z.string().optional(),
+  permalink: z.string().nullable().optional(),
   categories: z
     .array(z.object({ name: z.string() }))
     .optional()

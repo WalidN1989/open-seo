@@ -52,7 +52,7 @@ describe("CommerceService authorization", () => {
 
   it("requires only view access to read", async () => {
     mocks.listProducts.mockResolvedValue([]);
-    await CommerceService.listProducts(ORG, USER, { limit: 100 });
+    await CommerceService.listProducts(ORG, USER, { limit: 100, offset: 0 });
     // No permission argument means the default, "view".
     expect(mocks.requireAccess).toHaveBeenCalledWith(ORG, USER, "crm");
   });
@@ -180,5 +180,66 @@ describe("CommerceService product rules", () => {
       }),
     ).rejects.toThrow("A product cannot be its own variant.");
     expect(mocks.updateProduct).not.toHaveBeenCalled();
+  });
+});
+
+describe("product list paging", () => {
+  it("passes the page window straight through to the repository", async () => {
+    mocks.listProducts.mockResolvedValue({ products: [], total: 1821 });
+    await CommerceService.listProducts(ORG, USER, {
+      limit: 50,
+      offset: 100,
+      search: "stoic",
+    });
+    expect(mocks.listProducts).toHaveBeenCalledWith(ORG, {
+      limit: 50,
+      offset: 100,
+      search: "stoic",
+    });
+  });
+
+  it("returns the filtered total, not the page length", async () => {
+    // The page shows "51-100 of 1,821". Returning the page length instead
+    // would tell someone with 1,821 products that they have 50.
+    mocks.listProducts.mockResolvedValue({
+      products: [{ id: "p1" }],
+      total: 1821,
+    });
+    const result = await CommerceService.listProducts(ORG, USER, {
+      limit: 50,
+      offset: 0,
+    });
+    expect(result.total).toBe(1821);
+    expect(result.products).toHaveLength(1);
+  });
+
+  it("refuses to list products without CRM access", async () => {
+    mocks.requireAccess.mockRejectedValue(new Error("FORBIDDEN"));
+    await expect(
+      CommerceService.listProducts(ORG, USER, { limit: 50, offset: 0 }),
+    ).rejects.toThrow("FORBIDDEN");
+    expect(mocks.listProducts).not.toHaveBeenCalled();
+  });
+});
+
+describe("product page url", () => {
+  it("accepts a real url and rejects a bare word", async () => {
+    const { updateProductSchema } = await import("@/types/schemas/commerce");
+    expect(
+      updateProductSchema.parse({
+        id: "p1",
+        productUrl: "https://store.example/p/1",
+      }).productUrl,
+    ).toBe("https://store.example/p/1");
+    expect(() =>
+      updateProductSchema.parse({ id: "p1", productUrl: "not-a-url" }),
+    ).toThrow();
+  });
+
+  it("accepts an empty string so the link can be cleared", async () => {
+    const { updateProductSchema } = await import("@/types/schemas/commerce");
+    expect(
+      updateProductSchema.parse({ id: "p1", productUrl: "" }).productUrl,
+    ).toBe("");
   });
 });

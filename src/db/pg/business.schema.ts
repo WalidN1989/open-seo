@@ -725,6 +725,9 @@ export const commerceProducts = pgTable(
     reorderThreshold: integer("reorder_threshold").notNull().default(0),
     // Where the row came from, so a provider sync updates its own product
     // instead of creating a duplicate on every run.
+    // The store's own page for this product. The assistant sends this link
+    // to customers, so it is worth keeping even though we never fetch it.
+    productUrl: text("product_url"),
     externalSource: text("external_source"),
     externalId: text("external_id"),
     status: text("status", { enum: ["active", "archived"] })

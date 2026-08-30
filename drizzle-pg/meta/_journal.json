@@ -239,6 +239,13 @@
       "when": 1788097705879,
       "tag": "0033_lame_prism",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1788098598728,
+      "tag": "0034_wise_proemial_gods",
+      "breakpoints": true
     }
   ]
 }

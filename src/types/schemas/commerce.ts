@@ -18,6 +18,9 @@ export const createProductSchema = z.object({
   isbn: z.string().trim().max(20).optional(),
   description: z.string().trim().max(10_000).optional(),
   category: z.string().trim().max(100).optional(),
+  // The store's own page for this product. Synced from the provider, and
+  // editable because a manually created product has no provider to ask.
+  productUrl: z.string().trim().url().max(2048).optional().or(z.literal("")),
   salePriceMinor: minorUnits.default(0),
   costPriceMinor: minorUnits.optional(),
   reorderThreshold: z.number().int().min(0).max(1_000_000).default(0),
@@ -38,7 +41,8 @@ export const productIdSchema = z.object({ id: z.string().min(1) });
 export const listProductsSchema = z.object({
   search: z.string().trim().max(200).optional(),
   status: productStatusSchema.optional(),
-  limit: z.number().int().min(1).max(200).default(100),
+  limit: z.number().int().min(1).max(200).default(50),
+  offset: z.number().int().min(0).max(1_000_000).default(0),
 });
 
 export type CreateProductInput = z.infer<typeof createProductSchema>;

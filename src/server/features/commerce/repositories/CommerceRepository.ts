@@ -1,4 +1,4 @@
-import { and, asc, eq, like, or } from "drizzle-orm";
+import { and, asc, count, eq, like, or } from "drizzle-orm";
 import { db } from "@/db";
 import { commerceProducts } from "@/db/schema";
 import type {
@@ -12,7 +12,7 @@ import type {
  * "by id" lookup without an organization: a caller holding an id from another
  * tenant must not be able to resolve it.
  */
-async function listProducts(organizationId: string, input: ListProductsInput) {
+function productFilters(organizationId: string, input: ListProductsInput) {
   const filters = [eq(commerceProducts.organizationId, organizationId)];
   if (input.status) filters.push(eq(commerceProducts.status, input.status));
   if (input.search) {
@@ -25,12 +25,26 @@ async function listProducts(organizationId: string, input: ListProductsInput) {
     );
     if (match) filters.push(match);
   }
-  return db
-    .select()
-    .from(commerceProducts)
-    .where(and(...filters))
-    .orderBy(asc(commerceProducts.name))
-    .limit(input.limit);
+  return and(...filters);
+}
+
+/**
+ * One page of products plus the total the filter matches, so the page can say
+ * "51-100 of 1,821" instead of leaving people guessing whether there is more.
+ */
+async function listProducts(organizationId: string, input: ListProductsInput) {
+  const where = productFilters(organizationId, input);
+  const [rows, totals] = await Promise.all([
+    db
+      .select()
+      .from(commerceProducts)
+      .where(where)
+      .orderBy(asc(commerceProducts.name), asc(commerceProducts.id))
+      .limit(input.limit)
+      .offset(input.offset),
+    db.select({ value: count() }).from(commerceProducts).where(where),
+  ]);
+  return { products: rows, total: totals[0]?.value ?? 0 };
 }
 
 async function getProduct(organizationId: string, productId: string) {
@@ -131,6 +145,7 @@ async function upsertExternalProduct(
     description: string | null;
     category: string | null;
     salePriceMinor: number;
+    productUrl: string | null;
   },
 ) {
   const now = new Date().toISOString();
@@ -154,6 +169,7 @@ async function upsertExternalProduct(
         description: input.description,
         category: input.category,
         salePriceMinor: input.salePriceMinor,
+        productUrl: input.productUrl,
         updatedAt: now,
       },
     })

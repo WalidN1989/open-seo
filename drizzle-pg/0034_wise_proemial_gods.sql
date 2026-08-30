@@ -1,0 +1,1 @@
+ALTER TABLE "commerce_products" ADD COLUMN "product_url" text;
