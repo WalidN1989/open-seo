@@ -288,12 +288,85 @@ pipeline.
 
 ### Pending
 
-- **Commerce modules are not built and have no schema**: Products, Inventory,
-  Orders, and beyond them Quotations, Purchase Orders, Returns, Expenses,
-  Settlements, Unit Economics, Waybills, Documents, Goals and Tasks. These are
-  a rebuild on this stack, not a port. Suggested order is Products, then
-  Inventory, then Orders: each depends on the one before, and each is useful
-  alone.
+#### Next handoff: CRM commerce foundation
+
+The next approved scope is **Products, Inventory, Orders and business
+Analytics**, presented inside the existing CRM workspace beside Overview,
+Leads, Contacts, Companies, Inquiries and Meetings. They are CRM capabilities,
+not new peer modules or new entitlement cards. Do not add another top-level
+module switcher.
+
+The reference implementation is
+`https://github.com/WalidN1989/stock-tracker-wiz`. It was inspected on
+2026-08-30. Relevant reference areas are:
+
+- `src/components/products/**`
+- `src/components/inventory/**`
+- `src/components/orders/**`
+- `src/components/analytics/**`
+- `src/pages/BooxwormManage.tsx`
+- the generated Supabase types for `products`, `inventory_audits`,
+  `inventory_audit_items`, `sales_orders` and `sales_order_items`
+
+Use that repository to understand behavior only. Do **not** copy its Supabase
+queries, company model, permission hooks, component library, page shell, CSS,
+or visual design. Rebuild on OpenSEO's organization boundary and standard
+TanStack server function -> service -> repository architecture. Every schema,
+query and mutation must work on SQLite and Postgres.
+
+Build in this dependency order:
+
+1. **Products** — normalized product records with organization, name, unique
+   organization-scoped SKU, optional barcode/ISBN, description, category,
+   sale price in integer minor units, optional cost price in integer minor
+   units, reorder threshold, status and timestamps. Variants may reference a
+   parent product explicitly; do not encode variants or prices in JSON.
+2. **Inventory** — stock is not merely a mutable product field. Keep an
+   organization-scoped inventory balance per product plus an immutable stock
+   movement ledger (receipt, sale, return, adjustment and audit). Inventory
+   audits have draft/published/reverted lifecycle and normalized audit items
+   containing expected quantity, counted quantity and variance. Publishing an
+   audit writes movements transactionally; reverting writes compensating
+   movements rather than erasing history. CSV import/export and scanning can
+   follow after the core workflow works.
+3. **Orders** — an organization-scoped order belongs to a CRM contact and has
+   normalized order lines referencing products, snapshotted descriptions,
+   quantities and integer unit prices. Store subtotal, discount, delivery,
+   tax and total as integer minor units. Use a clear status lifecycle and keep
+   payment and fulfilment status separate. Confirming/cancelling/returning an
+   order must create the corresponding inventory movements exactly once.
+4. **Business Analytics** — derive revenue, order count, units sold, low-stock
+   count, recent trend and top products from the commerce tables. This is
+   operational CRM analytics, **not** Google Analytics, Search Console or SEO
+   analytics. Do not copy or modify any OpenSEO SEO dashboard or data source.
+
+`whatsapp_order_requests` is only an enquiry/request surface; it is **not** the
+Orders module. Preserve it and add an explicit, idempotent action that turns a
+request into a draft order linked to the same organization and CRM contact.
+Write the created order ID back to `external_order_id`. Never create an order
+automatically from an AI reply. WooCommerce or other provider imports must use
+the same order/product model and stable external IDs for deduplication.
+
+The first complete slice must include migrations for both dialects, schema
+exports, Zod validation at server boundaries, repositories, services, server
+functions, route files, CRM sidebar links and usable empty/list/create/detail
+states. Add authorization and organization-isolation tests, money/stock
+invariant tests, idempotency tests, and tests proving one tenant cannot read or
+mutate another tenant's commerce data. Update this ledger after every slice.
+
+**UI freeze for this handoff:** the current OpenSEO UI, colors, typography,
+spacing, sidebar shell, page-width system and existing routes are approved.
+Do not redesign, restyle, rename, relocate or remove existing UI. Do not add a
+new design system or copy the legacy CRM appearance. UI work is limited to
+mounting the four named CRM navigation entries and composing their new pages
+from the existing OpenSEO/DaisyUI patterns. If a backend capability cannot be
+exposed without a broader visual decision, finish and test the backend, mark
+the endpoint pending human touch here, and continue with the remaining work.
+
+Beyond this approved slice, Quotations, Purchase Orders, Returns, Expenses,
+Settlements, Unit Economics, Waybills, Documents, Goals and Tasks remain
+pending. Do not build them yet.
+
 - **Promoting a conversation to a lead.** Inquiries already promote; extending
   it to a conversation is small and unlocks the model above.
 - **Deeper sidebar sections for WhatsApp, Voice and Leads.** They now mount in
