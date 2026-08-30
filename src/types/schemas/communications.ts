@@ -78,6 +78,9 @@ export const createIntegrationSchema = z.object({
   displayName: z.string().trim().min(1).max(200),
   credentialReference: z.string().trim().max(500).optional(),
 });
+export const testIntegrationSchema = z.object({
+  connectionId: z.string().min(1),
+});
 export const createWebhookEndpointSchema = z.object({
   name: z.string().trim().min(1).max(100),
   url: z.url().max(2048),

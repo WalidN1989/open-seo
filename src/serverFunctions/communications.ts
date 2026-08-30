@@ -13,6 +13,7 @@ import {
   createWhatsappTemplateSchema,
   sendWhatsappMessageSchema,
   testWebhookEndpointSchema,
+  testIntegrationSchema,
   retryWebhookDeliverySchema,
   startVoiceConversationSchema,
   synthesizeVoiceSpeechSchema,
@@ -180,6 +181,17 @@ export const createIntegration = createServerFn({ method: "POST" })
   .validator(createIntegrationSchema)
   .handler(({ context, data }) =>
     CommunicationsService.createIntegration(
+      context.organizationId,
+      context.userId,
+      data,
+    ),
+  );
+
+export const testIntegration = createServerFn({ method: "POST" })
+  .middleware(requireAuthenticatedContext)
+  .validator(testIntegrationSchema)
+  .handler(({ context, data }) =>
+    CommunicationsService.testIntegration(
       context.organizationId,
       context.userId,
       data,

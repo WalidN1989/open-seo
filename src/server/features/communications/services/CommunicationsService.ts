@@ -14,6 +14,7 @@ import type {
   createWhatsappTemplateSchema,
   sendWhatsappMessageSchema,
   testWebhookEndpointSchema,
+  testIntegrationSchema,
   retryWebhookDeliverySchema,
   startVoiceConversationSchema,
   synthesizeVoiceSpeechSchema,
@@ -36,6 +37,8 @@ import {
 import { deliverWebhook, validateWebhookUrl } from "../providers/webhooks";
 import { speakWithDeepgram, transcribeWithDeepgram } from "../providers/voice";
 import { generateWhatsappAiReply } from "../providers/whatsapp-ai";
+import { testIntegrationConnection } from "../providers/integrations";
+import { BusinessAuditRepository } from "@/server/features/business-modules/repositories/BusinessAuditRepository";
 
 async function whatsappWorkspace(organizationId: string, userId: string) {
   await BusinessModuleService.requireAccess(organizationId, userId, "whatsapp");
@@ -450,6 +453,56 @@ async function createIntegration(
   return CommunicationsRepository.createIntegration(organizationId, input);
 }
 
+async function testIntegration(
+  organizationId: string,
+  userId: string,
+  input: z.infer<typeof testIntegrationSchema>,
+) {
+  await BusinessModuleService.requireAccess(
+    organizationId,
+    userId,
+    "integrations",
+    "manage",
+  );
+  const connection = await CommunicationsRepository.getIntegration(
+    organizationId,
+    input.connectionId,
+  );
+  if (!connection) throw new Error("Integration connection not found.");
+  try {
+    const result = await testIntegrationConnection(connection);
+    await CommunicationsRepository.updateIntegrationStatus(
+      organizationId,
+      connection.id,
+      "connected",
+    );
+    await BusinessAuditRepository.record({
+      organizationId,
+      actorUserId: userId,
+      action: "integration.test.succeeded",
+      targetType: "integration",
+      targetId: connection.id,
+      metadata: { providerKey: connection.providerKey },
+    });
+    return result;
+  } catch (error) {
+    await CommunicationsRepository.updateIntegrationStatus(
+      organizationId,
+      connection.id,
+      "error",
+    );
+    await BusinessAuditRepository.record({
+      organizationId,
+      actorUserId: userId,
+      action: "integration.test.failed",
+      targetType: "integration",
+      targetId: connection.id,
+      metadata: { providerKey: connection.providerKey },
+    });
+    throw error;
+  }
+}
+
 async function processWhatsappWebhook(
   connectionId: string,
   requestUrl: string,
@@ -853,6 +906,7 @@ export const CommunicationsService = {
   startVoiceConversation,
   synthesizeVoiceSpeech,
   testWebhookEndpoint,
+  testIntegration,
   transcribeVoiceAudio,
   verifyMetaWebhook,
   voiceWorkspace,

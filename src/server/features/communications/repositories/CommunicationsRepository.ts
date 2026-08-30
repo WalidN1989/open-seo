@@ -205,6 +205,42 @@ async function getIntegrationByProvider(
   return row;
 }
 
+async function getIntegration(organizationId: string, connectionId: string) {
+  const [row] = await db
+    .select()
+    .from(integrationConnections)
+    .where(
+      and(
+        eq(integrationConnections.organizationId, organizationId),
+        eq(integrationConnections.id, connectionId),
+      ),
+    )
+    .limit(1);
+  return row ?? null;
+}
+
+async function updateIntegrationStatus(
+  organizationId: string,
+  connectionId: string,
+  status: "connected" | "disconnected" | "error",
+) {
+  const [row] = await db
+    .update(integrationConnections)
+    .set({
+      status,
+      lastSyncedAt: status === "connected" ? new Date().toISOString() : null,
+      updatedAt: new Date().toISOString(),
+    })
+    .where(
+      and(
+        eq(integrationConnections.organizationId, organizationId),
+        eq(integrationConnections.id, connectionId),
+      ),
+    )
+    .returning();
+  return row;
+}
+
 async function createQueuedWhatsappMessage(
   organizationId: string,
   conversationId: string,
@@ -755,7 +791,7 @@ async function createIntegration(
       id: crypto.randomUUID(),
       organizationId,
       ...input,
-      status: input.credentialReference ? "connected" : "disconnected",
+      status: "disconnected",
     })
     .returning();
   return row;
@@ -779,6 +815,7 @@ export const CommunicationsRepository = {
   flagWhatsappConversationForTeam,
   getIntegrationsWorkspace,
   getIntegrationByProvider,
+  getIntegration,
   getVoiceWorkspace,
   getVoiceAgent,
   getVoiceConversation,
@@ -796,6 +833,7 @@ export const CommunicationsRepository = {
   markWhatsappConnectionConnected,
   startVoiceConversation,
   updateWhatsappCampaign,
+  updateIntegrationStatus,
   updateWhatsappDelivery,
   updateWebhookDelivery,
   whatsappEntityBelongsToOrganization,

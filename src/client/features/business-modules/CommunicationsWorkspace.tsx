@@ -27,6 +27,7 @@ import {
   getWhatsappWorkspace,
   launchWhatsappCampaign,
   retryWebhookDelivery,
+  testIntegration,
   sendWhatsappMessage,
   startVoiceConversation,
   transcribeVoiceAudio,
@@ -634,6 +635,15 @@ export function IntegrationsWorkspace() {
     },
     onError: showError,
   });
+  const integrationTest = useMutation({
+    mutationFn: (connectionId: string) =>
+      testIntegration({ data: { connectionId } }),
+    onSuccess: async (result) => {
+      await client.invalidateQueries({ queryKey: ["integrations"] });
+      toast.success(result.detail);
+    },
+    onError: showError,
+  });
   if (query.isLoading) return <Loading />;
   if (query.isError) return <ErrorBox error={query.error} />;
   return (
@@ -689,11 +699,21 @@ export function IntegrationsWorkspace() {
         <Panel title="Connections" icon={Cable}>
           {query.data!.connections.length ? (
             query.data!.connections.map((item) => (
-              <Row
-                key={item.id}
-                title={item.displayName}
-                detail={`${item.providerKey} · ${item.status}`}
-              />
+              <div key={item.id} className="flex items-center gap-2 pr-4">
+                <div className="min-w-0 flex-1">
+                  <Row
+                    title={item.displayName}
+                    detail={`${item.providerKey} · ${item.status}`}
+                  />
+                </div>
+                <button
+                  className="btn btn-ghost btn-xs"
+                  disabled={integrationTest.isPending}
+                  onClick={() => integrationTest.mutate(item.id)}
+                >
+                  Test
+                </button>
+              </div>
             ))
           ) : (
             <Empty text="Add Claude Haiku, WooCommerce, Apify, Firecrawl, Hunter, Make, SMS, or another provider." />
