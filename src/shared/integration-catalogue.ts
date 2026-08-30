@@ -172,13 +172,13 @@ export const integrationCatalogue: readonly IntegrationCatalogueEntry[] = [
       requirements: [
         "A WooCommerce store served over HTTPS.",
         "REST API keys with at least read permission.",
-        "The keys set on the deployment under your credential reference.",
+        "Read permission is enough; write is only needed to push changes back.",
       ],
     },
     howToConnect: [
       "In WooCommerce, go to Settings, Advanced, REST API and add a key with read access.",
-      "Set the store URL, consumer key and consumer secret on the deployment under your credential reference.",
-      "Connect here with that reference; the connection is verified with a real authenticated store request.",
+      "Copy the store URL, consumer key and consumer secret into the form below.",
+      "Connect; the keys are verified with a real authenticated request to your store before they are accepted.",
     ],
   },
   {
@@ -277,7 +277,7 @@ export const integrationCatalogue: readonly IntegrationCatalogueEntry[] = [
     name: "Custom API",
     tagline: "Bring your own adapter",
     description:
-      "A generic connection for a service with no first-class adapter yet, so a tenant can still store a credential reference and sign outbound webhooks.",
+      "A generic connection for a service with no first-class adapter yet, so a tenant can still store an API key and sign outbound webhooks.",
     category: "automations",
     state: "connectable",
     credentialFields: [

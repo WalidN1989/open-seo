@@ -227,8 +227,8 @@ export function IntegrationProviderDetailView() {
           </dl>
 
           <p className="text-xs text-base-content/50">
-            Credentials are read from the deployment and never stored in the
-            workspace database or returned to the browser.
+            Credentials are encrypted before they are stored and are never
+            returned to the browser.
           </p>
         </div>
 
