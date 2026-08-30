@@ -17,6 +17,12 @@ const WOOCOMMERCE = "woocommerce";
 const PAGE_SIZE = 50;
 // A page walk is bounded so a misbehaving store cannot spin the worker.
 const MAX_PAGES = 200;
+/**
+ * Pages per run. A catalogue of a few thousand products cannot be fetched,
+ * upserted and stock-reconciled inside one request, so a run stops at a page
+ * boundary, records where it got to and re-queues itself for the scheduler.
+ */
+const PAGES_PER_RUN = 5;
 
 /**
  * Ask the provider whether the connection still works, and record the answer.
@@ -80,6 +86,9 @@ async function queueSync(
     await IntegrationSyncRepository.setSyncState(organizationId, connectionId, {
       syncStatus: "queued",
       syncError: null,
+      // Pressing the button means "refresh everything", so a fresh pass starts
+      // at page one rather than resuming a half-finished one.
+      syncCursor: 0,
     }),
   );
 }
@@ -137,8 +146,24 @@ async function runSync(organizationId: string, connectionId: string) {
 
     let synced = 0;
     const movements: StockMovementDraft[] = [];
+    const startPage = Math.max(1, connection.syncCursor || 1);
+    // A run that starts at page one is a fresh pass, so the running total
+    // restarts rather than accumulating across syncs forever.
+    if (startPage === 1) connection.syncedCount = 0;
+    const lastPage = Math.min(startPage + PAGES_PER_RUN - 1, MAX_PAGES);
+    let finished = true;
 
-    for (let page = 1; page <= MAX_PAGES; page += 1) {
+    for (let page = startPage; page <= MAX_PAGES; page += 1) {
+      if (page > lastPage) {
+        // More to do than fits here. Stop cleanly on a page boundary.
+        finished = false;
+        await IntegrationSyncRepository.setSyncState(
+          organizationId,
+          connectionId,
+          { syncStatus: "queued", syncError: null, syncCursor: page },
+        );
+        break;
+      }
       const products = await fetchProductPage(
         connection,
         page,
@@ -193,6 +218,20 @@ async function runSync(organizationId: string, connectionId: string) {
 
     await InventoryRepository.applyMovements(organizationId, movements);
 
+    const syncedTotal = (connection.syncedCount || 0) + synced;
+    if (!finished) {
+      // Partway through. The state row was already set to queued above; only
+      // the running total is added here, and lastSyncedAt is deliberately not
+      // stamped so the incremental filter still covers the whole catalogue.
+      return stripCredentials(
+        await IntegrationSyncRepository.setSyncState(
+          organizationId,
+          connectionId,
+          { syncStatus: "queued", syncError: null, syncedCount: syncedTotal },
+        ),
+      );
+    }
+
     return stripCredentials(
       await IntegrationSyncRepository.setSyncState(
         organizationId,
@@ -200,7 +239,8 @@ async function runSync(organizationId: string, connectionId: string) {
         {
           syncStatus: "idle",
           syncError: null,
-          syncedCount: synced,
+          syncedCount: syncedTotal,
+          syncCursor: 0,
           lastSyncedAt: new Date().toISOString(),
         },
       ),
@@ -212,6 +252,7 @@ async function runSync(organizationId: string, connectionId: string) {
         connectionId,
         {
           syncStatus: "error",
+          syncCursor: 0,
           syncError:
             error instanceof Error
               ? error.message.slice(0, 300)

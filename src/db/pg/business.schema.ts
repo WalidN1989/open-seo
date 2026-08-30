@@ -326,6 +326,9 @@ export const integrationConnections = pgTable(
       .default("idle"),
     syncError: text("sync_error"),
     syncedCount: integer("synced_count").notNull().default(0),
+    // Where a paged sync got to. A large catalogue cannot finish inside one
+    // request, so a run stops at a page boundary and the next one resumes.
+    syncCursor: integer("sync_cursor").notNull().default(0),
     autoSync: boolean("auto_sync").notNull().default(true),
     syncIntervalMinutes: integer("sync_interval_minutes").notNull().default(60),
     createdAt: createdAt(),

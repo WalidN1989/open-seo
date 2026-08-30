@@ -114,6 +114,11 @@ export async function fetchProductPage(
   const params = new URLSearchParams({
     per_page: String(perPage),
     page: String(page),
+    // Stable ordering, because a paged sync resumes across requests. On
+    // WooCommerce's default date ordering a product added mid-sync shifts
+    // every later page and the resume would skip real rows.
+    orderby: "id",
+    order: "asc",
     // Ask only for what changed since the last run when there is a marker.
     ...(modifiedAfter
       ? { modified_after: modifiedAfter, dates_are_gmt: "true" }

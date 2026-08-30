@@ -5,7 +5,14 @@ const mocks = vi.hoisted(() => ({
   requireAccess: vi.fn(),
   getConnection: vi.fn(),
   recordHealth: vi.fn(),
-  setSyncState: vi.fn(),
+  setSyncState:
+    vi.fn<
+      (
+        organizationId: string,
+        connectionId: string,
+        values: Record<string, unknown>,
+      ) => unknown
+    >(),
   setSchedule: vi.fn(),
   listDueSyncs: vi.fn(),
   upsertExternalProduct: vi.fn(),
@@ -228,5 +235,124 @@ describe("authorization and isolation", () => {
     await expect(
       CatalogueSyncService.queueSync(ORG, USER, "conn_1"),
     ).rejects.toThrow("only available for WooCommerce");
+  });
+});
+
+describe("a catalogue too large for one request", () => {
+  /** The values of the final setSyncState write. */
+  function lastSyncState(): Record<string, unknown> {
+    const calls = mocks.setSyncState.mock.calls;
+    return calls[calls.length - 1][2];
+  }
+
+  /** The page numbers actually requested, in order. */
+  function requestedPages(): number[] {
+    return mocks.fetchProductPage.mock.calls.map((call) => Number(call[1]));
+  }
+
+  /** A full page every time, so the sync always believes there is more. */
+  function fullPages() {
+    mocks.fetchProductPage.mockImplementation((_c: unknown, page: number) =>
+      Promise.resolve(
+        Array.from({ length: 50 }, (_, index) =>
+          wooProduct({ id: page * 1000 + index, sku: `SKU-${page}-${index}` }),
+        ),
+      ),
+    );
+  }
+
+  it("stops at a page boundary and re-queues itself", async () => {
+    // 1,821 products cannot be fetched, upserted and stock-reconciled inside
+    // one request. Running to exhaustion is how a sync dies silently and
+    // leaves the catalogue empty.
+    fullPages();
+    await CatalogueSyncService.runSync(ORG, CONNECTION.id);
+
+    expect(requestedPages()).toEqual([1, 2, 3, 4, 5]);
+    expect(mocks.setSyncState).toHaveBeenCalledWith(
+      ORG,
+      CONNECTION.id,
+      expect.objectContaining({ syncStatus: "queued", syncCursor: 6 }),
+    );
+  });
+
+  it("does not claim it synced when it is only partway", async () => {
+    // lastSyncedAt drives the incremental filter. Stamping it halfway would
+    // make the next run ask only for recent changes and permanently skip
+    // every product it had not reached yet.
+    fullPages();
+    await CatalogueSyncService.runSync(ORG, CONNECTION.id);
+    for (const call of mocks.setSyncState.mock.calls) {
+      expect(call[2]).not.toHaveProperty("lastSyncedAt");
+    }
+  });
+
+  it("resumes from the recorded page rather than starting over", async () => {
+    fullPages();
+    mocks.getConnection.mockResolvedValue({ ...CONNECTION, syncCursor: 6 });
+    await CatalogueSyncService.runSync(ORG, CONNECTION.id);
+    expect(requestedPages()).toEqual([6, 7, 8, 9, 10]);
+  });
+
+  it("finishes, clears the cursor and stamps the sync time", async () => {
+    mocks.fetchProductPage.mockImplementation((_c: unknown, page: number) =>
+      Promise.resolve(page === 1 ? [wooProduct()] : []),
+    );
+    await CatalogueSyncService.runSync(ORG, CONNECTION.id);
+    const state = lastSyncState();
+    expect(state.syncStatus).toBe("idle");
+    expect(state.syncCursor).toBe(0);
+    expect(typeof state.lastSyncedAt).toBe("string");
+  });
+
+  it("accumulates the running total across resumed runs", async () => {
+    fullPages();
+    mocks.getConnection.mockResolvedValue({
+      ...CONNECTION,
+      syncCursor: 6,
+      syncedCount: 250,
+    });
+    await CatalogueSyncService.runSync(ORG, CONNECTION.id);
+    expect(mocks.setSyncState).toHaveBeenLastCalledWith(
+      ORG,
+      CONNECTION.id,
+      expect.objectContaining({ syncedCount: 500 }),
+    );
+  });
+
+  it("restarts the total when a fresh pass begins at page one", async () => {
+    mocks.fetchProductPage.mockImplementation((_c: unknown, page: number) =>
+      Promise.resolve(page === 1 ? [wooProduct()] : []),
+    );
+    mocks.getConnection.mockResolvedValue({
+      ...CONNECTION,
+      syncCursor: 0,
+      syncedCount: 9999,
+    });
+    await CatalogueSyncService.runSync(ORG, CONNECTION.id);
+    expect(mocks.setSyncState).toHaveBeenLastCalledWith(
+      ORG,
+      CONNECTION.id,
+      expect.objectContaining({ syncedCount: 1 }),
+    );
+  });
+
+  it("clears the cursor on failure so a retry is not stuck mid-catalogue", async () => {
+    mocks.fetchProductPage.mockRejectedValue(new Error("store unreachable"));
+    await CatalogueSyncService.runSync(ORG, CONNECTION.id);
+    expect(mocks.setSyncState).toHaveBeenLastCalledWith(
+      ORG,
+      CONNECTION.id,
+      expect.objectContaining({ syncStatus: "error", syncCursor: 0 }),
+    );
+  });
+
+  it("starts a manual sync over rather than resuming", async () => {
+    await CatalogueSyncService.queueSync(ORG, USER, CONNECTION.id);
+    expect(mocks.setSyncState).toHaveBeenCalledWith(
+      ORG,
+      CONNECTION.id,
+      expect.objectContaining({ syncStatus: "queued", syncCursor: 0 }),
+    );
   });
 });

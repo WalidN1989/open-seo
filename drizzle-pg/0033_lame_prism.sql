@@ -1,0 +1,1 @@
+ALTER TABLE "integration_connections" ADD COLUMN "sync_cursor" integer DEFAULT 0 NOT NULL;

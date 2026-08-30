@@ -232,6 +232,13 @@
       "when": 1788095833007,
       "tag": "0032_dazzling_ink",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1788097705879,
+      "tag": "0033_lame_prism",
+      "breakpoints": true
     }
   ]
 }

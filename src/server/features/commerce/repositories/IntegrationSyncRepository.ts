@@ -48,6 +48,7 @@ async function setSyncState(
     syncError: string | null;
     syncedCount?: number;
     lastSyncedAt?: string;
+    syncCursor?: number;
   },
 ) {
   const [row] = await db
@@ -88,6 +89,9 @@ async function setSchedule(
  * Deliberately not organization-scoped — the scheduler acts for no tenant, and
  * every other read in this file is scoped.
  */
+/** A sync still "running" after this long is taken to have died. */
+const STALE_RUN_MS = 15 * 60_000;
+
 async function listDueSyncs(limit: number) {
   const now = Date.now();
   const rows = await db
@@ -99,6 +103,7 @@ async function listDueSyncs(limit: number) {
         eq(integrationConnections.status, "connected"),
         or(
           eq(integrationConnections.syncStatus, "queued"),
+          eq(integrationConnections.syncStatus, "running"),
           eq(integrationConnections.autoSync, true),
         ),
       ),
@@ -108,7 +113,13 @@ async function listDueSyncs(limit: number) {
   return rows
     .filter((row) => {
       if (row.syncStatus === "queued") return true;
-      if (row.syncStatus === "running") return false;
+      // A run that died mid-flight leaves "running" behind and nothing else
+      // ever clears it. Reclaim it once it is plainly not running any more,
+      // or the catalogue silently stops syncing for good.
+      if (row.syncStatus === "running") {
+        const since = now - new Date(row.updatedAt).getTime();
+        return since >= STALE_RUN_MS;
+      }
       if (!row.autoSync) return false;
       if (!row.lastSyncedAt) return true;
       const elapsed = now - new Date(row.lastSyncedAt).getTime();
