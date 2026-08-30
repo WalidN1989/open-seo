@@ -325,6 +325,10 @@ export const integrationConnections = sqliteTable(
       .notNull()
       .default("disconnected"),
     credentialReference: text("credential_reference"),
+    // Provider credentials, encrypted at rest. A tenant connects their own
+    // store from the UI; the environment reference above stays as a fallback
+    // for self-hosters who would rather keep secrets on the deployment.
+    credentials: text("credentials"),
     // Health is the last real answer the provider gave us, kept so the UI can
     // say when it was checked rather than implying it is checking live.
     lastCheckedAt: text("last_checked_at"),

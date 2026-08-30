@@ -225,6 +225,13 @@
       "when": 1788094777042,
       "tag": "0031_sloppy_logan",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1788095833007,
+      "tag": "0032_dazzling_ink",
+      "breakpoints": true
     }
   ]
 }

@@ -1,9 +1,10 @@
-import { getRequiredEnvValue } from "@/server/lib/runtime-env";
+import { resolveConnectionCredential } from "@/server/lib/connection-secrets";
 import { z } from "zod";
 
 type IntegrationRecord = {
   providerKey: string;
   credentialReference: string | null;
+  credentials?: string | null;
 };
 
 const hunterDomainResponseSchema = z.object({
@@ -24,24 +25,11 @@ const hunterDomainResponseSchema = z.object({
     .optional(),
 });
 
-function secretName(reference: string, suffix = "API_KEY") {
-  const prefix = reference
-    .trim()
-    .toUpperCase()
-    .replace(/[^A-Z0-9_]/g, "_");
-  return `${prefix}_${suffix}`;
-}
-
 async function credentialValue(
   connection: IntegrationRecord,
   suffix = "API_KEY",
 ) {
-  if (!connection.credentialReference) {
-    throw new Error("This integration has no credential reference.");
-  }
-  return getRequiredEnvValue(
-    secretName(connection.credentialReference, suffix),
-  );
+  return resolveConnectionCredential(connection, suffix);
 }
 
 async function checkedJson(

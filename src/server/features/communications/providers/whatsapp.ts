@@ -1,4 +1,4 @@
-import { getRequiredEnvValue } from "@/server/lib/runtime-env";
+import { resolveConnectionCredential } from "@/server/lib/connection-secrets";
 import { z } from "zod";
 
 export type InboundWhatsappMessage = {
@@ -21,6 +21,7 @@ type WhatsappConnectionRecord = {
   displayPhoneNumber: string | null;
   externalAccountId: string | null;
   credentialReference: string | null;
+  credentials?: string | null;
 };
 
 type WhatsappSendResult = {
@@ -28,24 +29,11 @@ type WhatsappSendResult = {
   status: string;
 };
 
-function credentialName(reference: string, suffix: string): string {
-  const prefix = reference
-    .trim()
-    .toUpperCase()
-    .replace(/[^A-Z0-9_]/g, "_");
-  return `${prefix}_${suffix}`;
-}
-
 export async function resolveCredential(
   connection: WhatsappConnectionRecord,
   suffix: string,
 ): Promise<string> {
-  if (!connection.credentialReference) {
-    throw new Error("This WhatsApp connection has no credential reference.");
-  }
-  return getRequiredEnvValue(
-    credentialName(connection.credentialReference, suffix),
-  );
+  return resolveConnectionCredential(connection, suffix);
 }
 
 export function parseTwilioPayload(payload: Readonly<Record<string, string>>): {

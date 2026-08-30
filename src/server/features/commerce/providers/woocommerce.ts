@@ -1,28 +1,17 @@
 import { z } from "zod";
-import { getRequiredEnvValue } from "@/server/lib/runtime-env";
+import { resolveConnectionCredential } from "@/server/lib/connection-secrets";
 
 type IntegrationRecord = {
   providerKey: string;
   credentialReference: string | null;
+  credentials?: string | null;
 };
 
-function secretName(reference: string, suffix: string) {
-  const prefix = reference
-    .trim()
-    .toUpperCase()
-    .replace(/[^A-Z0-9_]/g, "_");
-  return `${prefix}_${suffix}`;
-}
-
 async function credentials(connection: IntegrationRecord) {
-  if (!connection.credentialReference) {
-    throw new Error("This integration has no credential reference.");
-  }
-  const reference = connection.credentialReference;
   const [baseUrl, consumerKey, consumerSecret] = await Promise.all([
-    getRequiredEnvValue(secretName(reference, "BASE_URL")),
-    getRequiredEnvValue(secretName(reference, "CONSUMER_KEY")),
-    getRequiredEnvValue(secretName(reference, "CONSUMER_SECRET")),
+    resolveConnectionCredential(connection, "BASE_URL"),
+    resolveConnectionCredential(connection, "CONSUMER_KEY"),
+    resolveConnectionCredential(connection, "CONSUMER_SECRET"),
   ]);
   return { baseUrl, consumerKey, consumerSecret };
 }

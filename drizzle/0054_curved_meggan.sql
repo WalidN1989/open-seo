@@ -1,0 +1,1 @@
+ALTER TABLE `integration_connections` ADD `credentials` text;

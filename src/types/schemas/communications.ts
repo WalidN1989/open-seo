@@ -74,10 +74,20 @@ export const transcribeVoiceAudioSchema = z.object({
   mimeType: z.string().trim().min(1).max(100),
   language: z.string().trim().min(2).max(20).default("multi"),
 });
+/**
+ * Provider credentials keyed by the catalogue's field key. Values are stored
+ * encrypted and never returned to the browser, so an update carrying a blank
+ * value means "keep what you have" rather than "clear it".
+ */
+const credentialValuesSchema = z
+  .record(z.string().trim().max(100), z.string().max(4096))
+  .optional();
+
 export const createIntegrationSchema = z.object({
   providerKey: z.string().trim().min(1).max(100),
   displayName: z.string().trim().min(1).max(200),
   credentialReference: z.string().trim().max(500).optional(),
+  credentials: credentialValuesSchema,
 });
 export const testIntegrationSchema = z.object({
   connectionId: z.string().min(1),
@@ -86,6 +96,7 @@ export const updateIntegrationSchema = z.object({
   connectionId: z.string().min(1),
   displayName: z.string().trim().min(1).max(200),
   credentialReference: z.string().trim().max(500).optional(),
+  credentials: credentialValuesSchema,
 });
 export const deleteIntegrationSchema = z.object({
   connectionId: z.string().min(1),

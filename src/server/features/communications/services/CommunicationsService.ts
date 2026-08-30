@@ -1,6 +1,11 @@
 /* oxlint-disable max-lines, max-depth, max-params */
 import type { z } from "zod";
 import { BusinessModuleService } from "@/server/features/business-modules/services/BusinessModuleService";
+import {
+  credentialKeysSet,
+  encryptCredentials,
+  mergeCredentials,
+} from "@/server/lib/connection-secrets";
 import { getOptionalEnvValue } from "@/server/lib/runtime-env";
 import type {
   createIntegrationSchema,
@@ -598,13 +603,31 @@ async function transcribeVoiceAudio(
   return result;
 }
 
+/**
+ * Strip the encrypted credential blob before anything leaves the server and
+ * replace it with the field keys that are set. The browser needs to know a
+ * secret exists so it can say "leave blank to keep"; it must never be handed
+ * the value, encrypted or not.
+ */
+async function withoutSecrets<T extends { credentials?: string | null }>(
+  connection: T,
+): Promise<Omit<T, "credentials"> & { credentialKeysSet: string[] }> {
+  const { credentials, ...rest } = connection;
+  return { ...rest, credentialKeysSet: await credentialKeysSet(credentials) };
+}
+
 async function integrationsWorkspace(organizationId: string, userId: string) {
   await BusinessModuleService.requireAccess(
     organizationId,
     userId,
     "integrations",
   );
-  return CommunicationsRepository.getIntegrationsWorkspace(organizationId);
+  const workspace =
+    await CommunicationsRepository.getIntegrationsWorkspace(organizationId);
+  return {
+    ...workspace,
+    connections: await Promise.all(workspace.connections.map(withoutSecrets)),
+  };
 }
 async function createIntegration(
   organizationId: string,
@@ -619,7 +642,12 @@ async function createIntegration(
   );
   const connection = await CommunicationsRepository.createIntegration(
     organizationId,
-    input,
+    {
+      providerKey: input.providerKey,
+      displayName: input.displayName,
+      credentialReference: input.credentialReference,
+      credentials: await encryptCredentials(input.credentials ?? {}),
+    },
   );
   await auditMutation(
     organizationId,
@@ -629,7 +657,7 @@ async function createIntegration(
     connection.id,
     { providerKey: connection.providerKey },
   );
-  return connection;
+  return withoutSecrets(connection);
 }
 
 async function updateIntegration(
@@ -643,12 +671,24 @@ async function updateIntegration(
     "integrations",
     "admin",
   );
+  // Read the stored blob first so an untouched secret field, which arrives
+  // blank because the browser is never sent it, keeps its existing value
+  // instead of wiping a working credential.
+  const current = await CommunicationsRepository.getIntegration(
+    organizationId,
+    input.connectionId,
+  );
+  if (!current) throw new Error("Integration connection not found.");
   const connection = await CommunicationsRepository.updateIntegration(
     organizationId,
     input.connectionId,
     {
       displayName: input.displayName,
       credentialReference: input.credentialReference,
+      credentials: await mergeCredentials(
+        current.credentials,
+        input.credentials ?? {},
+      ),
     },
   );
   if (!connection) throw new Error("Integration connection not found.");
@@ -660,7 +700,7 @@ async function updateIntegration(
     connection.id,
     { providerKey: connection.providerKey },
   );
-  return connection;
+  return withoutSecrets(connection);
 }
 
 async function deleteIntegration(

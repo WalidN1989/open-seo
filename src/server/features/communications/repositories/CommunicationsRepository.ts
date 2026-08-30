@@ -21,7 +21,6 @@ import {
 } from "@/db/schema";
 import type { z } from "zod";
 import type {
-  createIntegrationSchema,
   createVoiceAgentSchema,
   appendVoiceTranscriptSchema,
   startVoiceConversationSchema,
@@ -246,13 +245,19 @@ async function updateIntegrationStatus(
 async function updateIntegration(
   organizationId: string,
   connectionId: string,
-  input: { displayName: string; credentialReference?: string },
+  input: {
+    displayName: string;
+    credentialReference?: string;
+    /** Already-encrypted blob; the service owns encryption. */
+    credentials: string | null;
+  },
 ) {
   const [row] = await db
     .update(integrationConnections)
     .set({
       displayName: input.displayName,
       credentialReference: input.credentialReference ?? null,
+      credentials: input.credentials,
       // The reference is what the credentials are read under, so changing it
       // invalidates every earlier verification. Make the page say "unverified"
       // rather than keep showing a green tick for keys nobody has checked.
@@ -912,14 +917,23 @@ async function updateWebhookDelivery(
 
 async function createIntegration(
   organizationId: string,
-  input: z.infer<typeof createIntegrationSchema>,
+  input: {
+    providerKey: string;
+    displayName: string;
+    credentialReference?: string;
+    /** Already-encrypted blob; the service owns encryption. */
+    credentials: string | null;
+  },
 ) {
   const [row] = await db
     .insert(integrationConnections)
     .values({
       id: crypto.randomUUID(),
       organizationId,
-      ...input,
+      providerKey: input.providerKey,
+      displayName: input.displayName,
+      credentialReference: input.credentialReference ?? null,
+      credentials: input.credentials,
       status: "disconnected",
     })
     .returning();

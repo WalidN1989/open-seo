@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   requireAccess: vi.fn(),
   createIntegration: vi.fn(),
+  getIntegration: vi.fn(),
   updateIntegration: vi.fn(),
   deleteIntegration: vi.fn(),
   record: vi.fn(),
@@ -17,6 +18,7 @@ vi.mock(
 vi.mock("../repositories/CommunicationsRepository", () => ({
   CommunicationsRepository: {
     createIntegration: mocks.createIntegration,
+    getIntegration: mocks.getIntegration,
     updateIntegration: mocks.updateIntegration,
     deleteIntegration: mocks.deleteIntegration,
   },
@@ -56,6 +58,7 @@ function connection(overrides: Record<string, unknown> = {}) {
 beforeEach(() => {
   vi.clearAllMocks();
   mocks.requireAccess.mockResolvedValue(undefined);
+  mocks.getIntegration.mockResolvedValue(connection());
 });
 
 describe("integration connection authorization", () => {
@@ -105,10 +108,11 @@ describe("integration connection organization isolation", () => {
       displayName: "Renamed",
       credentialReference: "BOOXWORM",
     });
-    expect(mocks.updateIntegration).toHaveBeenCalledWith(ORG, CONNECTION, {
-      displayName: "Renamed",
-      credentialReference: "BOOXWORM",
-    });
+    expect(mocks.updateIntegration).toHaveBeenCalledWith(
+      ORG,
+      CONNECTION,
+      expect.objectContaining({ displayName: "Renamed" }),
+    );
   });
 
   it("scopes the delete to the caller's organization", async () => {
@@ -122,6 +126,7 @@ describe("integration connection organization isolation", () => {
   it("reports a connection owned by another organization as not found", async () => {
     // The repository filters on organization, so another tenant's id returns
     // no row. That must surface as an error, never as a silent success.
+    mocks.getIntegration.mockResolvedValue(undefined);
     mocks.updateIntegration.mockResolvedValue(undefined);
     await expect(
       CommunicationsService.updateIntegration(ORG, USER, {

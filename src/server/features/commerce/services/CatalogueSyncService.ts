@@ -1,3 +1,4 @@
+import { stripCredentials } from "@/server/lib/connection-secrets";
 import { BusinessModuleService } from "@/server/features/business-modules/services/BusinessModuleService";
 import { AppError } from "@/server/lib/errors";
 import { CommerceRepository } from "../repositories/CommerceRepository";
@@ -36,23 +37,29 @@ async function checkHealth(
 
   try {
     const health = await fetchStoreHealth(connection);
-    return IntegrationSyncRepository.recordHealth(
-      organizationId,
-      connectionId,
-      {
-        status: "connected",
-        healthDetail: `${health.productCount.toLocaleString()} products found in your store`,
-      },
+    return stripCredentials(
+      await IntegrationSyncRepository.recordHealth(
+        organizationId,
+        connectionId,
+        {
+          status: "connected",
+          healthDetail: `${health.productCount.toLocaleString()} products found in your store`,
+        },
+      ),
     );
   } catch (error) {
-    return IntegrationSyncRepository.recordHealth(
-      organizationId,
-      connectionId,
-      {
-        status: "error",
-        healthDetail:
-          error instanceof Error ? error.message.slice(0, 300) : "Check failed",
-      },
+    return stripCredentials(
+      await IntegrationSyncRepository.recordHealth(
+        organizationId,
+        connectionId,
+        {
+          status: "error",
+          healthDetail:
+            error instanceof Error
+              ? error.message.slice(0, 300)
+              : "Check failed",
+        },
+      ),
     );
   }
 }
@@ -69,10 +76,12 @@ async function queueSync(
     "manage",
   );
   await requireConnection(organizationId, connectionId);
-  return IntegrationSyncRepository.setSyncState(organizationId, connectionId, {
-    syncStatus: "queued",
-    syncError: null,
-  });
+  return stripCredentials(
+    await IntegrationSyncRepository.setSyncState(organizationId, connectionId, {
+      syncStatus: "queued",
+      syncError: null,
+    }),
+  );
 }
 
 async function setSchedule(
@@ -91,13 +100,15 @@ async function setSchedule(
     "manage",
   );
   await requireConnection(organizationId, input.connectionId);
-  return IntegrationSyncRepository.setSchedule(
-    organizationId,
-    input.connectionId,
-    {
-      autoSync: input.autoSync,
-      syncIntervalMinutes: input.syncIntervalMinutes,
-    },
+  return stripCredentials(
+    await IntegrationSyncRepository.setSchedule(
+      organizationId,
+      input.connectionId,
+      {
+        autoSync: input.autoSync,
+        syncIntervalMinutes: input.syncIntervalMinutes,
+      },
+    ),
   );
 }
 
@@ -182,25 +193,31 @@ async function runSync(organizationId: string, connectionId: string) {
 
     await InventoryRepository.applyMovements(organizationId, movements);
 
-    return IntegrationSyncRepository.setSyncState(
-      organizationId,
-      connectionId,
-      {
-        syncStatus: "idle",
-        syncError: null,
-        syncedCount: synced,
-        lastSyncedAt: new Date().toISOString(),
-      },
+    return stripCredentials(
+      await IntegrationSyncRepository.setSyncState(
+        organizationId,
+        connectionId,
+        {
+          syncStatus: "idle",
+          syncError: null,
+          syncedCount: synced,
+          lastSyncedAt: new Date().toISOString(),
+        },
+      ),
     );
   } catch (error) {
-    return IntegrationSyncRepository.setSyncState(
-      organizationId,
-      connectionId,
-      {
-        syncStatus: "error",
-        syncError:
-          error instanceof Error ? error.message.slice(0, 300) : "Sync failed",
-      },
+    return stripCredentials(
+      await IntegrationSyncRepository.setSyncState(
+        organizationId,
+        connectionId,
+        {
+          syncStatus: "error",
+          syncError:
+            error instanceof Error
+              ? error.message.slice(0, 300)
+              : "Sync failed",
+        },
+      ),
     );
   }
 }

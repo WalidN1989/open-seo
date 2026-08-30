@@ -32,6 +32,17 @@ export type IntegrationCategory = Exclude<
  */
 export type IntegrationState = "connectable" | "built_in" | "planned";
 
+export type IntegrationCredentialField = {
+  /** Also the environment suffix, e.g. CONSUMER_SECRET. */
+  key: string;
+  label: string;
+  /** "secret" is write-only: never sent back to the browser once stored. */
+  type: "text" | "url" | "secret";
+  required: boolean;
+  placeholder?: string;
+  help?: string;
+};
+
 export type IntegrationFeature = {
   title: string;
   bullets: readonly string[];
@@ -44,8 +55,12 @@ export type IntegrationCatalogueEntry = {
   description: string;
   category: IntegrationCategory;
   state: IntegrationState;
-  /** Environment suffixes appended to the tenant's credential reference. */
-  credentialSuffixes?: readonly string[];
+  /**
+   * What this provider needs to authenticate. Rendered as real inputs the
+   * tenant fills in; the key doubles as the environment suffix appended to a
+   * credential reference for self-hosters using the deployment instead.
+   */
+  credentialFields?: readonly IntegrationCredentialField[];
   capabilities?: readonly string[];
   howToConnect?: readonly string[];
   notes?: readonly string[];
@@ -82,7 +97,15 @@ export const integrationCatalogue: readonly IntegrationCatalogueEntry[] = [
       "Trigger Make scenarios from workspace events and let Make drive work back into the workspace. Validated through its signing secret.",
     category: "automations",
     state: "connectable",
-    credentialSuffixes: ["SIGNING_SECRET"],
+    credentialFields: [
+      {
+        key: "SIGNING_SECRET",
+        label: "Signing secret",
+        type: "secret",
+        required: true,
+        help: "From the Make webhook you want us to sign requests for.",
+      },
+    ],
     capabilities: ["scenarios", "signed webhooks", "app automation"],
   },
   {
@@ -93,7 +116,30 @@ export const integrationCatalogue: readonly IntegrationCatalogueEntry[] = [
       "Connect your store with REST API keys you generate yourself — no app review and no waiting for approval. Products, prices and stock stay current for the assistant.",
     category: "ecommerce",
     state: "connectable",
-    credentialSuffixes: ["BASE_URL", "CONSUMER_KEY", "CONSUMER_SECRET"],
+    credentialFields: [
+      {
+        key: "BASE_URL",
+        label: "Store URL",
+        type: "url",
+        required: true,
+        placeholder: "https://your-store.com",
+      },
+      {
+        key: "CONSUMER_KEY",
+        label: "Consumer key",
+        type: "text",
+        required: true,
+        placeholder: "ck_...",
+      },
+      {
+        key: "CONSUMER_SECRET",
+        label: "Consumer secret",
+        type: "secret",
+        required: true,
+        placeholder: "cs_...",
+        help: "WooCommerce, Settings, Advanced, REST API, Add key.",
+      },
+    ],
     capabilities: ["customers", "orders", "products"],
     supportsCatalogueSync: true,
     detail: {
@@ -143,7 +189,22 @@ export const integrationCatalogue: readonly IntegrationCatalogueEntry[] = [
       "Connect a Shopify store with keys the merchant creates in Shopify's Dev Dashboard — nothing to install from us and no app-store review to wait for. Each variant syncs as its own row so per-variant prices and stock stay accurate.",
     category: "ecommerce",
     state: "planned",
-    credentialSuffixes: ["CLIENT_ID", "CLIENT_SECRET", "SHOP_DOMAIN"],
+    credentialFields: [
+      {
+        key: "SHOP_DOMAIN",
+        label: "Shop domain",
+        type: "text",
+        required: true,
+        placeholder: "your-shop.myshopify.com",
+      },
+      { key: "CLIENT_ID", label: "Client ID", type: "text", required: true },
+      {
+        key: "CLIENT_SECRET",
+        label: "Client secret",
+        type: "secret",
+        required: true,
+      },
+    ],
     howToConnect: [
       "At dev.shopify.com, sign in with the account that owns the store and create an app.",
       "Add read_products and read_inventory scopes, release the version, then install the app on the store.",
@@ -158,7 +219,9 @@ export const integrationCatalogue: readonly IntegrationCatalogueEntry[] = [
       "Run a bounded domain search from the Leads workspace, import discovered people as CRM contacts, and create deduplicated pipeline leads carrying source and confidence context.",
     category: "data",
     state: "connectable",
-    credentialSuffixes: ["API_KEY"],
+    credentialFields: [
+      { key: "API_KEY", label: "API key", type: "secret", required: true },
+    ],
     capabilities: ["email finder", "email verifier", "domain search"],
     notes: ["Requires active Leads, CRM and Integrations access together."],
   },
@@ -170,7 +233,14 @@ export const integrationCatalogue: readonly IntegrationCatalogueEntry[] = [
       "Run an Apify actor with validated JSON input and inspect a bounded result preview, without the provider credential ever reaching the browser.",
     category: "data",
     state: "connectable",
-    credentialSuffixes: ["API_TOKEN"],
+    credentialFields: [
+      {
+        key: "API_TOKEN",
+        label: "API token",
+        type: "secret",
+        required: true,
+      },
+    ],
     capabilities: ["actors", "datasets", "lead enrichment"],
   },
   {
@@ -181,7 +251,9 @@ export const integrationCatalogue: readonly IntegrationCatalogueEntry[] = [
       "Scrape an HTTPS page through Firecrawl and retain a tenant audit record of what was run and by whom.",
     category: "data",
     state: "connectable",
-    credentialSuffixes: ["API_KEY"],
+    credentialFields: [
+      { key: "API_KEY", label: "API key", type: "secret", required: true },
+    ],
     capabilities: ["scrape", "crawl", "extract"],
   },
   {
@@ -192,7 +264,9 @@ export const integrationCatalogue: readonly IntegrationCatalogueEntry[] = [
       "Opt a tenant into AI replies. The assistant is forbidden from inventing business facts, can create order enquiries and flag conversations for staff, keeps replying after tool calls, and falls back to deterministic rules when the model is unavailable.",
     category: "channels",
     state: "connectable",
-    credentialSuffixes: ["API_KEY"],
+    credentialFields: [
+      { key: "API_KEY", label: "API key", type: "secret", required: true },
+    ],
     notes: [
       "Deployment alone does not enable it: a tenant needs a connected claude_haiku integration.",
       "Falls back to the platform ANTHROPIC_API_KEY when the connection sets no reference.",
@@ -206,7 +280,9 @@ export const integrationCatalogue: readonly IntegrationCatalogueEntry[] = [
       "A generic connection for a service with no first-class adapter yet, so a tenant can still store a credential reference and sign outbound webhooks.",
     category: "automations",
     state: "connectable",
-    credentialSuffixes: ["API_KEY"],
+    credentialFields: [
+      { key: "API_KEY", label: "API key", type: "secret", required: true },
+    ],
   },
   {
     key: "instagram",

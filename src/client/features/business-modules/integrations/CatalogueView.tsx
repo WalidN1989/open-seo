@@ -132,14 +132,12 @@ function IntegrationCard({
         {entry.description}
       </p>
 
-      {entry.credentialSuffixes?.length ? (
+      {entry.credentialFields?.length ? (
         <p className="mt-3 text-xs text-base-content/50">
           Needs{" "}
-          {entry.credentialSuffixes.map((suffix) => (
-            <code key={suffix} className="mr-1 rounded bg-base-200 px-1">
-              &lt;REF&gt;_{suffix}
-            </code>
-          ))}
+          {entry.credentialFields
+            .map((field) => field.label.toLowerCase())
+            .join(", ")}
         </p>
       ) : null}
 

@@ -16,6 +16,7 @@ type ExistingConnection = {
   displayName: string;
   credentialReference: string | null;
   status: string;
+  credentialKeysSet?: string[];
 };
 
 type Props = {
@@ -25,10 +26,10 @@ type Props = {
 };
 
 /**
- * The connect step, done here rather than by sending people to the
- * connections list. A provider needs a reference before it can read its
- * credentials, so the reference is asked for on the provider's own page and
- * verified with a real authenticated request the moment it is saved.
+ * The connect step, done on the provider's own page. Credentials are typed in
+ * here and stored encrypted server-side: requiring a deployment variable per
+ * tenant meant nobody could connect their own store without access to the
+ * infrastructure.
  */
 export function ProviderConnectPanel({
   entry,
@@ -36,20 +37,21 @@ export function ProviderConnectPanel({
   workspaceKey,
 }: Props) {
   const queryClient = useQueryClient();
+  const fields = entry.credentialFields ?? [];
+  const alreadySet = new Set(connection?.credentialKeysSet ?? []);
+
   const [displayName, setDisplayName] = useState(
     connection?.displayName ?? entry.name,
   );
-  const [reference, setReference] = useState(
-    connection?.credentialReference ?? "",
-  );
+  const [values, setValues] = useState<Record<string, string>>({});
   const [confirmingRemove, setConfirmingRemove] = useState(false);
 
   const refresh = () =>
     queryClient.invalidateQueries({ queryKey: workspaceKey });
 
-  // Saving and verifying are one action to the person doing it: a reference
-  // that cannot read its credentials is not a connection, so we check it
-  // immediately and report what the store actually said.
+  // Saving and verifying are one action to the person doing it: credentials
+  // that cannot reach the provider are not a connection, so we check them
+  // immediately and report what the provider actually said.
   const verify = async (connectionId: string) => {
     try {
       const health = await checkIntegrationHealth({ data: { connectionId } });
@@ -58,8 +60,7 @@ export function ProviderConnectPanel({
         return;
       }
       toast.error(
-        health?.healthDetail ??
-          "Saved, but the credentials could not be verified.",
+        health?.healthDetail ?? "Saved, but the credentials did not work.",
       );
     } catch (error) {
       toast.error(
@@ -70,14 +71,17 @@ export function ProviderConnectPanel({
 
   const save = useMutation({
     mutationFn: async () => {
-      const trimmed = reference.trim();
-      const credentialReference = trimmed.length > 0 ? trimmed : undefined;
+      const credentials: Record<string, string> = {};
+      for (const field of fields) {
+        const value = values[field.key]?.trim();
+        if (value) credentials[field.key] = value;
+      }
       if (connection) {
         await updateIntegration({
           data: {
             connectionId: connection.id,
             displayName: displayName.trim(),
-            credentialReference,
+            credentials,
           },
         });
         return connection.id;
@@ -86,12 +90,13 @@ export function ProviderConnectPanel({
         data: {
           providerKey: entry.key,
           displayName: displayName.trim(),
-          credentialReference,
+          credentials,
         },
       });
       return created.id;
     },
     onSuccess: async (connectionId) => {
+      setValues({});
       await verify(connectionId);
       await refresh();
     },
@@ -103,42 +108,39 @@ export function ProviderConnectPanel({
       deleteIntegration({ data: { connectionId: connection!.id } }),
     onSuccess: async () => {
       setConfirmingRemove(false);
-      setReference("");
+      setValues({});
       await refresh();
       toast.success("Connection removed");
     },
     onError: (error) => toast.error(getStandardErrorMessage(error)),
   });
 
-  const suffixes = entry.credentialSuffixes ?? [];
-  const referenceRequired = suffixes.length > 0;
+  // A stored secret is never sent to the browser, so an untouched field is
+  // blank and the server keeps what it has. Only a field that has never been
+  // set can actually block saving.
+  const missingRequired = fields.some(
+    (field) =>
+      field.required &&
+      !alreadySet.has(field.key) &&
+      !values[field.key]?.trim(),
+  );
   const canSave =
-    displayName.trim().length > 0 &&
-    (!referenceRequired || reference.trim().length > 0) &&
-    !save.isPending;
+    displayName.trim().length > 0 && !missingRequired && !save.isPending;
+
+  if (fields.length === 0) return null;
 
   return (
     <section className="rounded-xl border border-base-300 p-4">
-      <h3 className="font-semibold">Connection settings</h3>
+      <div className="flex items-baseline justify-between gap-3">
+        <h3 className="font-semibold">Connection settings</h3>
+        {connection?.status === "connected" ? (
+          <span className="text-xs text-base-content/50">Connected</span>
+        ) : null}
+      </div>
       <p className="mt-1 text-sm text-base-content/60">
-        Set these on the deployment, then connect with the reference that
-        prefixes them.
+        Credentials are stored encrypted on the server and are never returned to
+        the browser.
       </p>
-
-      {suffixes.length ? (
-        <ul className="mt-3 space-y-1 text-sm">
-          {suffixes.map((suffix) => (
-            <li key={suffix}>
-              <code className="rounded bg-base-200 px-1">
-                {reference.trim().length > 0
-                  ? reference.trim().toUpperCase().replace(/\s+/g, "_")
-                  : "<REFERENCE>"}
-                _{suffix}
-              </code>
-            </li>
-          ))}
-        </ul>
-      ) : null}
 
       <form
         className="mt-4 space-y-3"
@@ -157,23 +159,46 @@ export function ProviderConnectPanel({
           />
         </label>
 
-        {referenceRequired ? (
-          <label className="form-control w-full">
-            <span className="label-text text-xs">Credential reference</span>
-            <input
-              className="input input-bordered input-sm w-full font-mono"
-              value={reference}
-              onChange={(event) => setReference(event.target.value)}
-              placeholder="BOOXWORM"
-              autoComplete="off"
-              spellCheck={false}
-            />
-            <span className="label-text-alt mt-1 text-base-content/50">
-              The prefix of the variables above. Not a key — the keys stay on
-              the deployment and never reach the browser.
-            </span>
-          </label>
-        ) : null}
+        {fields.map((field) => {
+          const isSet = alreadySet.has(field.key);
+          return (
+            <label key={field.key} className="form-control w-full">
+              <span className="label-text text-xs">
+                {field.label}
+                {field.required ? " *" : ""}
+                {field.type === "secret" && isSet ? (
+                  <span className="ml-1 text-base-content/40">
+                    (leave blank to keep)
+                  </span>
+                ) : null}
+              </span>
+              <input
+                className="input input-bordered input-sm w-full"
+                type={field.type === "secret" ? "password" : "text"}
+                inputMode={field.type === "url" ? "url" : undefined}
+                value={values[field.key] ?? ""}
+                onChange={(event) =>
+                  setValues((current) => ({
+                    ...current,
+                    [field.key]: event.target.value,
+                  }))
+                }
+                placeholder={
+                  field.type === "secret" && isSet
+                    ? "••••••••"
+                    : field.placeholder
+                }
+                autoComplete="off"
+                spellCheck={false}
+              />
+              {field.help ? (
+                <span className="label-text-alt mt-1 text-base-content/50">
+                  {field.help}
+                </span>
+              ) : null}
+            </label>
+          );
+        })}
 
         <div className="flex flex-wrap items-center gap-2">
           <button
@@ -184,7 +209,7 @@ export function ProviderConnectPanel({
             {save.isPending ? (
               <Loader2 className="size-4 animate-spin" />
             ) : null}
-            {connection ? "Save and verify" : "Connect"}
+            {connection ? "Update connection" : "Connect"}
           </button>
 
           {connection ? (
@@ -196,7 +221,7 @@ export function ProviderConnectPanel({
                   disabled={remove.isPending}
                   onClick={() => remove.mutate()}
                 >
-                  Remove connection
+                  Disconnect
                 </button>
                 <button
                   type="button"
@@ -213,7 +238,7 @@ export function ProviderConnectPanel({
                 onClick={() => setConfirmingRemove(true)}
               >
                 <Trash2 className="size-4" />
-                Remove
+                Disconnect
               </button>
             )
           ) : null}
