@@ -208,6 +208,80 @@ ok. Container logs show the ticker at 5s / 30s / 300s.
 - Add real Meta/Twilio/Deepgram/provider credential references and complete
   their external account verification steps.
 
+## Data model: the contact is the spine
+
+Decided 2026-08-30, and it governs every module still to be built.
+
+Every conversation creates a **contact**. A contact becomes a **lead only when
+someone labels it one** — never automatically. The conversation stays where it
+is; promoting creates a lead record pointing at the contact.
+
+```
+Contact                     every customer is one
+  |- WhatsApp conversation  channel
+  |- Email thread           channel
+  |- Lead / pipeline        the view a B2B seller needs
+  |- Orders                 the view a retailer needs
+```
+
+Channels belong to no module: they write to a contact's timeline. Leads is a
+pipeline view over contacts; Orders/Products/Inventory is a transaction view
+over the same contacts. Entitlement decides which views a tenant gets, so one
+database shape serves both an agency and a shop.
+
+**Do not copy the lead link from `mastercrmaus`.** That app hangs WhatsApp off
+`lead_id`, which fits an agency running an outbound pipeline and breaks a
+retailer: a customer asking whether a book is in stock is not a lead, and
+forcing one creates a pipeline full of records nobody will ever work. OpenSEO
+links conversations to `crm_contacts`, which is correct — keep it.
+
+A later Haiku step should **suggest** a promotion, never perform one. A wrong
+suggestion costs a dismissal; a wrong automatic promotion quietly pollutes the
+pipeline.
+
+## Status
+
+### Done
+
+- Tenant module entitlements, staff permissions, Leads and CRM workspaces, the
+  WhatsApp inbox/templates/campaigns/automations and order-request surfaces,
+  signed Meta/Twilio callbacks, provider delivery, browser voice capture,
+  the integrations catalogue, signed outbound webhooks with retry history.
+- Claude Haiku as the optional WhatsApp conversation engine; Hunter.io as an
+  executable lead source; Apify and Firecrawl as guarded provider actions.
+- Provider connection tests for Make, WooCommerce and custom adapters, which
+  had been catalogue cards that could never reach connected.
+- **Background jobs run on Railway.** Nothing scheduled had ever executed in
+  production, including rank checks and the stale-audit watchdog.
+- **Webhook retries complete.** `next_attempt_at` was written and never read.
+- **A module owns the sidebar while you are inside it**, with a switcher
+  between modules. CRM is split into Overview, Contacts, Companies, Inquiries
+  and Meetings; Integrations into Catalogue and Connections.
+- **The integrations marketplace**: sixteen entries with categories, search and
+  state, connection state read from the workspace.
+- **Account settings**: display name, email change, password change, reset link.
+- **Project-level authorization for MCP tool calls**, which was the blocker on
+  multi-user workspaces — see the deployment section.
+- **Team management**: invite by email and role, cancel, change role, remove,
+  and an accept-invitation page that checks who is signed in.
+
+### Pending
+
+- **Commerce modules are not built and have no schema**: Products, Inventory,
+  Orders, and beyond them Quotations, Purchase Orders, Returns, Expenses,
+  Settlements, Unit Economics, Waybills, Documents, Goals and Tasks. These are
+  a rebuild on this stack, not a port. Suggested order is Products, then
+  Inventory, then Orders: each depends on the one before, and each is useful
+  alone.
+- **Promoting a conversation to a lead.** Inquiries already promote; extending
+  it to a conversation is small and unlocks the model above.
+- **Module sidebars for WhatsApp, Voice and Leads.** Only CRM and Integrations
+  have their own sections; the rest still render as a single page.
+- **No invitation email.** Better Auth creates the invitation and the UI shows
+  a copyable link, but no Loops template is configured, so the link is the
+  mechanism today.
+- The credential and account items under Pending human touch below.
+
 ## Deferred hardening
 
 Agreed 2026-08-30: revisit only after every module is migrated, merged and
