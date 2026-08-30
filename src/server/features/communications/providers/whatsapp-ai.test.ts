@@ -39,4 +39,38 @@ describe("WhatsApp Claude assistant", () => {
     });
     expect(result).toBeNull();
   });
+
+  it("continues after a tool call so the assistant never goes silent", async () => {
+    let calls = 0;
+    const fetcher = async () => {
+      calls += 1;
+      return calls === 1
+        ? Response.json({
+            content: [
+              {
+                type: "tool_use",
+                id: "tool-1",
+                name: "flag_for_team",
+                input: { reason: "Customer requested a person" },
+              },
+            ],
+          })
+        : Response.json({
+            content: [
+              {
+                type: "text",
+                text: "I’ve flagged this for the team. How else can I help?",
+              },
+            ],
+          });
+    };
+    const result = await generateWhatsappAiReply({
+      history: [{ direction: "inbound", body: "Can I speak to someone?" }],
+      apiKey: "tenant-key",
+      fetcher,
+    });
+    expect(calls).toBe(2);
+    expect(result?.reply).toContain("How else can I help?");
+    expect(result?.actions[0]?.name).toBe("flag_for_team");
+  });
 });

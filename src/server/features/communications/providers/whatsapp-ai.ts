@@ -109,7 +109,7 @@ export async function generateWhatsappAiReply(input: {
       payload.error?.message || `Anthropic returned ${response.status}`,
     );
   const actions: WhatsappAiAction[] = [];
-  const reply = (payload.content ?? [])
+  let reply = (payload.content ?? [])
     .filter(
       (block): block is Extract<AnthropicBlock, { type: "text" }> =>
         block.type === "text",
@@ -125,6 +125,57 @@ export async function generateWhatsappAiReply(input: {
     ) {
       actions.push({ name: block.name, input: block.input });
     }
+  }
+  if (!reply && actions.length) {
+    const followUp = await (input.fetcher ?? fetch)(ANTHROPIC_URL, {
+      method: "POST",
+      headers: {
+        "anthropic-version": "2023-06-01",
+        "content-type": "application/json",
+        "x-api-key": apiKey,
+      },
+      body: JSON.stringify({
+        model: input.model || DEFAULT_MODEL,
+        max_tokens: 800,
+        system: systemPrompt(input.businessContext),
+        tools,
+        messages: [
+          ...messages,
+          { role: "assistant", content: payload.content },
+          {
+            role: "user",
+            content: (payload.content ?? [])
+              .filter(
+                (
+                  block,
+                ): block is Extract<AnthropicBlock, { type: "tool_use" }> =>
+                  block.type === "tool_use",
+              )
+              .map((block) => ({
+                type: "tool_result",
+                tool_use_id: block.id,
+                content: JSON.stringify({ recorded: true }),
+              })),
+          },
+        ],
+      }),
+      signal: AbortSignal.timeout(45_000),
+    });
+    const followUpPayload: AnthropicResponse = await followUp.json();
+    if (!followUp.ok) {
+      throw new Error(
+        followUpPayload.error?.message ||
+          `Anthropic returned ${followUp.status}`,
+      );
+    }
+    reply = (followUpPayload.content ?? [])
+      .filter(
+        (block): block is Extract<AnthropicBlock, { type: "text" }> =>
+          block.type === "text",
+      )
+      .map((block) => block.text)
+      .join("\n")
+      .trim();
   }
   return { reply, actions, model: input.model || DEFAULT_MODEL };
 }
