@@ -2,7 +2,6 @@ import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import type { LinkOptions } from "@tanstack/react-router";
 import { useEffect, useState, type ComponentType } from "react";
 import {
-  ChevronLeft,
   CircleHelp,
   CreditCard,
   LayoutGrid,
@@ -12,6 +11,7 @@ import {
   User,
   X,
 } from "lucide-react";
+import { ModuleSwitcher } from "@/client/components/ModuleSwitcher";
 import { getModuleNavGroups } from "@/client/navigation/moduleItems";
 import {
   connectNavGroup,
@@ -149,16 +149,9 @@ export function Sidebar({ projectId, onNavigate, onClose }: SidebarProps) {
         ) : null}
       </div>
 
-      {inModule ? (
+      {inModule && moduleKey ? (
         <div className="px-3 pb-2">
-          <Link
-            to="/modules"
-            onClick={onNavigate}
-            className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-base-content/60 hover:bg-base-300 hover:text-base-content"
-          >
-            <ChevronLeft className="h-4 w-4 shrink-0" />
-            <span className="truncate">Business Modules</span>
-          </Link>
+          <ModuleSwitcher moduleKey={moduleKey} onNavigate={onNavigate} />
         </div>
       ) : (
         <div className="px-3 pb-1">
