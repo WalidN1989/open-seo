@@ -1,3 +1,4 @@
+import { AuthRepository } from "@/server/auth/repositories/AuthRepository";
 import { ProjectService } from "@/server/features/projects/services/ProjectService";
 import { mcpResponse } from "@/server/mcp/formatters";
 import { type ToolContext } from "@/server/mcp/context";
@@ -35,7 +36,18 @@ export const listProjectsTool = {
   },
   handler: async (_args: Record<string, never>, context: ToolContext) => {
     const { baseUrl, ...auth } = context.auth;
-    const projects = await ProjectService.listProjects(auth.organizationId);
+    // Every workspace the caller belongs to, not just the one the token
+    // defaulted to: an invited member would otherwise be unable to see — and
+    // therefore unable to name — the projects they were invited to work on.
+    const organizationIds = await AuthRepository.listOrganizationIdsForUser(
+      auth.userId,
+    );
+    const projectsByOrganization = await Promise.all(
+      organizationIds.map((organizationId) =>
+        ProjectService.listProjects(organizationId),
+      ),
+    );
+    const projects = projectsByOrganization.flat();
     const lines =
       projects.length === 0
         ? ["No projects yet. Create one in the dashboard."]

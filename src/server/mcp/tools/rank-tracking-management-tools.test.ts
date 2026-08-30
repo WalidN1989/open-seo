@@ -25,7 +25,7 @@ vi.mock("cloudflare:workers", () => ({
 }));
 vi.mock("@/server/features/projects/services/ProjectService", () => ({
   ProjectService: {
-    getProjectForOrganization: mocks.getProjectForOrganization,
+    getProjectForMember: mocks.getProjectForOrganization,
   },
 }));
 vi.mock("@/server/features/rank-tracking/services/RankTrackingService", () => ({
@@ -64,6 +64,7 @@ const createdConfig = {
 describe("rank tracking management MCP tools", () => {
   beforeEach(() => {
     mocks.getProjectForOrganization.mockResolvedValue({
+      organizationId: "org_123",
       id: projectId,
       domain: "openseo.so",
       locationCode: 2840,
@@ -84,6 +85,7 @@ describe("rank tracking management MCP tools", () => {
       projectId,
       projectMarket: {
         id: projectId,
+        organizationId: "org_123",
         domain: "openseo.so",
         locationCode: 2840,
         languageCode: "en",
@@ -123,6 +125,7 @@ describe("rank tracking management MCP tools", () => {
 
   it("rejects tracker creation when neither the call nor project has a domain", async () => {
     mocks.getProjectForOrganization.mockResolvedValue({
+      organizationId: "org_123",
       id: projectId,
       domain: null,
       locationCode: 2840,

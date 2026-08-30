@@ -35,13 +35,16 @@ export function createBaseAuthConfig() {
       // — that's a "system action" (no session + userId in body) which better-auth
       // exempts from this flag, so the bootstrap keeps working.
       //
-      // invitationLimit: 0 closes the other path to multi-org membership.
-      // "One user, one workspace" is a billing invariant: MCP API keys bill the
-      // user's first org, sessions bill the active org — identical only while
-      // users can't be invited into a second workspace. Remove this when teams
-      // ship, in the same change that moves API-key requests to project-level
-      // authz (org derived per tool call from the project; keys stay
-      // user-scoped, no key→workspace binding).
+      // Invitations are open now that API-key requests use project-level
+      // authz: withMcpProjectAuth derives the organization from the project a
+      // tool call names and checks the caller's membership of THAT
+      // organization, so a user in two workspaces is billed for the one whose
+      // data the call touched rather than whichever the token defaulted to.
+      // Keys stay user-scoped; there is no key→workspace binding.
+      //
+      // Still organization-defaulted, deliberately: create-project (a new
+      // project lands in the caller's own workspace) and whoami. list-projects
+      // spans every workspace the caller belongs to.
       //
       // disableOrganizationDeletion closes the delete side of the same loop:
       // POST /api/auth/organization/delete (owner-callable by default) would
@@ -49,7 +52,6 @@ export function createBaseAuthConfig() {
       // org id — a fresh Autumn customer with a fresh credit grant.
       organization({
         allowUserToCreateOrganization: false,
-        invitationLimit: 0,
         disableOrganizationDeletion: true,
       }),
       genericOAuth({

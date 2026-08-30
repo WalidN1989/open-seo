@@ -12,7 +12,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("@/server/features/projects/services/ProjectService", () => ({
   ProjectService: {
-    getProjectForOrganization: mocks.getProjectForOrganization,
+    getProjectForMember: mocks.getProjectForOrganization,
   },
 }));
 
@@ -28,6 +28,7 @@ const toolContext = makeToolContext();
 describe("saved keyword MCP tools", () => {
   beforeEach(() => {
     mocks.getProjectForOrganization.mockResolvedValue({
+      organizationId: "org_123",
       id: "project_1",
       locationCode: 2840,
       languageCode: "en",

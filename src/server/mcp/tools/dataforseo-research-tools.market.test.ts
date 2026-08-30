@@ -23,7 +23,7 @@ vi.mock("@/server/lib/dataforseo", () => ({
 
 vi.mock("@/server/features/projects/services/ProjectService", () => ({
   ProjectService: {
-    getProjectForOrganization: mocks.getProjectForOrganization,
+    getProjectForMember: mocks.getProjectForOrganization,
   },
 }));
 
@@ -31,6 +31,7 @@ const toolContext = makeToolContext();
 
 function setProject(market: { locationCode: number; languageCode: string }) {
   mocks.getProjectForOrganization.mockResolvedValue({
+    organizationId: "org_123",
     id: "project_1",
     name: "Test",
     domain: null,

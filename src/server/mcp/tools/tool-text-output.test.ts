@@ -46,7 +46,7 @@ vi.mock("@/server/lib/dataforseo", async () => {
 });
 vi.mock("@/server/features/projects/services/ProjectService", () => ({
   ProjectService: {
-    getProjectForOrganization: mocks.getProjectForOrganization,
+    getProjectForMember: mocks.getProjectForOrganization,
   },
 }));
 vi.mock("@/server/features/keywords/services/KeywordResearchService", () => ({
@@ -86,6 +86,7 @@ const toolContext = makeToolContext();
 describe("MCP tool text output (service-backed tools)", () => {
   beforeEach(() => {
     mocks.getProjectForOrganization.mockResolvedValue({
+      organizationId: "org_123",
       id: "project_1",
       locationCode: 2840,
       languageCode: "en",

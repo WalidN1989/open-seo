@@ -33,7 +33,7 @@ vi.mock("@/server/features/ga4/services/SearchOpportunityService", () => ({
 }));
 vi.mock("@/server/features/projects/services/ProjectService", () => ({
   ProjectService: {
-    getProjectForOrganization: mocks.getProjectForOrganization,
+    getProjectForMember: mocks.getProjectForOrganization,
   },
 }));
 

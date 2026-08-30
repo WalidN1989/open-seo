@@ -33,7 +33,7 @@ vi.mock("@/server/lib/r2-cache", () => ({
 
 vi.mock("@/server/features/projects/services/ProjectService", () => ({
   ProjectService: {
-    getProjectForOrganization: mocks.getProjectForOrganization,
+    getProjectForMember: mocks.getProjectForOrganization,
   },
 }));
 
@@ -43,6 +43,7 @@ const byText = (a: string, b: string) => a.localeCompare(b);
 
 beforeEach(() => {
   mocks.getProjectForOrganization.mockResolvedValue({
+    organizationId: "org_123",
     id: "project_1",
     locationCode: 2840,
     languageCode: "en",

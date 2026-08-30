@@ -1,107 +1,63 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { makeToolContext } from "@/server/mcp/tools/tool-test-support";
 
 const mocks = vi.hoisted(() => ({
-  getProjectForOrganization: vi.fn(),
+  getProjectForMember: vi.fn(),
 }));
 
 vi.mock("@/server/features/projects/services/ProjectService", () => ({
-  ProjectService: {
-    getProjectForOrganization: mocks.getProjectForOrganization,
-  },
+  ProjectService: { getProjectForMember: mocks.getProjectForMember },
 }));
 
-const toolContext = makeToolContext();
+const { withMcpProjectAuth } = await import("./project-auth");
+
+function toolContext(organizationId: string) {
+  return {
+    auth: {
+      userId: "user_1",
+      userEmail: "user@example.com",
+      organizationId,
+      scopes: [],
+      clientId: "api_key",
+      baseUrl: "https://example.com",
+    },
+  };
+}
 
 describe("withMcpProjectAuth", () => {
   beforeEach(() => {
-    vi.resetModules();
-    mocks.getProjectForOrganization.mockReset();
-    // Default: the project belongs to the org. Individual tests override.
-    mocks.getProjectForOrganization.mockResolvedValue({
-      id: "project_123",
-      name: "Test",
-      locationCode: 2840,
-      languageCode: "en",
+    mocks.getProjectForMember.mockReset();
+  });
+
+  it("derives the organization from the project, not from the token", async () => {
+    mocks.getProjectForMember.mockResolvedValue({
+      id: "project_1",
+      organizationId: "org_project",
     });
+
+    const handler = withMcpProjectAuth(async (_args, context) => context);
+    // The token defaults to a different workspace than the project lives in.
+    const context = toolContext("org_token");
+    const result = await handler({ projectId: "project_1" }, context);
+
+    expect(result.auth.organizationId).toBe("org_project");
+    expect(result.billing.organizationId).toBe("org_project");
+    // Billing and telemetry read the shared context on the way out, so the
+    // resolved organization has to be visible there too.
+    expect(context.auth.organizationId).toBe("org_project");
   });
 
-  it("checks project access for the authenticated organization", async () => {
-    const { withMcpProjectAuth } = await import("@/server/mcp/project-auth");
-    const handler = vi.fn().mockResolvedValue("ok");
+  it("refuses a project the caller is not a member of", async () => {
+    // The lookup is the gate: a non-member gets null, indistinguishable from
+    // the project not existing.
+    mocks.getProjectForMember.mockResolvedValue(null);
 
-    const wrapped = withMcpProjectAuth(handler);
+    const handler = withMcpProjectAuth(async () => "reached");
     await expect(
-      wrapped({ projectId: "project_123" }, toolContext),
-    ).resolves.toBe("ok");
-
-    expect(mocks.getProjectForOrganization).toHaveBeenCalledWith(
-      "org_123",
-      "project_123",
-    );
-  });
-
-  it("passes auth, baseUrl, billing, and project context to the wrapped handler", async () => {
-    const { withMcpProjectAuth } = await import("@/server/mcp/project-auth");
-    const handler = vi.fn().mockReturnValue("ok");
-
-    const wrapped = withMcpProjectAuth(handler);
-    await wrapped({ projectId: "project_123" }, toolContext);
-
-    expect(handler).toHaveBeenCalledWith(
-      { projectId: "project_123" },
-      {
-        auth: {
-          userId: "user_123",
-          userEmail: "alice@example.com",
-          organizationId: "org_123",
-          clientId: "client_123",
-          scopes: ["mcp"],
-        },
-        baseUrl: "https://open-seo.test",
-        billing: {
-          userId: "user_123",
-          userEmail: "alice@example.com",
-          organizationId: "org_123",
-          projectId: "project_123",
-        },
-        project: {
-          id: "project_123",
-          name: "Test",
-          locationCode: 2840,
-          languageCode: "en",
-        },
-      },
-    );
-  });
-
-  it("propagates project access failures without calling the wrapped handler", async () => {
-    const error = new Error("project not found");
-    mocks.getProjectForOrganization.mockRejectedValue(error);
-    const { withMcpProjectAuth } = await import("@/server/mcp/project-auth");
-    const handler = vi.fn();
-
-    const wrapped = withMcpProjectAuth(handler);
-    await expect(
-      wrapped({ projectId: "project_123" }, toolContext),
-    ).rejects.toBe(error);
-
-    expect(handler).not.toHaveBeenCalled();
-  });
-
-  // Defense-in-depth: even if the project lookup ever resolves falsy instead of
-  // throwing (e.g. a future refactor returns null), the wrapper must still deny
-  // access rather than run the handler with an unauthorized projectId.
-  it("rejects when the project lookup resolves no project, without calling the handler", async () => {
-    mocks.getProjectForOrganization.mockResolvedValue(null);
-    const { withMcpProjectAuth } = await import("@/server/mcp/project-auth");
-    const handler = vi.fn();
-
-    const wrapped = withMcpProjectAuth(handler);
-    await expect(
-      wrapped({ projectId: "someone-elses-project" }, toolContext),
+      handler({ projectId: "project_1" }, toolContext("org_token")),
     ).rejects.toThrow();
-
-    expect(handler).not.toHaveBeenCalled();
+    expect(mocks.getProjectForMember).toHaveBeenCalledWith(
+      "user_1",
+      "project_1",
+    );
   });
 });

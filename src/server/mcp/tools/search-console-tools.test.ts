@@ -22,7 +22,7 @@ vi.mock("@/server/features/google/oauth-config", () => ({
 }));
 vi.mock("@/server/features/projects/services/ProjectService", () => ({
   ProjectService: {
-    getProjectForOrganization: mocks.getProjectForOrganization,
+    getProjectForMember: mocks.getProjectForOrganization,
   },
 }));
 vi.mock("@/server/features/gsc/services/GscService", () => ({
@@ -33,6 +33,7 @@ const toolContext = makeToolContext();
 describe("search console MCP tools", () => {
   beforeEach(() => {
     mocks.getProjectForOrganization.mockResolvedValue({
+      organizationId: "org_123",
       id: "project_1",
       locationCode: 2840,
       languageCode: "en",

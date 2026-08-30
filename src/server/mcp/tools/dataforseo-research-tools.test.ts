@@ -27,7 +27,7 @@ vi.mock("@/server/lib/dataforseo", async () => {
 
 vi.mock("@/server/features/projects/services/ProjectService", () => ({
   ProjectService: {
-    getProjectForOrganization: mocks.getProjectForOrganization,
+    getProjectForMember: mocks.getProjectForOrganization,
   },
 }));
 

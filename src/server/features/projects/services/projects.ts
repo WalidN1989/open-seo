@@ -230,6 +230,16 @@ export async function restoreProject(
   return { success: true };
 }
 
+/**
+ * The project a caller may act on, resolved from the caller rather than from a
+ * presumed organization. Returns null when the project does not exist or the
+ * user is not a member of the organization that owns it — the caller cannot
+ * tell those apart, which is deliberate.
+ */
+export async function getProjectForMember(userId: string, projectId: string) {
+  return ProjectRepository.getProjectForMember(userId, projectId);
+}
+
 export async function getProjectForOrganization(
   organizationId: string,
   projectId: string,

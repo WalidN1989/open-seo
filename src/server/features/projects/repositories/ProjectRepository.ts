@@ -1,6 +1,6 @@
 import { and, count, desc, eq, isNotNull, isNull, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { projects } from "@/db/schema";
+import { member, projects } from "@/db/schema";
 import { AppError } from "@/server/lib/errors";
 
 async function listProjects(organizationId: string) {
@@ -55,6 +55,28 @@ async function getProjectById(projectId: string) {
     .where(and(eq(projects.id, projectId), isNull(projects.archivedAt)))
     .limit(1);
   return project ?? null;
+}
+
+/**
+ * The project, but only if this user is a member of the organization that owns
+ * it. Lookup and authorization are one query on purpose: resolving the project
+ * first and checking membership second leaves a window between them, and makes
+ * it possible to use the row before the check has run.
+ */
+async function getProjectForMember(userId: string, projectId: string) {
+  const [row] = await db
+    .select({ project: projects })
+    .from(projects)
+    .innerJoin(member, eq(member.organizationId, projects.organizationId))
+    .where(
+      and(
+        eq(projects.id, projectId),
+        eq(member.userId, userId),
+        isNull(projects.archivedAt),
+      ),
+    )
+    .limit(1);
+  return row?.project ?? null;
 }
 
 async function createProject(
@@ -220,6 +242,7 @@ export const ProjectRepository = {
   countProjects,
   getProjectForOrganization,
   getProjectById,
+  getProjectForMember,
   createProject,
   updateProject,
   updateProjectDomain,

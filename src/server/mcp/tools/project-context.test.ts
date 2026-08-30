@@ -17,7 +17,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock("cloudflare:workers", () => ({ env: {} }));
 vi.mock("@/server/features/projects/services/ProjectService", () => ({
   ProjectService: {
-    getProjectForOrganization: mocks.getProjectForOrganization,
+    getProjectForMember: mocks.getProjectForOrganization,
   },
 }));
 vi.mock("@/db/runBatch", () => ({

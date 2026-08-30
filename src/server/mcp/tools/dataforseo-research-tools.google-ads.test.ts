@@ -27,7 +27,7 @@ vi.mock("@/server/lib/dataforseo", async () => {
 
 vi.mock("@/server/features/projects/services/ProjectService", () => ({
   ProjectService: {
-    getProjectForOrganization: mocks.getProjectForOrganization,
+    getProjectForMember: mocks.getProjectForOrganization,
   },
 }));
 
@@ -36,6 +36,7 @@ const toolContext = makeToolContext();
 describe("get_keyword_metrics for Google-Ads-only locations", () => {
   beforeEach(() => {
     mocks.getProjectForOrganization.mockResolvedValue({
+      organizationId: "org_123",
       id: "project_1",
       locationCode: 2840,
       languageCode: "en",
