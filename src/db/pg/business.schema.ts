@@ -361,6 +361,10 @@ export const whatsappConversations = pgTable(
       table.organizationId,
       table.lastMessageAt,
     ),
+    uniqueIndex("whatsapp_conversations_connection_external_idx").on(
+      table.connectionId,
+      table.externalConversationId,
+    ),
   ],
 );
 
@@ -386,6 +390,10 @@ export const whatsappMessages = pgTable(
     index("whatsapp_messages_conversation_created_idx").on(
       table.conversationId,
       table.createdAt,
+    ),
+    uniqueIndex("whatsapp_messages_org_external_idx").on(
+      table.organizationId,
+      table.externalMessageId,
     ),
   ],
 );

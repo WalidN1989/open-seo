@@ -6,6 +6,7 @@ import {
   createVoiceAgentSchema,
   createWhatsappConnectionSchema,
   createWhatsappTemplateSchema,
+  sendWhatsappMessageSchema,
 } from "@/types/schemas/communications";
 
 export const getWhatsappWorkspace = createServerFn({ method: "GET" })
@@ -31,6 +32,16 @@ export const createWhatsappTemplate = createServerFn({ method: "POST" })
   .validator(createWhatsappTemplateSchema)
   .handler(({ context, data }) =>
     CommunicationsService.createWhatsappTemplate(
+      context.organizationId,
+      context.userId,
+      data,
+    ),
+  );
+export const sendWhatsappMessage = createServerFn({ method: "POST" })
+  .middleware(requireAuthenticatedContext)
+  .validator(sendWhatsappMessageSchema)
+  .handler(({ context, data }) =>
+    CommunicationsService.sendWhatsappMessage(
       context.organizationId,
       context.userId,
       data,

@@ -169,6 +169,13 @@
       "when": 1788043227546,
       "tag": "0023_clumsy_quasimodo",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1788062593841,
+      "tag": "0024_panoramic_morgan_stark",
+      "breakpoints": true
     }
   ]
 }

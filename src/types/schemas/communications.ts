@@ -15,6 +15,10 @@ export const createWhatsappTemplateSchema = z.object({
   body: z.string().trim().min(1).max(4096),
   connectionId: z.string().min(1).optional(),
 });
+export const sendWhatsappMessageSchema = z.object({
+  conversationId: z.string().min(1),
+  body: z.string().trim().min(1).max(4096),
+});
 export const createVoiceAgentSchema = z.object({
   name: z.string().trim().min(1).max(100),
   speechToTextProvider: z.string().trim().max(100).optional(),

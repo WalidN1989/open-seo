@@ -1,0 +1,2 @@
+CREATE UNIQUE INDEX "whatsapp_conversations_connection_external_idx" ON "whatsapp_conversations" USING btree ("connection_id","external_conversation_id");--> statement-breakpoint
+CREATE UNIQUE INDEX "whatsapp_messages_org_external_idx" ON "whatsapp_messages" USING btree ("organization_id","external_message_id");

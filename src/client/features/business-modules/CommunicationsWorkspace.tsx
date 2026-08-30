@@ -19,6 +19,7 @@ import {
   getIntegrationsWorkspace,
   getVoiceWorkspace,
   getWhatsappWorkspace,
+  sendWhatsappMessage,
 } from "@/serverFunctions/communications";
 import { getStandardErrorMessage } from "@/client/lib/error-messages";
 import { createWhatsappConnectionSchema } from "@/types/schemas/communications";
@@ -26,6 +27,7 @@ import { createWhatsappConnectionSchema } from "@/types/schemas/communications";
 export function WhatsappWorkspace() {
   const client = useQueryClient();
   const [form, setForm] = useState<"connection" | "template" | null>(null);
+  const [replyTo, setReplyTo] = useState<string | null>(null);
   const query = useQuery({
     queryKey: ["whatsapp", "workspace"],
     queryFn: () => getWhatsappWorkspace(),
@@ -34,6 +36,8 @@ export function WhatsappWorkspace() {
     mutationFn: (data: {
       provider: "meta_cloud" | "twilio" | "custom";
       displayPhoneNumber?: string;
+      externalAccountId?: string;
+      credentialReference?: string;
     }) => createWhatsappConnection({ data }),
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: ["whatsapp"] });
@@ -53,6 +57,16 @@ export function WhatsappWorkspace() {
       await client.invalidateQueries({ queryKey: ["whatsapp"] });
       setForm(null);
       toast.success("Template created");
+    },
+    onError: showError,
+  });
+  const reply = useMutation({
+    mutationFn: (data: { conversationId: string; body: string }) =>
+      sendWhatsappMessage({ data }),
+    onSuccess: async () => {
+      await client.invalidateQueries({ queryKey: ["whatsapp"] });
+      setReplyTo(null);
+      toast.success("Message sent");
     },
     onError: showError,
   });
@@ -82,7 +96,11 @@ export function WhatsappWorkspace() {
     >
       {form === "connection" ? (
         <SimpleForm
-          fields={["displayPhoneNumber"]}
+          fields={[
+            "displayPhoneNumber",
+            "externalAccountId",
+            "credentialReference",
+          ]}
           select={{
             name: "provider",
             options: ["meta_cloud", "twilio", "custom"],
@@ -122,11 +140,30 @@ export function WhatsappWorkspace() {
       <Panel title="Shared inbox" icon={MessageCircleMore}>
         {data.conversations.length ? (
           data.conversations.map((item) => (
-            <Row
-              key={item.id}
-              title={item.externalConversationId ?? "Conversation"}
-              detail={item.status}
-            />
+            <div key={item.id} className="space-y-2">
+              <div className="flex items-center gap-2">
+                <div className="min-w-0 flex-1">
+                  <Row
+                    title={item.externalConversationId ?? "Conversation"}
+                    detail={item.status}
+                  />
+                </div>
+                <button
+                  className="btn btn-ghost btn-xs"
+                  onClick={() => setReplyTo(item.id)}
+                >
+                  Reply
+                </button>
+              </div>
+              {replyTo === item.id ? (
+                <SimpleForm
+                  fields={["body"]}
+                  onSubmit={(values) =>
+                    reply.mutate({ conversationId: item.id, body: values.body })
+                  }
+                />
+              ) : null}
+            </div>
           ))
         ) : (
           <Empty text="Connect a WhatsApp provider to begin receiving conversations." />
