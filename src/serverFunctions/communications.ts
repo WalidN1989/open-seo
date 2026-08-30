@@ -9,6 +9,7 @@ import {
   appendVoiceTranscriptSchema,
   createWebhookEndpointSchema,
   createWhatsappConnectionSchema,
+  updateWhatsappConnectionSchema,
   createWhatsappAutomationSchema,
   createWhatsappCampaignSchema,
   createWhatsappOrderSchema,
@@ -34,6 +35,17 @@ export const getWhatsappWorkspace = createServerFn({ method: "GET" })
       context.userId,
     ),
   );
+export const updateWhatsappConnection = createServerFn({ method: "POST" })
+  .middleware(requireAuthenticatedContext)
+  .validator(updateWhatsappConnectionSchema)
+  .handler(({ context, data }) =>
+    CommunicationsService.updateWhatsappConnection(
+      context.organizationId,
+      context.userId,
+      data,
+    ),
+  );
+
 export const createWhatsappConnection = createServerFn({ method: "POST" })
   .middleware(requireAuthenticatedContext)
   .validator(createWhatsappConnectionSchema)

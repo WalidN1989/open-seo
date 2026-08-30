@@ -442,9 +442,53 @@ async function updateWhatsappConversation(
   return row ?? null;
 }
 
+async function getWhatsappConnection(
+  organizationId: string,
+  connectionId: string,
+) {
+  const [row] = await db
+    .select()
+    .from(whatsappConnections)
+    .where(
+      and(
+        eq(whatsappConnections.organizationId, organizationId),
+        eq(whatsappConnections.id, connectionId),
+      ),
+    )
+    .limit(1);
+  return row ?? null;
+}
+
+async function updateWhatsappConnection(
+  organizationId: string,
+  connectionId: string,
+  input: {
+    displayPhoneNumber?: string;
+    phoneNumberId?: string;
+    businessAccountId?: string;
+    credentialReference?: string;
+    /** Already-encrypted blob; the service owns encryption. */
+    credentials: string | null;
+  },
+) {
+  const [row] = await db
+    .update(whatsappConnections)
+    .set({ ...input, updatedAt: new Date().toISOString() })
+    .where(
+      and(
+        eq(whatsappConnections.organizationId, organizationId),
+        eq(whatsappConnections.id, connectionId),
+      ),
+    )
+    .returning();
+  return row ?? null;
+}
+
 async function createWhatsappConnection(
   organizationId: string,
-  input: z.infer<typeof createWhatsappConnectionSchema>,
+  input: Omit<z.infer<typeof createWhatsappConnectionSchema>, "accessToken"> & {
+    credentials: string | null;
+  },
 ) {
   const [row] = await db
     .insert(whatsappConnections)
@@ -982,6 +1026,8 @@ export const CommunicationsRepository = {
   createWebhookDelivery,
   createWebhookEndpoint,
   createWhatsappConnection,
+  getWhatsappConnection,
+  updateWhatsappConnection,
   createWhatsappAutomation,
   createWhatsappCampaign,
   createWhatsappOrder,

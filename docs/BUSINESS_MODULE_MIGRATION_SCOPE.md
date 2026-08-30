@@ -704,6 +704,29 @@ deployment alone **does not restore service** — the previous release has no
 This is why step 2 records the previous callback URL and verify token: without
 them the first option is not available.
 
+### Tenant WhatsApp credentials
+
+Railway holds only the two platform secrets, `META_APP_SECRET` and
+`META_VERIFY_TOKEN`, for the one shared Meta app. A tenant's own access token
+lives on its connection row, encrypted with the same `connection-secrets`
+infrastructure that already protects integration credentials — a token per
+tenant on the deployment would mean a Railway variable and a redeploy for every
+customer, which is not self-service and does not scale.
+
+The token is write-only. It is masked as it is typed, encrypted before it is
+stored, and never returned to the browser: the workspace reports which
+credentials are set, not their values. Leaving the field blank on an update
+keeps the stored token, because an untouched field arrives empty and clearing
+it would break the connection on every rename.
+
+`<PREFIX>_ACCESS_TOKEN` on the deployment remains supported as an optional
+self-hosted fallback. Stored credentials take precedence; the environment is
+consulted only when nothing is stored.
+
+Meta Embedded Signup would replace the manual paste of phone number id, WABA id
+and token with an authorization flow that issues them. That is the eventual
+shape and is not built.
+
 ### Retiring the legacy Meta route
 
 When no `whatsapp.webhook.url_connection_mismatch` and no

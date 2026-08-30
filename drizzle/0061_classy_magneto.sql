@@ -1,0 +1,1 @@
+ALTER TABLE `whatsapp_connections` ADD `credentials` text;

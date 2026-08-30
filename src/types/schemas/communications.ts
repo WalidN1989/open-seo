@@ -9,6 +9,20 @@ export const createWhatsappConnectionSchema = z.object({
   // routed by, so a Meta connection created without one receives nothing.
   phoneNumberId: z.string().trim().max(200).optional(),
   businessAccountId: z.string().trim().max(200).optional(),
+  // Write-only. Encrypted before storage and never returned to the browser;
+  // the UI is told which credentials are set, never their values.
+  accessToken: z.string().trim().max(4096).optional(),
+});
+
+export const updateWhatsappConnectionSchema = z.object({
+  connectionId: z.string().min(1),
+  displayPhoneNumber: z.string().trim().max(40).optional(),
+  phoneNumberId: z.string().trim().max(200).optional(),
+  businessAccountId: z.string().trim().max(200).optional(),
+  credentialReference: z.string().trim().max(500).optional(),
+  // Blank means "keep the stored one": the browser never receives it, so an
+  // untouched field arrives empty and must not wipe a working token.
+  accessToken: z.string().trim().max(4096).optional(),
 });
 
 export const createWhatsappTemplateSchema = z.object({

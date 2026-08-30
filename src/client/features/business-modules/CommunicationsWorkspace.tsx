@@ -17,6 +17,7 @@ import {
   createWebhookEndpoint,
   createVoiceAgent,
   createWhatsappConnection,
+  updateWhatsappConnection,
   createWhatsappAutomation,
   createWhatsappCampaign,
   createWhatsappOrder,
@@ -37,7 +38,10 @@ import {
 } from "@/serverFunctions/communications";
 import { convertWhatsappOrderRequest } from "@/serverFunctions/commerce";
 import { getStandardErrorMessage } from "@/client/lib/error-messages";
-import { createWhatsappConnectionSchema } from "@/types/schemas/communications";
+import {
+  createWhatsappConnectionSchema,
+  updateWhatsappConnectionSchema,
+} from "@/types/schemas/communications";
 import { integrationProviders } from "@/shared/integration-providers";
 
 const whatsappConversationStatuses = ["open", "pending", "closed"] as const;
@@ -51,7 +55,13 @@ function isWhatsappConversationStatus(
 export function WhatsappWorkspace() {
   const client = useQueryClient();
   const [form, setForm] = useState<
-    "connection" | "template" | "campaign" | "automation" | "order" | null
+    | "connection"
+    | "connection-update"
+    | "template"
+    | "campaign"
+    | "automation"
+    | "order"
+    | null
   >(null);
   const [replyTo, setReplyTo] = useState<string | null>(null);
   const query = useQuery({
@@ -69,6 +79,25 @@ export function WhatsappWorkspace() {
       await client.invalidateQueries({ queryKey: ["whatsapp"] });
       setForm(null);
       toast.success("WhatsApp connection saved");
+    },
+    onError: showError,
+  });
+
+  // Rotating a token is a separate action from creating a number: the token is
+  // never sent to the browser, so a blank field here means "keep the one you
+  // have" rather than "clear it".
+  const connectionUpdate = useMutation({
+    mutationFn: (data: {
+      connectionId: string;
+      accessToken?: string;
+      displayPhoneNumber?: string;
+      phoneNumberId?: string;
+      businessAccountId?: string;
+    }) => updateWhatsappConnection({ data }),
+    onSuccess: async () => {
+      await client.invalidateQueries({ queryKey: ["whatsapp"] });
+      setForm(null);
+      toast.success("Connection updated");
     },
     onError: showError,
   });
@@ -205,6 +234,12 @@ export function WhatsappWorkspace() {
             <Cable className="size-4" /> Connection
           </button>
           <button
+            className="btn btn-ghost btn-sm"
+            onClick={() => setForm("connection-update")}
+          >
+            Update connection
+          </button>
+          <button
             className="btn btn-primary btn-sm"
             onClick={() => setForm("template")}
           >
@@ -219,6 +254,7 @@ export function WhatsappWorkspace() {
             "displayPhoneNumber",
             "phoneNumberId",
             "businessAccountId",
+            "accessToken",
             "externalAccountId",
             "credentialReference",
           ]}
@@ -229,6 +265,21 @@ export function WhatsappWorkspace() {
           onSubmit={(values) => {
             const parsed = createWhatsappConnectionSchema.safeParse(values);
             if (parsed.success) connection.mutate(parsed.data);
+          }}
+        />
+      ) : null}
+      {form === "connection-update" ? (
+        <SimpleForm
+          fields={[
+            "connectionId",
+            "accessToken",
+            "displayPhoneNumber",
+            "phoneNumberId",
+            "businessAccountId",
+          ]}
+          onSubmit={(values) => {
+            const parsed = updateWhatsappConnectionSchema.safeParse(values);
+            if (parsed.success) connectionUpdate.mutate(parsed.data);
           }}
         />
       ) : null}
@@ -1130,6 +1181,8 @@ function ErrorBox({ error }: { error: unknown }) {
 function showError(error: unknown) {
   toast.error(getStandardErrorMessage(error));
 }
+const SECRET_FIELDS = new Set(["accessToken"]);
+
 function SimpleForm({
   fields,
   select,
@@ -1167,6 +1220,11 @@ function SimpleForm({
           key={field}
           name={field}
           required={index === 0}
+          // A token is masked as it is typed and kept out of the browser's
+          // autofill store. It is never rendered back: the server returns
+          // which credentials are set, not their values.
+          type={SECRET_FIELDS.has(field) ? "password" : "text"}
+          autoComplete={SECRET_FIELDS.has(field) ? "off" : undefined}
           className="input input-bordered input-sm min-w-44 flex-1"
           placeholder={field.replace(/([A-Z])/g, " $1")}
         />

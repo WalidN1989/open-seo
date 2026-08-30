@@ -6,6 +6,7 @@ import {
   decryptCredentials,
   encryptCredentials,
   mergeCredentials,
+  stripCredentials,
 } from "@/server/lib/connection-secrets";
 import { integrationCatalogue } from "@/shared/integration-catalogue";
 import {
@@ -20,6 +21,7 @@ import type {
   appendVoiceTranscriptSchema,
   createWebhookEndpointSchema,
   createWhatsappConnectionSchema,
+  updateWhatsappConnectionSchema,
   createWhatsappAutomationSchema,
   createWhatsappCampaignSchema,
   createWhatsappOrderSchema,
@@ -88,7 +90,15 @@ async function whatsappWorkspace(organizationId: string, userId: string) {
     CommunicationsRepository.getWhatsappWorkspace(organizationId),
     BusinessModuleRepository.listMembers(organizationId),
   ]);
-  return { ...workspace, members };
+  // The encrypted token never leaves the server. The UI is told which
+  // credentials are set so it can say "configured", never their values.
+  return {
+    ...workspace,
+    connections: await Promise.all(
+      workspace.connections.map((connection) => stripCredentials(connection)),
+    ),
+    members,
+  };
 }
 async function createWhatsappConnection(
   organizationId: string,
@@ -110,9 +120,15 @@ async function createWhatsappConnection(
       "A Meta connection needs its phone number ID from WhatsApp Manager, or it cannot receive messages.",
     );
   }
+  const { accessToken, ...rest } = input;
   const connection = await CommunicationsRepository.createWhatsappConnection(
     organizationId,
-    input,
+    {
+      ...rest,
+      credentials: await encryptCredentials(
+        accessToken ? { ACCESS_TOKEN: accessToken } : {},
+      ),
+    },
   );
   await auditMutation(
     organizationId,
@@ -808,6 +824,54 @@ async function deleteIntegration(
   return { id: connection.id };
 }
 
+/**
+ * Set or rotate a tenant's WhatsApp credentials.
+ *
+ * A blank access token keeps the stored one. The browser is never sent the
+ * value, so an untouched field arrives empty; treating that as "clear it"
+ * would wipe a working connection every time someone renamed a number.
+ */
+async function updateWhatsappConnection(
+  organizationId: string,
+  userId: string,
+  input: z.infer<typeof updateWhatsappConnectionSchema>,
+) {
+  await BusinessModuleService.requireAccess(
+    organizationId,
+    userId,
+    "whatsapp",
+    "admin",
+  );
+  const current = await CommunicationsRepository.getWhatsappConnection(
+    organizationId,
+    input.connectionId,
+  );
+  if (!current) throw new AppError("NOT_FOUND", "Connection not found.");
+
+  const { connectionId, accessToken, ...rest } = input;
+  const updated = await CommunicationsRepository.updateWhatsappConnection(
+    organizationId,
+    connectionId,
+    {
+      ...rest,
+      credentials: await mergeCredentials(
+        current.credentials,
+        accessToken ? { ACCESS_TOKEN: accessToken } : {},
+      ),
+    },
+  );
+  if (!updated) throw new AppError("NOT_FOUND", "Connection not found.");
+  await auditMutation(
+    organizationId,
+    userId,
+    "whatsapp.connection.updated",
+    "whatsapp_connection",
+    updated.id,
+    { rotatedToken: Boolean(accessToken) },
+  );
+  return stripCredentials(updated);
+}
+
 async function testIntegration(
   organizationId: string,
   userId: string,
@@ -1460,6 +1524,7 @@ export const CommunicationsService = {
   revealIntegrationCredential,
   createVoiceAgent,
   createWhatsappConnection,
+  updateWhatsappConnection,
   createWhatsappAutomation,
   createWhatsappCampaign,
   createWhatsappOrder,

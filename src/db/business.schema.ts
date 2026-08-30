@@ -507,6 +507,10 @@ export const whatsappConnections = sqliteTable(
     lastError: text("last_error"),
     externalAccountId: text("external_account_id"),
     credentialReference: text("credential_reference"),
+    // The tenant's own Meta access token, encrypted at rest. Railway holds only
+    // the platform-wide app secret and verify token; a per-tenant token there
+    // would mean a deployment variable and a redeploy for every customer.
+    credentials: text("credentials"),
     status: text("status").notNull().default("disconnected"),
     createdAt: createdAt(),
     updatedAt: text("updated_at")
