@@ -36,6 +36,10 @@ export const updateProductSchema = createProductSchema.partial().extend({
   costPriceMinor: minorUnits.optional().nullable(),
 });
 
+export const analyticsOverviewSchema = z.object({
+  days: z.number().int().min(1).max(365).default(30),
+});
+
 export const setCurrencySchema = z.object({
   // Validated as a shape, not against the list: a workspace may legitimately
   // use a currency the list does not name.

@@ -11,6 +11,7 @@ import {
   ShoppingCart,
   UserRound,
   Radar,
+  ChartNoAxesColumn,
 } from "lucide-react";
 import { linkOptions } from "@tanstack/react-router";
 
@@ -65,6 +66,11 @@ const crmNavGroups = [
         to: "/modules/crm/meetings",
         label: "Meetings",
         icon: CalendarDays,
+      }),
+      linkOptions({
+        to: "/modules/crm/analytics",
+        label: "Analytics",
+        icon: ChartNoAxesColumn,
       }),
       linkOptions({
         to: "/modules/crm/products",

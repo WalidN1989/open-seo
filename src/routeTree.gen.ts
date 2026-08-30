@@ -68,6 +68,7 @@ import { Route as AppModulesCrmInventoryRouteImport } from './routes/_app/module
 import { Route as AppModulesCrmInquiriesRouteImport } from './routes/_app/modules/crm/inquiries'
 import { Route as AppModulesCrmContactsRouteImport } from './routes/_app/modules/crm/contacts'
 import { Route as AppModulesCrmCompaniesRouteImport } from './routes/_app/modules/crm/companies'
+import { Route as AppModulesCrmAnalyticsRouteImport } from './routes/_app/modules/crm/analytics'
 import { Route as ProjectPProjectIdSettingsIndexRouteImport } from './routes/_project/p/$projectId/settings/index'
 import { Route as ProjectPProjectIdRankTrackingIndexRouteImport } from './routes/_project/p/$projectId/rank-tracking/index'
 import { Route as ProjectPProjectIdAuditIndexRouteImport } from './routes/_project/p/$projectId/audit/index'
@@ -383,6 +384,11 @@ const AppModulesCrmCompaniesRoute = AppModulesCrmCompaniesRouteImport.update({
   path: '/companies',
   getParentRoute: () => AppModulesCrmRoute,
 } as any)
+const AppModulesCrmAnalyticsRoute = AppModulesCrmAnalyticsRouteImport.update({
+  id: '/analytics',
+  path: '/analytics',
+  getParentRoute: () => AppModulesCrmRoute,
+} as any)
 const ProjectPProjectIdSettingsIndexRoute =
   ProjectPProjectIdSettingsIndexRouteImport.update({
     id: '/',
@@ -462,6 +468,7 @@ export interface FileRoutesByFullPath {
   '/api/whatsapp/$connectionId': typeof ApiWhatsappConnectionIdRoute
   '/modules/': typeof AppModulesIndexRoute
   '/onboarding/': typeof AuthenticatedOnboardingIndexRoute
+  '/modules/crm/analytics': typeof AppModulesCrmAnalyticsRoute
   '/modules/crm/companies': typeof AppModulesCrmCompaniesRoute
   '/modules/crm/contacts': typeof AppModulesCrmContactsRoute
   '/modules/crm/inquiries': typeof AppModulesCrmInquiriesRoute
@@ -523,6 +530,7 @@ export interface FileRoutesByTo {
   '/api/whatsapp/$connectionId': typeof ApiWhatsappConnectionIdRoute
   '/modules': typeof AppModulesIndexRoute
   '/onboarding': typeof AuthenticatedOnboardingIndexRoute
+  '/modules/crm/analytics': typeof AppModulesCrmAnalyticsRoute
   '/modules/crm/companies': typeof AppModulesCrmCompaniesRoute
   '/modules/crm/contacts': typeof AppModulesCrmContactsRoute
   '/modules/crm/inquiries': typeof AppModulesCrmInquiriesRoute
@@ -590,6 +598,7 @@ export interface FileRoutesById {
   '/api/whatsapp/$connectionId': typeof ApiWhatsappConnectionIdRoute
   '/_app/modules/': typeof AppModulesIndexRoute
   '/_authenticated/onboarding/': typeof AuthenticatedOnboardingIndexRoute
+  '/_app/modules/crm/analytics': typeof AppModulesCrmAnalyticsRoute
   '/_app/modules/crm/companies': typeof AppModulesCrmCompaniesRoute
   '/_app/modules/crm/contacts': typeof AppModulesCrmContactsRoute
   '/_app/modules/crm/inquiries': typeof AppModulesCrmInquiriesRoute
@@ -657,6 +666,7 @@ export interface FileRouteTypes {
     | '/api/whatsapp/$connectionId'
     | '/modules/'
     | '/onboarding/'
+    | '/modules/crm/analytics'
     | '/modules/crm/companies'
     | '/modules/crm/contacts'
     | '/modules/crm/inquiries'
@@ -718,6 +728,7 @@ export interface FileRouteTypes {
     | '/api/whatsapp/$connectionId'
     | '/modules'
     | '/onboarding'
+    | '/modules/crm/analytics'
     | '/modules/crm/companies'
     | '/modules/crm/contacts'
     | '/modules/crm/inquiries'
@@ -784,6 +795,7 @@ export interface FileRouteTypes {
     | '/api/whatsapp/$connectionId'
     | '/_app/modules/'
     | '/_authenticated/onboarding/'
+    | '/_app/modules/crm/analytics'
     | '/_app/modules/crm/companies'
     | '/_app/modules/crm/contacts'
     | '/_app/modules/crm/inquiries'
@@ -1253,6 +1265,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppModulesCrmCompaniesRouteImport
       parentRoute: typeof AppModulesCrmRoute
     }
+    '/_app/modules/crm/analytics': {
+      id: '/_app/modules/crm/analytics'
+      path: '/analytics'
+      fullPath: '/modules/crm/analytics'
+      preLoaderRoute: typeof AppModulesCrmAnalyticsRouteImport
+      parentRoute: typeof AppModulesCrmRoute
+    }
     '/_project/p/$projectId/settings/': {
       id: '/_project/p/$projectId/settings/'
       path: '/'
@@ -1326,6 +1345,7 @@ const AppModulesCrmProductsRouteWithChildren =
   )
 
 interface AppModulesCrmRouteChildren {
+  AppModulesCrmAnalyticsRoute: typeof AppModulesCrmAnalyticsRoute
   AppModulesCrmCompaniesRoute: typeof AppModulesCrmCompaniesRoute
   AppModulesCrmContactsRoute: typeof AppModulesCrmContactsRoute
   AppModulesCrmInquiriesRoute: typeof AppModulesCrmInquiriesRoute
@@ -1338,6 +1358,7 @@ interface AppModulesCrmRouteChildren {
 }
 
 const AppModulesCrmRouteChildren: AppModulesCrmRouteChildren = {
+  AppModulesCrmAnalyticsRoute: AppModulesCrmAnalyticsRoute,
   AppModulesCrmCompaniesRoute: AppModulesCrmCompaniesRoute,
   AppModulesCrmContactsRoute: AppModulesCrmContactsRoute,
   AppModulesCrmInquiriesRoute: AppModulesCrmInquiriesRoute,

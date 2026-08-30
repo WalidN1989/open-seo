@@ -3,6 +3,7 @@ import { CommerceService } from "@/server/features/commerce/services/CommerceSer
 import { InventoryService } from "@/server/features/commerce/services/InventoryService";
 import { OrderService } from "@/server/features/commerce/services/OrderService";
 import { CatalogueSyncService } from "@/server/features/commerce/services/CatalogueSyncService";
+import { AnalyticsService } from "@/server/features/commerce/services/AnalyticsService";
 import { BusinessSettingsService } from "@/server/features/business-modules/services/BusinessSettingsService";
 import { requireAuthenticatedContext } from "@/serverFunctions/middleware";
 import {
@@ -19,10 +20,18 @@ import {
   recordAuditCountSchema,
   setSyncScheduleSchema,
   listProductsSchema,
+  analyticsOverviewSchema,
   setCurrencySchema,
   productIdSchema,
   updateProductSchema,
 } from "@/types/schemas/commerce";
+
+export const getBusinessAnalytics = createServerFn({ method: "GET" })
+  .middleware(requireAuthenticatedContext)
+  .validator(analyticsOverviewSchema)
+  .handler(({ context, data }) =>
+    AnalyticsService.getOverview(context.organizationId, context.userId, data),
+  );
 
 export const getBusinessSettings = createServerFn({ method: "GET" })
   .middleware(requireAuthenticatedContext)
