@@ -68,7 +68,7 @@ function BusinessModulePage() {
       <div className="mx-auto max-w-4xl space-y-6">
         <Link to="/modules" className="btn btn-ghost btn-sm -ml-2">
           <ArrowLeft className="size-4" />
-          Business Modules
+          Business
         </Link>
 
         {accessQuery.isLoading ? (

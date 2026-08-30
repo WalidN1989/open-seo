@@ -91,9 +91,7 @@ function BusinessModulesPage() {
     <div className="h-full overflow-auto bg-base-100 px-4 py-8 pb-24 md:px-6 md:py-12 md:pb-8">
       <div className="mx-auto max-w-5xl space-y-6">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">
-            Business Modules
-          </h1>
+          <h1 className="text-2xl font-bold tracking-tight">Business Access</h1>
           <p className="mt-1 max-w-2xl text-sm text-base-content/60">
             Add operational tools around OpenSEO without changing its SEO
             engine. Owners can activate only the modules included for this
@@ -147,7 +145,7 @@ function BusinessModulesPage() {
                         params={{ moduleKey: module.key }}
                         className="btn btn-primary btn-sm"
                       >
-                        Open module
+                        Open
                       </Link>
                     ) : (
                       <span className="text-xs text-base-content/50">

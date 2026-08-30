@@ -9,10 +9,10 @@ without losing their place in OpenSEO.
 ## Layout
 
 1. **Product rail:** a narrow, persistent icon rail for Home, SEO, Business
-   Modules, AI & MCP, and Settings. Selecting Business Modules reveals the
+   Business, AI & MCP, and Settings. Selecting Business reveals the
    business navigator beside it.
-2. **Business navigator:** the persistent expandable menu for Leads, CRM,
-   WhatsApp, Voice Agent, and Integrations. Selecting a module expands that
+2. **Business navigator:** the persistent expandable menu for CRM, WhatsApp,
+   Voice Agent, and Integrations. Selecting a capability expands that
    module's own navigation in this panel.
 3. **Workspace:** the large panel on the right. Selecting a submenu item changes
    this workspace only; it does not replace either navigation zone or send the
@@ -23,10 +23,11 @@ without losing their place in OpenSEO.
 The concept shows CRM expanded with:
 
 - Overview
+- Leads
 - Analytics
 - Contacts
 - Companies
-- Leads & Pipeline
+- Pipeline / Opportunities
 - Inquiries
 - Meetings
 - Products
@@ -41,7 +42,8 @@ before their schema and workflows exist.
 
 ## Interaction rules
 
-- The five primary modules are navigation items, not a grid of cards.
+- The four primary business capabilities are navigation items, not a grid of
+  cards. Leads appears within CRM while retaining its independent entitlement.
 - The active primary module and active submenu item must both remain visible.
 - Switching submenu items changes only the right-hand workspace.
 - Switching primary modules replaces the submenu in the business navigator and

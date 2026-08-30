@@ -1,13 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import {
-  Blocks,
-  Bot,
-  ContactRound,
-  LayoutGrid,
-  MessagesSquare,
-  PlugZap,
-} from "lucide-react";
+import { Blocks, Bot, LayoutGrid, MessagesSquare, PlugZap } from "lucide-react";
 import { getBusinessModuleAccess } from "@/serverFunctions/business-modules";
 import {
   businessModuleCatalog,
@@ -25,12 +18,11 @@ const MODULE_ROUTES: Partial<Record<BusinessModuleKey, string>> = {
 };
 
 const MODULE_ICONS = {
-  leads: ContactRound,
   crm: Blocks,
   whatsapp: MessagesSquare,
   voice: Bot,
   integrations: PlugZap,
-} satisfies Record<BusinessModuleKey, typeof Blocks>;
+} satisfies Record<Exclude<BusinessModuleKey, "leads">, typeof Blocks>;
 
 export function ModuleSwitcher({
   moduleKey,
@@ -46,27 +38,42 @@ export function ModuleSwitcher({
     staleTime: 60_000,
   });
 
-  // An unentitled module must not appear as a destination. Until the answer
-  // arrives, offer only the module already open.
-  const available = access.data
-    ? access.data.filter((item) => item.enabled && item.permission)
-    : businessModuleCatalog.filter((item) => item.key === moduleKey);
+  // Leads is a CRM capability, not a peer product in the navigation. Its
+  // entitlement remains independent so a tenant can still buy lead management
+  // without receiving the full CRM workspace.
+  const granted = access.data?.filter(
+    (item) => item.enabled && item.permission,
+  );
+  const crmAccess = granted?.find((item) => item.key === "crm");
+  const leadsAccess = granted?.find((item) => item.key === "leads");
+  const available = granted
+    ? [
+        ...(crmAccess || leadsAccess
+          ? [businessModuleCatalog.find((item) => item.key === "crm")!]
+          : []),
+        ...granted.filter((item) => item.key !== "crm" && item.key !== "leads"),
+      ]
+    : businessModuleCatalog.filter((item) =>
+        moduleKey === "leads" ? item.key === "crm" : item.key === moduleKey,
+      );
+  const activeModuleKey = moduleKey === "leads" ? "crm" : moduleKey;
 
   return (
     <div>
       <div className="px-3 pb-1 pt-2 text-xs font-semibold uppercase tracking-wider text-base-content/40">
-        Business Modules
+        Business
       </div>
-      <nav aria-label="Business modules" className="space-y-0.5">
+      <nav aria-label="Business" className="space-y-0.5">
         {available.map((item) => {
-          const Icon = MODULE_ICONS[item.key];
-          const active = item.key === moduleKey;
+          const key = item.key as Exclude<BusinessModuleKey, "leads">;
+          const Icon = MODULE_ICONS[key];
+          const active = key === activeModuleKey;
           const sharedClass = `relative flex w-full items-center gap-2.5 rounded-md px-3 py-1.5 text-sm transition-colors ${
             active
               ? "bg-base-300/50 font-medium text-base-content"
               : "text-base-content/70 hover:bg-base-300/30 hover:text-base-content"
           }`;
-          const route = MODULE_ROUTES[item.key];
+          const route = MODULE_ROUTES[key];
           const content = (
             <>
               {active ? (
@@ -77,9 +84,23 @@ export function ModuleSwitcher({
             </>
           );
 
+          if (key === "crm" && !crmAccess && leadsAccess) {
+            return (
+              <Link
+                key={key}
+                to="/modules/$moduleKey"
+                params={{ moduleKey: "leads" }}
+                onClick={onNavigate}
+                className={sharedClass}
+              >
+                {content}
+              </Link>
+            );
+          }
+
           return route ? (
             <Link
-              key={item.key}
+              key={key}
               to={route}
               onClick={onNavigate}
               className={sharedClass}
@@ -88,9 +109,9 @@ export function ModuleSwitcher({
             </Link>
           ) : (
             <Link
-              key={item.key}
+              key={key}
               to="/modules/$moduleKey"
-              params={{ moduleKey: item.key }}
+              params={{ moduleKey: key }}
               onClick={onNavigate}
               className={sharedClass}
             >
@@ -104,7 +125,7 @@ export function ModuleSwitcher({
           className="mt-1 flex items-center gap-2.5 rounded-md px-3 py-1.5 text-sm text-base-content/60 transition-colors hover:bg-base-300/30 hover:text-base-content"
         >
           <LayoutGrid className="size-4 shrink-0" />
-          <span>Manage modules</span>
+          <span>Manage access</span>
         </Link>
       </nav>
     </div>

@@ -2,6 +2,7 @@ import {
   Blocks,
   Building2,
   CalendarDays,
+  ContactRound,
   Inbox,
   LayoutDashboard,
   Plug,
@@ -27,6 +28,13 @@ const crmNavGroups = [
         icon: LayoutDashboard,
         // Without exact matching the index path prefixes every CRM route and
         // would render active on all of them.
+        activeOptions: { exact: true, includeSearch: false },
+      }),
+      linkOptions({
+        to: "/modules/$moduleKey",
+        params: { moduleKey: "leads" },
+        label: "Leads",
+        icon: ContactRound,
         activeOptions: { exact: true, includeSearch: false },
       }),
       linkOptions({
@@ -73,10 +81,9 @@ const integrationsNavGroups = [
 ];
 
 export function getModuleNavGroups(moduleKey: string) {
-  if (moduleKey === "crm") return crmNavGroups;
+  if (moduleKey === "crm" || moduleKey === "leads") return crmNavGroups;
   if (moduleKey === "integrations") return integrationsNavGroups;
   const module = {
-    leads: { label: "Leads", icon: UserRound },
     whatsapp: { label: "WhatsApp", icon: Inbox },
     voice: { label: "Voice Agent", icon: LayoutDashboard },
   }[moduleKey];

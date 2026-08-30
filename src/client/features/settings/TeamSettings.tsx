@@ -23,7 +23,7 @@ function toRole(value: string): OrganizationRole {
 
 /**
  * Workspace membership. Module-level permissions are set per member on the
- * Business Modules page; this decides who is in the workspace at all.
+ * Business Access page; this decides who is in the workspace at all.
  */
 export function TeamSettings() {
   const { data: session } = useSession();
@@ -130,7 +130,7 @@ export function TeamSettings() {
         </h2>
         <p className="mt-1 text-sm text-base-content/60">
           Who can reach this workspace. What each member can open is set per
-          module on the Business Modules page.
+          capability on the Business Access page.
         </p>
       </div>
 

@@ -78,7 +78,7 @@ const aiNavItem = linkOptions({
 
 const businessModulesNavItem = linkOptions({
   to: "/modules" as const,
-  label: "Business Modules",
+  label: "Business",
   icon: PackageOpen,
 });
 

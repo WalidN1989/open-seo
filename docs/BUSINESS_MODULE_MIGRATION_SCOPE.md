@@ -258,8 +258,12 @@ pipeline.
   business modules are now mounted as persistent sidebar navigation rather
   than hidden in a switcher or requiring a return to the module-card page.
   Every module has a consistent Overview entry; CRM is split into Overview,
-  Contacts, Companies, Inquiries and Meetings; Integrations into Catalogue and
-  Connections. This is a navigation-only change and preserves the existing
+  Leads, Contacts, Companies, Inquiries and Meetings; Integrations into
+  Catalogue and Connections. Leads keeps its independent entitlement and data
+  boundary, but is presented under CRM because it is a CRM capability rather
+  than a peer product. WhatsApp, Voice Agent and Integrations remain separate
+  customer-facing capabilities. The sidebar calls this area "Business" and
+  reserves "module" for internal architecture. This preserves the existing
   OpenSEO theme and workspace UI.
 - **The integrations marketplace**: sixteen entries with categories, search and
   state, connection state read from the workspace.
