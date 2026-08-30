@@ -73,6 +73,9 @@ timestamp, event, and delivery headers.
 
 ## Migration handoff ledger
 
+This section is written across sessions and across agents. Read it before
+starting work so nothing here is rebuilt or reverted by accident.
+
 Completed foundations are tenant module entitlements, staff permissions,
 Leads and CRM workspaces, the WhatsApp inbox/templates/campaigns/automations
 and order-request surfaces, signed Meta/Twilio callbacks, provider delivery,
@@ -97,7 +100,105 @@ An authorized tenant can run an Apify actor with validated JSON input or scrape
 an HTTPS page through Firecrawl, inspect a bounded result preview, and retain an
 audit record without exposing the provider credential to the browser.
 
-Pending human touch:
+### 2026-08-30: provider catalogue, scheduling, deployment
+
+Work continued after the previous session stopped mid-edit, leaving one
+uncommitted file: `providers/integrations.ts`. That change was complete and
+coherent, so it was finished and committed. Nothing else from that session was
+changed, reverted or rewritten.
+
+Commits, oldest first: `d8750df`, `6f7f0df`, `ad03cd5`, `07ee2e3`, `de60c28`.
+
+`apiKey` became `credentialValue`, since it now resolves signing secrets and
+store URLs rather than only API keys, and `testIntegrationConnection` gained
+`make` (signing secret), `woocommerce` (a real authenticated store request) and
+`custom`. All three had been catalogue cards that could never reach
+"connected".
+
+## Background jobs and scheduling
+
+Scheduled work reached this app **only** through Cloudflare's `triggers.crons`
+firing the `scheduled` handler in `src/server.ts`.
+
+Production runs on **Railway**, not Cloudflare. Railway builds
+`Dockerfile.selfhost`, whose entrypoint ends at `vite preview` — a web server
+with no cron runner. Cloudflare cron triggers do not exist there, so nothing
+scheduled had ever run in production, including OpenSEO's own
+`runScheduledRankChecks` and `reconcileStaleAudits`. That predates this
+migration entirely.
+
+The pieces:
+
+- `src/shared/internal-cron.ts` — the endpoint path and three tiers: `fast` 5s,
+  `standard` 30s, `slow` 300s.
+- `src/server/features/scheduler/registry.ts` — job registration and per-tier
+  execution. One job failing is recorded and the others still run, so a broken
+  sync cannot silently stop WhatsApp replies.
+- `src/server/features/scheduler/jobs.ts` — **the only file to touch to add a
+  job.** Registers `audit.reconcileStale` and `rankTracking.scheduledChecks`
+  (slow) and `webhooks.retryDue` (standard). Add one `registerCronJob` call
+  with a unique name and a tier; nothing else is wired by hand.
+- `src/server/features/scheduler/handler.ts` — `POST /api/internal/cron`,
+  routed in `src/server.ts` before the auth-mode branches because the ticker
+  carries a shared secret rather than a user session.
+- `scripts/internal-ticker.ts` — supplies the clock, started beside the server
+  by `docker-entrypoint.sh`.
+
+Jobs still execute inside the Worker runtime with the same bindings and
+per-request Postgres scoping, because the ticker reaches them over HTTP rather
+than importing them. Only the clock lives outside.
+
+`fast` exists because five minutes is the finest granularity Cloudflare cron
+offers, and a WhatsApp reply arriving five minutes late is a broken feature
+rather than a slow one.
+
+Webhook retries were closed at the same time. Every failed delivery already
+wrote `next_attempt_at` with a backoff, but nothing read that column back, so a
+failure waited for a human to press Retry.
+`CommunicationsRepository.listDueWebhookDeliveries` and
+`CommunicationsService.retryDueWebhookDeliveries` now complete that loop from
+the `standard` tier.
+
+## Deployment
+
+`INTERNAL_CRON_SECRET` must be set on the Railway service. Without it the
+server still serves traffic, the ticker refuses to start, and the entrypoint
+says so — background work is off rather than silently broken.
+
+**Any new runtime secret must be added to the allowlist in
+`scripts/write-runtime-dev-vars.ts`.** Setting it on the host is not enough; if
+it is missing from that list the worker never sees it. `INTERNAL_CRON_SECRET`
+shipped without it once, which would have made the endpoint refuse every tick.
+
+### Two traps that caused real outages
+
+**The service Builder overrides `railway.toml`.** The file specifies
+`DOCKERFILE` and `Dockerfile.selfhost`, but a service-level Builder setting
+wins. When it flipped to Railpack the Dockerfile and its entrypoint were
+skipped entirely — no migrations, no build, no ticker — and Railpack guessed a
+start command that does not exist, crash-looping instantly. The signature is
+`Starting Container` followed immediately by an error with no migration or
+build output between them. Fix: Railway → service → Settings → Build →
+Builder: **Dockerfile**, path `Dockerfile.selfhost`.
+
+**`CLOUDFLARE_INCLUDE_PROCESS_ENV` — removed, do not re-add.** It made wrangler
+serialise the entire build environment into `.dev.vars`. That serialiser cannot
+quote a value containing an apostrophe **and** a backtick **and** a newline,
+and a git commit message did exactly that, failing every build with
+`[vite-plugin-cloudflare:output-config] Unable to serialize value to
+.dev.vars`. The flag is referenced nowhere in this repository; the supported
+mechanism is `scripts/write-runtime-dev-vars.ts` with its explicit allowlist.
+
+### Verified in production
+
+`tsc --noEmit`, `vitest run` (141 files, 1271 tests), `prettier --check` and
+`knip` all pass. Against the live deployment: `/api/health` and `/modules`
+return 200; the cron endpoint returns 401 with no secret or a wrong one and 400
+for an unknown tier; the `standard` tier reports `webhooks.retryDue` ok and the
+`slow` tier reports `audit.reconcileStale` and `rankTracking.scheduledChecks`
+ok. Container logs show the ticker at 5s / 30s / 300s.
+
+## Pending human touch
 
 - Authorize or manually add `ANTHROPIC_API_KEY` to the Open SEO Railway
   service. The existing CRM service has this variable, but production secrets
@@ -111,7 +212,8 @@ Pending human touch:
 
 Agreed 2026-08-30: revisit only after every module is migrated, merged and
 deployed. These are silent-failure risks, not missing capability, so they wait
-behind feature work.
+behind feature work. **Do not build them early, and do not treat their absence
+as an oversight.**
 
 - **Stranded outbound WhatsApp replies.** A reply is written with status
   `queued` and then sent in the same request. Nothing reads `queued` back, so
