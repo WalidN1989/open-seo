@@ -13,11 +13,13 @@ function secretName(reference: string, suffix = "API_KEY") {
   return `${prefix}_${suffix}`;
 }
 
-async function apiKey(connection: IntegrationRecord) {
+async function apiKey(connection: IntegrationRecord, suffix = "API_KEY") {
   if (!connection.credentialReference) {
     throw new Error("This integration has no credential reference.");
   }
-  return getRequiredEnvValue(secretName(connection.credentialReference));
+  return getRequiredEnvValue(
+    secretName(connection.credentialReference, suffix),
+  );
 }
 
 async function checkedJson(
@@ -41,9 +43,9 @@ export async function testIntegrationConnection(
   connection: IntegrationRecord,
   fetcher: typeof fetch = fetch,
 ) {
-  const key = await apiKey(connection);
   switch (connection.providerKey) {
-    case "apify":
+    case "apify": {
+      const key = await apiKey(connection, "API_TOKEN");
       await checkedJson(
         "https://api.apify.com/v2/users/me",
         { Authorization: `Bearer ${key}` },
@@ -53,7 +55,9 @@ export async function testIntegrationConnection(
         providerKey: connection.providerKey,
         detail: "Apify account authenticated",
       };
-    case "firecrawl":
+    }
+    case "firecrawl": {
+      const key = await apiKey(connection);
       await checkedJson(
         "https://api.firecrawl.dev/v2/team/credit-usage",
         { Authorization: `Bearer ${key}` },
@@ -63,8 +67,10 @@ export async function testIntegrationConnection(
         providerKey: connection.providerKey,
         detail: "Firecrawl account authenticated",
       };
+    }
     case "hunter":
-    case "hunter.io":
+    case "hunter.io": {
+      const key = await apiKey(connection);
       await checkedJson(
         "https://api.hunter.io/v2/account",
         { "X-API-KEY": key },
@@ -74,7 +80,9 @@ export async function testIntegrationConnection(
         providerKey: connection.providerKey,
         detail: "Hunter account authenticated",
       };
+    }
     case "claude_haiku":
+      await apiKey(connection);
       return {
         providerKey: connection.providerKey,
         detail: "Anthropic secret is configured",

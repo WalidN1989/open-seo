@@ -13,7 +13,11 @@ describe("integration provider health checks", () => {
   ])(
     "authenticates %s against its official account endpoint",
     async (providerKey, url, header) => {
-      process.env.TEST_PROVIDER_API_KEY = "secret";
+      const secretName =
+        providerKey === "apify"
+          ? "TEST_PROVIDER_API_TOKEN"
+          : "TEST_PROVIDER_API_KEY";
+      process.env[secretName] = "secret";
       const fetcher = async (input: RequestInfo | URL, init?: RequestInit) => {
         const requestUrl =
           typeof input === "string"
@@ -31,7 +35,7 @@ describe("integration provider health checks", () => {
           fetcher,
         ),
       ).resolves.toMatchObject({ providerKey });
-      delete process.env.TEST_PROVIDER_API_KEY;
+      delete process.env[secretName];
     },
   );
 });
