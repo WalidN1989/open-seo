@@ -2,6 +2,7 @@ import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import type { LinkOptions } from "@tanstack/react-router";
 import { useEffect, useState, type ComponentType } from "react";
 import {
+  ChevronLeft,
   CircleHelp,
   CreditCard,
   LayoutGrid,
@@ -11,6 +12,7 @@ import {
   User,
   X,
 } from "lucide-react";
+import { getModuleNavGroups } from "@/client/navigation/moduleItems";
 import {
   connectNavGroup,
   getProjectNavGroups,
@@ -77,13 +79,20 @@ function SidebarNavLink({
 }
 
 export function Sidebar({ projectId, onNavigate, onClose }: SidebarProps) {
-  const navGroups = [
-    ...(projectId ? getProjectNavGroups(projectId) : []),
-    connectNavGroup,
-  ];
   const navigate = useNavigate();
   const location = useLocation();
   const onSamRoute = location.pathname.includes("/sam");
+
+  // Inside a module the sidebar belongs to that module: its own sections
+  // replace the SEO navigation, with one row back out. Stacking a module's
+  // sections into a single page is what left it cramped beside empty width.
+  const moduleKey = location.pathname.match(/^\/modules\/([^/]+)/)?.[1];
+  const moduleNavGroups = moduleKey ? getModuleNavGroups(moduleKey) : [];
+  const inModule = moduleNavGroups.length > 0;
+
+  const navGroups = inModule
+    ? moduleNavGroups
+    : [...(projectId ? getProjectNavGroups(projectId) : []), connectNavGroup];
 
   // PostHog-style sidebar tabs: Browse shows the regular nav, Chat shows the
   // SAM chat history. The tab is view state (switching to Browse leaves the
@@ -140,14 +149,27 @@ export function Sidebar({ projectId, onNavigate, onClose }: SidebarProps) {
         ) : null}
       </div>
 
-      <div className="px-3 pb-1">
-        <ProjectSwitcher
-          activeProjectId={projectId}
-          onCloseDrawer={onNavigate}
-        />
-      </div>
+      {inModule ? (
+        <div className="px-3 pb-2">
+          <Link
+            to="/modules"
+            onClick={onNavigate}
+            className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-base-content/60 hover:bg-base-300 hover:text-base-content"
+          >
+            <ChevronLeft className="h-4 w-4 shrink-0" />
+            <span className="truncate">Business Modules</span>
+          </Link>
+        </div>
+      ) : (
+        <div className="px-3 pb-1">
+          <ProjectSwitcher
+            activeProjectId={projectId}
+            onCloseDrawer={onNavigate}
+          />
+        </div>
+      )}
 
-      {projectId ? (
+      {projectId && !inModule ? (
         // Same underline tab idiom as the in-page tab strips (e.g. Domain
         // Overview's Top Keywords / Top Pages).
         <div className="px-3 pb-1">
@@ -168,7 +190,7 @@ export function Sidebar({ projectId, onNavigate, onClose }: SidebarProps) {
         </div>
       ) : null}
 
-      {view === "chat" && projectId ? (
+      {view === "chat" && projectId && !inModule ? (
         <SamSidebarPanel projectId={projectId} onNavigate={onNavigate} />
       ) : (
         <nav className="min-h-0 flex-1 overflow-y-auto px-2 py-2">

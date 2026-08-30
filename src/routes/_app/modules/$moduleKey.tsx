@@ -9,7 +9,6 @@ import {
 } from "@/shared/business-modules";
 import { getStandardErrorMessage } from "@/client/lib/error-messages";
 import { LeadsWorkspace } from "@/client/features/business-modules/LeadsWorkspace";
-import { CrmWorkspace } from "@/client/features/business-modules/CrmWorkspace";
 import {
   IntegrationsWorkspace,
   VoiceWorkspace,
@@ -87,7 +86,6 @@ function BusinessModulePage() {
         ) : (
           <>
             {moduleKey === "leads" ? <LeadsWorkspace /> : null}
-            {moduleKey === "crm" ? <CrmWorkspace /> : null}
             {moduleKey === "whatsapp" ? <WhatsappWorkspace /> : null}
             {moduleKey === "voice" ? <VoiceWorkspace /> : null}
             {moduleKey === "integrations" ? <IntegrationsWorkspace /> : null}

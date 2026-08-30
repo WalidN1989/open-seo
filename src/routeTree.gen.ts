@@ -35,11 +35,13 @@ import { Route as ApiWhatsappConnectionIdRouteImport } from './routes/api/whatsa
 import { Route as ApiAutumnSplatRouteImport } from './routes/api/autumn/$'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as AuthenticatedOnboardingChatRouteImport } from './routes/_authenticated.onboarding.chat'
+import { Route as AppModulesCrmRouteImport } from './routes/_app/modules/crm'
 import { Route as AppModulesModuleKeyRouteImport } from './routes/_app/modules/$moduleKey'
 import { Route as AppHelpOpenrouterApiKeyRouteImport } from './routes/_app/help/openrouter-api-key'
 import { Route as AppHelpDataforseoApiKeyRouteImport } from './routes/_app/help/dataforseo-api-key'
 import { Route as ProjectPProjectIdRouteRouteImport } from './routes/_project/p/$projectId/route'
 import { Route as ProjectPProjectIdIndexRouteImport } from './routes/_project/p/$projectId/index'
+import { Route as AppModulesCrmIndexRouteImport } from './routes/_app/modules/crm/index'
 import { Route as ApiGscOauthCallbackRouteImport } from './routes/api/gsc/oauth/callback'
 import { Route as ApiGa4OauthCallbackRouteImport } from './routes/api/ga4/oauth/callback'
 import { Route as ProjectPProjectIdSettingsRouteImport } from './routes/_project/p/$projectId/settings'
@@ -53,6 +55,10 @@ import { Route as ProjectPProjectIdDomainRouteImport } from './routes/_project/p
 import { Route as ProjectPProjectIdBrandLookupRouteImport } from './routes/_project/p/$projectId/brand-lookup'
 import { Route as ProjectPProjectIdBacklinksRouteImport } from './routes/_project/p/$projectId/backlinks'
 import { Route as ProjectPProjectIdAuditRouteImport } from './routes/_project/p/$projectId/audit'
+import { Route as AppModulesCrmMeetingsRouteImport } from './routes/_app/modules/crm/meetings'
+import { Route as AppModulesCrmInquiriesRouteImport } from './routes/_app/modules/crm/inquiries'
+import { Route as AppModulesCrmContactsRouteImport } from './routes/_app/modules/crm/contacts'
+import { Route as AppModulesCrmCompaniesRouteImport } from './routes/_app/modules/crm/companies'
 import { Route as ProjectPProjectIdSettingsIndexRouteImport } from './routes/_project/p/$projectId/settings/index'
 import { Route as ProjectPProjectIdRankTrackingIndexRouteImport } from './routes/_project/p/$projectId/rank-tracking/index'
 import { Route as ProjectPProjectIdAuditIndexRouteImport } from './routes/_project/p/$projectId/audit/index'
@@ -191,6 +197,11 @@ const AuthenticatedOnboardingChatRoute =
     path: '/onboarding/chat',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
+const AppModulesCrmRoute = AppModulesCrmRouteImport.update({
+  id: '/crm',
+  path: '/crm',
+  getParentRoute: () => AppModulesRouteRoute,
+} as any)
 const AppModulesModuleKeyRoute = AppModulesModuleKeyRouteImport.update({
   id: '/$moduleKey',
   path: '/$moduleKey',
@@ -215,6 +226,11 @@ const ProjectPProjectIdIndexRoute = ProjectPProjectIdIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => ProjectPProjectIdRouteRoute,
+} as any)
+const AppModulesCrmIndexRoute = AppModulesCrmIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppModulesCrmRoute,
 } as any)
 const ApiGscOauthCallbackRoute = ApiGscOauthCallbackRouteImport.update({
   id: '/api/gsc/oauth/callback',
@@ -288,6 +304,26 @@ const ProjectPProjectIdAuditRoute = ProjectPProjectIdAuditRouteImport.update({
   path: '/audit',
   getParentRoute: () => ProjectPProjectIdRouteRoute,
 } as any)
+const AppModulesCrmMeetingsRoute = AppModulesCrmMeetingsRouteImport.update({
+  id: '/meetings',
+  path: '/meetings',
+  getParentRoute: () => AppModulesCrmRoute,
+} as any)
+const AppModulesCrmInquiriesRoute = AppModulesCrmInquiriesRouteImport.update({
+  id: '/inquiries',
+  path: '/inquiries',
+  getParentRoute: () => AppModulesCrmRoute,
+} as any)
+const AppModulesCrmContactsRoute = AppModulesCrmContactsRouteImport.update({
+  id: '/contacts',
+  path: '/contacts',
+  getParentRoute: () => AppModulesCrmRoute,
+} as any)
+const AppModulesCrmCompaniesRoute = AppModulesCrmCompaniesRouteImport.update({
+  id: '/companies',
+  path: '/companies',
+  getParentRoute: () => AppModulesCrmRoute,
+} as any)
 const ProjectPProjectIdSettingsIndexRoute =
   ProjectPProjectIdSettingsIndexRouteImport.update({
     id: '/',
@@ -352,12 +388,17 @@ export interface FileRoutesByFullPath {
   '/help/dataforseo-api-key': typeof AppHelpDataforseoApiKeyRoute
   '/help/openrouter-api-key': typeof AppHelpOpenrouterApiKeyRoute
   '/modules/$moduleKey': typeof AppModulesModuleKeyRoute
+  '/modules/crm': typeof AppModulesCrmRouteWithChildren
   '/onboarding/chat': typeof AuthenticatedOnboardingChatRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/autumn/$': typeof ApiAutumnSplatRoute
   '/api/whatsapp/$connectionId': typeof ApiWhatsappConnectionIdRoute
   '/modules/': typeof AppModulesIndexRoute
   '/onboarding/': typeof AuthenticatedOnboardingIndexRoute
+  '/modules/crm/companies': typeof AppModulesCrmCompaniesRoute
+  '/modules/crm/contacts': typeof AppModulesCrmContactsRoute
+  '/modules/crm/inquiries': typeof AppModulesCrmInquiriesRoute
+  '/modules/crm/meetings': typeof AppModulesCrmMeetingsRoute
   '/p/$projectId/audit': typeof ProjectPProjectIdAuditRouteWithChildren
   '/p/$projectId/backlinks': typeof ProjectPProjectIdBacklinksRoute
   '/p/$projectId/brand-lookup': typeof ProjectPProjectIdBrandLookupRoute
@@ -371,6 +412,7 @@ export interface FileRoutesByFullPath {
   '/p/$projectId/settings': typeof ProjectPProjectIdSettingsRouteWithChildren
   '/api/ga4/oauth/callback': typeof ApiGa4OauthCallbackRoute
   '/api/gsc/oauth/callback': typeof ApiGscOauthCallbackRoute
+  '/modules/crm/': typeof AppModulesCrmIndexRoute
   '/p/$projectId/': typeof ProjectPProjectIdIndexRoute
   '/p/$projectId/rank-tracking/$configId': typeof ProjectPProjectIdRankTrackingConfigIdRoute
   '/p/$projectId/settings/context': typeof ProjectPProjectIdSettingsContextRoute
@@ -405,6 +447,10 @@ export interface FileRoutesByTo {
   '/api/whatsapp/$connectionId': typeof ApiWhatsappConnectionIdRoute
   '/modules': typeof AppModulesIndexRoute
   '/onboarding': typeof AuthenticatedOnboardingIndexRoute
+  '/modules/crm/companies': typeof AppModulesCrmCompaniesRoute
+  '/modules/crm/contacts': typeof AppModulesCrmContactsRoute
+  '/modules/crm/inquiries': typeof AppModulesCrmInquiriesRoute
+  '/modules/crm/meetings': typeof AppModulesCrmMeetingsRoute
   '/p/$projectId/backlinks': typeof ProjectPProjectIdBacklinksRoute
   '/p/$projectId/brand-lookup': typeof ProjectPProjectIdBrandLookupRoute
   '/p/$projectId/domain': typeof ProjectPProjectIdDomainRoute
@@ -415,6 +461,7 @@ export interface FileRoutesByTo {
   '/p/$projectId/search-performance': typeof ProjectPProjectIdSearchPerformanceRoute
   '/api/ga4/oauth/callback': typeof ApiGa4OauthCallbackRoute
   '/api/gsc/oauth/callback': typeof ApiGscOauthCallbackRoute
+  '/modules/crm': typeof AppModulesCrmIndexRoute
   '/p/$projectId': typeof ProjectPProjectIdIndexRoute
   '/p/$projectId/rank-tracking/$configId': typeof ProjectPProjectIdRankTrackingConfigIdRoute
   '/p/$projectId/settings/context': typeof ProjectPProjectIdSettingsContextRoute
@@ -450,12 +497,17 @@ export interface FileRoutesById {
   '/_app/help/dataforseo-api-key': typeof AppHelpDataforseoApiKeyRoute
   '/_app/help/openrouter-api-key': typeof AppHelpOpenrouterApiKeyRoute
   '/_app/modules/$moduleKey': typeof AppModulesModuleKeyRoute
+  '/_app/modules/crm': typeof AppModulesCrmRouteWithChildren
   '/_authenticated/onboarding/chat': typeof AuthenticatedOnboardingChatRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/autumn/$': typeof ApiAutumnSplatRoute
   '/api/whatsapp/$connectionId': typeof ApiWhatsappConnectionIdRoute
   '/_app/modules/': typeof AppModulesIndexRoute
   '/_authenticated/onboarding/': typeof AuthenticatedOnboardingIndexRoute
+  '/_app/modules/crm/companies': typeof AppModulesCrmCompaniesRoute
+  '/_app/modules/crm/contacts': typeof AppModulesCrmContactsRoute
+  '/_app/modules/crm/inquiries': typeof AppModulesCrmInquiriesRoute
+  '/_app/modules/crm/meetings': typeof AppModulesCrmMeetingsRoute
   '/_project/p/$projectId/audit': typeof ProjectPProjectIdAuditRouteWithChildren
   '/_project/p/$projectId/backlinks': typeof ProjectPProjectIdBacklinksRoute
   '/_project/p/$projectId/brand-lookup': typeof ProjectPProjectIdBrandLookupRoute
@@ -469,6 +521,7 @@ export interface FileRoutesById {
   '/_project/p/$projectId/settings': typeof ProjectPProjectIdSettingsRouteWithChildren
   '/api/ga4/oauth/callback': typeof ApiGa4OauthCallbackRoute
   '/api/gsc/oauth/callback': typeof ApiGscOauthCallbackRoute
+  '/_app/modules/crm/': typeof AppModulesCrmIndexRoute
   '/_project/p/$projectId/': typeof ProjectPProjectIdIndexRoute
   '/_project/p/$projectId/rank-tracking/$configId': typeof ProjectPProjectIdRankTrackingConfigIdRoute
   '/_project/p/$projectId/settings/context': typeof ProjectPProjectIdSettingsContextRoute
@@ -501,12 +554,17 @@ export interface FileRouteTypes {
     | '/help/dataforseo-api-key'
     | '/help/openrouter-api-key'
     | '/modules/$moduleKey'
+    | '/modules/crm'
     | '/onboarding/chat'
     | '/api/auth/$'
     | '/api/autumn/$'
     | '/api/whatsapp/$connectionId'
     | '/modules/'
     | '/onboarding/'
+    | '/modules/crm/companies'
+    | '/modules/crm/contacts'
+    | '/modules/crm/inquiries'
+    | '/modules/crm/meetings'
     | '/p/$projectId/audit'
     | '/p/$projectId/backlinks'
     | '/p/$projectId/brand-lookup'
@@ -520,6 +578,7 @@ export interface FileRouteTypes {
     | '/p/$projectId/settings'
     | '/api/ga4/oauth/callback'
     | '/api/gsc/oauth/callback'
+    | '/modules/crm/'
     | '/p/$projectId/'
     | '/p/$projectId/rank-tracking/$configId'
     | '/p/$projectId/settings/context'
@@ -554,6 +613,10 @@ export interface FileRouteTypes {
     | '/api/whatsapp/$connectionId'
     | '/modules'
     | '/onboarding'
+    | '/modules/crm/companies'
+    | '/modules/crm/contacts'
+    | '/modules/crm/inquiries'
+    | '/modules/crm/meetings'
     | '/p/$projectId/backlinks'
     | '/p/$projectId/brand-lookup'
     | '/p/$projectId/domain'
@@ -564,6 +627,7 @@ export interface FileRouteTypes {
     | '/p/$projectId/search-performance'
     | '/api/ga4/oauth/callback'
     | '/api/gsc/oauth/callback'
+    | '/modules/crm'
     | '/p/$projectId'
     | '/p/$projectId/rank-tracking/$configId'
     | '/p/$projectId/settings/context'
@@ -598,12 +662,17 @@ export interface FileRouteTypes {
     | '/_app/help/dataforseo-api-key'
     | '/_app/help/openrouter-api-key'
     | '/_app/modules/$moduleKey'
+    | '/_app/modules/crm'
     | '/_authenticated/onboarding/chat'
     | '/api/auth/$'
     | '/api/autumn/$'
     | '/api/whatsapp/$connectionId'
     | '/_app/modules/'
     | '/_authenticated/onboarding/'
+    | '/_app/modules/crm/companies'
+    | '/_app/modules/crm/contacts'
+    | '/_app/modules/crm/inquiries'
+    | '/_app/modules/crm/meetings'
     | '/_project/p/$projectId/audit'
     | '/_project/p/$projectId/backlinks'
     | '/_project/p/$projectId/brand-lookup'
@@ -617,6 +686,7 @@ export interface FileRouteTypes {
     | '/_project/p/$projectId/settings'
     | '/api/ga4/oauth/callback'
     | '/api/gsc/oauth/callback'
+    | '/_app/modules/crm/'
     | '/_project/p/$projectId/'
     | '/_project/p/$projectId/rank-tracking/$configId'
     | '/_project/p/$projectId/settings/context'
@@ -828,6 +898,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedOnboardingChatRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_app/modules/crm': {
+      id: '/_app/modules/crm'
+      path: '/crm'
+      fullPath: '/modules/crm'
+      preLoaderRoute: typeof AppModulesCrmRouteImport
+      parentRoute: typeof AppModulesRouteRoute
+    }
     '/_app/modules/$moduleKey': {
       id: '/_app/modules/$moduleKey'
       path: '/$moduleKey'
@@ -862,6 +939,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/p/$projectId/'
       preLoaderRoute: typeof ProjectPProjectIdIndexRouteImport
       parentRoute: typeof ProjectPProjectIdRouteRoute
+    }
+    '/_app/modules/crm/': {
+      id: '/_app/modules/crm/'
+      path: '/'
+      fullPath: '/modules/crm/'
+      preLoaderRoute: typeof AppModulesCrmIndexRouteImport
+      parentRoute: typeof AppModulesCrmRoute
     }
     '/api/gsc/oauth/callback': {
       id: '/api/gsc/oauth/callback'
@@ -954,6 +1038,34 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProjectPProjectIdAuditRouteImport
       parentRoute: typeof ProjectPProjectIdRouteRoute
     }
+    '/_app/modules/crm/meetings': {
+      id: '/_app/modules/crm/meetings'
+      path: '/meetings'
+      fullPath: '/modules/crm/meetings'
+      preLoaderRoute: typeof AppModulesCrmMeetingsRouteImport
+      parentRoute: typeof AppModulesCrmRoute
+    }
+    '/_app/modules/crm/inquiries': {
+      id: '/_app/modules/crm/inquiries'
+      path: '/inquiries'
+      fullPath: '/modules/crm/inquiries'
+      preLoaderRoute: typeof AppModulesCrmInquiriesRouteImport
+      parentRoute: typeof AppModulesCrmRoute
+    }
+    '/_app/modules/crm/contacts': {
+      id: '/_app/modules/crm/contacts'
+      path: '/contacts'
+      fullPath: '/modules/crm/contacts'
+      preLoaderRoute: typeof AppModulesCrmContactsRouteImport
+      parentRoute: typeof AppModulesCrmRoute
+    }
+    '/_app/modules/crm/companies': {
+      id: '/_app/modules/crm/companies'
+      path: '/companies'
+      fullPath: '/modules/crm/companies'
+      preLoaderRoute: typeof AppModulesCrmCompaniesRouteImport
+      parentRoute: typeof AppModulesCrmRoute
+    }
     '/_project/p/$projectId/settings/': {
       id: '/_project/p/$projectId/settings/'
       path: '/'
@@ -1006,13 +1118,35 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AppModulesCrmRouteChildren {
+  AppModulesCrmCompaniesRoute: typeof AppModulesCrmCompaniesRoute
+  AppModulesCrmContactsRoute: typeof AppModulesCrmContactsRoute
+  AppModulesCrmInquiriesRoute: typeof AppModulesCrmInquiriesRoute
+  AppModulesCrmMeetingsRoute: typeof AppModulesCrmMeetingsRoute
+  AppModulesCrmIndexRoute: typeof AppModulesCrmIndexRoute
+}
+
+const AppModulesCrmRouteChildren: AppModulesCrmRouteChildren = {
+  AppModulesCrmCompaniesRoute: AppModulesCrmCompaniesRoute,
+  AppModulesCrmContactsRoute: AppModulesCrmContactsRoute,
+  AppModulesCrmInquiriesRoute: AppModulesCrmInquiriesRoute,
+  AppModulesCrmMeetingsRoute: AppModulesCrmMeetingsRoute,
+  AppModulesCrmIndexRoute: AppModulesCrmIndexRoute,
+}
+
+const AppModulesCrmRouteWithChildren = AppModulesCrmRoute._addFileChildren(
+  AppModulesCrmRouteChildren,
+)
+
 interface AppModulesRouteRouteChildren {
   AppModulesModuleKeyRoute: typeof AppModulesModuleKeyRoute
+  AppModulesCrmRoute: typeof AppModulesCrmRouteWithChildren
   AppModulesIndexRoute: typeof AppModulesIndexRoute
 }
 
 const AppModulesRouteRouteChildren: AppModulesRouteRouteChildren = {
   AppModulesModuleKeyRoute: AppModulesModuleKeyRoute,
+  AppModulesCrmRoute: AppModulesCrmRouteWithChildren,
   AppModulesIndexRoute: AppModulesIndexRoute,
 }
 
