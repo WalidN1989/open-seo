@@ -32,7 +32,10 @@ function secretName(reference: string, suffix = "API_KEY") {
   return `${prefix}_${suffix}`;
 }
 
-async function apiKey(connection: IntegrationRecord, suffix = "API_KEY") {
+async function credentialValue(
+  connection: IntegrationRecord,
+  suffix = "API_KEY",
+) {
   if (!connection.credentialReference) {
     throw new Error("This integration has no credential reference.");
   }
@@ -72,7 +75,7 @@ export async function runApifyActor(
 ) {
   if (connection.providerKey !== "apify")
     throw new Error("This action requires an Apify connection.");
-  const key = await apiKey(connection, "API_TOKEN");
+  const key = await credentialValue(connection, "API_TOKEN");
   return checkedJson(
     `https://api.apify.com/v2/acts/${encodeURIComponent(input.actorId)}/runs?waitForFinish=60`,
     {
@@ -91,7 +94,7 @@ export async function scrapeWithFirecrawl(
 ) {
   if (connection.providerKey !== "firecrawl")
     throw new Error("This action requires a Firecrawl connection.");
-  const key = await apiKey(connection);
+  const key = await credentialValue(connection);
   return checkedJson(
     "https://api.firecrawl.dev/v2/scrape",
     {
@@ -112,7 +115,7 @@ export async function testIntegrationConnection(
 ) {
   switch (connection.providerKey) {
     case "apify": {
-      const key = await apiKey(connection, "API_TOKEN");
+      const key = await credentialValue(connection, "API_TOKEN");
       await checkedJson(
         "https://api.apify.com/v2/users/me",
         { Authorization: `Bearer ${key}` },
@@ -124,7 +127,7 @@ export async function testIntegrationConnection(
       };
     }
     case "firecrawl": {
-      const key = await apiKey(connection);
+      const key = await credentialValue(connection);
       await checkedJson(
         "https://api.firecrawl.dev/v2/team/credit-usage",
         { Authorization: `Bearer ${key}` },
@@ -137,7 +140,7 @@ export async function testIntegrationConnection(
     }
     case "hunter":
     case "hunter.io": {
-      const key = await apiKey(connection);
+      const key = await credentialValue(connection);
       await checkedJson(
         "https://api.hunter.io/v2/account",
         { "X-API-KEY": key },
@@ -149,10 +152,43 @@ export async function testIntegrationConnection(
       };
     }
     case "claude_haiku":
-      await apiKey(connection);
+      await credentialValue(connection);
       return {
         providerKey: connection.providerKey,
         detail: "Anthropic secret is configured",
+      };
+    case "make":
+      await credentialValue(connection, "SIGNING_SECRET");
+      return {
+        providerKey: connection.providerKey,
+        detail: "Make signing secret is configured",
+      };
+    case "woocommerce": {
+      const [baseUrl, consumerKey, consumerSecret] = await Promise.all([
+        credentialValue(connection, "BASE_URL"),
+        credentialValue(connection, "CONSUMER_KEY"),
+        credentialValue(connection, "CONSUMER_SECRET"),
+      ]);
+      const url = new URL("/wp-json/wc/v3/products?per_page=1", baseUrl);
+      if (url.protocol !== "https:")
+        throw new Error("WooCommerce base URL must use HTTPS.");
+      await checkedJson(
+        url.href,
+        {
+          Authorization: `Basic ${btoa(`${consumerKey}:${consumerSecret}`)}`,
+        },
+        fetcher,
+      );
+      return {
+        providerKey: connection.providerKey,
+        detail: "WooCommerce store authenticated",
+      };
+    }
+    case "custom":
+      await credentialValue(connection);
+      return {
+        providerKey: connection.providerKey,
+        detail: "Custom API secret is configured",
       };
     default:
       throw new Error(
@@ -172,7 +208,7 @@ export async function searchHunterDomain(
   ) {
     throw new Error("This action requires a Hunter.io connection.");
   }
-  const key = await apiKey(connection);
+  const key = await credentialValue(connection);
   const url = new URL("https://api.hunter.io/v2/domain-search");
   url.searchParams.set("domain", input.domain);
   url.searchParams.set("limit", String(input.limit));
