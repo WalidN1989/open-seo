@@ -27,6 +27,8 @@ import {
 import { maybeSendSelfHostHeartbeat } from "@/server/lib/self-host-telemetry";
 import { handleGdprStorageErasure } from "@/server/gdpr/storage-erasure";
 import { GDPR_STORAGE_ERASURE_PATH } from "@/shared/gdpr-erasure";
+import { INTERNAL_CRON_PATH } from "@/shared/internal-cron";
+import { handleInternalCronRequest } from "@/server/features/scheduler/handler";
 
 const appFetch = createStartHandler(defaultStreamHandler);
 const openSeoOAuthProvider = createOpenSeoOAuthProvider(appFetch);
@@ -165,6 +167,12 @@ function handleFetch(
   const authMode = getAuthMode(env.AUTH_MODE);
   const publicRequest = requestWithPublicOrigin(request);
   const pathname = new URL(publicRequest.url).pathname;
+
+  // Before the auth-mode branches: the ticker carries a shared secret, not a
+  // user session, so it must not be routed into the OAuth provider.
+  if (pathname === INTERNAL_CRON_PATH) {
+    return handleInternalCronRequest(publicRequest, env);
+  }
 
   if (pathname === GDPR_STORAGE_ERASURE_PATH) {
     return handleGdprStorageErasure(publicRequest, env);

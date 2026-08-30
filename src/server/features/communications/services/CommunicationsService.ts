@@ -1045,6 +1045,35 @@ async function executeWebhookDelivery(
   }
 }
 
+// Every failed delivery already records when it should next be tried; until
+// now nothing read that column back, so a failure waited for a human to press
+// Retry. Runs unauthenticated by design — the scheduler acts for no tenant —
+// which is why it re-reads each delivery's own organizationId rather than
+// taking one from a caller.
+async function retryDueWebhookDeliveries(limit = 25) {
+  const due = await CommunicationsRepository.listDueWebhookDeliveries(
+    new Date().toISOString(),
+    limit,
+  );
+  let delivered = 0;
+  let failed = 0;
+  for (const delivery of due) {
+    try {
+      const result = await executeWebhookDelivery(
+        delivery.organizationId,
+        delivery,
+      );
+      if (result?.status === "delivered") delivered += 1;
+      else failed += 1;
+    } catch {
+      // executeWebhookDelivery has already written the failure and the next
+      // backoff; one bad endpoint must not stop the rest of the batch.
+      failed += 1;
+    }
+  }
+  return { considered: due.length, delivered, failed };
+}
+
 async function testWebhookEndpoint(
   organizationId: string,
   userId: string,
@@ -1136,6 +1165,7 @@ export const CommunicationsService = {
   launchWhatsappCampaign,
   processWhatsappWebhook,
   retryWebhookDelivery,
+  retryDueWebhookDeliveries,
   runIntegrationAction,
   sendWhatsappMessage,
   startVoiceConversation,

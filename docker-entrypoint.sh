@@ -46,4 +46,18 @@ fi
 # the container and is never included in the image or repository.
 pnpm exec tsx scripts/write-runtime-dev-vars.ts "$OUT_DIR/server/.dev.vars"
 
+# This container has no cron. Start the ticker beside the server so background
+# jobs actually run; it waits for the server to answer before its first tick.
+# Without INTERNAL_CRON_SECRET it exits and the server still serves traffic —
+# background work simply stays off, which the log makes explicit.
+if [ -n "${INTERNAL_CRON_SECRET:-}" ]; then
+  pnpm exec tsx scripts/internal-ticker.ts &
+  TICKER_PID=$!
+  # Take the server down with the ticker rather than leaving a half-running
+  # container that looks healthy but processes nothing.
+  trap 'kill "$TICKER_PID" 2>/dev/null' INT TERM EXIT
+else
+  echo "INTERNAL_CRON_SECRET not set - background jobs (webhook retries, rank checks, audit watchdog) will NOT run."
+fi
+
 exec pnpm exec vite preview --host 0.0.0.0 --port "${PORT:-3001}"

@@ -1,5 +1,5 @@
 /* oxlint-disable max-lines */
-import { and, count, desc, eq } from "drizzle-orm";
+import { and, count, desc, eq, isNotNull, lte } from "drizzle-orm";
 import { db } from "@/db";
 import {
   integrationConnections,
@@ -811,6 +811,24 @@ async function createWebhookDelivery(
   return delivery;
 }
 
+// Deliveries whose backoff has elapsed, across every organization. The
+// scheduler is the only caller: it runs outside any tenant's request, so this
+// is deliberately not organization-scoped — every other read in this file is.
+async function listDueWebhookDeliveries(now: string, limit: number) {
+  return db
+    .select()
+    .from(webhookDeliveries)
+    .where(
+      and(
+        eq(webhookDeliveries.status, "failed"),
+        isNotNull(webhookDeliveries.nextAttemptAt),
+        lte(webhookDeliveries.nextAttemptAt, now),
+      ),
+    )
+    .orderBy(webhookDeliveries.nextAttemptAt)
+    .limit(limit);
+}
+
 async function getWebhookDelivery(organizationId: string, deliveryId: string) {
   const [delivery] = await db
     .select()
@@ -891,6 +909,7 @@ export const CommunicationsRepository = {
   getVoiceConversation,
   getVoiceConversationMessages,
   getWebhookDelivery,
+  listDueWebhookDeliveries,
   getWebhookEndpoint,
   listWebhookEndpointsForEvent,
   listMatchingWhatsappAutomations,
