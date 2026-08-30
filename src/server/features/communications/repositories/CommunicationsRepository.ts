@@ -243,6 +243,47 @@ async function updateIntegrationStatus(
   return row;
 }
 
+async function updateIntegration(
+  organizationId: string,
+  connectionId: string,
+  input: { displayName: string; credentialReference?: string },
+) {
+  const [row] = await db
+    .update(integrationConnections)
+    .set({
+      displayName: input.displayName,
+      credentialReference: input.credentialReference ?? null,
+      // The reference is what the credentials are read under, so changing it
+      // invalidates every earlier verification. Make the page say "unverified"
+      // rather than keep showing a green tick for keys nobody has checked.
+      status: "disconnected",
+      lastCheckedAt: null,
+      healthDetail: null,
+      updatedAt: new Date().toISOString(),
+    })
+    .where(
+      and(
+        eq(integrationConnections.organizationId, organizationId),
+        eq(integrationConnections.id, connectionId),
+      ),
+    )
+    .returning();
+  return row;
+}
+
+async function deleteIntegration(organizationId: string, connectionId: string) {
+  const [row] = await db
+    .delete(integrationConnections)
+    .where(
+      and(
+        eq(integrationConnections.organizationId, organizationId),
+        eq(integrationConnections.id, connectionId),
+      ),
+    )
+    .returning();
+  return row;
+}
+
 async function createQueuedWhatsappMessage(
   organizationId: string,
   conversationId: string,
@@ -890,6 +931,7 @@ export const CommunicationsRepository = {
   completeWhatsappMessage,
   contactBelongsToOrganization,
   createIntegration,
+  deleteIntegration,
   createQueuedWhatsappMessage,
   createVoiceAgent,
   createWebhookDelivery,
@@ -925,6 +967,7 @@ export const CommunicationsRepository = {
   startVoiceConversation,
   updateWhatsappCampaign,
   updateWhatsappConversation,
+  updateIntegration,
   updateIntegrationStatus,
   updateWhatsappDelivery,
   updateWebhookDelivery,

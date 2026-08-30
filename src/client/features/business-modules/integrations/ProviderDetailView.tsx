@@ -9,6 +9,7 @@ import {
 } from "@/serverFunctions/commerce";
 import { getIntegrationsWorkspace } from "@/serverFunctions/communications";
 import { integrationCatalogue } from "@/shared/integration-catalogue";
+import { ProviderConnectPanel } from "./ProviderConnectPanel";
 import { getStandardErrorMessage } from "@/client/lib/error-messages";
 
 const WORKSPACE_KEY = ["integrations", "workspace"];
@@ -295,29 +296,13 @@ export function IntegrationProviderDetailView() {
             ) : null}
           </div>
 
-          {entry.credentialSuffixes?.length ? (
-            <section className="rounded-xl border border-base-300 p-4">
-              <h3 className="font-semibold">Connection settings</h3>
-              <p className="mt-1 text-sm text-base-content/60">
-                Set these on the deployment, then connect with the reference
-                that prefixes them.
-              </p>
-              <ul className="mt-3 space-y-1 text-sm">
-                {entry.credentialSuffixes.map((suffix) => (
-                  <li key={suffix}>
-                    <code className="rounded bg-base-200 px-1">
-                      &lt;REFERENCE&gt;_{suffix}
-                    </code>
-                  </li>
-                ))}
-              </ul>
-              <Link
-                to="/modules/integrations/connections"
-                className="btn btn-primary btn-sm mt-4"
-              >
-                {connected ? "Manage connection" : "Connect"}
-              </Link>
-            </section>
+          {entry.state === "connectable" ? (
+            <ProviderConnectPanel
+              key={connection?.id ?? "new"}
+              entry={entry}
+              connection={connection}
+              workspaceKey={WORKSPACE_KEY}
+            />
           ) : null}
 
           {entry.notes?.length ? (

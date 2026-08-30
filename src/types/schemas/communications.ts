@@ -82,6 +82,14 @@ export const createIntegrationSchema = z.object({
 export const testIntegrationSchema = z.object({
   connectionId: z.string().min(1),
 });
+export const updateIntegrationSchema = z.object({
+  connectionId: z.string().min(1),
+  displayName: z.string().trim().min(1).max(200),
+  credentialReference: z.string().trim().max(500).optional(),
+});
+export const deleteIntegrationSchema = z.object({
+  connectionId: z.string().min(1),
+});
 const httpsUrlSchema = z
   .url()
   .max(2048)

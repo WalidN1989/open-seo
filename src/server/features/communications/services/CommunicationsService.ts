@@ -4,6 +4,7 @@ import { BusinessModuleService } from "@/server/features/business-modules/servic
 import { getOptionalEnvValue } from "@/server/lib/runtime-env";
 import type {
   createIntegrationSchema,
+  deleteIntegrationSchema,
   createVoiceAgentSchema,
   appendVoiceTranscriptSchema,
   createWebhookEndpointSchema,
@@ -15,6 +16,7 @@ import type {
   sendWhatsappMessageSchema,
   testWebhookEndpointSchema,
   testIntegrationSchema,
+  updateIntegrationSchema,
   retryWebhookDeliverySchema,
   startVoiceConversationSchema,
   transcribeVoiceAudioSchema,
@@ -630,6 +632,64 @@ async function createIntegration(
   return connection;
 }
 
+async function updateIntegration(
+  organizationId: string,
+  userId: string,
+  input: z.infer<typeof updateIntegrationSchema>,
+) {
+  await BusinessModuleService.requireAccess(
+    organizationId,
+    userId,
+    "integrations",
+    "admin",
+  );
+  const connection = await CommunicationsRepository.updateIntegration(
+    organizationId,
+    input.connectionId,
+    {
+      displayName: input.displayName,
+      credentialReference: input.credentialReference,
+    },
+  );
+  if (!connection) throw new Error("Integration connection not found.");
+  await auditMutation(
+    organizationId,
+    userId,
+    "integration.updated",
+    "integration_connection",
+    connection.id,
+    { providerKey: connection.providerKey },
+  );
+  return connection;
+}
+
+async function deleteIntegration(
+  organizationId: string,
+  userId: string,
+  input: z.infer<typeof deleteIntegrationSchema>,
+) {
+  await BusinessModuleService.requireAccess(
+    organizationId,
+    userId,
+    "integrations",
+    "admin",
+  );
+  const connection = await CommunicationsRepository.deleteIntegration(
+    organizationId,
+    input.connectionId,
+  );
+  if (!connection) throw new Error("Integration connection not found.");
+  await auditMutation(
+    organizationId,
+    userId,
+    "integration.deleted",
+    "integration_connection",
+    connection.id,
+    { providerKey: connection.providerKey },
+  );
+  return { id: connection.id };
+}
+
 async function testIntegration(
   organizationId: string,
   userId: string,
@@ -1152,6 +1212,7 @@ async function emitBusinessEvent(
 export const CommunicationsService = {
   appendVoiceTranscript,
   createIntegration,
+  deleteIntegration,
   createVoiceAgent,
   createWhatsappConnection,
   createWhatsappAutomation,
@@ -1171,6 +1232,7 @@ export const CommunicationsService = {
   startVoiceConversation,
   testWebhookEndpoint,
   testIntegration,
+  updateIntegration,
   transcribeVoiceAudio,
   updateWhatsappConversation,
   verifyMetaWebhook,

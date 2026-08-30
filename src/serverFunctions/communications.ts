@@ -3,6 +3,7 @@ import { CommunicationsService } from "@/server/features/communications/services
 import { requireAuthenticatedContext } from "@/serverFunctions/middleware";
 import {
   createIntegrationSchema,
+  deleteIntegrationSchema,
   createVoiceAgentSchema,
   appendVoiceTranscriptSchema,
   createWebhookEndpointSchema,
@@ -14,6 +15,7 @@ import {
   sendWhatsappMessageSchema,
   testWebhookEndpointSchema,
   testIntegrationSchema,
+  updateIntegrationSchema,
   retryWebhookDeliverySchema,
   startVoiceConversationSchema,
   transcribeVoiceAudioSchema,
@@ -182,6 +184,28 @@ export const createIntegration = createServerFn({ method: "POST" })
   .validator(createIntegrationSchema)
   .handler(({ context, data }) =>
     CommunicationsService.createIntegration(
+      context.organizationId,
+      context.userId,
+      data,
+    ),
+  );
+
+export const updateIntegration = createServerFn({ method: "POST" })
+  .middleware(requireAuthenticatedContext)
+  .validator(updateIntegrationSchema)
+  .handler(({ context, data }) =>
+    CommunicationsService.updateIntegration(
+      context.organizationId,
+      context.userId,
+      data,
+    ),
+  );
+
+export const deleteIntegration = createServerFn({ method: "POST" })
+  .middleware(requireAuthenticatedContext)
+  .validator(deleteIntegrationSchema)
+  .handler(({ context, data }) =>
+    CommunicationsService.deleteIntegration(
       context.organizationId,
       context.userId,
       data,
