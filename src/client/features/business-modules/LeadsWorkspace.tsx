@@ -1,7 +1,7 @@
 /* oxlint-disable max-lines, max-lines-per-function */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { Plus, Target } from "lucide-react";
+import { LayoutGrid, Plus, Table2, Target } from "lucide-react";
 import { toast } from "sonner";
 import {
   createCrmLead,
@@ -13,9 +13,13 @@ import {
 } from "@/serverFunctions/crm";
 import { getStandardErrorMessage } from "@/client/lib/error-messages";
 import { leadPrioritySchema } from "@/types/schemas/crm";
+import { LeadsTable } from "./leads/LeadsTable";
 
 export function LeadsWorkspace() {
   const queryClient = useQueryClient();
+  // The board is kept; the table is the default because a wide, dense list
+  // is what you scan a pipeline with. Neither replaces the other.
+  const [view, setView] = useState<"table" | "board">("table");
   const [showCreate, setShowCreate] = useState(false);
   const [showHunterImport, setShowHunterImport] = useState(false);
   const [activityLeadId, setActivityLeadId] = useState<string | null>(null);
@@ -120,6 +124,22 @@ export function LeadsWorkspace() {
           </p>
         </div>
         <div className="flex gap-2">
+          <div className="join">
+            <button
+              className={`btn join-item btn-sm ${view === "table" ? "btn-active" : ""}`}
+              onClick={() => setView("table")}
+              aria-pressed={view === "table"}
+            >
+              <Table2 className="size-4" /> Table
+            </button>
+            <button
+              className={`btn join-item btn-sm ${view === "board" ? "btn-active" : ""}`}
+              onClick={() => setView("board")}
+              aria-pressed={view === "board"}
+            >
+              <LayoutGrid className="size-4" /> Board
+            </button>
+          </div>
           {data.hunterConnections.length ? (
             <button
               className="btn btn-outline btn-sm"
@@ -221,7 +241,11 @@ export function LeadsWorkspace() {
         </form>
       ) : null}
 
-      <div className="overflow-x-auto pb-3">
+      {view === "table" ? (
+        <LeadsTable rows={data.leads} members={data.members} />
+      ) : null}
+
+      <div className={view === "board" ? "overflow-x-auto pb-3" : "hidden"}>
         <div className="flex min-w-max gap-3">
           {data.stages.map((stage) => {
             const leads = data.leads.filter(

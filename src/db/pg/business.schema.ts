@@ -74,6 +74,8 @@ export const crmCompanies = pgTable(
     name: text("name").notNull(),
     website: text("website"),
     phone: text("phone"),
+    industry: text("industry"),
+    country: text("country"),
     status: text("status").notNull().default("active"),
     createdAt: createdAt(),
     updatedAt: text("updated_at").notNull().default(isoNow),
@@ -153,6 +155,7 @@ export const crmLeads = pgTable(
       onDelete: "set null",
     }),
     title: text("title").notNull(),
+    category: text("category"),
     source: text("source"),
     status: text("status").notNull().default("new"),
     priority: text("priority", { enum: ["low", "medium", "high", "urgent"] })
