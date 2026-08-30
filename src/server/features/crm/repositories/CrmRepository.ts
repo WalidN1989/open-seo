@@ -1,3 +1,4 @@
+/* oxlint-disable max-lines */
 import { and, asc, desc, eq } from "drizzle-orm";
 import { db } from "@/db";
 import {
@@ -221,6 +222,39 @@ async function createContact(
   return row;
 }
 
+async function findContactByEmail(organizationId: string, email: string) {
+  const [row] = await db
+    .select()
+    .from(crmContacts)
+    .where(
+      and(
+        eq(crmContacts.organizationId, organizationId),
+        eq(crmContacts.email, email),
+      ),
+    )
+    .limit(1);
+  return row ?? null;
+}
+
+async function leadExistsForContactSource(
+  organizationId: string,
+  contactId: string,
+  source: string,
+) {
+  const [row] = await db
+    .select({ id: crmLeads.id })
+    .from(crmLeads)
+    .where(
+      and(
+        eq(crmLeads.organizationId, organizationId),
+        eq(crmLeads.contactId, contactId),
+        eq(crmLeads.source, source),
+      ),
+    )
+    .limit(1);
+  return Boolean(row);
+}
+
 async function listCompanies(organizationId: string) {
   return db
     .select()
@@ -376,6 +410,8 @@ export const CrmRepository = {
   createMeeting,
   createStages,
   listActivities,
+  findContactByEmail,
+  leadExistsForContactSource,
   listCompanies,
   listContacts,
   listInquiries,

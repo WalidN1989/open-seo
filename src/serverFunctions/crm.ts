@@ -11,12 +11,19 @@ import {
   createMeetingSchema,
   promoteInquirySchema,
   updateLeadSchema,
+  importHunterDomainSchema,
 } from "@/types/schemas/crm";
 
 export const getLeadsWorkspace = createServerFn({ method: "GET" })
   .middleware(requireAuthenticatedContext)
   .handler(({ context }) =>
     CrmService.getLeadsWorkspace(context.organizationId, context.userId),
+  );
+export const importHunterDomainLeads = createServerFn({ method: "POST" })
+  .middleware(requireAuthenticatedContext)
+  .validator(importHunterDomainSchema)
+  .handler(({ context, data }) =>
+    CrmService.importHunterDomain(context.organizationId, context.userId, data),
   );
 
 export const createCrmLead = createServerFn({ method: "POST" })

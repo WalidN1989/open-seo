@@ -1,3 +1,4 @@
+/* oxlint-disable max-lines */
 import { BusinessModuleRepository } from "@/server/features/business-modules/repositories/BusinessModuleRepository";
 import { BusinessModuleService } from "@/server/features/business-modules/services/BusinessModuleService";
 import { BusinessAuditRepository } from "@/server/features/business-modules/repositories/BusinessAuditRepository";
@@ -12,8 +13,11 @@ import type {
   CreateMeetingInput,
   PromoteInquiryInput,
   UpdateLeadInput,
+  ImportHunterDomainInput,
 } from "@/types/schemas/crm";
 import { CrmRepository } from "../repositories/CrmRepository";
+import { CommunicationsRepository } from "@/server/features/communications/repositories/CommunicationsRepository";
+import { searchHunterDomain } from "@/server/features/communications/providers/integrations";
 
 const defaultStages = [
   { name: "Prospect", position: 0, stageType: "open" as const },
@@ -37,12 +41,116 @@ async function ensureStages(organizationId: string) {
 
 async function getLeadsWorkspace(organizationId: string, userId: string) {
   await BusinessModuleService.requireAccess(organizationId, userId, "leads");
-  const [leads, stages, members] = await Promise.all([
+  const [leads, stages, members, hunter, hunterAlias] = await Promise.all([
     CrmRepository.listLeads(organizationId),
     ensureStages(organizationId),
     BusinessModuleRepository.listMembers(organizationId),
+    CommunicationsRepository.getIntegrationByProvider(organizationId, "hunter"),
+    CommunicationsRepository.getIntegrationByProvider(
+      organizationId,
+      "hunter.io",
+    ),
   ]);
-  return { leads, stages, members };
+  return {
+    leads,
+    stages,
+    members,
+    hunterConnections: [hunter, hunterAlias].filter(
+      (connection) => connection?.status === "connected",
+    ),
+  };
+}
+
+async function importHunterDomain(
+  organizationId: string,
+  userId: string,
+  input: ImportHunterDomainInput,
+) {
+  await Promise.all([
+    BusinessModuleService.requireAccess(
+      organizationId,
+      userId,
+      "integrations",
+      "manage",
+    ),
+    BusinessModuleService.requireAccess(
+      organizationId,
+      userId,
+      "leads",
+      "manage",
+    ),
+    BusinessModuleService.requireAccess(
+      organizationId,
+      userId,
+      "crm",
+      "manage",
+    ),
+  ]);
+  const connection = await CommunicationsRepository.getIntegration(
+    organizationId,
+    input.connectionId,
+  );
+  if (!connection || connection.status !== "connected") {
+    throw new Error("Connect and test Hunter.io before importing leads.");
+  }
+  const results = await searchHunterDomain(connection, input);
+  const stages = await ensureStages(organizationId);
+  const source = `Hunter.io:${input.domain}`;
+  let imported = 0;
+  let skipped = 0;
+  for (const result of results) {
+    const email = result.value.trim().toLowerCase();
+    let contact = await CrmRepository.findContactByEmail(organizationId, email);
+    if (!contact) {
+      contact = await CrmRepository.createContact(organizationId, {
+        firstName:
+          result.first_name?.trim() || email.split("@")[0] || "Prospect",
+        lastName: result.last_name?.trim() || undefined,
+        email,
+      });
+    }
+    if (
+      await CrmRepository.leadExistsForContactSource(
+        organizationId,
+        contact.id,
+        source,
+      )
+    ) {
+      skipped += 1;
+      continue;
+    }
+    const fullName = [result.first_name, result.last_name]
+      .filter(Boolean)
+      .join(" ")
+      .trim();
+    await CrmRepository.createLead(organizationId, {
+      title: `${fullName || email}${result.position ? ` — ${result.position}` : ""}`,
+      source,
+      contactId: contact.id,
+      stageId: stages[0]?.id,
+      priority: "medium",
+      valueCents: 0,
+      notes:
+        result.confidence == null
+          ? undefined
+          : `Hunter confidence: ${Math.max(0, Math.min(100, result.confidence))}%`,
+    });
+    imported += 1;
+  }
+  await BusinessAuditRepository.record({
+    organizationId,
+    actorUserId: userId,
+    action: "leads.hunter.imported",
+    targetType: "integration_connection",
+    targetId: connection.id,
+    metadata: { domain: input.domain, imported, skipped },
+  });
+  await CommunicationsService.emitBusinessEvent(
+    organizationId,
+    "leads.hunter.imported",
+    { domain: input.domain, imported, skipped },
+  );
+  return { imported, skipped, discovered: results.length };
 }
 
 async function createLead(
@@ -389,6 +497,7 @@ export const CrmService = {
   createMeeting,
   getCrmWorkspace,
   getLeadsWorkspace,
+  importHunterDomain,
   listActivities,
   promoteInquiry,
   updateLead,

@@ -1,3 +1,4 @@
+/* oxlint-disable max-lines, max-lines-per-function */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { Plus, Target } from "lucide-react";
@@ -6,6 +7,7 @@ import {
   createCrmLead,
   createCrmActivity,
   getLeadsWorkspace,
+  importHunterDomainLeads,
   updateCrmLead,
 } from "@/serverFunctions/crm";
 import { getStandardErrorMessage } from "@/client/lib/error-messages";
@@ -14,6 +16,7 @@ import { leadPrioritySchema } from "@/types/schemas/crm";
 export function LeadsWorkspace() {
   const queryClient = useQueryClient();
   const [showCreate, setShowCreate] = useState(false);
+  const [showHunterImport, setShowHunterImport] = useState(false);
   const [activityLeadId, setActivityLeadId] = useState<string | null>(null);
   const query = useQuery({
     queryKey: ["crm", "leads"],
@@ -60,6 +63,24 @@ export function LeadsWorkspace() {
     onError: (error) =>
       toast.error(getStandardErrorMessage(error, "Could not move lead")),
   });
+  const hunterImport = useMutation({
+    mutationFn: (input: {
+      connectionId: string;
+      domain: string;
+      limit: number;
+    }) => importHunterDomainLeads({ data: input }),
+    onSuccess: async (result) => {
+      await queryClient.invalidateQueries({ queryKey: ["crm", "leads"] });
+      setShowHunterImport(false);
+      toast.success(
+        `Hunter import complete: ${result.imported} added, ${result.skipped} skipped`,
+      );
+    },
+    onError: (error) =>
+      toast.error(
+        getStandardErrorMessage(error, "Could not import Hunter leads"),
+      ),
+  });
 
   if (query.isLoading)
     return (
@@ -88,12 +109,22 @@ export function LeadsWorkspace() {
             Qualify prospects and move them through the sales pipeline.
           </p>
         </div>
-        <button
-          className="btn btn-primary btn-sm"
-          onClick={() => setShowCreate((value) => !value)}
-        >
-          <Plus className="size-4" /> New lead
-        </button>
+        <div className="flex gap-2">
+          {data.hunterConnections.length ? (
+            <button
+              className="btn btn-outline btn-sm"
+              onClick={() => setShowHunterImport((value) => !value)}
+            >
+              Import from Hunter
+            </button>
+          ) : null}
+          <button
+            className="btn btn-primary btn-sm"
+            onClick={() => setShowCreate((value) => !value)}
+          >
+            <Plus className="size-4" /> New lead
+          </button>
+        </div>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-3">
@@ -129,6 +160,55 @@ export function LeadsWorkspace() {
           pending={createMutation.isPending}
           onSubmit={(input) => createMutation.mutate(input)}
         />
+      ) : null}
+
+      {showHunterImport ? (
+        <form
+          className="grid gap-3 rounded-xl border border-base-300 p-4 sm:grid-cols-4"
+          onSubmit={(event) => {
+            event.preventDefault();
+            const values = new FormData(event.currentTarget);
+            hunterImport.mutate({
+              connectionId: fieldValue(values, "connectionId"),
+              domain: fieldValue(values, "domain"),
+              limit: Number(fieldValue(values, "limit") || 10),
+            });
+          }}
+        >
+          <select
+            required
+            name="connectionId"
+            className="select select-bordered select-sm"
+          >
+            {data.hunterConnections.map((connection) => (
+              <option key={connection.id} value={connection.id}>
+                {connection.displayName}
+              </option>
+            ))}
+          </select>
+          <input
+            required
+            name="domain"
+            className="input input-bordered input-sm sm:col-span-2"
+            placeholder="company.com"
+          />
+          <div className="flex gap-2">
+            <input
+              name="limit"
+              type="number"
+              min="1"
+              max="25"
+              defaultValue="10"
+              className="input input-bordered input-sm min-w-0 flex-1"
+            />
+            <button
+              className="btn btn-primary btn-sm"
+              disabled={hunterImport.isPending}
+            >
+              Import
+            </button>
+          </div>
+        </form>
       ) : null}
 
       <div className="overflow-x-auto pb-3">

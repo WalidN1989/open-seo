@@ -86,6 +86,12 @@ facts, can create order enquiries and flag conversations for staff, continues
 replying after tool calls, and falls back to deterministic rules if the model
 is unavailable.
 
+Hunter.io is now an executable lead-source adapter, not only a connection
+health check. Authorized tenants can run a bounded domain search from the Leads
+workspace, import discovered people as CRM contacts, and create deduplicated
+pipeline leads with source and confidence context. The workflow requires
+active Leads, CRM, and Integrations access and records a tenant audit event.
+
 Pending human touch:
 
 - Authorize or manually add `ANTHROPIC_API_KEY` to the Open SEO Railway

@@ -77,6 +77,16 @@ export const createMeetingSchema = z
     "Meeting end must be after its start.",
   );
 
+export const importHunterDomainSchema = z.object({
+  connectionId: z.string().min(1),
+  domain: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .regex(/^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,}$/),
+  limit: z.number().int().min(1).max(25).default(10),
+});
+
 export type CreateLeadInput = z.infer<typeof createLeadSchema>;
 export type UpdateLeadInput = z.infer<typeof updateLeadSchema>;
 export type CreateContactInput = z.infer<typeof createContactSchema>;
@@ -85,3 +95,4 @@ export type CreateActivityInput = z.infer<typeof createActivitySchema>;
 export type CreateInquiryInput = z.infer<typeof createInquirySchema>;
 export type PromoteInquiryInput = z.infer<typeof promoteInquirySchema>;
 export type CreateMeetingInput = z.infer<typeof createMeetingSchema>;
+export type ImportHunterDomainInput = z.infer<typeof importHunterDomainSchema>;
