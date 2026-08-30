@@ -106,3 +106,21 @@ Pending human touch:
   replies. Deployment alone does not activate it.
 - Add real Meta/Twilio/Deepgram/provider credential references and complete
   their external account verification steps.
+
+## Deferred hardening
+
+Agreed 2026-08-30: revisit only after every module is migrated, merged and
+deployed. These are silent-failure risks, not missing capability, so they wait
+behind feature work.
+
+- **Stranded outbound WhatsApp replies.** A reply is written with status
+  `queued` and then sent in the same request. Nothing reads `queued` back, so
+  a send that dies mid-request — provider hiccup, container restart, worker
+  time limit — leaves the reply in the table forever. The customer gets
+  nothing and no error surfaces anywhere. Fix is a `fast`-tier drain that
+  claims messages still queued past a grace period and resends them.
+- **Synchronous campaign launches.** `launchWhatsappCampaign` loops over every
+  conversation inside one request. A campaign of any real size will exceed the
+  worker's limits partway through, stranding queued rows and leaving the
+  campaign stuck in `running`. Same drain covers the messages; the campaign
+  status needs its own reconcile.
