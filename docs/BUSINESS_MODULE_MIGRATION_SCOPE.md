@@ -59,6 +59,8 @@ another deployment environment) supplies the corresponding variables:
 - Twilio WhatsApp: `<PREFIX>_AUTH_TOKEN`; the account SID and sender number are
   non-secret connection metadata.
 - Deepgram voice: `<PREFIX>_DEEPGRAM_API_KEY`.
+- Claude Haiku for WhatsApp: `<PREFIX>_API_KEY`, or the platform-level
+  `ANTHROPIC_API_KEY` when the tenant connection does not specify a prefix.
 - Signed outbound webhooks: `<PREFIX>_SIGNING_SECRET`.
 - Future provider adapters follow the suffixes shown in the Integrations
   catalogue for Apify, Firecrawl, Hunter.io, Make, and WooCommerce.
@@ -68,3 +70,28 @@ signatures are verified before a message, conversation, or delivery status is
 written. Webhook destinations must use HTTPS, cannot point at private-network
 hosts, do not follow redirects, and receive the `X-OpenSEO-*` signature,
 timestamp, event, and delivery headers.
+
+## Migration handoff ledger
+
+Completed foundations are tenant module entitlements, staff permissions,
+Leads and CRM workspaces, the WhatsApp inbox/templates/campaigns/automations
+and order-request surfaces, signed Meta/Twilio callbacks, provider delivery,
+browser voice capture with Deepgram, the integrations catalogue, and signed
+outbound webhooks with retry history.
+
+Claude Haiku is now the optional WhatsApp conversation engine. A tenant opts
+in by creating a connected integration with provider key `claude_haiku` and a
+secret prefix. The assistant is explicitly forbidden from inventing business
+facts, can create order enquiries and flag conversations for staff, continues
+replying after tool calls, and falls back to deterministic rules if the model
+is unavailable.
+
+Pending human touch:
+
+- Authorize or manually add `ANTHROPIC_API_KEY` to the Open SEO Railway
+  service. The existing CRM service has this variable, but production secrets
+  are not transferred between services implicitly.
+- Add a `claude_haiku` integration only for tenants that should have automated
+  replies. Deployment alone does not activate it.
+- Add real Meta/Twilio/Deepgram/provider credential references and complete
+  their external account verification steps.
