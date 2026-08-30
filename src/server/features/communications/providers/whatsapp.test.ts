@@ -3,6 +3,7 @@ import {
   parseMetaPayload,
   parseTwilioPayload,
   sendWhatsappText,
+  sendWhatsappTemplate,
 } from "./whatsapp";
 import { verifyMetaSignature, verifyTwilioSignature } from "./signatures";
 
@@ -98,6 +99,39 @@ describe("WhatsApp provider boundaries", () => {
     );
     expect(result).toEqual({
       externalMessageId: "wamid.outbound",
+      status: "sent",
+    });
+    delete process.env.TEST_META_ACCESS_TOKEN;
+  });
+
+  it("sends provider-approved Meta templates for campaigns", async () => {
+    process.env.TEST_META_ACCESS_TOKEN = "private-token";
+    const fetcher = async (_input: RequestInfo | URL, init?: RequestInit) => {
+      expect(typeof init?.body).toBe("string");
+      const body = typeof init?.body === "string" ? init.body : "";
+      expect(body).toContain('"type":"template"');
+      expect(body).toContain('"name":"welcome"');
+      return Response.json({ messages: [{ id: "wamid.campaign" }] });
+    };
+    await expect(
+      sendWhatsappTemplate(
+        {
+          id: "connection",
+          provider: "meta_cloud",
+          displayPhoneNumber: null,
+          externalAccountId: "phone-number-id",
+          credentialReference: "TEST_META",
+        },
+        "61400000000",
+        {
+          name: "welcome",
+          languageCode: "en",
+          externalTemplateId: null,
+        },
+        fetcher,
+      ),
+    ).resolves.toEqual({
+      externalMessageId: "wamid.campaign",
       status: "sent",
     });
     delete process.env.TEST_META_ACCESS_TOKEN;

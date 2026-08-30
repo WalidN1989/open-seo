@@ -228,3 +228,90 @@ export async function sendWhatsappText(
   }
   throw new Error("This provider cannot send WhatsApp messages yet.");
 }
+
+export async function sendWhatsappTemplate(
+  connection: WhatsappConnectionRecord,
+  recipient: string,
+  template: {
+    name: string;
+    languageCode: string;
+    externalTemplateId: string | null;
+  },
+  fetcher: typeof fetch = fetch,
+): Promise<WhatsappSendResult> {
+  if (connection.provider === "meta_cloud") {
+    if (!connection.externalAccountId) {
+      throw new Error("Meta phone number ID is required.");
+    }
+    const token = await resolveCredential(connection, "ACCESS_TOKEN");
+    const response = await fetcher(
+      `https://graph.facebook.com/v23.0/${encodeURIComponent(connection.externalAccountId)}/messages`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          messaging_product: "whatsapp",
+          to: recipient,
+          type: "template",
+          template: {
+            name: template.name,
+            language: { code: template.languageCode },
+          },
+        }),
+      },
+    );
+    const payload: unknown = await response.json();
+    const parsed = z
+      .object({ messages: z.array(z.object({ id: z.string() })).min(1) })
+      .safeParse(payload);
+    if (!response.ok || !parsed.success) {
+      throw new Error(`Meta rejected the template (${response.status}).`);
+    }
+    return {
+      externalMessageId: parsed.data.messages[0].id,
+      status: "sent",
+    };
+  }
+  if (connection.provider === "twilio") {
+    if (
+      !connection.externalAccountId ||
+      !connection.displayPhoneNumber ||
+      !template.externalTemplateId
+    ) {
+      throw new Error(
+        "Twilio account SID, sender number, and approved Content SID are required.",
+      );
+    }
+    const token = await resolveCredential(connection, "AUTH_TOKEN");
+    const response = await fetcher(
+      `https://api.twilio.com/2010-04-01/Accounts/${encodeURIComponent(connection.externalAccountId)}/Messages.json`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Basic ${btoa(`${connection.externalAccountId}:${token}`)}`,
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: new URLSearchParams({
+          From: `whatsapp:${connection.displayPhoneNumber}`,
+          To: `whatsapp:${recipient}`,
+          ContentSid: template.externalTemplateId,
+        }),
+      },
+    );
+    const payload: unknown = await response.json();
+    const parsed = z
+      .object({ sid: z.string(), status: z.string().optional() })
+      .safeParse(payload);
+    if (!response.ok || !parsed.success) {
+      throw new Error(`Twilio rejected the template (${response.status}).`);
+    }
+    return {
+      externalMessageId: parsed.data.sid,
+      status: parsed.data.status ?? "sent",
+    };
+  }
+  throw new Error("This provider cannot send WhatsApp templates yet.");
+}

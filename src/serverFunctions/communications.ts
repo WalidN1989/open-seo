@@ -18,6 +18,7 @@ import {
   synthesizeVoiceSpeechSchema,
   transcribeVoiceAudioSchema,
   endVoiceConversationSchema,
+  launchWhatsappCampaignSchema,
 } from "@/types/schemas/communications";
 
 export const getWhatsappWorkspace = createServerFn({ method: "GET" })
@@ -53,6 +54,16 @@ export const createWhatsappCampaign = createServerFn({ method: "POST" })
   .validator(createWhatsappCampaignSchema)
   .handler(({ context, data }) =>
     CommunicationsService.createWhatsappCampaign(
+      context.organizationId,
+      context.userId,
+      data,
+    ),
+  );
+export const launchWhatsappCampaign = createServerFn({ method: "POST" })
+  .middleware(requireAuthenticatedContext)
+  .validator(launchWhatsappCampaignSchema)
+  .handler(({ context, data }) =>
+    CommunicationsService.launchWhatsappCampaign(
       context.organizationId,
       context.userId,
       data,

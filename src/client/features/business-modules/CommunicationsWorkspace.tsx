@@ -1,4 +1,4 @@
-/* oxlint-disable max-lines */
+/* oxlint-disable max-lines, max-lines-per-function */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRef, useState } from "react";
 import type React from "react";
@@ -25,6 +25,7 @@ import {
   getIntegrationsWorkspace,
   getVoiceWorkspace,
   getWhatsappWorkspace,
+  launchWhatsappCampaign,
   retryWebhookDelivery,
   sendWhatsappMessage,
   startVoiceConversation,
@@ -64,6 +65,9 @@ export function WhatsappWorkspace() {
       body: string;
       languageCode: string;
       category: "marketing";
+      connectionId?: string;
+      externalTemplateId?: string;
+      status?: "draft" | "approved";
     }) => createWhatsappTemplate({ data }),
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: ["whatsapp"] });
@@ -92,6 +96,17 @@ export function WhatsappWorkspace() {
       await client.invalidateQueries({ queryKey: ["whatsapp"] });
       setForm(null);
       toast.success("Campaign draft created");
+    },
+    onError: showError,
+  });
+  const launchCampaign = useMutation({
+    mutationFn: (campaignId: string) =>
+      launchWhatsappCampaign({ data: { campaignId } }),
+    onSuccess: async (result) => {
+      await client.invalidateQueries({ queryKey: ["whatsapp"] });
+      toast.success(
+        `Campaign finished: ${result.sent} sent, ${result.failed} failed`,
+      );
     },
     onError: showError,
   });
@@ -183,13 +198,16 @@ export function WhatsappWorkspace() {
       ) : null}
       {form === "template" ? (
         <SimpleForm
-          fields={["name", "body"]}
+          fields={["name", "body", "connectionId", "externalTemplateId"]}
           onSubmit={(values) =>
             template.mutate({
               name: values.name,
               body: values.body,
               languageCode: "en",
               category: "marketing",
+              connectionId: values.connectionId || undefined,
+              externalTemplateId: values.externalTemplateId || undefined,
+              status: values.externalTemplateId ? "approved" : "draft",
             })
           }
         />
@@ -293,7 +311,19 @@ export function WhatsappWorkspace() {
         <Panel title="Campaigns" icon={MessageCircleMore}>
           {data.campaigns.length ? (
             data.campaigns.map((item) => (
-              <Row key={item.id} title={item.name} detail={item.status} />
+              <div key={item.id} className="flex items-center gap-2 pr-4">
+                <div className="min-w-0 flex-1">
+                  <Row title={item.name} detail={item.status} />
+                </div>
+                {item.status === "draft" || item.status === "scheduled" ? (
+                  <button
+                    className="btn btn-primary btn-xs"
+                    onClick={() => launchCampaign.mutate(item.id)}
+                  >
+                    Launch
+                  </button>
+                ) : null}
+              </div>
             ))
           ) : (
             <Empty text="No campaigns yet." />
@@ -569,8 +599,11 @@ export function IntegrationsWorkspace() {
     queryFn: () => getIntegrationsWorkspace(),
   });
   const mutation = useMutation({
-    mutationFn: (data: { providerKey: string; displayName: string }) =>
-      createIntegration({ data }),
+    mutationFn: (data: {
+      providerKey: string;
+      displayName: string;
+      credentialReference?: string;
+    }) => createIntegration({ data }),
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: ["integrations"] });
       setAdding(null);
@@ -626,11 +659,12 @@ export function IntegrationsWorkspace() {
     >
       {adding === "integration" ? (
         <SimpleForm
-          fields={["displayName", "providerKey"]}
+          fields={["displayName", "providerKey", "credentialReference"]}
           onSubmit={(values) =>
             mutation.mutate({
               providerKey: values.providerKey,
               displayName: values.displayName,
+              credentialReference: values.credentialReference || undefined,
             })
           }
         />
@@ -662,7 +696,7 @@ export function IntegrationsWorkspace() {
               />
             ))
           ) : (
-            <Empty text="Add WooCommerce, Apify, Firecrawl, Hunter, Make, SMS, or another provider." />
+            <Empty text="Add Claude Haiku, WooCommerce, Apify, Firecrawl, Hunter, Make, SMS, or another provider." />
           )}
         </Panel>
         <Panel title="Webhooks" icon={Webhook}>

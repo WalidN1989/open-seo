@@ -61,7 +61,7 @@ async function ingestWhatsappMessage(
       ),
     )
     .limit(1);
-  if (duplicate) return { duplicate: true };
+  if (duplicate) return { duplicate: true, conversationId: null, isNew: false };
 
   const [existingConversation] = await db
     .select()
@@ -105,7 +105,7 @@ async function ingestWhatsappMessage(
         ),
       );
   }
-  return { duplicate: false };
+  return { duplicate: false, conversationId, isNew: !existingConversation };
 }
 
 async function updateWhatsappDelivery(
@@ -150,6 +150,59 @@ async function getWhatsappConversationForSend(
   const connection = await getWhatsappConnectionById(conversation.connectionId);
   if (!connection || connection.organizationId !== organizationId) return null;
   return { conversation, connection };
+}
+
+async function getWhatsappConversationHistory(
+  organizationId: string,
+  conversationId: string,
+) {
+  const rows = await db
+    .select({
+      direction: whatsappMessages.direction,
+      body: whatsappMessages.body,
+    })
+    .from(whatsappMessages)
+    .where(
+      and(
+        eq(whatsappMessages.organizationId, organizationId),
+        eq(whatsappMessages.conversationId, conversationId),
+      ),
+    )
+    .orderBy(desc(whatsappMessages.createdAt))
+    .limit(24);
+  return rows.toReversed();
+}
+
+async function flagWhatsappConversationForTeam(
+  organizationId: string,
+  conversationId: string,
+) {
+  return db
+    .update(whatsappConversations)
+    .set({ status: "pending" })
+    .where(
+      and(
+        eq(whatsappConversations.organizationId, organizationId),
+        eq(whatsappConversations.id, conversationId),
+      ),
+    );
+}
+
+async function getIntegrationByProvider(
+  organizationId: string,
+  providerKey: string,
+) {
+  const [row] = await db
+    .select()
+    .from(integrationConnections)
+    .where(
+      and(
+        eq(integrationConnections.organizationId, organizationId),
+        eq(integrationConnections.providerKey, providerKey),
+      ),
+    )
+    .limit(1);
+  return row;
 }
 
 async function createQueuedWhatsappMessage(
@@ -294,6 +347,103 @@ async function createWhatsappCampaign(
     .values({ id: crypto.randomUUID(), organizationId, ...input })
     .returning();
   return row;
+}
+
+async function getWhatsappCampaignContext(
+  organizationId: string,
+  campaignId: string,
+) {
+  const [campaign] = await db
+    .select()
+    .from(whatsappCampaigns)
+    .where(
+      and(
+        eq(whatsappCampaigns.id, campaignId),
+        eq(whatsappCampaigns.organizationId, organizationId),
+      ),
+    )
+    .limit(1);
+  if (!campaign?.connectionId || !campaign.templateId) return null;
+  const connection = await getWhatsappConnectionById(campaign.connectionId);
+  const template = await getWhatsappTemplate(
+    organizationId,
+    campaign.templateId,
+  );
+  if (
+    !connection ||
+    connection.organizationId !== organizationId ||
+    !template
+  ) {
+    return null;
+  }
+  const conversations = await db
+    .select()
+    .from(whatsappConversations)
+    .where(
+      and(
+        eq(whatsappConversations.organizationId, organizationId),
+        eq(whatsappConversations.connectionId, connection.id),
+        eq(whatsappConversations.status, "open"),
+      ),
+    );
+  return { campaign, connection, template, conversations };
+}
+
+async function updateWhatsappCampaign(
+  organizationId: string,
+  campaignId: string,
+  values: { status: string; startedAt?: string; completedAt?: string },
+) {
+  const [campaign] = await db
+    .update(whatsappCampaigns)
+    .set({ ...values, updatedAt: new Date().toISOString() })
+    .where(
+      and(
+        eq(whatsappCampaigns.id, campaignId),
+        eq(whatsappCampaigns.organizationId, organizationId),
+      ),
+    )
+    .returning();
+  return campaign;
+}
+
+async function listMatchingWhatsappAutomations(
+  organizationId: string,
+  messageBody: string | undefined,
+  isFirstMessage: boolean,
+) {
+  const rules = await db
+    .select()
+    .from(whatsappAutomationRules)
+    .where(
+      and(
+        eq(whatsappAutomationRules.organizationId, organizationId),
+        eq(whatsappAutomationRules.status, "active"),
+      ),
+    );
+  const normalized = messageBody?.toLowerCase() ?? "";
+  return rules.filter((rule) => {
+    if (rule.triggerType === "first_message") return isFirstMessage;
+    return (
+      rule.triggerType === "keyword" &&
+      Boolean(rule.matchValue) &&
+      normalized.includes(rule.matchValue?.toLowerCase() ?? "")
+    );
+  });
+}
+
+async function getWhatsappTemplate(organizationId: string, templateId: string) {
+  const [template] = await db
+    .select()
+    .from(whatsappTemplates)
+    .where(
+      and(
+        eq(whatsappTemplates.id, templateId),
+        eq(whatsappTemplates.organizationId, organizationId),
+      ),
+    )
+    .limit(1);
+  return template;
 }
 
 async function createWhatsappAutomation(
@@ -626,19 +776,26 @@ export const CommunicationsRepository = {
   createWhatsappOrder,
   createWhatsappTemplate,
   endVoiceConversation,
+  flagWhatsappConversationForTeam,
   getIntegrationsWorkspace,
+  getIntegrationByProvider,
   getVoiceWorkspace,
   getVoiceAgent,
   getVoiceConversation,
   getWebhookDelivery,
   getWebhookEndpoint,
   listWebhookEndpointsForEvent,
+  listMatchingWhatsappAutomations,
   getWhatsappWorkspace,
+  getWhatsappCampaignContext,
   getWhatsappConnectionById,
   getWhatsappConversationForSend,
+  getWhatsappConversationHistory,
+  getWhatsappTemplate,
   ingestWhatsappMessage,
   markWhatsappConnectionConnected,
   startVoiceConversation,
+  updateWhatsappCampaign,
   updateWhatsappDelivery,
   updateWebhookDelivery,
   whatsappEntityBelongsToOrganization,

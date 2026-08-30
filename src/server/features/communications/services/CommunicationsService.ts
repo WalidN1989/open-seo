@@ -1,6 +1,7 @@
-/* oxlint-disable max-lines */
+/* oxlint-disable max-lines, max-depth */
 import type { z } from "zod";
 import { BusinessModuleService } from "@/server/features/business-modules/services/BusinessModuleService";
+import { getOptionalEnvValue } from "@/server/lib/runtime-env";
 import type {
   createIntegrationSchema,
   createVoiceAgentSchema,
@@ -18,6 +19,7 @@ import type {
   synthesizeVoiceSpeechSchema,
   transcribeVoiceAudioSchema,
   endVoiceConversationSchema,
+  launchWhatsappCampaignSchema,
 } from "@/types/schemas/communications";
 import { CommunicationsRepository } from "../repositories/CommunicationsRepository";
 import {
@@ -25,6 +27,7 @@ import {
   parseTwilioPayload,
   resolveCredential,
   sendWhatsappText,
+  sendWhatsappTemplate,
 } from "../providers/whatsapp";
 import {
   verifyMetaSignature,
@@ -32,6 +35,7 @@ import {
 } from "../providers/signatures";
 import { deliverWebhook, validateWebhookUrl } from "../providers/webhooks";
 import { speakWithDeepgram, transcribeWithDeepgram } from "../providers/voice";
+import { generateWhatsappAiReply } from "../providers/whatsapp-ai";
 
 async function whatsappWorkspace(organizationId: string, userId: string) {
   await BusinessModuleService.requireAccess(organizationId, userId, "whatsapp");
@@ -94,6 +98,87 @@ async function createWhatsappCampaign(
     throw new Error("WhatsApp connection or template not found.");
   }
   return CommunicationsRepository.createWhatsappCampaign(organizationId, input);
+}
+
+async function launchWhatsappCampaign(
+  organizationId: string,
+  userId: string,
+  input: z.infer<typeof launchWhatsappCampaignSchema>,
+) {
+  await BusinessModuleService.requireAccess(
+    organizationId,
+    userId,
+    "whatsapp",
+    "manage",
+  );
+  const context = await CommunicationsRepository.getWhatsappCampaignContext(
+    organizationId,
+    input.campaignId,
+  );
+  if (!context) throw new Error("WhatsApp campaign not found.");
+  if (
+    context.campaign.status !== "draft" &&
+    context.campaign.status !== "scheduled"
+  ) {
+    throw new Error("Only draft or scheduled campaigns can be launched.");
+  }
+  if (context.template.status !== "approved") {
+    throw new Error("Campaigns require a provider-approved WhatsApp template.");
+  }
+  const startedAt = new Date().toISOString();
+  await CommunicationsRepository.updateWhatsappCampaign(
+    organizationId,
+    context.campaign.id,
+    { status: "running", startedAt },
+  );
+  let sent = 0;
+  let failed = 0;
+  for (const conversation of context.conversations) {
+    if (!conversation.externalConversationId) continue;
+    const queued = await CommunicationsRepository.createQueuedWhatsappMessage(
+      organizationId,
+      conversation.id,
+      context.template.body,
+    );
+    try {
+      const result = await sendWhatsappTemplate(
+        context.connection,
+        conversation.externalConversationId,
+        context.template,
+      );
+      await CommunicationsRepository.completeWhatsappMessage(
+        organizationId,
+        queued.id,
+        {
+          externalMessageId: result.externalMessageId,
+          status: result.status,
+          sentAt: new Date().toISOString(),
+        },
+      );
+      sent += 1;
+    } catch {
+      await CommunicationsRepository.completeWhatsappMessage(
+        organizationId,
+        queued.id,
+        { status: "failed" },
+      );
+      failed += 1;
+    }
+  }
+  await CommunicationsRepository.updateWhatsappCampaign(
+    organizationId,
+    context.campaign.id,
+    {
+      status: failed > 0 ? "completed_with_errors" : "completed",
+      completedAt: new Date().toISOString(),
+    },
+  );
+  await emitBusinessEvent(organizationId, "whatsapp.campaign.completed", {
+    campaignId: context.campaign.id,
+    sent,
+    failed,
+  });
+  return { campaignId: context.campaign.id, sent, failed };
 }
 
 async function createWhatsappAutomation(
@@ -401,7 +486,133 @@ async function processWhatsappWebhook(
   }
 
   for (const message of parsed.messages) {
-    await CommunicationsRepository.ingestWhatsappMessage(connection, message);
+    const ingestion = await CommunicationsRepository.ingestWhatsappMessage(
+      connection,
+      message,
+    );
+    if (!ingestion.duplicate && ingestion.conversationId) {
+      let handledByAi = false;
+      const aiConnection =
+        await CommunicationsRepository.getIntegrationByProvider(
+          connection.organizationId,
+          "claude_haiku",
+        );
+      if (aiConnection?.status === "connected") {
+        try {
+          const history =
+            await CommunicationsRepository.getWhatsappConversationHistory(
+              connection.organizationId,
+              ingestion.conversationId,
+            );
+          const prefix = aiConnection.credentialReference?.trim();
+          const result = await generateWhatsappAiReply({
+            history,
+            apiKey: prefix
+              ? await getOptionalEnvValue(`${prefix}_API_KEY`)
+              : null,
+            model: await getOptionalEnvValue("WHATSAPP_AI_MODEL"),
+          });
+          if (result) {
+            for (const action of result.actions) {
+              if (action.name === "flag_for_team") {
+                await CommunicationsRepository.flagWhatsappConversationForTeam(
+                  connection.organizationId,
+                  ingestion.conversationId,
+                );
+                continue;
+              }
+              if (action.name !== "create_order_request") continue;
+              const rawAmount = Number(action.input.amount_cents || 0);
+              await CommunicationsRepository.createWhatsappOrder(
+                connection.organizationId,
+                {
+                  conversationId: ingestion.conversationId,
+                  summary:
+                    typeof action.input.summary === "string"
+                      ? action.input.summary.slice(0, 2000)
+                      : "Customer order enquiry",
+                  amountCents:
+                    Number.isSafeInteger(rawAmount) && rawAmount >= 0
+                      ? rawAmount
+                      : 0,
+                },
+              );
+            }
+            if (result.reply) {
+              const queued =
+                await CommunicationsRepository.createQueuedWhatsappMessage(
+                  connection.organizationId,
+                  ingestion.conversationId,
+                  result.reply,
+                );
+              const sent = await sendWhatsappText(
+                connection,
+                message.sender,
+                result.reply,
+              );
+              await CommunicationsRepository.completeWhatsappMessage(
+                connection.organizationId,
+                queued.id,
+                {
+                  externalMessageId: sent.externalMessageId,
+                  status: sent.status,
+                  sentAt: new Date().toISOString(),
+                },
+              );
+              handledByAi = true;
+            }
+          }
+        } catch (error) {
+          console.error(
+            "WhatsApp Claude assistant failed; using rule fallback",
+            error,
+          );
+        }
+      }
+      if (handledByAi) continue;
+      const rules =
+        await CommunicationsRepository.listMatchingWhatsappAutomations(
+          connection.organizationId,
+          message.body,
+          ingestion.isNew,
+        );
+      for (const rule of rules) {
+        if (!rule.responseTemplateId) continue;
+        const template = await CommunicationsRepository.getWhatsappTemplate(
+          connection.organizationId,
+          rule.responseTemplateId,
+        );
+        if (!template) continue;
+        const queued =
+          await CommunicationsRepository.createQueuedWhatsappMessage(
+            connection.organizationId,
+            ingestion.conversationId,
+            template.body,
+          );
+        try {
+          const result = await sendWhatsappText(
+            connection,
+            message.sender,
+            template.body,
+          );
+          await CommunicationsRepository.completeWhatsappMessage(
+            connection.organizationId,
+            queued.id,
+            {
+              externalMessageId: result.externalMessageId,
+              status: result.status,
+              sentAt: new Date().toISOString(),
+            },
+          );
+        } catch {
+          await CommunicationsRepository.completeWhatsappMessage(
+            connection.organizationId,
+            queued.id,
+            { status: "failed" },
+          );
+        }
+      }
+    }
   }
   for (const update of parsed.statuses) {
     await CommunicationsRepository.updateWhatsappDelivery(connection, update);
@@ -635,6 +846,7 @@ export const CommunicationsService = {
   endVoiceConversation,
   emitBusinessEvent,
   integrationsWorkspace,
+  launchWhatsappCampaign,
   processWhatsappWebhook,
   retryWebhookDelivery,
   sendWhatsappMessage,

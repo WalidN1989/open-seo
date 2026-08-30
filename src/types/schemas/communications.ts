@@ -14,6 +14,8 @@ export const createWhatsappTemplateSchema = z.object({
     .default("marketing"),
   body: z.string().trim().min(1).max(4096),
   connectionId: z.string().min(1).optional(),
+  externalTemplateId: z.string().trim().max(200).optional(),
+  status: z.enum(["draft", "pending", "approved", "rejected"]).default("draft"),
 });
 export const sendWhatsappMessageSchema = z.object({
   conversationId: z.string().min(1),
@@ -24,6 +26,9 @@ export const createWhatsappCampaignSchema = z.object({
   connectionId: z.string().min(1),
   templateId: z.string().min(1),
   scheduledAt: z.string().datetime().optional(),
+});
+export const launchWhatsappCampaignSchema = z.object({
+  campaignId: z.string().min(1),
 });
 export const createWhatsappAutomationSchema = z.object({
   name: z.string().trim().min(1).max(150),
