@@ -46,6 +46,27 @@ async function getWhatsappConnectionById(connectionId: string) {
   return connection;
 }
 
+/**
+ * Route an inbound Meta delivery to exactly one connection.
+ *
+ * Deliberately not organization-scoped: the organization is the *answer* here,
+ * derived from the stored row. The unique index on (provider, phone_number_id)
+ * is what makes the answer unambiguous.
+ */
+async function findWhatsappConnectionByPhoneNumberId(phoneNumberId: string) {
+  const [row] = await db
+    .select()
+    .from(whatsappConnections)
+    .where(
+      and(
+        eq(whatsappConnections.provider, "meta_cloud"),
+        eq(whatsappConnections.phoneNumberId, phoneNumberId),
+      ),
+    )
+    .limit(1);
+  return row ?? null;
+}
+
 async function ingestWhatsappMessage(
   connection: NonNullable<
     Awaited<ReturnType<typeof getWhatsappConnectionById>>
@@ -84,17 +105,27 @@ async function ingestWhatsappMessage(
       lastMessageAt: message.receivedAt,
     });
   }
-  await db.insert(whatsappMessages).values({
-    id: crypto.randomUUID(),
-    organizationId: connection.organizationId,
-    conversationId,
-    externalMessageId: message.externalMessageId,
-    direction: "inbound",
-    messageType: message.messageType,
-    body: message.body,
-    status: "received",
-    sentAt: message.receivedAt,
-  });
+  // The select above catches the ordinary replay; this catches the concurrent
+  // one. Without it the unique index raises, the handler 500s, and Meta
+  // retries the delivery it had already stored.
+  const inserted = await db
+    .insert(whatsappMessages)
+    .values({
+      id: crypto.randomUUID(),
+      organizationId: connection.organizationId,
+      conversationId,
+      externalMessageId: message.externalMessageId,
+      direction: "inbound",
+      messageType: message.messageType,
+      body: message.body,
+      status: "received",
+      sentAt: message.receivedAt,
+    })
+    .onConflictDoNothing()
+    .returning({ id: whatsappMessages.id });
+  if (inserted.length === 0) {
+    return { duplicate: true, conversationId: null, isNew: false };
+  }
   if (existingConversation) {
     await db
       .update(whatsappConversations)
@@ -958,6 +989,7 @@ export const CommunicationsRepository = {
   endVoiceConversation,
   flagWhatsappConversationForTeam,
   getIntegrationsWorkspace,
+  findWhatsappConnectionByPhoneNumberId,
   getIntegrationByProvider,
   getIntegration,
   getVoiceWorkspace,

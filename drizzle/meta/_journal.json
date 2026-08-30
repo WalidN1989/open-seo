@@ -421,6 +421,13 @@
       "when": 1788104462814,
       "tag": "0059_free_randall_flagg",
       "breakpoints": true
+    },
+    {
+      "idx": 60,
+      "version": "6",
+      "when": 1788107283982,
+      "tag": "0060_slim_valeria_richards",
+      "breakpoints": true
     }
   ]
 }

@@ -35,6 +35,7 @@
     "db:migrate:local": "wrangler d1 migrations apply DB --local",
     "db:migrate:prod": "wrangler d1 migrations apply DB --remote",
     "db:migrate:pg": "drizzle-kit migrate --config drizzle-pg.config.ts",
+    "db:check:meta-phones": "tsx scripts/check-meta-phone-duplicates.ts",
     "knip": "knip",
     "release:notes": "node scripts/release-notes.mjs",
     "release:publish": "node scripts/publish-release.mjs",

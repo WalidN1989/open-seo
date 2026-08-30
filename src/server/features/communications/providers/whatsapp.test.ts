@@ -46,8 +46,9 @@ describe("WhatsApp provider boundaries", () => {
         },
       ],
     });
-    expect(result.messages[0]?.body).toBe("Hi");
-    expect(result.statuses).toEqual([
+    expect(result).toHaveLength(1);
+    expect(result[0].messages[0]?.body).toBe("Hi");
+    expect(result[0].statuses).toEqual([
       { externalMessageId: "wamid.2", status: "delivered" },
     ]);
   });

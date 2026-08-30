@@ -498,6 +498,13 @@ export const whatsappConnections = sqliteTable(
       .references(() => organization.id, { onDelete: "cascade" }),
     provider: text("provider").notNull(),
     displayPhoneNumber: text("display_phone_number"),
+    // Meta's own identifiers. phone_number_id is what an inbound webhook is
+    // routed by; the WABA id is cross-checked against entry[].id so a payload
+    // cannot claim a number that belongs to a different business account.
+    phoneNumberId: text("phone_number_id"),
+    businessAccountId: text("business_account_id"),
+    lastCheckedAt: text("last_checked_at"),
+    lastError: text("last_error"),
     externalAccountId: text("external_account_id"),
     credentialReference: text("credential_reference"),
     status: text("status").notNull().default("disconnected"),
@@ -506,7 +513,15 @@ export const whatsappConnections = sqliteTable(
       .notNull()
       .default(sql`(current_timestamp)`),
   },
-  (table) => [index("whatsapp_connections_org_idx").on(table.organizationId)],
+  (table) => [
+    index("whatsapp_connections_org_idx").on(table.organizationId),
+    // One Meta number resolves to exactly one connection, so an inbound
+    // webhook can never be ambiguous between two organizations.
+    uniqueIndex("whatsapp_connections_provider_phone_idx").on(
+      table.provider,
+      table.phoneNumberId,
+    ),
+  ],
 );
 
 export const whatsappConversations = sqliteTable(

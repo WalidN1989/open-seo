@@ -198,28 +198,27 @@ describe("writes across the tenant boundary", () => {
     );
   });
 
-  // KNOWN GAP, found by this fixture. `OrderService.createOrder` validates
-  // that every productId belongs to the organization but never checks
-  // contactId, so tenant B can create an order in its own organization
-  // pointing at tenant A's contact. `contactBelongsToOrganization` already
-  // exists and CommunicationsService uses it; Orders does not.
-  //
-  // `it.fails` asserts the gap is still present. When the check is added in
-  // Phase 1 this test fails, which is the signal to turn it back into a
-  // normal `it`.
-  it.fails(
-    "refuses to attach another tenant's contact to its own order",
-    async () => {
-      // The payload is otherwise valid for B; only the contact belongs to A.
-      await expectDenied(() =>
-        OrderService.createOrder(ORG_B, USER_OWNER_B, {
-          contactId: CONTACT_A,
-          lines: [{ description: "Widget", quantity: 1, unitPriceMinor: 1000 }],
-          discountMinor: 0,
-          deliveryMinor: 0,
-          taxMinor: 0,
-        }),
-      );
-    },
-  );
+  // Found by this fixture, fixed in Phase 1: createOrder validated every
+  // productId on the order but never the contactId.
+  it("refuses to attach another tenant's contact to its own order", async () => {
+    // The payload is otherwise valid for B; only the contact belongs to A.
+    await expectDenied(() =>
+      OrderService.createOrder(ORG_B, USER_OWNER_B, {
+        contactId: CONTACT_A,
+        lines: [{ description: "Widget", quantity: 1, unitPriceMinor: 1000 }],
+        discountMinor: 0,
+        deliveryMinor: 0,
+        taxMinor: 0,
+      }),
+    );
+  });
+
+  it("writes no order after refusing the foreign contact", async () => {
+    const orders = await OrderService.listOrders(ORG_B, USER_OWNER_B, {
+      limit: 50,
+    });
+    for (const order of orders) {
+      expect(order.contactId).not.toBe(CONTACT_A);
+    }
+  });
 });

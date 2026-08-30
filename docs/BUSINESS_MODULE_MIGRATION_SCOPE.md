@@ -574,6 +574,148 @@ cannot duplicate a lead that was already promoted.
 Until it exists, leads arrive by hand, by Hunter.io domain import, or by
 promotion from an inquiry.
 
+## Multi-tenant hardening: Phase 0 and Phase 1
+
+Decided 2026-08-30 after a tenant-isolation audit. One shared, platform-owned
+Meta app; tenants attach their own WhatsApp Business Accounts and numbers to it.
+App-per-tenant is explicitly not the architecture.
+
+### Phase 0 — the tenant-isolation baseline (`2924fb3`)
+
+`src/test/tenancy/` runs the real queries against a real in-memory SQLite
+database migrated from `drizzle/`, seeded with two fully populated tenants, a
+third that owns nothing, and a consultant who belongs to two. Mock-based
+suites prove a service refuses an id it was handed; these prove the boundary.
+
+It found one real gap on its first run: `OrderService.createOrder` validated
+every `productId` against the organization and never `contactId`, so a tenant
+could create an order in its own organization pointing at another tenant's
+contact. Every other commerce foreign identifier was audited and is correctly
+scoped — `parentProductId`, `adjustStock.productId`, `auditId`,
+`recordAuditCount.productId`, `convertOrderRequest.requestId` and
+`orderLine.productId`.
+
+### Phase 1 — shared-app Meta webhook
+
+**The tenant is never derived from the callback URL.** The signature is
+verified against the platform app secret before the body is parsed, and the
+organization comes from the connection the payload's own `phone_number_id`
+resolves to.
+
+Three secrets, split two ways. `META_APP_SECRET` and `META_VERIFY_TOKEN` are
+platform-level: one app subscribes one callback, so a per-tenant verify token
+cannot work — Meta calls the endpoint once, for the app, with no tenant in the
+request. `ACCESS_TOKEN` stays per tenant, on the tenant's own connection.
+
+A delivery can carry changes for more than one phone number, and under a shared
+app those can belong to different tenants. `parseMetaPayload` therefore returns
+one group per change with its routing metadata still attached, and each group
+is resolved separately. Flattening the payload and processing it under the
+first `phone_number_id` would write one tenant's messages into another's
+organization.
+
+`whatsapp_connections` gains `phone_number_id`, `business_account_id`,
+`last_checked_at` and `last_error`, with a unique index on
+`(provider, phone_number_id)` so one Meta number resolves to exactly one
+connection. The columns are nullable and NULLs are distinct in a unique index,
+so existing rows migrate untouched — and a connection without a
+`phone_number_id` receives no routed events until one is configured, which is
+the intended visible-incomplete state.
+
+### Migration backfills existing numbers
+
+`external_account_id` already held Meta's phone-number id for `meta_cloud`
+connections — it is the value the Graph send endpoint uses at
+`/v23.0/<PHONE_NUMBER_ID>/messages`. Migration `0060` (SQLite) / `0038`
+(Postgres) copies it into `phone_number_id` before creating the unique index,
+so every existing Meta connection is routable the moment the migration lands
+and no inbound message is dropped between deploy and manual configuration.
+
+The backfill is scoped to `meta_cloud`: for Twilio the same column holds the
+Account SID, which is a different thing and must never be routed on. It does
+not overwrite a `phone_number_id` that is already set, and it skips empty
+strings. `business_account_id` is deliberately **not** backfilled — the old
+schema holds no trustworthy WABA id — so it stays null and the cross-check
+stays conditional until it is configured.
+
+If two connections somehow hold the same Meta number the unique index cannot be
+created and the migration aborts, which is correct: silently keeping one
+tenant's row would route another tenant's messages to it. Run the preflight
+first so the clash is named rather than merely fatal:
+
+```
+pnpm db:check:meta-phones
+```
+
+### Human cutover, in order
+
+The code reads `META_APP_SECRET` on every Meta delivery and fails closed
+without it.
+
+1. Set `META_APP_SECRET` (App Dashboard → Settings → Basic) and
+   `META_VERIFY_TOKEN` (a long random string you choose) on Railway. **Both are
+   in the allowlist in `scripts/write-runtime-dev-vars.ts`; setting them on
+   Railway alone would not reach the Worker.**
+2. **Record the current callback URL and verify token somewhere safe before
+   changing anything** — rollback after cutover needs both, and neither belongs
+   in source control or in a log.
+3. Run `pnpm db:check:meta-phones`, then deploy schema and code.
+4. Confirm the backfill: `select id, provider, phone_number_id,
+business_account_id, status from whatsapp_connections where provider =
+'meta_cloud'`. Every existing row should now have a `phone_number_id`.
+5. Test the stable endpoint by hand, before Meta points at it:
+   `curl "https://<host>/api/whatsapp/meta?hub.mode=subscribe&hub.verify_token=<token>&hub.challenge=42"`
+   returns `42`. A 403 means the token is not reaching the Worker.
+6. Send a test message to a connected number. It still arrives at the legacy
+   callback, and is now routed by payload — confirm a row appears in
+   `whatsapp_messages` for the right organization.
+7. Fill in `business_account_id` for each number (WhatsApp → API Setup).
+8. **Only now** change the Meta Dashboard callback to
+   `https://<host>/api/whatsapp/meta` with the token from step 1.
+9. Send inbound and outbound test messages.
+10. Watch for `whatsapp.webhook.unknown_phone_number_id`,
+    `whatsapp.webhook.business_account_mismatch` and
+    `whatsapp.webhook.url_connection_mismatch`.
+
+A correctly signed delivery for a number we cannot resolve is acknowledged with
+200 and logged, not retried — a payload that cannot be routed never becomes
+routable, so a non-2xx would only produce a permanent Meta retry storm. Step 4
+is what makes that safe: every expected number must be mapped before step 8.
+Unknown-routing warnings deserve an operational alert. In a mixed payload the
+routable groups are processed and only the unresolved group is ignored.
+
+### Rollback — two stages, and they are not the same
+
+**Before the Dashboard callback is changed (steps 1–7).** Revert the
+deployment. Meta is still pointed at `/api/whatsapp/<connection-id>`, which the
+previous release serves, so service is restored by the revert alone. The
+backfilled column is additive and harmless to leave in place.
+
+**After the Dashboard callback is changed (step 8 onward).** Reverting the
+deployment alone **does not restore service** — the previous release has no
+`/api/whatsapp/meta` route, so Meta's deliveries would 404. Either:
+
+- Change the Meta Dashboard callback back to the legacy
+  `/api/whatsapp/<connection-id>` URL and its original verify token first, then
+  revert the deployment; or
+- Deploy a prepared compatibility build that keeps `/api/whatsapp/meta` while
+  reverting whatever else is at fault.
+
+This is why step 2 records the previous callback URL and verify token: without
+them the first option is not available.
+
+### Retiring the legacy Meta route
+
+When no `whatsapp.webhook.url_connection_mismatch` and no
+`whatsapp.webhook.unknown_phone_number_id` has been logged for a full billing
+cycle, and every connection has a `phone_number_id`, delete the Meta branch
+from `$connectionId.ts`. Twilio keeps that route permanently: its signature
+covers the URL and is computed with the account's own token, so its connection
+must be resolved before verification is even possible.
+
+Logs carry connection, organization and phone-number ids. They never carry a
+secret, a message body or customer contact details.
+
 ## Deferred hardening
 
 Agreed 2026-08-30: revisit only after every module is migrated, merged and

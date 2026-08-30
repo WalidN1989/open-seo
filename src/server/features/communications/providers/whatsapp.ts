@@ -71,11 +71,21 @@ const metaPayloadSchema = z.object({
   entry: z
     .array(
       z.object({
+        // The WhatsApp Business Account this delivery belongs to.
+        id: z.string().optional(),
         changes: z
           .array(
             z.object({
               value: z
                 .object({
+                  // The routing identifiers. Everything else in `value` is
+                  // customer content and is treated as untrusted.
+                  metadata: z
+                    .object({
+                      phone_number_id: z.string().optional(),
+                      display_phone_number: z.string().optional(),
+                    })
+                    .optional(),
                   messages: z
                     .array(
                       z.object({
@@ -107,15 +117,32 @@ const metaPayloadSchema = z.object({
     .optional(),
 });
 
-export function parseMetaPayload(payload: unknown): {
+/**
+ * One delivery can carry changes for more than one phone number.
+ *
+ * Meta batches entries, and a shared app receives them for every tenant on it.
+ * Flattening the payload and processing all of it under the first
+ * phone_number_id would write one tenant's messages into another's
+ * organization, so the routing identifiers stay attached to the group they
+ * arrived with and each group is resolved separately.
+ */
+type MetaChangeGroup = {
+  businessAccountId: string | null;
+  phoneNumberId: string | null;
+  displayPhoneNumber: string | null;
   messages: InboundWhatsappMessage[];
   statuses: WhatsappDeliveryUpdate[];
-} {
+};
+
+export function parseMetaPayload(payload: unknown): MetaChangeGroup[] {
   const data = metaPayloadSchema.parse(payload);
-  const messages: InboundWhatsappMessage[] = [];
-  const statuses: WhatsappDeliveryUpdate[] = [];
+  const groups: MetaChangeGroup[] = [];
+
   for (const entry of data.entry ?? []) {
     for (const change of entry.changes ?? []) {
+      const messages: InboundWhatsappMessage[] = [];
+      const statuses: WhatsappDeliveryUpdate[] = [];
+
       for (const message of change.value?.messages ?? []) {
         if (!message.id || !message.from) continue;
         messages.push({
@@ -128,6 +155,7 @@ export function parseMetaPayload(payload: unknown): {
             : new Date().toISOString(),
         });
       }
+
       for (const status of change.value?.statuses ?? []) {
         if (status.id && status.status) {
           statuses.push({
@@ -136,9 +164,23 @@ export function parseMetaPayload(payload: unknown): {
           });
         }
       }
+
+      // A change carrying neither is a subscription notification we do not
+      // act on; keeping it would make callers handle an empty group.
+      if (messages.length === 0 && statuses.length === 0) continue;
+
+      groups.push({
+        businessAccountId: entry.id ?? null,
+        phoneNumberId: change.value?.metadata?.phone_number_id ?? null,
+        displayPhoneNumber:
+          change.value?.metadata?.display_phone_number ?? null,
+        messages,
+        statuses,
+      });
     }
   }
-  return { messages, statuses };
+
+  return groups;
 }
 
 export async function sendWhatsappText(

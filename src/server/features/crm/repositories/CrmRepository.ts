@@ -151,6 +151,28 @@ async function leadBelongsToOrganization(
   return rows.length === 1;
 }
 
+/**
+ * Contacts are a CRM record, so the ownership check lives here rather than in
+ * whichever module happens to reference one. Commerce calls this before
+ * attaching a contact to an order.
+ */
+async function contactBelongsToOrganization(
+  organizationId: string,
+  contactId: string,
+) {
+  const rows = await db
+    .select({ id: crmContacts.id })
+    .from(crmContacts)
+    .where(
+      and(
+        eq(crmContacts.id, contactId),
+        eq(crmContacts.organizationId, organizationId),
+      ),
+    )
+    .limit(1);
+  return rows.length === 1;
+}
+
 async function updateLead(organizationId: string, input: UpdateLeadInput) {
   const { id, ...changes } = input;
   const [row] = await db
@@ -410,6 +432,7 @@ export const CrmRepository = {
   createMeeting,
   createStages,
   listActivities,
+  contactBelongsToOrganization,
   findContactByEmail,
   leadExistsForContactSource,
   listCompanies,

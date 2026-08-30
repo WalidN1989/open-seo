@@ -32,6 +32,7 @@ import { Route as Char91DotwellKnownChar93OpenaiAppsChallengeRouteImport } from 
 import { Route as AppModulesRouteRouteImport } from './routes/_app/modules/route'
 import { Route as AuthenticatedOnboardingIndexRouteImport } from './routes/_authenticated.onboarding.index'
 import { Route as AppModulesIndexRouteImport } from './routes/_app/modules/index'
+import { Route as ApiWhatsappMetaRouteImport } from './routes/api/whatsapp/meta'
 import { Route as ApiWhatsappConnectionIdRouteImport } from './routes/api/whatsapp/$connectionId'
 import { Route as ApiAutumnSplatRouteImport } from './routes/api/autumn/$'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
@@ -192,6 +193,11 @@ const AppModulesIndexRoute = AppModulesIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AppModulesRouteRoute,
+} as any)
+const ApiWhatsappMetaRoute = ApiWhatsappMetaRouteImport.update({
+  id: '/api/whatsapp/meta',
+  path: '/api/whatsapp/meta',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const ApiWhatsappConnectionIdRoute = ApiWhatsappConnectionIdRouteImport.update({
   id: '/api/whatsapp/$connectionId',
@@ -466,6 +472,7 @@ export interface FileRoutesByFullPath {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/autumn/$': typeof ApiAutumnSplatRoute
   '/api/whatsapp/$connectionId': typeof ApiWhatsappConnectionIdRoute
+  '/api/whatsapp/meta': typeof ApiWhatsappMetaRoute
   '/modules/': typeof AppModulesIndexRoute
   '/onboarding/': typeof AuthenticatedOnboardingIndexRoute
   '/modules/crm/analytics': typeof AppModulesCrmAnalyticsRoute
@@ -528,6 +535,7 @@ export interface FileRoutesByTo {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/autumn/$': typeof ApiAutumnSplatRoute
   '/api/whatsapp/$connectionId': typeof ApiWhatsappConnectionIdRoute
+  '/api/whatsapp/meta': typeof ApiWhatsappMetaRoute
   '/modules': typeof AppModulesIndexRoute
   '/onboarding': typeof AuthenticatedOnboardingIndexRoute
   '/modules/crm/analytics': typeof AppModulesCrmAnalyticsRoute
@@ -596,6 +604,7 @@ export interface FileRoutesById {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/autumn/$': typeof ApiAutumnSplatRoute
   '/api/whatsapp/$connectionId': typeof ApiWhatsappConnectionIdRoute
+  '/api/whatsapp/meta': typeof ApiWhatsappMetaRoute
   '/_app/modules/': typeof AppModulesIndexRoute
   '/_authenticated/onboarding/': typeof AuthenticatedOnboardingIndexRoute
   '/_app/modules/crm/analytics': typeof AppModulesCrmAnalyticsRoute
@@ -664,6 +673,7 @@ export interface FileRouteTypes {
     | '/api/auth/$'
     | '/api/autumn/$'
     | '/api/whatsapp/$connectionId'
+    | '/api/whatsapp/meta'
     | '/modules/'
     | '/onboarding/'
     | '/modules/crm/analytics'
@@ -726,6 +736,7 @@ export interface FileRouteTypes {
     | '/api/auth/$'
     | '/api/autumn/$'
     | '/api/whatsapp/$connectionId'
+    | '/api/whatsapp/meta'
     | '/modules'
     | '/onboarding'
     | '/modules/crm/analytics'
@@ -793,6 +804,7 @@ export interface FileRouteTypes {
     | '/api/auth/$'
     | '/api/autumn/$'
     | '/api/whatsapp/$connectionId'
+    | '/api/whatsapp/meta'
     | '/_app/modules/'
     | '/_authenticated/onboarding/'
     | '/_app/modules/crm/analytics'
@@ -846,6 +858,7 @@ export interface RootRouteChildren {
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiAutumnSplatRoute: typeof ApiAutumnSplatRoute
   ApiWhatsappConnectionIdRoute: typeof ApiWhatsappConnectionIdRoute
+  ApiWhatsappMetaRoute: typeof ApiWhatsappMetaRoute
   ApiGa4OauthCallbackRoute: typeof ApiGa4OauthCallbackRoute
   ApiGscOauthCallbackRoute: typeof ApiGscOauthCallbackRoute
 }
@@ -1012,6 +1025,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/modules/'
       preLoaderRoute: typeof AppModulesIndexRouteImport
       parentRoute: typeof AppModulesRouteRoute
+    }
+    '/api/whatsapp/meta': {
+      id: '/api/whatsapp/meta'
+      path: '/api/whatsapp/meta'
+      fullPath: '/api/whatsapp/meta'
+      preLoaderRoute: typeof ApiWhatsappMetaRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/api/whatsapp/$connectionId': {
       id: '/api/whatsapp/$connectionId'
@@ -1590,6 +1610,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiAutumnSplatRoute: ApiAutumnSplatRoute,
   ApiWhatsappConnectionIdRoute: ApiWhatsappConnectionIdRoute,
+  ApiWhatsappMetaRoute: ApiWhatsappMetaRoute,
   ApiGa4OauthCallbackRoute: ApiGa4OauthCallbackRoute,
   ApiGscOauthCallbackRoute: ApiGscOauthCallbackRoute,
 }

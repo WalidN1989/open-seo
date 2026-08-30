@@ -7,7 +7,10 @@ import {
   mergeCredentials,
 } from "@/server/lib/connection-secrets";
 import { integrationCatalogue } from "@/shared/integration-catalogue";
-import { getOptionalEnvValue } from "@/server/lib/runtime-env";
+import {
+  getOptionalEnvValue,
+  getRequiredEnvValue,
+} from "@/server/lib/runtime-env";
 import type {
   createIntegrationSchema,
   deleteIntegrationSchema,
@@ -33,6 +36,10 @@ import type {
   runIntegrationActionSchema,
 } from "@/types/schemas/communications";
 import { CommunicationsRepository } from "../repositories/CommunicationsRepository";
+import type {
+  InboundWhatsappMessage,
+  WhatsappDeliveryUpdate,
+} from "../providers/whatsapp";
 import {
   parseMetaPayload,
   parseTwilioPayload,
@@ -877,41 +884,23 @@ async function runIntegrationAction(
   return { action: input.action, resultPreview };
 }
 
-async function processWhatsappWebhook(
-  connectionId: string,
-  requestUrl: string,
-  headers: Headers,
-  rawBody: string,
+/**
+ * Handle one group's messages and statuses against the connection it was
+ * routed to. Split out so Meta (many groups, each resolved by identifier) and
+ * Twilio (one connection, resolved before the signature can be checked) share
+ * the ingestion path without sharing their routing.
+ */
+async function ingestWhatsappGroup(
+  connection: NonNullable<
+    Awaited<
+      ReturnType<typeof CommunicationsRepository.getWhatsappConnectionById>
+    >
+  >,
+  parsed: {
+    messages: InboundWhatsappMessage[];
+    statuses: WhatsappDeliveryUpdate[];
+  },
 ) {
-  const connection =
-    await CommunicationsRepository.getWhatsappConnectionById(connectionId);
-  if (!connection) return { status: 404, body: "Connection not found" };
-
-  let parsed;
-  if (connection.provider === "twilio") {
-    const params = Object.fromEntries(new URLSearchParams(rawBody));
-    const authToken = await resolveCredential(connection, "AUTH_TOKEN");
-    const valid = await verifyTwilioSignature(
-      requestUrl,
-      params,
-      headers.get("x-twilio-signature"),
-      authToken,
-    );
-    if (!valid) return { status: 401, body: "Invalid signature" };
-    parsed = parseTwilioPayload(params);
-  } else if (connection.provider === "meta_cloud") {
-    const appSecret = await resolveCredential(connection, "APP_SECRET");
-    const valid = await verifyMetaSignature(
-      rawBody,
-      headers.get("x-hub-signature-256"),
-      appSecret,
-    );
-    if (!valid) return { status: 401, body: "Invalid signature" };
-    parsed = parseMetaPayload(JSON.parse(rawBody));
-  } else {
-    return { status: 400, body: "Provider does not support webhooks" };
-  }
-
   for (const message of parsed.messages) {
     const ingestion = await CommunicationsRepository.ingestWhatsappMessage(
       connection,
@@ -1045,21 +1034,165 @@ async function processWhatsappWebhook(
     await CommunicationsRepository.updateWhatsappDelivery(connection, update);
   }
   await CommunicationsRepository.markWhatsappConnectionConnected(connection.id);
+}
+
+async function processTwilioWebhook(
+  connectionId: string,
+  requestUrl: string,
+  headers: Headers,
+  rawBody: string,
+) {
+  const connection =
+    await CommunicationsRepository.getWhatsappConnectionById(connectionId);
+  if (!connection || connection.provider !== "twilio") {
+    return { status: 404, body: "Connection not found" };
+  }
+  // Twilio signs the URL plus its parameters with the account's own token, so
+  // the connection has to be resolved before the signature can be verified.
+  // That is why this route keeps its connection id and Meta's does not.
+  const params = Object.fromEntries(new URLSearchParams(rawBody));
+  const authToken = await resolveCredential(connection, "AUTH_TOKEN");
+  const valid = await verifyTwilioSignature(
+    requestUrl,
+    params,
+    headers.get("x-twilio-signature"),
+    authToken,
+  );
+  if (!valid) return { status: 401, body: "Invalid signature" };
+
+  await ingestWhatsappGroup(connection, parseTwilioPayload(params));
+  await CommunicationsRepository.markWhatsappConnectionConnected(connection.id);
   return { status: 200, body: "ok" };
 }
 
-async function verifyMetaWebhook(
+/**
+ * Handle a delivery from the shared platform Meta app.
+ *
+ * The signature is verified against the platform app secret before the body is
+ * parsed, and the tenant is then resolved from the payload's own
+ * phone_number_id. `urlConnectionId` is only ever compared against what the
+ * payload resolved to — never used to decide where anything is written — so
+ * the legacy per-connection route can be measured before it is retired.
+ */
+async function processMetaWebhook(
+  requestBody: string,
+  headers: Headers,
+  urlConnectionId?: string,
+) {
+  const appSecret = await getRequiredEnvValue("META_APP_SECRET");
+  const valid = await verifyMetaSignature(
+    requestBody,
+    headers.get("x-hub-signature-256"),
+    appSecret,
+  );
+  // Verified before the body is parsed at all, so an unsigned payload never
+  // reaches JSON.parse or a database lookup.
+  if (!valid) return { status: 401, body: "Invalid signature" };
+
+  let groups;
+  try {
+    groups = parseMetaPayload(JSON.parse(requestBody));
+  } catch {
+    return { status: 400, body: "Malformed payload" };
+  }
+  if (groups.length === 0) return { status: 200, body: "ok" };
+
+  let handled = 0;
+  for (const group of groups) {
+    if (!group.phoneNumberId) {
+      console.warn("whatsapp.webhook.missing_routing_metadata", {
+        businessAccountId: group.businessAccountId,
+      });
+      continue;
+    }
+
+    const connection =
+      await CommunicationsRepository.findWhatsappConnectionByPhoneNumberId(
+        group.phoneNumberId,
+      );
+    if (!connection) {
+      console.warn("whatsapp.webhook.unknown_phone_number_id", {
+        phoneNumberId: group.phoneNumberId,
+      });
+      continue;
+    }
+    if (connection.status !== "connected") {
+      console.warn("whatsapp.webhook.inactive_connection", {
+        connectionId: connection.id,
+        organizationId: connection.organizationId,
+      });
+      continue;
+    }
+    // A payload may not claim a number that belongs to a different business
+    // account. Only checked when we have stored one, so a connection
+    // configured before the WABA id was captured still works.
+    if (
+      connection.businessAccountId &&
+      group.businessAccountId &&
+      connection.businessAccountId !== group.businessAccountId
+    ) {
+      console.warn("whatsapp.webhook.business_account_mismatch", {
+        connectionId: connection.id,
+        organizationId: connection.organizationId,
+      });
+      continue;
+    }
+    if (urlConnectionId && urlConnectionId !== connection.id) {
+      // The legacy route's id disagreed with the payload. Recorded, never
+      // acted on: the resolved connection is the only authority.
+      console.warn("whatsapp.webhook.url_connection_mismatch", {
+        urlConnectionId,
+        resolvedConnectionId: connection.id,
+        organizationId: connection.organizationId,
+      });
+    }
+
+    await ingestWhatsappGroup(connection, group);
+    await CommunicationsRepository.markWhatsappConnectionConnected(
+      connection.id,
+    );
+    handled += 1;
+  }
+
+  // Meta retries a non-2xx, and a payload we cannot route will never become
+  // routable, so an unresolved delivery is acknowledged rather than retried
+  // forever. The warnings above are the record that it happened.
+  return { status: 200, body: handled > 0 ? "ok" : "ignored" };
+}
+
+/** Dispatch by provider. Meta routes by payload; Twilio by connection id. */
+async function processWhatsappWebhook(
   connectionId: string,
+  requestUrl: string,
+  headers: Headers,
+  rawBody: string,
+) {
+  const connection =
+    await CommunicationsRepository.getWhatsappConnectionById(connectionId);
+  if (!connection) return { status: 404, body: "Connection not found" };
+  if (connection.provider === "twilio") {
+    return processTwilioWebhook(connectionId, requestUrl, headers, rawBody);
+  }
+  if (connection.provider === "meta_cloud") {
+    return processMetaWebhook(rawBody, headers, connectionId);
+  }
+  return { status: 400, body: "Provider does not support webhooks" };
+}
+
+/**
+ * Meta's one-time callback subscription check.
+ *
+ * One shared app subscribes one callback, so the token is platform-level. A
+ * per-connection token cannot work: Meta calls the endpoint once, for the app,
+ * with no tenant in the request at all.
+ */
+async function verifyMetaWebhook(
   mode: string | null,
   token: string | null,
   challenge: string | null,
 ) {
-  const connection =
-    await CommunicationsRepository.getWhatsappConnectionById(connectionId);
-  if (!connection || connection.provider !== "meta_cloud") return null;
-  const expected = await resolveCredential(connection, "VERIFY_TOKEN");
+  const expected = await getRequiredEnvValue("META_VERIFY_TOKEN");
   if (mode !== "subscribe" || token !== expected) return null;
-  await CommunicationsRepository.markWhatsappConnectionConnected(connection.id);
   return challenge;
 }
 
@@ -1327,6 +1460,7 @@ export const CommunicationsService = {
   integrationsWorkspace,
   launchWhatsappCampaign,
   processWhatsappWebhook,
+  processMetaWebhook,
   retryWebhookDelivery,
   retryDueWebhookDeliveries,
   runIntegrationAction,

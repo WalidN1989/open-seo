@@ -33,6 +33,10 @@ declare namespace Cloudflare {
     GOOGLE_CLIENT_ID?: string;
     GOOGLE_CLIENT_SECRET?: string;
     LOOPS_API_KEY?: string;
+    // Shared platform Meta app. Tenants attach their own WhatsApp numbers to
+    // this one app, so both secrets are platform-level, never per tenant.
+    META_APP_SECRET?: string;
+    META_VERIFY_TOKEN?: string;
     LOOPS_TRANSACTIONAL_VERIFY_EMAIL_ID?: string;
     LOOPS_TRANSACTIONAL_RESET_PASSWORD_ID?: string;
     AUTUMN_SECRET_KEY?: string;

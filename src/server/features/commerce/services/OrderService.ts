@@ -7,6 +7,7 @@ import type {
   OrderLineInput,
 } from "@/types/schemas/commerce";
 import { CommerceRepository } from "../repositories/CommerceRepository";
+import { CrmRepository } from "@/server/features/crm/repositories/CrmRepository";
 import {
   InventoryRepository,
   type StockMovementDraft,
@@ -102,6 +103,21 @@ async function createOrder(
     "crm",
     "manage",
   );
+
+  // A contact is a CRM record; an order may only reference one its own
+  // organization owns. Without this a caller can create an order in its own
+  // organization pointing at another tenant's contact — the order row is
+  // correctly scoped, but the reference across the boundary is not.
+  if (input.contactId) {
+    const ownsContact = await CrmRepository.contactBelongsToOrganization(
+      organizationId,
+      input.contactId,
+    );
+    // NOT_FOUND, not FORBIDDEN: a caller must not be able to tell the
+    // difference between a contact that does not exist and one belonging to
+    // someone else.
+    if (!ownsContact) throw new AppError("NOT_FOUND", "Contact not found.");
+  }
 
   // A provider replaying an import must not create a second order.
   if (options.externalSource && options.externalId) {

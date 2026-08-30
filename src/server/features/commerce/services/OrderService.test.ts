@@ -14,6 +14,7 @@ const mocks = vi.hoisted(() => ({
   setOrderState: vi.fn(),
   getOrderRequest: vi.fn(),
   linkOrderRequest: vi.fn(),
+  contactBelongsToOrganization: vi.fn(),
 }));
 
 vi.mock(
@@ -22,6 +23,11 @@ vi.mock(
     BusinessModuleService: { requireAccess: mocks.requireAccess },
   }),
 );
+vi.mock("@/server/features/crm/repositories/CrmRepository", () => ({
+  CrmRepository: {
+    contactBelongsToOrganization: mocks.contactBelongsToOrganization,
+  },
+}));
 vi.mock("../repositories/CommerceRepository", () => ({
   CommerceRepository: { getProduct: mocks.getProduct },
 }));
@@ -54,6 +60,7 @@ beforeEach(() => {
   for (const mock of Object.values(mocks)) mock.mockReset();
   mocks.requireAccess.mockResolvedValue(undefined);
   mocks.getProduct.mockResolvedValue({ id: "p1", sku: "SKU-1" });
+  mocks.contactBelongsToOrganization.mockResolvedValue(true);
   mocks.findMovementByReference.mockResolvedValue(null);
   mocks.applyMovements.mockResolvedValue(undefined);
   mocks.countOrders.mockResolvedValue(0);
@@ -347,5 +354,64 @@ describe("order authorization", () => {
     await expect(
       OrderService.getOrder(ORG, USER, "order_from_other_org"),
     ).rejects.toThrow("NOT_FOUND");
+  });
+});
+
+describe("a contact on an order must belong to the organization", () => {
+  const line = { description: "Widget", quantity: 1, unitPriceMinor: 1000 };
+
+  it("refuses a contact the organization does not own", async () => {
+    // Otherwise a caller creates an order correctly scoped to its own
+    // organization that points at another tenant's contact.
+    mocks.contactBelongsToOrganization.mockResolvedValue(false);
+    await expect(
+      OrderService.createOrder(ORG, USER, {
+        contactId: "contact_from_another_org",
+        lines: [line],
+        discountMinor: 0,
+        deliveryMinor: 0,
+        taxMinor: 0,
+      }),
+    ).rejects.toThrow();
+    expect(mocks.createOrderWithLines).not.toHaveBeenCalled();
+  });
+
+  it("does not disclose whether the contact exists elsewhere", async () => {
+    mocks.contactBelongsToOrganization.mockResolvedValue(false);
+    await expect(
+      OrderService.createOrder(ORG, USER, {
+        contactId: "contact_from_another_org",
+        lines: [line],
+        discountMinor: 0,
+        deliveryMinor: 0,
+        taxMinor: 0,
+      }),
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
+  });
+
+  it("checks ownership against the caller's organization", async () => {
+    await OrderService.createOrder(ORG, USER, {
+      contactId: "contact_1",
+      lines: [line],
+      discountMinor: 0,
+      deliveryMinor: 0,
+      taxMinor: 0,
+    });
+    expect(mocks.contactBelongsToOrganization).toHaveBeenCalledWith(
+      ORG,
+      "contact_1",
+    );
+  });
+
+  it("accepts an order with no contact at all", async () => {
+    // An order need not belong to a contact; only a supplied one is checked.
+    await OrderService.createOrder(ORG, USER, {
+      lines: [line],
+      discountMinor: 0,
+      deliveryMinor: 0,
+      taxMinor: 0,
+    });
+    expect(mocks.contactBelongsToOrganization).not.toHaveBeenCalled();
+    expect(mocks.createOrderWithLines).toHaveBeenCalled();
   });
 });
