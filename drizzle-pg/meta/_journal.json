@@ -197,6 +197,13 @@
       "when": 1788088595084,
       "tag": "0027_clammy_colonel_america",
       "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1788089598029,
+      "tag": "0028_sticky_makkari",
+      "breakpoints": true
     }
   ]
 }

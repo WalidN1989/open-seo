@@ -132,4 +132,8 @@ export const {
   webhookSubscriptions,
   webhookDeliveries,
   commerceProducts,
+  commerceInventoryBalances,
+  commerceStockMovements,
+  commerceInventoryAudits,
+  commerceInventoryAuditItems,
 } = schema;

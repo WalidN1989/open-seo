@@ -44,3 +44,42 @@ export const listProductsSchema = z.object({
 export type CreateProductInput = z.infer<typeof createProductSchema>;
 export type UpdateProductInput = z.infer<typeof updateProductSchema>;
 export type ListProductsInput = z.infer<typeof listProductsSchema>;
+
+/** Stock quantities are whole units; a signed delta may remove stock. */
+const quantity = z.number().int().min(0).max(10_000_000);
+const signedQuantity = z
+  .number()
+  .int()
+  .min(-10_000_000)
+  .max(10_000_000)
+  // A zero movement records nothing and would still write a ledger row.
+  .refine((value) => value !== 0, "A movement must change the quantity.");
+
+export const adjustStockSchema = z.object({
+  productId: z.string().min(1),
+  quantityDelta: signedQuantity,
+  reason: z.string().trim().max(500).optional(),
+});
+
+export const createAuditSchema = z.object({
+  name: z.string().trim().min(1).max(200),
+  note: z.string().trim().max(2000).optional(),
+});
+
+export const auditIdSchema = z.object({ auditId: z.string().min(1) });
+
+export const recordAuditCountSchema = z.object({
+  auditId: z.string().min(1),
+  productId: z.string().min(1),
+  countedQuantity: quantity,
+});
+
+export const listMovementsSchema = z.object({
+  productId: z.string().min(1).optional(),
+  limit: z.number().int().min(1).max(200).default(50),
+});
+
+export type AdjustStockInput = z.infer<typeof adjustStockSchema>;
+export type CreateAuditInput = z.infer<typeof createAuditSchema>;
+export type RecordAuditCountInput = z.infer<typeof recordAuditCountSchema>;
+export type ListMovementsInput = z.infer<typeof listMovementsSchema>;

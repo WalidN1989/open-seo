@@ -3,7 +3,9 @@ import { Link, useParams } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { ArrowLeft, Package } from "lucide-react";
 import {
+  adjustProductStock,
   getCommerceProduct,
+  listStockMovements,
   updateCommerceProduct,
 } from "@/serverFunctions/commerce";
 import { getStandardErrorMessage } from "@/client/lib/error-messages";
@@ -18,6 +20,28 @@ export function CrmProductDetailView() {
     queryKey: ["commerce", "product", productId],
     queryFn: () => getCommerceProduct({ data: { id: productId } }),
     retry: false,
+  });
+
+  const movements = useQuery({
+    queryKey: ["commerce", "movements", productId],
+    queryFn: () => listStockMovements({ data: { productId, limit: 25 } }),
+  });
+
+  const adjust = useMutation({
+    mutationFn: (input: { quantityDelta: number; reason?: string }) =>
+      adjustProductStock({ data: { productId, ...input } }),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: ["commerce", "movements", productId],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["commerce", "inventory", "overview"],
+        }),
+      ]);
+      toast.success("Stock adjusted");
+    },
+    onError: (error) => toast.error(getStandardErrorMessage(error)),
   });
 
   const setStatus = useMutation({
@@ -110,6 +134,96 @@ export function CrmProductDetailView() {
               </p>
             </section>
           ) : null}
+
+          <section className="rounded-xl border border-base-300 p-4">
+            <h2 className="font-semibold">Adjust stock</h2>
+            <p className="mt-1 text-xs text-base-content/50">
+              Recorded as a movement with its reason, never as a silent edit.
+            </p>
+            <form
+              className="mt-3 flex flex-wrap items-end gap-2"
+              onSubmit={(event) => {
+                event.preventDefault();
+                const form = new FormData(event.currentTarget);
+                const deltaValue = form.get("delta");
+                const reasonValue = form.get("reason");
+                const delta = Number(
+                  typeof deltaValue === "string" ? deltaValue : "",
+                );
+                if (!Number.isInteger(delta) || delta === 0) {
+                  toast.error("Enter a whole number that is not zero.");
+                  return;
+                }
+                adjust.mutate({
+                  quantityDelta: delta,
+                  reason:
+                    typeof reasonValue === "string" && reasonValue.trim()
+                      ? reasonValue.trim()
+                      : undefined,
+                });
+                event.currentTarget.reset();
+              }}
+            >
+              <input
+                name="delta"
+                type="number"
+                step="1"
+                placeholder="+10 or -3"
+                required
+                className="input input-bordered input-sm w-32"
+              />
+              <input
+                name="reason"
+                placeholder="reason"
+                className="input input-bordered input-sm flex-1"
+              />
+              <button className="btn btn-sm" disabled={adjust.isPending}>
+                Adjust
+              </button>
+            </form>
+          </section>
+
+          <section className="rounded-xl border border-base-300">
+            <div className="border-b border-base-300 p-4">
+              <h2 className="font-semibold">
+                Movements{" "}
+                <span className="badge badge-sm ml-1">
+                  {movements.data?.length ?? 0}
+                </span>
+              </h2>
+            </div>
+            {(movements.data ?? []).length === 0 ? (
+              <p className="p-8 text-center text-sm text-base-content/50">
+                No stock movements yet
+              </p>
+            ) : (
+              <div className="divide-y divide-base-300">
+                {(movements.data ?? []).map((movement) => (
+                  <div
+                    key={movement.id}
+                    className="flex items-center justify-between gap-3 p-4"
+                  >
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium">
+                        {movement.movementType}
+                        {movement.reason ? ` · ${movement.reason}` : ""}
+                      </p>
+                      <p className="text-xs text-base-content/50">
+                        {new Date(movement.createdAt).toLocaleString()}
+                      </p>
+                    </div>
+                    <span
+                      className={`badge badge-sm ${movement.quantityDelta < 0 ? "badge-error" : "badge-success"}`}
+                    >
+                      {movement.quantityDelta > 0
+                        ? `+${movement.quantityDelta}`
+                        : movement.quantityDelta}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
 
           <section className="rounded-xl border border-base-300">
             <div className="border-b border-base-300 p-4">

@@ -397,6 +397,44 @@ filtered out upstream.
 
 Not yet built: Inventory, Orders, Business Analytics.
 
+##### Slice 2 of 4: Inventory — done
+
+Tables `commerce_inventory_balances`, `commerce_stock_movements`,
+`commerce_inventory_audits` and `commerce_inventory_audit_items` in both
+dialects (`drizzle/0050_lyrical_hammerhead.sql`,
+`drizzle-pg/0028_sticky_makkari.sql`), passing `schema-parity.test.ts`.
+
+- **Stock is never a mutable field.** A balance row holds the quantity and an
+  append-only ledger holds how it got there, so any count can be explained.
+- **Balances move by delta, not by assignment.** The upsert adds the signed
+  delta in SQL, so two concurrent movements cannot overwrite each other with a
+  stale total.
+- **Movements and balances are written in one `runBatch`**, which is a D1 batch
+  and a Postgres transaction, so a publish applies completely or not at all.
+- **Stock cannot go below zero**, checked across the whole set before anything
+  is written and on the _net_ per product, not movement by movement.
+- **An audit captures the expected quantity at counting time**, so the variance
+  the auditor saw is the variance published even if stock moves afterwards.
+- **Publishing is idempotent.** The audit id is the idempotency key: a movement
+  already carrying that reference is skipped, so a retried publish cannot
+  double-count. A unique index on
+  (organization, reference type, reference id, product) is the guarantee.
+- **Reverting writes compensating movements**, never deletions, so the ledger
+  still shows the audit happened and was undone. Reverting twice is a no-op.
+
+34 commerce tests now cover authorization, organization isolation, the stock
+invariants, the audit lifecycle and idempotency. Route
+`/modules/crm/inventory` with Stock, Audits and Movements tabs; audit detail
+supports recording counts, publishing and reverting. Product detail gained
+stock adjustment and its own movement history. One additive CRM sidebar entry.
+
+Deliberately not built yet, and named here rather than left implied: stock as
+of a date, CSV export/import of counts, and barcode scanning. The ledger makes
+all three straightforward, and the approved scope defers them until the core
+workflow works.
+
+Not yet built: Orders, Business Analytics.
+
 Beyond this approved slice, Quotations, Purchase Orders, Returns, Expenses,
 Settlements, Unit Economics, Waybills, Documents, Goals and Tasks remain
 pending. Do not build them yet.

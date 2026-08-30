@@ -756,3 +756,132 @@ export const commerceProducts = sqliteTable(
     index("commerce_products_parent_idx").on(table.parentProductId),
   ],
 );
+
+/**
+ * Commerce: inventory.
+ *
+ * Stock is not a mutable field on the product. A balance row holds the current
+ * quantity and an append-only movement ledger holds how it got there, so a
+ * count can always be explained and a mistake is corrected by a compensating
+ * movement rather than by editing history.
+ */
+export const commerceInventoryBalances = sqliteTable(
+  "commerce_inventory_balances",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    productId: text("product_id")
+      .notNull()
+      .references(() => commerceProducts.id, { onDelete: "cascade" }),
+    quantityOnHand: integer("quantity_on_hand").notNull().default(0),
+    updatedAt: text("updated_at")
+      .notNull()
+      .default(sql`(current_timestamp)`),
+  },
+  (table) => [
+    // One balance per product per tenant; the ledger carries the history.
+    uniqueIndex("commerce_inventory_balances_org_product_idx").on(
+      table.organizationId,
+      table.productId,
+    ),
+  ],
+);
+
+export const commerceStockMovements = sqliteTable(
+  "commerce_stock_movements",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    productId: text("product_id")
+      .notNull()
+      .references(() => commerceProducts.id, { onDelete: "cascade" }),
+    movementType: text("movement_type", {
+      enum: ["receipt", "sale", "return", "adjustment", "audit"],
+    }).notNull(),
+    // Signed: negative removes stock. Storing the delta rather than a before
+    // and after keeps the ledger append-only and replayable.
+    quantityDelta: integer("quantity_delta").notNull(),
+    reason: text("reason"),
+    // Together these make a movement idempotent: the same source event can be
+    // applied once, whatever retries it.
+    referenceType: text("reference_type"),
+    referenceId: text("reference_id"),
+    actorUserId: text("actor_user_id"),
+    createdAt: createdAt(),
+  },
+  (table) => [
+    index("commerce_stock_movements_org_product_idx").on(
+      table.organizationId,
+      table.productId,
+      table.createdAt,
+    ),
+    uniqueIndex("commerce_stock_movements_reference_idx").on(
+      table.organizationId,
+      table.referenceType,
+      table.referenceId,
+      table.productId,
+    ),
+  ],
+);
+
+export const commerceInventoryAudits = sqliteTable(
+  "commerce_inventory_audits",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    note: text("note"),
+    // A published audit has written its movements; reverting writes
+    // compensating ones and never deletes them.
+    status: text("status", { enum: ["draft", "published", "reverted"] })
+      .notNull()
+      .default("draft"),
+    createdByUserId: text("created_by_user_id"),
+    publishedAt: text("published_at"),
+    revertedAt: text("reverted_at"),
+    createdAt: createdAt(),
+    updatedAt: text("updated_at")
+      .notNull()
+      .default(sql`(current_timestamp)`),
+  },
+  (table) => [
+    index("commerce_inventory_audits_org_status_idx").on(
+      table.organizationId,
+      table.status,
+    ),
+  ],
+);
+
+export const commerceInventoryAuditItems = sqliteTable(
+  "commerce_inventory_audit_items",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    auditId: text("audit_id")
+      .notNull()
+      .references(() => commerceInventoryAudits.id, { onDelete: "cascade" }),
+    productId: text("product_id")
+      .notNull()
+      .references(() => commerceProducts.id, { onDelete: "cascade" }),
+    // Captured when the line is added, so a later movement does not silently
+    // change what the count was measured against.
+    expectedQuantity: integer("expected_quantity").notNull().default(0),
+    countedQuantity: integer("counted_quantity").notNull().default(0),
+    createdAt: createdAt(),
+  },
+  (table) => [
+    uniqueIndex("commerce_inventory_audit_items_audit_product_idx").on(
+      table.auditId,
+      table.productId,
+    ),
+    index("commerce_inventory_audit_items_org_idx").on(table.organizationId),
+  ],
+);

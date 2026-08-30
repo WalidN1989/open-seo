@@ -1,8 +1,14 @@
 import { createServerFn } from "@tanstack/react-start";
 import { CommerceService } from "@/server/features/commerce/services/CommerceService";
+import { InventoryService } from "@/server/features/commerce/services/InventoryService";
 import { requireAuthenticatedContext } from "@/serverFunctions/middleware";
 import {
+  adjustStockSchema,
+  auditIdSchema,
+  createAuditSchema,
   createProductSchema,
+  listMovementsSchema,
+  recordAuditCountSchema,
   listProductsSchema,
   productIdSchema,
   updateProductSchema,
@@ -34,4 +40,85 @@ export const updateCommerceProduct = createServerFn({ method: "POST" })
   .validator(updateProductSchema)
   .handler(({ context, data }) =>
     CommerceService.updateProduct(context.organizationId, context.userId, data),
+  );
+
+export const getInventoryOverview = createServerFn({ method: "GET" })
+  .middleware(requireAuthenticatedContext)
+  .handler(({ context }) =>
+    InventoryService.getStockOverview(context.organizationId, context.userId),
+  );
+
+export const listStockMovements = createServerFn({ method: "GET" })
+  .middleware(requireAuthenticatedContext)
+  .validator(listMovementsSchema)
+  .handler(({ context, data }) =>
+    InventoryService.listMovements(
+      context.organizationId,
+      context.userId,
+      data,
+    ),
+  );
+
+export const adjustProductStock = createServerFn({ method: "POST" })
+  .middleware(requireAuthenticatedContext)
+  .validator(adjustStockSchema)
+  .handler(({ context, data }) =>
+    InventoryService.adjustStock(context.organizationId, context.userId, data),
+  );
+
+export const listInventoryAudits = createServerFn({ method: "GET" })
+  .middleware(requireAuthenticatedContext)
+  .handler(({ context }) =>
+    InventoryService.listAudits(context.organizationId, context.userId),
+  );
+
+export const getInventoryAudit = createServerFn({ method: "GET" })
+  .middleware(requireAuthenticatedContext)
+  .validator(auditIdSchema)
+  .handler(({ context, data }) =>
+    InventoryService.getAudit(
+      context.organizationId,
+      context.userId,
+      data.auditId,
+    ),
+  );
+
+export const createInventoryAudit = createServerFn({ method: "POST" })
+  .middleware(requireAuthenticatedContext)
+  .validator(createAuditSchema)
+  .handler(({ context, data }) =>
+    InventoryService.createAudit(context.organizationId, context.userId, data),
+  );
+
+export const recordInventoryAuditCount = createServerFn({ method: "POST" })
+  .middleware(requireAuthenticatedContext)
+  .validator(recordAuditCountSchema)
+  .handler(({ context, data }) =>
+    InventoryService.recordAuditCount(
+      context.organizationId,
+      context.userId,
+      data,
+    ),
+  );
+
+export const publishInventoryAudit = createServerFn({ method: "POST" })
+  .middleware(requireAuthenticatedContext)
+  .validator(auditIdSchema)
+  .handler(({ context, data }) =>
+    InventoryService.publishAudit(
+      context.organizationId,
+      context.userId,
+      data.auditId,
+    ),
+  );
+
+export const revertInventoryAudit = createServerFn({ method: "POST" })
+  .middleware(requireAuthenticatedContext)
+  .validator(auditIdSchema)
+  .handler(({ context, data }) =>
+    InventoryService.revertAudit(
+      context.organizationId,
+      context.userId,
+      data.auditId,
+    ),
   );
