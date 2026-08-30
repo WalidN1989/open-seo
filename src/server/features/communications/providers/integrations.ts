@@ -45,8 +45,10 @@ async function checkedJson(
   url: string,
   headers: Record<string, string>,
   fetcher: typeof fetch,
+  init?: Pick<RequestInit, "method" | "body">,
 ) {
   const response = await fetcher(url, {
+    ...init,
     headers,
     redirect: "error",
     signal: AbortSignal.timeout(20_000),
@@ -56,6 +58,52 @@ async function checkedJson(
     throw new Error(`Provider returned HTTP ${response.status}.`);
   }
   return body;
+}
+
+function parseObjectJson(value: string) {
+  const parsed: unknown = JSON.parse(value);
+  return z.record(z.string(), z.unknown()).parse(parsed);
+}
+
+export async function runApifyActor(
+  connection: IntegrationRecord,
+  input: { actorId: string; inputJson: string },
+  fetcher: typeof fetch = fetch,
+) {
+  if (connection.providerKey !== "apify")
+    throw new Error("This action requires an Apify connection.");
+  const key = await apiKey(connection, "API_TOKEN");
+  return checkedJson(
+    `https://api.apify.com/v2/acts/${encodeURIComponent(input.actorId)}/runs?waitForFinish=60`,
+    {
+      Authorization: `Bearer ${key}`,
+      "Content-Type": "application/json",
+    },
+    fetcher,
+    { method: "POST", body: JSON.stringify(parseObjectJson(input.inputJson)) },
+  );
+}
+
+export async function scrapeWithFirecrawl(
+  connection: IntegrationRecord,
+  input: { url: string },
+  fetcher: typeof fetch = fetch,
+) {
+  if (connection.providerKey !== "firecrawl")
+    throw new Error("This action requires a Firecrawl connection.");
+  const key = await apiKey(connection);
+  return checkedJson(
+    "https://api.firecrawl.dev/v2/scrape",
+    {
+      Authorization: `Bearer ${key}`,
+      "Content-Type": "application/json",
+    },
+    fetcher,
+    {
+      method: "POST",
+      body: JSON.stringify({ url: input.url, formats: ["markdown"] }),
+    },
+  );
 }
 
 export async function testIntegrationConnection(

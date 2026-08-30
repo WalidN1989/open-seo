@@ -22,6 +22,7 @@ import type {
   endVoiceConversationSchema,
   launchWhatsappCampaignSchema,
   updateWhatsappConversationSchema,
+  runIntegrationActionSchema,
 } from "@/types/schemas/communications";
 import { CommunicationsRepository } from "../repositories/CommunicationsRepository";
 import {
@@ -38,7 +39,11 @@ import {
 import { deliverWebhook, validateWebhookUrl } from "../providers/webhooks";
 import { speakWithDeepgram, transcribeWithDeepgram } from "../providers/voice";
 import { generateWhatsappAiReply } from "../providers/whatsapp-ai";
-import { testIntegrationConnection } from "../providers/integrations";
+import {
+  runApifyActor,
+  scrapeWithFirecrawl,
+  testIntegrationConnection,
+} from "../providers/integrations";
 import { generateVoiceAgentReply } from "../providers/voice-ai";
 import { BusinessAuditRepository } from "@/server/features/business-modules/repositories/BusinessAuditRepository";
 import { BusinessModuleRepository } from "@/server/features/business-modules/repositories/BusinessModuleRepository";
@@ -594,6 +599,42 @@ async function testIntegration(
   }
 }
 
+async function runIntegrationAction(
+  organizationId: string,
+  userId: string,
+  input: z.infer<typeof runIntegrationActionSchema>,
+) {
+  await BusinessModuleService.requireAccess(
+    organizationId,
+    userId,
+    "integrations",
+    "manage",
+  );
+  const connection = await CommunicationsRepository.getIntegration(
+    organizationId,
+    input.connectionId,
+  );
+  if (!connection || connection.status !== "connected")
+    throw new Error("Connect and test this provider before running actions.");
+  const result =
+    input.action === "apify_run_actor"
+      ? await runApifyActor(connection, input)
+      : await scrapeWithFirecrawl(connection, input);
+  const resultPreview = JSON.stringify(result).slice(0, 50_000);
+  await BusinessAuditRepository.record({
+    organizationId,
+    actorUserId: userId,
+    action: `integration.${input.action}`,
+    targetType: "integration_connection",
+    targetId: connection.id,
+    metadata:
+      input.action === "apify_run_actor"
+        ? { actorId: input.actorId }
+        : { url: input.url },
+  });
+  return { action: input.action, resultPreview };
+}
+
 async function processWhatsappWebhook(
   connectionId: string,
   requestUrl: string,
@@ -993,6 +1034,7 @@ export const CommunicationsService = {
   launchWhatsappCampaign,
   processWhatsappWebhook,
   retryWebhookDelivery,
+  runIntegrationAction,
   sendWhatsappMessage,
   startVoiceConversation,
   synthesizeVoiceSpeech,

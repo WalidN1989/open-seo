@@ -32,6 +32,7 @@ import {
   startVoiceConversation,
   transcribeVoiceAudio,
   updateWhatsappConversation,
+  runIntegrationAction,
 } from "@/serverFunctions/communications";
 import { getStandardErrorMessage } from "@/client/lib/error-messages";
 import { createWhatsappConnectionSchema } from "@/types/schemas/communications";
@@ -694,6 +695,11 @@ export function VoiceWorkspace() {
 export function IntegrationsWorkspace() {
   const client = useQueryClient();
   const [adding, setAdding] = useState<"integration" | "webhook" | null>(null);
+  const [runningProvider, setRunningProvider] = useState<{
+    id: string;
+    providerKey: string;
+  } | null>(null);
+  const [actionResult, setActionResult] = useState<string | null>(null);
   const query = useQuery({
     queryKey: ["integrations", "workspace"],
     queryFn: () => getIntegrationsWorkspace(),
@@ -740,6 +746,27 @@ export function IntegrationsWorkspace() {
     onSuccess: async (result) => {
       await client.invalidateQueries({ queryKey: ["integrations"] });
       toast.success(result.detail);
+    },
+    onError: showError,
+  });
+  const providerAction = useMutation({
+    mutationFn: (
+      data:
+        | {
+            connectionId: string;
+            action: "apify_run_actor";
+            actorId: string;
+            inputJson: string;
+          }
+        | {
+            connectionId: string;
+            action: "firecrawl_scrape";
+            url: string;
+          },
+    ) => runIntegrationAction({ data }),
+    onSuccess: (result) => {
+      setActionResult(result.resultPreview);
+      toast.success("Provider action completed");
     },
     onError: showError,
   });
@@ -812,6 +839,22 @@ export function IntegrationsWorkspace() {
                 >
                   Test
                 </button>
+                {item.status === "connected" &&
+                (item.providerKey === "apify" ||
+                  item.providerKey === "firecrawl") ? (
+                  <button
+                    className="btn btn-primary btn-xs"
+                    onClick={() => {
+                      setRunningProvider({
+                        id: item.id,
+                        providerKey: item.providerKey,
+                      });
+                      setActionResult(null);
+                    }}
+                  >
+                    Run
+                  </button>
+                ) : null}
               </div>
             ))
           ) : (
@@ -832,6 +875,42 @@ export function IntegrationsWorkspace() {
           )}
         </Panel>
       </div>
+      {runningProvider?.providerKey === "apify" ? (
+        <Panel title="Run Apify actor" icon={Cable}>
+          <SimpleForm
+            fields={["actorId", "inputJson"]}
+            onSubmit={(values) =>
+              providerAction.mutate({
+                connectionId: runningProvider.id,
+                action: "apify_run_actor",
+                actorId: values.actorId,
+                inputJson: values.inputJson || "{}",
+              })
+            }
+          />
+        </Panel>
+      ) : null}
+      {runningProvider?.providerKey === "firecrawl" ? (
+        <Panel title="Scrape with Firecrawl" icon={Cable}>
+          <SimpleForm
+            fields={["url"]}
+            onSubmit={(values) =>
+              providerAction.mutate({
+                connectionId: runningProvider.id,
+                action: "firecrawl_scrape",
+                url: values.url,
+              })
+            }
+          />
+        </Panel>
+      ) : null}
+      {actionResult ? (
+        <Panel title="Provider result" icon={FileText}>
+          <pre className="max-h-96 overflow-auto whitespace-pre-wrap p-4 text-xs">
+            {actionResult}
+          </pre>
+        </Panel>
+      ) : null}
       <Panel title="Available provider adapters" icon={Cable}>
         {integrationProviders.map((provider) => (
           <Row

@@ -87,6 +87,29 @@ export const createIntegrationSchema = z.object({
 export const testIntegrationSchema = z.object({
   connectionId: z.string().min(1),
 });
+const httpsUrlSchema = z
+  .url()
+  .max(2048)
+  .refine(
+    (value) => new URL(value).protocol === "https:",
+    "HTTPS is required.",
+  );
+export const runIntegrationActionSchema = z.discriminatedUnion("action", [
+  z.object({
+    connectionId: z.string().min(1),
+    action: z.literal("apify_run_actor"),
+    actorId: z
+      .string()
+      .trim()
+      .regex(/^[A-Za-z0-9_.~-]{1,200}$/),
+    inputJson: z.string().trim().max(100_000).default("{}"),
+  }),
+  z.object({
+    connectionId: z.string().min(1),
+    action: z.literal("firecrawl_scrape"),
+    url: httpsUrlSchema,
+  }),
+]);
 export const createWebhookEndpointSchema = z.object({
   name: z.string().trim().min(1).max(100),
   url: z.url().max(2048),

@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { searchHunterDomain, testIntegrationConnection } from "./integrations";
+import {
+  runApifyActor,
+  scrapeWithFirecrawl,
+  searchHunterDomain,
+  testIntegrationConnection,
+} from "./integrations";
 
 describe("integration provider health checks", () => {
   it.each([
@@ -76,5 +81,57 @@ describe("Hunter lead discovery", () => {
       ),
     ).resolves.toHaveLength(2);
     delete process.env.TEST_HUNTER_API_KEY;
+  });
+});
+
+describe("executable integration adapters", () => {
+  it("runs an Apify actor with bounded JSON input and bearer auth", async () => {
+    process.env.TEST_APIFY_API_TOKEN = "apify-secret";
+    const fetcher = async (input: RequestInfo | URL, init?: RequestInit) => {
+      expect(input).toBe(
+        "https://api.apify.com/v2/acts/acme~leads/runs?waitForFinish=60",
+      );
+      expect(init).toMatchObject({
+        method: "POST",
+        body: '{"query":"plumbers"}',
+        headers: {
+          Authorization: "Bearer apify-secret",
+          "Content-Type": "application/json",
+        },
+      });
+      return Response.json({ data: { id: "run-1" } });
+    };
+    await expect(
+      runApifyActor(
+        { providerKey: "apify", credentialReference: "TEST_APIFY" },
+        { actorId: "acme~leads", inputJson: '{"query":"plumbers"}' },
+        fetcher,
+      ),
+    ).resolves.toMatchObject({ data: { id: "run-1" } });
+    delete process.env.TEST_APIFY_API_TOKEN;
+  });
+
+  it("scrapes an HTTPS URL through Firecrawl", async () => {
+    process.env.TEST_FIRECRAWL_API_KEY = "fire-secret";
+    const fetcher = async (input: RequestInfo | URL, init?: RequestInit) => {
+      expect(input).toBe("https://api.firecrawl.dev/v2/scrape");
+      expect(init).toMatchObject({
+        method: "POST",
+        body: '{"url":"https://example.com","formats":["markdown"]}',
+        headers: {
+          Authorization: "Bearer fire-secret",
+          "Content-Type": "application/json",
+        },
+      });
+      return Response.json({ success: true, data: { markdown: "Hello" } });
+    };
+    await expect(
+      scrapeWithFirecrawl(
+        { providerKey: "firecrawl", credentialReference: "TEST_FIRECRAWL" },
+        { url: "https://example.com" },
+        fetcher,
+      ),
+    ).resolves.toMatchObject({ success: true });
+    delete process.env.TEST_FIRECRAWL_API_KEY;
   });
 });

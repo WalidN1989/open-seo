@@ -92,6 +92,11 @@ workspace, import discovered people as CRM contacts, and create deduplicated
 pipeline leads with source and confidence context. The workflow requires
 active Leads, CRM, and Integrations access and records a tenant audit event.
 
+Apify and Firecrawl also expose guarded actions in the Integrations workspace.
+An authorized tenant can run an Apify actor with validated JSON input or scrape
+an HTTPS page through Firecrawl, inspect a bounded result preview, and retain an
+audit record without exposing the provider credential to the browser.
+
 Pending human touch:
 
 - Authorize or manually add `ANTHROPIC_API_KEY` to the Open SEO Railway

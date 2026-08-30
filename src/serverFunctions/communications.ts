@@ -21,6 +21,7 @@ import {
   endVoiceConversationSchema,
   launchWhatsappCampaignSchema,
   updateWhatsappConversationSchema,
+  runIntegrationActionSchema,
 } from "@/types/schemas/communications";
 
 export const getWhatsappWorkspace = createServerFn({ method: "GET" })
@@ -203,6 +204,16 @@ export const testIntegration = createServerFn({ method: "POST" })
   .validator(testIntegrationSchema)
   .handler(({ context, data }) =>
     CommunicationsService.testIntegration(
+      context.organizationId,
+      context.userId,
+      data,
+    ),
+  );
+export const runIntegrationAction = createServerFn({ method: "POST" })
+  .middleware(requireAuthenticatedContext)
+  .validator(runIntegrationActionSchema)
+  .handler(({ context, data }) =>
+    CommunicationsService.runIntegrationAction(
       context.organizationId,
       context.userId,
       data,
