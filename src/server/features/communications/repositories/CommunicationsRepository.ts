@@ -1,5 +1,5 @@
 /* oxlint-disable max-lines */
-import { and, desc, eq } from "drizzle-orm";
+import { and, count, desc, eq } from "drizzle-orm";
 import { db } from "@/db";
 import {
   integrationConnections,
@@ -286,6 +286,7 @@ async function getWhatsappWorkspace(organizationId: string) {
     connections,
     conversations,
     contacts,
+    messageStats,
     templates,
     campaigns,
     automations,
@@ -305,6 +306,15 @@ async function getWhatsappWorkspace(organizationId: string) {
       .from(crmContacts)
       .where(eq(crmContacts.organizationId, organizationId))
       .orderBy(desc(crmContacts.updatedAt)),
+    db
+      .select({
+        direction: whatsappMessages.direction,
+        status: whatsappMessages.status,
+        count: count(),
+      })
+      .from(whatsappMessages)
+      .where(eq(whatsappMessages.organizationId, organizationId))
+      .groupBy(whatsappMessages.direction, whatsappMessages.status),
     db
       .select()
       .from(whatsappTemplates)
@@ -329,6 +339,7 @@ async function getWhatsappWorkspace(organizationId: string) {
     connections,
     conversations,
     contacts,
+    messageStats,
     templates,
     campaigns,
     automations,

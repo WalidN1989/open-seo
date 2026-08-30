@@ -1,3 +1,4 @@
+/* oxlint-disable max-lines-per-function */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { Building2, CalendarDays, Inbox, Plus, UserRound } from "lucide-react";
@@ -98,6 +99,14 @@ export function CrmWorkspace() {
         {getStandardErrorMessage(query.error)}
       </div>
     );
+  const workspace = query.data!;
+  const openInquiries = workspace.inquiries.filter(
+    (inquiry) => inquiry.status === "open",
+  );
+  const now = new Date().toISOString();
+  const upcomingMeetings = workspace.meetings.filter(
+    (meeting) => meeting.status === "scheduled" && meeting.startsAt >= now,
+  );
 
   return (
     <div className="space-y-6">
@@ -135,6 +144,12 @@ export function CrmWorkspace() {
             <Plus className="size-4" /> Contact
           </button>
         </div>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <CrmStat label="Contacts" value={workspace.contacts.length} />
+        <CrmStat label="Companies" value={workspace.companies.length} />
+        <CrmStat label="Open inquiries" value={openInquiries.length} />
+        <CrmStat label="Upcoming meetings" value={upcomingMeetings.length} />
       </div>
       {mode === "contact" ? (
         <InlineForm
@@ -373,6 +388,15 @@ function InlineForm({
 
 function Empty({ text }: { text: string }) {
   return <p className="p-8 text-center text-sm text-base-content/40">{text}</p>;
+}
+
+function CrmStat({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="rounded-xl border border-base-300 p-4">
+      <p className="text-xs uppercase text-base-content/50">{label}</p>
+      <p className="text-2xl font-semibold">{value}</p>
+    </div>
+  );
 }
 
 function fieldValue(form: FormData, name: string) {

@@ -164,6 +164,14 @@ export function WhatsappWorkspace() {
   if (query.isLoading) return <Loading />;
   if (query.isError) return <ErrorBox error={query.error} />;
   const data = query.data!;
+  const messageCount = (direction?: string, status?: string) =>
+    data.messageStats
+      .filter(
+        (item) =>
+          (!direction || item.direction === direction) &&
+          (!status || item.status === status),
+      )
+      .reduce((sum, item) => sum + item.count, 0);
   return (
     <Workspace
       title="WhatsApp"
@@ -284,6 +292,9 @@ export function WhatsappWorkspace() {
           ["Campaigns", data.campaigns.length],
           ["Automations", data.automations.length],
           ["Order requests", data.orders.length],
+          ["Inbound messages", messageCount("inbound")],
+          ["Outbound messages", messageCount("outbound")],
+          ["Failed messages", messageCount(undefined, "failed")],
         ]}
       />
       <Panel title="Shared inbox" icon={MessageCircleMore}>
