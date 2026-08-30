@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useParams } from "@tanstack/react-router";
 import { toast } from "sonner";
-import { ArrowLeft, Check, RefreshCw } from "lucide-react";
+import { ArrowLeft, Check } from "lucide-react";
 import {
   checkIntegrationHealth,
   setIntegrationSyncSchedule,
@@ -10,16 +10,10 @@ import {
 import { getIntegrationsWorkspace } from "@/serverFunctions/communications";
 import { integrationCatalogue } from "@/shared/integration-catalogue";
 import { ProviderConnectPanel } from "./ProviderConnectPanel";
+import { CatalogueSyncPanel } from "./CatalogueSyncPanel";
 import { getStandardErrorMessage } from "@/client/lib/error-messages";
 
 const WORKSPACE_KEY = ["integrations", "workspace"];
-
-const INTERVALS = [
-  { value: 15, label: "Check every 15 minutes" },
-  { value: 60, label: "Check every hour" },
-  { value: 360, label: "Check every 6 hours" },
-  { value: 1440, label: "Check once a day" },
-];
 
 export function IntegrationProviderDetailView() {
   const { providerKey } = useParams({
@@ -32,6 +26,15 @@ export function IntegrationProviderDetailView() {
   const workspace = useQuery({
     queryKey: WORKSPACE_KEY,
     queryFn: () => getIntegrationsWorkspace(),
+    // A large catalogue syncs across several scheduler runs. Without polling
+    // the panel would sit at whatever it said when the page loaded, which
+    // reads as "nothing is happening" for minutes at a time.
+    refetchInterval: (query) => {
+      const status = query.state.data?.connections.find(
+        (item) => item.providerKey === providerKey,
+      )?.syncStatus;
+      return status === "running" || status === "queued" ? 4000 : false;
+    },
   });
 
   const connection = workspace.data?.connections.find(
@@ -140,70 +143,13 @@ export function IntegrationProviderDetailView() {
           ) : null}
 
           {showsSync ? (
-            <div className="rounded-xl border border-base-300 p-4">
-              <h2 className="text-sm font-semibold">Catalogue sync</h2>
-              <p className="mt-1 text-xs text-base-content/60">
-                {connection.syncedCount} products imported
-              </p>
-              {connection.lastSyncedAt ? (
-                <p className="mt-1 text-xs text-base-content/40">
-                  Last synced{" "}
-                  {new Date(connection.lastSyncedAt).toLocaleString()}
-                </p>
-              ) : null}
-              {connection.syncError ? (
-                <p className="mt-2 text-xs text-error">
-                  {connection.syncError}
-                </p>
-              ) : null}
-              <button
-                className="btn btn-outline btn-xs mt-3 w-full"
-                disabled={sync.isPending || connection.syncStatus === "running"}
-                onClick={() => sync.mutate()}
-              >
-                <RefreshCw className="size-3" />
-                {connection.syncStatus === "running"
-                  ? "Syncing..."
-                  : "Sync now"}
-              </button>
-
-              <label className="mt-4 flex items-center justify-between gap-2 text-xs">
-                <span>Keep in sync automatically</span>
-                <input
-                  type="checkbox"
-                  className="checkbox checkbox-sm"
-                  checked={connection.autoSync}
-                  disabled={schedule.isPending}
-                  onChange={(event) =>
-                    schedule.mutate({
-                      autoSync: event.target.checked,
-                      syncIntervalMinutes: connection.syncIntervalMinutes,
-                    })
-                  }
-                />
-              </label>
-              <select
-                className="select select-bordered select-sm mt-2 w-full"
-                value={connection.syncIntervalMinutes}
-                disabled={schedule.isPending || !connection.autoSync}
-                onChange={(event) =>
-                  schedule.mutate({
-                    autoSync: connection.autoSync,
-                    syncIntervalMinutes: Number(event.target.value),
-                  })
-                }
-              >
-                {INTERVALS.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-              <p className="mt-2 text-xs text-base-content/40">
-                Only products changed since the last check are fetched, so price
-                and stock edits in your store appear here on their own.
-              </p>
-            </div>
+            <CatalogueSyncPanel
+              connection={connection}
+              onSync={() => sync.mutate()}
+              onSchedule={(input) => schedule.mutate(input)}
+              syncPending={sync.isPending}
+              schedulePending={schedule.isPending}
+            />
           ) : null}
 
           {entry.howToConnect?.length ? (

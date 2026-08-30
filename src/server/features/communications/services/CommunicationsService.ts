@@ -2,14 +2,16 @@
 import type { z } from "zod";
 import { BusinessModuleService } from "@/server/features/business-modules/services/BusinessModuleService";
 import {
-  credentialKeysSet,
+  decryptCredentials,
   encryptCredentials,
   mergeCredentials,
 } from "@/server/lib/connection-secrets";
+import { integrationCatalogue } from "@/shared/integration-catalogue";
 import { getOptionalEnvValue } from "@/server/lib/runtime-env";
 import type {
   createIntegrationSchema,
   deleteIntegrationSchema,
+  revealIntegrationCredentialSchema,
   createVoiceAgentSchema,
   appendVoiceTranscriptSchema,
   createWebhookEndpointSchema,
@@ -609,11 +611,35 @@ async function transcribeVoiceAudio(
  * secret exists so it can say "leave blank to keep"; it must never be handed
  * the value, encrypted or not.
  */
-async function withoutSecrets<T extends { credentials?: string | null }>(
+async function withoutSecrets<
+  T extends { credentials?: string | null; providerKey?: string },
+>(
   connection: T,
-): Promise<Omit<T, "credentials"> & { credentialKeysSet: string[] }> {
+): Promise<
+  Omit<T, "credentials"> & {
+    credentialKeysSet: string[];
+    credentialValues: Record<string, string>;
+  }
+> {
   const { credentials, ...rest } = connection;
-  return { ...rest, credentialKeysSet: await credentialKeysSet(credentials) };
+  const stored = await decryptCredentials(credentials);
+  const entry = integrationCatalogue.find(
+    (item) => item.key === connection.providerKey,
+  );
+  // A store URL is not a secret, and hiding it means the page cannot tell you
+  // which store it is connected to. Only fields declared secret are withheld;
+  // those are revealed one at a time through their own audited call.
+  const visible: Record<string, string> = {};
+  for (const field of entry?.credentialFields ?? []) {
+    if (field.type === "secret") continue;
+    const value = stored[field.key];
+    if (value) visible[field.key] = value;
+  }
+  return {
+    ...rest,
+    credentialKeysSet: Object.keys(stored).toSorted(),
+    credentialValues: visible,
+  };
 }
 
 async function integrationsWorkspace(organizationId: string, userId: string) {
@@ -701,6 +727,41 @@ async function updateIntegration(
     { providerKey: connection.providerKey },
   );
   return withoutSecrets(connection);
+}
+
+/**
+ * Hand back one stored secret so an owner can check what is configured.
+ * Admin-only and audited: reading a credential is a privileged act even when
+ * it is your own, and the trail is what makes that safe to offer at all.
+ */
+async function revealIntegrationCredential(
+  organizationId: string,
+  userId: string,
+  input: z.infer<typeof revealIntegrationCredentialSchema>,
+) {
+  await BusinessModuleService.requireAccess(
+    organizationId,
+    userId,
+    "integrations",
+    "admin",
+  );
+  const connection = await CommunicationsRepository.getIntegration(
+    organizationId,
+    input.connectionId,
+  );
+  if (!connection) throw new Error("Integration connection not found.");
+  const stored = await decryptCredentials(connection.credentials);
+  const value = stored[input.fieldKey];
+  if (!value) throw new Error("That credential is not set.");
+  await auditMutation(
+    organizationId,
+    userId,
+    "integration.credential.revealed",
+    "integration_connection",
+    connection.id,
+    { providerKey: connection.providerKey, fieldKey: input.fieldKey },
+  );
+  return { value };
 }
 
 async function deleteIntegration(
@@ -1253,6 +1314,7 @@ export const CommunicationsService = {
   appendVoiceTranscript,
   createIntegration,
   deleteIntegration,
+  revealIntegrationCredential,
   createVoiceAgent,
   createWhatsappConnection,
   createWhatsappAutomation,

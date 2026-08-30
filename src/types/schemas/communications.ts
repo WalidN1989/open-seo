@@ -101,6 +101,10 @@ export const updateIntegrationSchema = z.object({
 export const deleteIntegrationSchema = z.object({
   connectionId: z.string().min(1),
 });
+export const revealIntegrationCredentialSchema = z.object({
+  connectionId: z.string().min(1),
+  fieldKey: z.string().trim().min(1).max(100),
+});
 const httpsUrlSchema = z
   .url()
   .max(2048)

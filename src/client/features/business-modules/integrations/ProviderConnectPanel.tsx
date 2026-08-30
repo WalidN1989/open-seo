@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Loader2, Trash2 } from "lucide-react";
+import { Eye, EyeOff, Loader2, Trash2 } from "lucide-react";
 import { checkIntegrationHealth } from "@/serverFunctions/commerce";
 import {
   createIntegration,
   deleteIntegration,
+  revealIntegrationCredential,
   updateIntegration,
 } from "@/serverFunctions/communications";
 import type { IntegrationCatalogueEntry } from "@/shared/integration-catalogue";
@@ -17,6 +18,7 @@ type ExistingConnection = {
   credentialReference: string | null;
   status: string;
   credentialKeysSet?: string[];
+  credentialValues?: Record<string, string>;
 };
 
 type Props = {
@@ -44,7 +46,35 @@ export function ProviderConnectPanel({
     connection?.displayName ?? entry.name,
   );
   const [values, setValues] = useState<Record<string, string>>({});
+  const [revealed, setRevealed] = useState<Record<string, string>>({});
+  const [revealing, setRevealing] = useState<string | null>(null);
   const [confirmingRemove, setConfirmingRemove] = useState(false);
+
+  // Non-secret fields come back with the connection, so the page can say which
+  // store it is talking to. A secret is fetched only when asked for.
+  const stored = connection?.credentialValues ?? {};
+
+  const reveal = async (fieldKey: string) => {
+    if (revealed[fieldKey]) {
+      setRevealed((current) => {
+        const next = { ...current };
+        delete next[fieldKey];
+        return next;
+      });
+      return;
+    }
+    setRevealing(fieldKey);
+    try {
+      const result = await revealIntegrationCredential({
+        data: { connectionId: connection!.id, fieldKey },
+      });
+      setRevealed((current) => ({ ...current, [fieldKey]: result.value }));
+    } catch (error) {
+      toast.error(getStandardErrorMessage(error));
+    } finally {
+      setRevealing(null);
+    }
+  };
 
   const refresh = () =>
     queryClient.invalidateQueries({ queryKey: workspaceKey });
@@ -97,6 +127,7 @@ export function ProviderConnectPanel({
     },
     onSuccess: async (connectionId) => {
       setValues({});
+      setRevealed({});
       await verify(connectionId);
       await refresh();
     },
@@ -172,25 +203,52 @@ export function ProviderConnectPanel({
                   </span>
                 ) : null}
               </span>
-              <input
-                className="input input-bordered input-sm w-full"
-                type={field.type === "secret" ? "password" : "text"}
-                inputMode={field.type === "url" ? "url" : undefined}
-                value={values[field.key] ?? ""}
-                onChange={(event) =>
-                  setValues((current) => ({
-                    ...current,
-                    [field.key]: event.target.value,
-                  }))
-                }
-                placeholder={
-                  field.type === "secret" && isSet
-                    ? "••••••••"
-                    : field.placeholder
-                }
-                autoComplete="off"
-                spellCheck={false}
-              />
+              <div className="join w-full">
+                <input
+                  className="input input-bordered input-sm join-item w-full"
+                  type={
+                    field.type === "secret" && !revealed[field.key]
+                      ? "password"
+                      : "text"
+                  }
+                  inputMode={field.type === "url" ? "url" : undefined}
+                  value={
+                    values[field.key] ??
+                    revealed[field.key] ??
+                    (field.type === "secret" ? "" : (stored[field.key] ?? ""))
+                  }
+                  onChange={(event) =>
+                    setValues((current) => ({
+                      ...current,
+                      [field.key]: event.target.value,
+                    }))
+                  }
+                  placeholder={
+                    field.type === "secret" && isSet
+                      ? "••••••••"
+                      : field.placeholder
+                  }
+                  autoComplete="off"
+                  spellCheck={false}
+                />
+                {field.type === "secret" && isSet && connection ? (
+                  <button
+                    type="button"
+                    className="btn btn-outline btn-sm join-item"
+                    title={revealed[field.key] ? "Hide" : "Show"}
+                    disabled={revealing === field.key}
+                    onClick={() => void reveal(field.key)}
+                  >
+                    {revealing === field.key ? (
+                      <Loader2 className="size-4 animate-spin" />
+                    ) : revealed[field.key] ? (
+                      <EyeOff className="size-4" />
+                    ) : (
+                      <Eye className="size-4" />
+                    )}
+                  </button>
+                ) : null}
+              </div>
               {field.help ? (
                 <span className="label-text-alt mt-1 text-base-content/50">
                   {field.help}

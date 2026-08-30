@@ -4,6 +4,7 @@ import { requireAuthenticatedContext } from "@/serverFunctions/middleware";
 import {
   createIntegrationSchema,
   deleteIntegrationSchema,
+  revealIntegrationCredentialSchema,
   createVoiceAgentSchema,
   appendVoiceTranscriptSchema,
   createWebhookEndpointSchema,
@@ -195,6 +196,17 @@ export const updateIntegration = createServerFn({ method: "POST" })
   .validator(updateIntegrationSchema)
   .handler(({ context, data }) =>
     CommunicationsService.updateIntegration(
+      context.organizationId,
+      context.userId,
+      data,
+    ),
+  );
+
+export const revealIntegrationCredential = createServerFn({ method: "POST" })
+  .middleware(requireAuthenticatedContext)
+  .validator(revealIntegrationCredentialSchema)
+  .handler(({ context, data }) =>
+    CommunicationsService.revealIntegrationCredential(
       context.organizationId,
       context.userId,
       data,
