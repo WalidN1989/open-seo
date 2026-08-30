@@ -254,9 +254,13 @@ pipeline.
 - **Background jobs run on Railway.** Nothing scheduled had ever executed in
   production, including rank checks and the stale-audit watchdog.
 - **Webhook retries complete.** `next_attempt_at` was written and never read.
-- **A module owns the sidebar while you are inside it**, with a switcher
-  between modules. CRM is split into Overview, Contacts, Companies, Inquiries
-  and Meetings; Integrations into Catalogue and Connections.
+- **A module owns the sidebar while you are inside it.** The five entitled
+  business modules are now mounted as persistent sidebar navigation rather
+  than hidden in a switcher or requiring a return to the module-card page.
+  Every module has a consistent Overview entry; CRM is split into Overview,
+  Contacts, Companies, Inquiries and Meetings; Integrations into Catalogue and
+  Connections. This is a navigation-only change and preserves the existing
+  OpenSEO theme and workspace UI.
 - **The integrations marketplace**: sixteen entries with categories, search and
   state, connection state read from the workspace.
 - **Account settings**: display name, email change, password change, reset link.
@@ -275,8 +279,10 @@ pipeline.
   alone.
 - **Promoting a conversation to a lead.** Inquiries already promote; extending
   it to a conversation is small and unlocks the model above.
-- **Module sidebars for WhatsApp, Voice and Leads.** Only CRM and Integrations
-  have their own sections; the rest still render as a single page.
+- **Deeper sidebar sections for WhatsApp, Voice and Leads.** They now mount in
+  the same persistent business navigator with an Overview entry, but their
+  existing single-page workspaces still need to be split into real routes
+  before more submenu items are added.
 - **No invitation email.** Better Auth creates the invitation and the UI shows
   a copyable link, but no Loops template is configured, so the link is the
   mechanism today.

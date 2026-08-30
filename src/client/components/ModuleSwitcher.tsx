@@ -1,22 +1,36 @@
 import { useQuery } from "@tanstack/react-query";
-import { Link, useNavigate } from "@tanstack/react-router";
-import { ChevronsUpDown, LayoutGrid } from "lucide-react";
+import { Link } from "@tanstack/react-router";
+import {
+  Blocks,
+  Bot,
+  ContactRound,
+  LayoutGrid,
+  MessagesSquare,
+  PlugZap,
+} from "lucide-react";
 import { getBusinessModuleAccess } from "@/serverFunctions/business-modules";
-import { businessModuleCatalog } from "@/shared/business-modules";
+import {
+  businessModuleCatalog,
+  type BusinessModuleKey,
+} from "@/shared/business-modules";
 
 /**
- * Jump straight between modules without going back out to the catalogue.
- * Inside a module the sidebar belongs to that module, which is the point, but
- * without this the only way from CRM to WhatsApp was back out and in again.
- *
- * Only modules with their own sections are navigable; the rest still open from
- * the catalogue, so this never offers a destination that behaves differently
- * from the one the user just left.
+ * Persistent business-module navigation. This deliberately uses the existing
+ * sidebar spacing, colours, active marker, and typography; only the information
+ * architecture changes. Entitlements decide which modules are visible.
  */
-const NAVIGABLE_MODULES: Record<string, string> = {
+const MODULE_ROUTES: Partial<Record<BusinessModuleKey, string>> = {
   crm: "/modules/crm",
   integrations: "/modules/integrations",
 };
+
+const MODULE_ICONS = {
+  leads: ContactRound,
+  crm: Blocks,
+  whatsapp: MessagesSquare,
+  voice: Bot,
+  integrations: PlugZap,
+} satisfies Record<BusinessModuleKey, typeof Blocks>;
 
 export function ModuleSwitcher({
   moduleKey,
@@ -25,9 +39,6 @@ export function ModuleSwitcher({
   moduleKey: string;
   onNavigate?: () => void;
 }) {
-  const navigate = useNavigate();
-  const current = businessModuleCatalog.find((item) => item.key === moduleKey);
-
   const access = useQuery({
     queryKey: ["business-modules", "access"],
     queryFn: () => getBusinessModuleAccess(),
@@ -37,65 +48,65 @@ export function ModuleSwitcher({
 
   // An unentitled module must not appear as a destination. Until the answer
   // arrives, offer only the module already open.
-  const available = (access.data ?? []).filter(
-    (item) => item.enabled && item.permission,
-  );
+  const available = access.data
+    ? access.data.filter((item) => item.enabled && item.permission)
+    : businessModuleCatalog.filter((item) => item.key === moduleKey);
 
   return (
-    <div className="dropdown dropdown-bottom w-full">
-      <div
-        tabIndex={0}
-        role="button"
-        className="flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-left text-sm hover:bg-base-300"
-      >
-        <span className="min-w-0">
-          <span className="block truncate font-medium">
-            {current?.label ?? "Module"}
-          </span>
-          <span className="block truncate text-xs text-base-content/50">
-            Business module
-          </span>
-        </span>
-        <ChevronsUpDown className="size-4 shrink-0 opacity-50" />
+    <div>
+      <div className="px-3 pb-1 pt-2 text-xs font-semibold uppercase tracking-wider text-base-content/40">
+        Business Modules
       </div>
-      <ul
-        tabIndex={0}
-        className="menu dropdown-content z-10 mt-1 w-56 rounded-box border border-base-300 bg-base-100 p-1 shadow"
-      >
+      <nav aria-label="Business modules" className="space-y-0.5">
         {available.map((item) => {
-          const to = NAVIGABLE_MODULES[item.key];
-          return (
-            <li key={item.key}>
-              <button
-                type="button"
-                className={item.key === moduleKey ? "active" : undefined}
-                onClick={() => {
-                  onNavigate?.();
-                  void navigate(
-                    to
-                      ? { to }
-                      : {
-                          to: "/modules/$moduleKey",
-                          params: { moduleKey: item.key },
-                        },
-                  );
-                }}
-              >
-                {item.label}
-              </button>
-            </li>
+          const Icon = MODULE_ICONS[item.key];
+          const active = item.key === moduleKey;
+          const sharedClass = `relative flex w-full items-center gap-2.5 rounded-md px-3 py-1.5 text-sm transition-colors ${
+            active
+              ? "bg-base-300/50 font-medium text-base-content"
+              : "text-base-content/70 hover:bg-base-300/30 hover:text-base-content"
+          }`;
+          const route = MODULE_ROUTES[item.key];
+          const content = (
+            <>
+              {active ? (
+                <span className="absolute left-0 top-1 bottom-1 w-[3px] rounded-r-full bg-primary" />
+              ) : null}
+              <Icon className="size-4 shrink-0" />
+              <span className="truncate">{item.label}</span>
+            </>
+          );
+
+          return route ? (
+            <Link
+              key={item.key}
+              to={route}
+              onClick={onNavigate}
+              className={sharedClass}
+            >
+              {content}
+            </Link>
+          ) : (
+            <Link
+              key={item.key}
+              to="/modules/$moduleKey"
+              params={{ moduleKey: item.key }}
+              onClick={onNavigate}
+              className={sharedClass}
+            >
+              {content}
+            </Link>
           );
         })}
-        <li className="menu-title mt-1 border-t border-base-300 pt-1">
-          <span className="text-xs">Workspace</span>
-        </li>
-        <li>
-          <Link to="/modules" onClick={onNavigate}>
-            <LayoutGrid className="size-4" />
-            All business modules
-          </Link>
-        </li>
-      </ul>
+        <Link
+          to="/modules"
+          onClick={onNavigate}
+          className="mt-1 flex items-center gap-2.5 rounded-md px-3 py-1.5 text-sm text-base-content/60 transition-colors hover:bg-base-300/30 hover:text-base-content"
+        >
+          <LayoutGrid className="size-4 shrink-0" />
+          <span>Manage modules</span>
+        </Link>
+      </nav>
     </div>
   );
 }

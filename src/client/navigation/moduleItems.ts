@@ -75,5 +75,26 @@ const integrationsNavGroups = [
 export function getModuleNavGroups(moduleKey: string) {
   if (moduleKey === "crm") return crmNavGroups;
   if (moduleKey === "integrations") return integrationsNavGroups;
-  return [];
+  const module = {
+    leads: { label: "Leads", icon: UserRound },
+    whatsapp: { label: "WhatsApp", icon: Inbox },
+    voice: { label: "Voice Agent", icon: LayoutDashboard },
+  }[moduleKey];
+
+  if (!module) return [];
+
+  return [
+    {
+      label: module.label,
+      items: [
+        linkOptions({
+          to: "/modules/$moduleKey",
+          params: { moduleKey },
+          label: "Overview",
+          icon: module.icon,
+          activeOptions: { exact: true, includeSearch: false },
+        }),
+      ],
+    },
+  ];
 }

@@ -150,7 +150,7 @@ export function Sidebar({ projectId, onNavigate, onClose }: SidebarProps) {
       </div>
 
       {inModule && moduleKey ? (
-        <div className="px-3 pb-2">
+        <div className="px-2 pb-1">
           <ModuleSwitcher moduleKey={moduleKey} onNavigate={onNavigate} />
         </div>
       ) : (
