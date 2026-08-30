@@ -1,5 +1,15 @@
 # Agent guidance
 
+## Recent cross-agent work
+
+Background jobs and the Railway deployment changed on 2026-08-30, in work that
+continued from a Codex session that stopped mid-edit. Read
+`docs/HANDOFF_SCHEDULER_AND_DEPLOY.md` before touching the scheduler, the
+deployment, or `providers/integrations.ts`. It covers where that session left
+off, how scheduled work now runs on a platform with no cron, two deployment
+traps that caused outages, and which work is deliberately deferred so it is not
+rebuilt early.
+
 ## Engineering principles
 
 - Prefer simple, readable, flat code with minimal indirection.
