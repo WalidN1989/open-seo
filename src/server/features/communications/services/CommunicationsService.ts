@@ -17,7 +17,6 @@ import type {
   testIntegrationSchema,
   retryWebhookDeliverySchema,
   startVoiceConversationSchema,
-  synthesizeVoiceSpeechSchema,
   transcribeVoiceAudioSchema,
   endVoiceConversationSchema,
   launchWhatsappCampaignSchema,
@@ -597,37 +596,6 @@ async function transcribeVoiceAudio(
   return result;
 }
 
-async function synthesizeVoiceSpeech(
-  organizationId: string,
-  userId: string,
-  input: z.infer<typeof synthesizeVoiceSpeechSchema>,
-) {
-  await BusinessModuleService.requireAccess(
-    organizationId,
-    userId,
-    "voice",
-    "manage",
-  );
-  const { agent } = await voiceSessionContext(
-    organizationId,
-    input.conversationId,
-  );
-  if (agent.textToSpeechProvider !== "deepgram") {
-    throw new Error("This voice agent is not configured for Deepgram speech.");
-  }
-  const result = await speakWithDeepgram(
-    agent.credentialReference,
-    input.text,
-    input.model,
-  );
-  await CommunicationsRepository.appendVoiceTranscript(organizationId, {
-    conversationId: input.conversationId,
-    speaker: "agent",
-    transcript: input.text,
-  });
-  return result;
-}
-
 async function integrationsWorkspace(organizationId: string, userId: string) {
   await BusinessModuleService.requireAccess(
     organizationId,
@@ -1171,7 +1139,6 @@ export const CommunicationsService = {
   runIntegrationAction,
   sendWhatsappMessage,
   startVoiceConversation,
-  synthesizeVoiceSpeech,
   testWebhookEndpoint,
   testIntegration,
   transcribeVoiceAudio,

@@ -16,7 +16,6 @@ import {
   testIntegrationSchema,
   retryWebhookDeliverySchema,
   startVoiceConversationSchema,
-  synthesizeVoiceSpeechSchema,
   transcribeVoiceAudioSchema,
   endVoiceConversationSchema,
   launchWhatsappCampaignSchema,
@@ -165,16 +164,6 @@ export const transcribeVoiceAudio = createServerFn({ method: "POST" })
   .validator(transcribeVoiceAudioSchema)
   .handler(({ context, data }) =>
     CommunicationsService.transcribeVoiceAudio(
-      context.organizationId,
-      context.userId,
-      data,
-    ),
-  );
-export const synthesizeVoiceSpeech = createServerFn({ method: "POST" })
-  .middleware(requireAuthenticatedContext)
-  .validator(synthesizeVoiceSpeechSchema)
-  .handler(({ context, data }) =>
-    CommunicationsService.synthesizeVoiceSpeech(
       context.organizationId,
       context.userId,
       data,

@@ -24,7 +24,7 @@ export function validateWebhookUrl(value: string): URL {
   return url;
 }
 
-export async function resolveWebhookSecret(reference: string): Promise<string> {
+async function resolveWebhookSecret(reference: string): Promise<string> {
   const name = reference
     .trim()
     .toUpperCase()

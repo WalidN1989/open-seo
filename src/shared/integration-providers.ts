@@ -36,10 +36,3 @@ export const integrationProviders = [
     credentialSuffixes: ["API_KEY"],
   },
 ] as const;
-
-export type IntegrationProviderKey =
-  (typeof integrationProviders)[number]["key"];
-
-export function findIntegrationProvider(key: string) {
-  return integrationProviders.find((provider) => provider.key === key);
-}

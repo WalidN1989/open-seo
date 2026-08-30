@@ -27,6 +27,7 @@ import {
   getWhatsappWorkspace,
   launchWhatsappCampaign,
   retryWebhookDelivery,
+  testWebhookEndpoint,
   testIntegration,
   sendWhatsappMessage,
   startVoiceConversation,
@@ -751,6 +752,21 @@ export function IntegrationsWorkspace() {
     },
     onError: showError,
   });
+  const webhookTest = useMutation({
+    mutationFn: (endpointId: string) =>
+      testWebhookEndpoint({
+        data: {
+          endpointId,
+          eventType: "openseo.webhook.test",
+          payload: { message: "OpenSEO signed webhook test" },
+        },
+      }),
+    onSuccess: async () => {
+      await client.invalidateQueries({ queryKey: ["integrations"] });
+      toast.success("Test webhook delivered");
+    },
+    onError: showError,
+  });
   const integrationTest = useMutation({
     mutationFn: (connectionId: string) =>
       testIntegration({ data: { connectionId } }),
@@ -875,11 +891,21 @@ export function IntegrationsWorkspace() {
         <Panel title="Webhooks" icon={Webhook}>
           {query.data!.webhooks.length ? (
             query.data!.webhooks.map((item) => (
-              <Row
-                key={item.id}
-                title={item.name}
-                detail={`${item.direction} · ${item.status}`}
-              />
+              <div key={item.id} className="flex items-center gap-2 pr-4">
+                <div className="min-w-0 flex-1">
+                  <Row
+                    title={item.name}
+                    detail={`${item.direction} · ${item.status}`}
+                  />
+                </div>
+                <button
+                  className="btn btn-ghost btn-xs"
+                  disabled={webhookTest.isPending}
+                  onClick={() => webhookTest.mutate(item.id)}
+                >
+                  Test
+                </button>
+              </div>
             ))
           ) : (
             <Empty text="No signed webhook endpoints configured." />

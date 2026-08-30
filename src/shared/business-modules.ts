@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const businessModuleKeys = [
+const businessModuleKeys = [
   "leads",
   "crm",
   "whatsapp",

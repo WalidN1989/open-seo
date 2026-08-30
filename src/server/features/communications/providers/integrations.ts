@@ -1,7 +1,7 @@
 import { getRequiredEnvValue } from "@/server/lib/runtime-env";
 import { z } from "zod";
 
-export type IntegrationRecord = {
+type IntegrationRecord = {
   providerKey: string;
   credentialReference: string | null;
 };

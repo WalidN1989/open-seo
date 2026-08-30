@@ -15,7 +15,7 @@ type AnthropicResponse = {
   content?: AnthropicBlock[];
   error?: { message?: string };
 };
-export type WhatsappAiAction =
+type WhatsappAiAction =
   | { name: "create_order_request"; input: Record<string, unknown> }
   | { name: "flag_for_team"; input: Record<string, unknown> };
 

@@ -7,6 +7,7 @@ import {
   createCrmLead,
   createCrmActivity,
   getLeadsWorkspace,
+  getCrmLeadActivities,
   importHunterDomainLeads,
   updateCrmLead,
 } from "@/serverFunctions/crm";
@@ -21,6 +22,12 @@ export function LeadsWorkspace() {
   const query = useQuery({
     queryKey: ["crm", "leads"],
     queryFn: () => getLeadsWorkspace(),
+  });
+  const activityQuery = useQuery({
+    queryKey: ["crm", "lead-activities", activityLeadId],
+    queryFn: () =>
+      getCrmLeadActivities({ data: { leadId: activityLeadId ?? "" } }),
+    enabled: Boolean(activityLeadId),
   });
   const createMutation = useMutation({
     mutationFn: (input: {
@@ -45,7 +52,10 @@ export function LeadsWorkspace() {
         data: { ...input, activityType: "note" },
       }),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["crm", "leads"] });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["crm", "leads"] }),
+        queryClient.invalidateQueries({ queryKey: ["crm", "lead-activities"] }),
+      ]);
       setActivityLeadId(null);
       toast.success("Lead activity recorded");
     },
@@ -308,33 +318,49 @@ export function LeadsWorkspace() {
                           Add note
                         </button>
                         {activityLeadId === row.lead.id ? (
-                          <form
-                            className="mt-2 space-y-2"
-                            onSubmit={(event) => {
-                              event.preventDefault();
-                              const form = new FormData(event.currentTarget);
-                              activityMutation.mutate({
-                                leadId: row.lead.id,
-                                subject: fieldValue(form, "subject"),
-                                notes: fieldValue(form, "notes") || undefined,
-                              });
-                            }}
-                          >
-                            <input
-                              required
-                              name="subject"
-                              className="input input-bordered input-xs w-full"
-                              placeholder="Activity subject"
-                            />
-                            <input
-                              name="notes"
-                              className="input input-bordered input-xs w-full"
-                              placeholder="Notes"
-                            />
-                            <button className="btn btn-primary btn-xs w-full">
-                              Save activity
-                            </button>
-                          </form>
+                          <div className="mt-2 space-y-2">
+                            <form
+                              className="space-y-2"
+                              onSubmit={(event) => {
+                                event.preventDefault();
+                                const form = new FormData(event.currentTarget);
+                                activityMutation.mutate({
+                                  leadId: row.lead.id,
+                                  subject: fieldValue(form, "subject"),
+                                  notes: fieldValue(form, "notes") || undefined,
+                                });
+                              }}
+                            >
+                              <input
+                                required
+                                name="subject"
+                                className="input input-bordered input-xs w-full"
+                                placeholder="Activity subject"
+                              />
+                              <input
+                                name="notes"
+                                className="input input-bordered input-xs w-full"
+                                placeholder="Notes"
+                              />
+                              <button className="btn btn-primary btn-xs w-full">
+                                Save activity
+                              </button>
+                            </form>
+                            {activityQuery.data?.slice(0, 5).map((activity) => (
+                              <div
+                                key={activity.id}
+                                className="rounded bg-base-200 p-2 text-xs"
+                              >
+                                <p className="font-medium">
+                                  {activity.subject}
+                                </p>
+                                <p className="text-base-content/50">
+                                  {activity.activityType} ·{" "}
+                                  {activity.notes || "No notes"}
+                                </p>
+                              </div>
+                            ))}
+                          </div>
                         ) : null}
                       </article>
                     ))

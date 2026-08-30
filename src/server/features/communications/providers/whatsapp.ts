@@ -15,7 +15,7 @@ export type WhatsappDeliveryUpdate = {
   status: string;
 };
 
-export type WhatsappConnectionRecord = {
+type WhatsappConnectionRecord = {
   id: string;
   provider: string;
   displayPhoneNumber: string | null;
@@ -23,7 +23,7 @@ export type WhatsappConnectionRecord = {
   credentialReference: string | null;
 };
 
-export type WhatsappSendResult = {
+type WhatsappSendResult = {
   externalMessageId: string;
   status: string;
 };

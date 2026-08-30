@@ -74,11 +74,6 @@ export const transcribeVoiceAudioSchema = z.object({
   mimeType: z.string().trim().min(1).max(100),
   language: z.string().trim().min(2).max(20).default("multi"),
 });
-export const synthesizeVoiceSpeechSchema = z.object({
-  conversationId: z.string().min(1),
-  text: z.string().trim().min(1).max(1900),
-  model: z.string().trim().min(1).max(100).default("aura-2-asteria-en"),
-});
 export const createIntegrationSchema = z.object({
   providerKey: z.string().trim().min(1).max(100),
   displayName: z.string().trim().min(1).max(200),
