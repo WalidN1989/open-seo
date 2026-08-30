@@ -17,6 +17,10 @@ const MODULE_ROUTES: Partial<Record<BusinessModuleKey, string>> = {
   integrations: "/modules/integrations",
 };
 
+function hasIcon(key: string): key is keyof typeof MODULE_ICONS {
+  return key in MODULE_ICONS;
+}
+
 const MODULE_ICONS = {
   crm: Blocks,
   whatsapp: MessagesSquare,
@@ -65,7 +69,10 @@ export function ModuleSwitcher({
       </div>
       <nav aria-label="Business" className="space-y-0.5">
         {available.map((item) => {
-          const key = item.key as Exclude<BusinessModuleKey, "leads">;
+          const key = item.key;
+          // "leads" is presented inside CRM and has no entry here; skip it
+          // rather than assert it away.
+          if (!hasIcon(key)) return null;
           const Icon = MODULE_ICONS[key];
           const active = key === activeModuleKey;
           const sharedClass = `relative flex w-full items-center gap-2.5 rounded-md px-3 py-1.5 text-sm transition-colors ${

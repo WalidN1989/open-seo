@@ -5,6 +5,7 @@ import {
   ContactRound,
   Inbox,
   LayoutDashboard,
+  Package,
   Plug,
   UserRound,
 } from "lucide-react";
@@ -56,6 +57,11 @@ const crmNavGroups = [
         to: "/modules/crm/meetings",
         label: "Meetings",
         icon: CalendarDays,
+      }),
+      linkOptions({
+        to: "/modules/crm/products",
+        label: "Products",
+        icon: Package,
       }),
     ],
   },

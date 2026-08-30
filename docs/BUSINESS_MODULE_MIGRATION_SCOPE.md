@@ -363,6 +363,40 @@ from the existing OpenSEO/DaisyUI patterns. If a backend capability cannot be
 exposed without a broader visual decision, finish and test the backend, mark
 the endpoint pending human touch here, and continue with the remaining work.
 
+##### Slice 1 of 4: Products — done
+
+Tables `commerce_products` in both dialects (`drizzle/0049_dusty_metal_master.sql`,
+`drizzle-pg/0027_clammy_colonel_america.sql`), exported through the schema
+barrel and passing `schema-parity.test.ts`.
+
+- Money is integer minor units end to end. `salePriceMinor` and
+  `costPriceMinor` reject fractions and negatives at the Zod boundary, so a
+  caller passing major units fails loudly instead of silently truncating.
+- SKU is unique per organization, enforced by index and pre-checked in the
+  service so the user sees a sentence rather than a constraint violation.
+- A variant references its parent with a real self-referencing foreign key,
+  and the service refuses a parent from another organization — otherwise a
+  caller could attach a variant to a foreign id and read its name back
+  through the join.
+- A product cannot be its own variant.
+- Reads need CRM `view`; writes need CRM `manage`. Commerce is a CRM
+  capability and has no entitlement card of its own.
+- Every repository query is organization-scoped, including the update, which
+  scopes in its `WHERE` so a foreign id matches nothing rather than being
+  checked separately.
+
+21 tests cover authorization, organization isolation, SKU uniqueness, variant
+rules and the money invariants. Routes: `/modules/crm/products` (list, search,
+create, empty state) and `/modules/crm/products/$productId` (detail, variants,
+archive/restore). One additive CRM sidebar entry; no existing UI changed.
+
+Also fixed a pre-existing lint failure in `ModuleSwitcher` (an unsafe type
+assertion) that was already failing `ci:check` on this branch before this
+slice began. Behaviour is unchanged: the key it asserted away was already
+filtered out upstream.
+
+Not yet built: Inventory, Orders, Business Analytics.
+
 Beyond this approved slice, Quotations, Purchase Orders, Returns, Expenses,
 Settlements, Unit Economics, Waybills, Documents, Goals and Tasks remain
 pending. Do not build them yet.

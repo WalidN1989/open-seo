@@ -59,6 +59,7 @@ import { Route as ProjectPProjectIdBrandLookupRouteImport } from './routes/_proj
 import { Route as ProjectPProjectIdBacklinksRouteImport } from './routes/_project/p/$projectId/backlinks'
 import { Route as ProjectPProjectIdAuditRouteImport } from './routes/_project/p/$projectId/audit'
 import { Route as AppModulesIntegrationsConnectionsRouteImport } from './routes/_app/modules/integrations/connections'
+import { Route as AppModulesCrmProductsRouteImport } from './routes/_app/modules/crm/products'
 import { Route as AppModulesCrmMeetingsRouteImport } from './routes/_app/modules/crm/meetings'
 import { Route as AppModulesCrmInquiriesRouteImport } from './routes/_app/modules/crm/inquiries'
 import { Route as AppModulesCrmContactsRouteImport } from './routes/_app/modules/crm/contacts'
@@ -69,6 +70,7 @@ import { Route as ProjectPProjectIdAuditIndexRouteImport } from './routes/_proje
 import { Route as ProjectPProjectIdSettingsIntegrationsRouteImport } from './routes/_project/p/$projectId/settings/integrations'
 import { Route as ProjectPProjectIdSettingsContextRouteImport } from './routes/_project/p/$projectId/settings/context'
 import { Route as ProjectPProjectIdRankTrackingConfigIdRouteImport } from './routes/_project/p/$projectId/rank-tracking/$configId'
+import { Route as AppModulesCrmProductsProductIdRouteImport } from './routes/_app/modules/crm/products.$productId'
 import { Route as ProjectPProjectIdAuditIssuesResultIdRouteImport } from './routes/_project/p/$projectId/audit/issues/$resultId'
 
 const VerifyEmailRoute = VerifyEmailRouteImport.update({
@@ -331,6 +333,11 @@ const AppModulesIntegrationsConnectionsRoute =
     path: '/connections',
     getParentRoute: () => AppModulesIntegrationsRoute,
   } as any)
+const AppModulesCrmProductsRoute = AppModulesCrmProductsRouteImport.update({
+  id: '/products',
+  path: '/products',
+  getParentRoute: () => AppModulesCrmRoute,
+} as any)
 const AppModulesCrmMeetingsRoute = AppModulesCrmMeetingsRouteImport.update({
   id: '/meetings',
   path: '/meetings',
@@ -387,6 +394,12 @@ const ProjectPProjectIdRankTrackingConfigIdRoute =
     path: '/$configId',
     getParentRoute: () => ProjectPProjectIdRankTrackingRoute,
   } as any)
+const AppModulesCrmProductsProductIdRoute =
+  AppModulesCrmProductsProductIdRouteImport.update({
+    id: '/$productId',
+    path: '/$productId',
+    getParentRoute: () => AppModulesCrmProductsRoute,
+  } as any)
 const ProjectPProjectIdAuditIssuesResultIdRoute =
   ProjectPProjectIdAuditIssuesResultIdRouteImport.update({
     id: '/issues/$resultId',
@@ -428,6 +441,7 @@ export interface FileRoutesByFullPath {
   '/modules/crm/contacts': typeof AppModulesCrmContactsRoute
   '/modules/crm/inquiries': typeof AppModulesCrmInquiriesRoute
   '/modules/crm/meetings': typeof AppModulesCrmMeetingsRoute
+  '/modules/crm/products': typeof AppModulesCrmProductsRouteWithChildren
   '/modules/integrations/connections': typeof AppModulesIntegrationsConnectionsRoute
   '/p/$projectId/audit': typeof ProjectPProjectIdAuditRouteWithChildren
   '/p/$projectId/backlinks': typeof ProjectPProjectIdBacklinksRoute
@@ -445,6 +459,7 @@ export interface FileRoutesByFullPath {
   '/modules/crm/': typeof AppModulesCrmIndexRoute
   '/modules/integrations/': typeof AppModulesIntegrationsIndexRoute
   '/p/$projectId/': typeof ProjectPProjectIdIndexRoute
+  '/modules/crm/products/$productId': typeof AppModulesCrmProductsProductIdRoute
   '/p/$projectId/rank-tracking/$configId': typeof ProjectPProjectIdRankTrackingConfigIdRoute
   '/p/$projectId/settings/context': typeof ProjectPProjectIdSettingsContextRoute
   '/p/$projectId/settings/integrations': typeof ProjectPProjectIdSettingsIntegrationsRoute
@@ -483,6 +498,7 @@ export interface FileRoutesByTo {
   '/modules/crm/contacts': typeof AppModulesCrmContactsRoute
   '/modules/crm/inquiries': typeof AppModulesCrmInquiriesRoute
   '/modules/crm/meetings': typeof AppModulesCrmMeetingsRoute
+  '/modules/crm/products': typeof AppModulesCrmProductsRouteWithChildren
   '/modules/integrations/connections': typeof AppModulesIntegrationsConnectionsRoute
   '/p/$projectId/backlinks': typeof ProjectPProjectIdBacklinksRoute
   '/p/$projectId/brand-lookup': typeof ProjectPProjectIdBrandLookupRoute
@@ -497,6 +513,7 @@ export interface FileRoutesByTo {
   '/modules/crm': typeof AppModulesCrmIndexRoute
   '/modules/integrations': typeof AppModulesIntegrationsIndexRoute
   '/p/$projectId': typeof ProjectPProjectIdIndexRoute
+  '/modules/crm/products/$productId': typeof AppModulesCrmProductsProductIdRoute
   '/p/$projectId/rank-tracking/$configId': typeof ProjectPProjectIdRankTrackingConfigIdRoute
   '/p/$projectId/settings/context': typeof ProjectPProjectIdSettingsContextRoute
   '/p/$projectId/settings/integrations': typeof ProjectPProjectIdSettingsIntegrationsRoute
@@ -544,6 +561,7 @@ export interface FileRoutesById {
   '/_app/modules/crm/contacts': typeof AppModulesCrmContactsRoute
   '/_app/modules/crm/inquiries': typeof AppModulesCrmInquiriesRoute
   '/_app/modules/crm/meetings': typeof AppModulesCrmMeetingsRoute
+  '/_app/modules/crm/products': typeof AppModulesCrmProductsRouteWithChildren
   '/_app/modules/integrations/connections': typeof AppModulesIntegrationsConnectionsRoute
   '/_project/p/$projectId/audit': typeof ProjectPProjectIdAuditRouteWithChildren
   '/_project/p/$projectId/backlinks': typeof ProjectPProjectIdBacklinksRoute
@@ -561,6 +579,7 @@ export interface FileRoutesById {
   '/_app/modules/crm/': typeof AppModulesCrmIndexRoute
   '/_app/modules/integrations/': typeof AppModulesIntegrationsIndexRoute
   '/_project/p/$projectId/': typeof ProjectPProjectIdIndexRoute
+  '/_app/modules/crm/products/$productId': typeof AppModulesCrmProductsProductIdRoute
   '/_project/p/$projectId/rank-tracking/$configId': typeof ProjectPProjectIdRankTrackingConfigIdRoute
   '/_project/p/$projectId/settings/context': typeof ProjectPProjectIdSettingsContextRoute
   '/_project/p/$projectId/settings/integrations': typeof ProjectPProjectIdSettingsIntegrationsRoute
@@ -605,6 +624,7 @@ export interface FileRouteTypes {
     | '/modules/crm/contacts'
     | '/modules/crm/inquiries'
     | '/modules/crm/meetings'
+    | '/modules/crm/products'
     | '/modules/integrations/connections'
     | '/p/$projectId/audit'
     | '/p/$projectId/backlinks'
@@ -622,6 +642,7 @@ export interface FileRouteTypes {
     | '/modules/crm/'
     | '/modules/integrations/'
     | '/p/$projectId/'
+    | '/modules/crm/products/$productId'
     | '/p/$projectId/rank-tracking/$configId'
     | '/p/$projectId/settings/context'
     | '/p/$projectId/settings/integrations'
@@ -660,6 +681,7 @@ export interface FileRouteTypes {
     | '/modules/crm/contacts'
     | '/modules/crm/inquiries'
     | '/modules/crm/meetings'
+    | '/modules/crm/products'
     | '/modules/integrations/connections'
     | '/p/$projectId/backlinks'
     | '/p/$projectId/brand-lookup'
@@ -674,6 +696,7 @@ export interface FileRouteTypes {
     | '/modules/crm'
     | '/modules/integrations'
     | '/p/$projectId'
+    | '/modules/crm/products/$productId'
     | '/p/$projectId/rank-tracking/$configId'
     | '/p/$projectId/settings/context'
     | '/p/$projectId/settings/integrations'
@@ -720,6 +743,7 @@ export interface FileRouteTypes {
     | '/_app/modules/crm/contacts'
     | '/_app/modules/crm/inquiries'
     | '/_app/modules/crm/meetings'
+    | '/_app/modules/crm/products'
     | '/_app/modules/integrations/connections'
     | '/_project/p/$projectId/audit'
     | '/_project/p/$projectId/backlinks'
@@ -737,6 +761,7 @@ export interface FileRouteTypes {
     | '/_app/modules/crm/'
     | '/_app/modules/integrations/'
     | '/_project/p/$projectId/'
+    | '/_app/modules/crm/products/$productId'
     | '/_project/p/$projectId/rank-tracking/$configId'
     | '/_project/p/$projectId/settings/context'
     | '/_project/p/$projectId/settings/integrations'
@@ -1116,6 +1141,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppModulesIntegrationsConnectionsRouteImport
       parentRoute: typeof AppModulesIntegrationsRoute
     }
+    '/_app/modules/crm/products': {
+      id: '/_app/modules/crm/products'
+      path: '/products'
+      fullPath: '/modules/crm/products'
+      preLoaderRoute: typeof AppModulesCrmProductsRouteImport
+      parentRoute: typeof AppModulesCrmRoute
+    }
     '/_app/modules/crm/meetings': {
       id: '/_app/modules/crm/meetings'
       path: '/meetings'
@@ -1186,6 +1218,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProjectPProjectIdRankTrackingConfigIdRouteImport
       parentRoute: typeof ProjectPProjectIdRankTrackingRoute
     }
+    '/_app/modules/crm/products/$productId': {
+      id: '/_app/modules/crm/products/$productId'
+      path: '/$productId'
+      fullPath: '/modules/crm/products/$productId'
+      preLoaderRoute: typeof AppModulesCrmProductsProductIdRouteImport
+      parentRoute: typeof AppModulesCrmProductsRoute
+    }
     '/_project/p/$projectId/audit/issues/$resultId': {
       id: '/_project/p/$projectId/audit/issues/$resultId'
       path: '/issues/$resultId'
@@ -1196,11 +1235,25 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AppModulesCrmProductsRouteChildren {
+  AppModulesCrmProductsProductIdRoute: typeof AppModulesCrmProductsProductIdRoute
+}
+
+const AppModulesCrmProductsRouteChildren: AppModulesCrmProductsRouteChildren = {
+  AppModulesCrmProductsProductIdRoute: AppModulesCrmProductsProductIdRoute,
+}
+
+const AppModulesCrmProductsRouteWithChildren =
+  AppModulesCrmProductsRoute._addFileChildren(
+    AppModulesCrmProductsRouteChildren,
+  )
+
 interface AppModulesCrmRouteChildren {
   AppModulesCrmCompaniesRoute: typeof AppModulesCrmCompaniesRoute
   AppModulesCrmContactsRoute: typeof AppModulesCrmContactsRoute
   AppModulesCrmInquiriesRoute: typeof AppModulesCrmInquiriesRoute
   AppModulesCrmMeetingsRoute: typeof AppModulesCrmMeetingsRoute
+  AppModulesCrmProductsRoute: typeof AppModulesCrmProductsRouteWithChildren
   AppModulesCrmIndexRoute: typeof AppModulesCrmIndexRoute
 }
 
@@ -1209,6 +1262,7 @@ const AppModulesCrmRouteChildren: AppModulesCrmRouteChildren = {
   AppModulesCrmContactsRoute: AppModulesCrmContactsRoute,
   AppModulesCrmInquiriesRoute: AppModulesCrmInquiriesRoute,
   AppModulesCrmMeetingsRoute: AppModulesCrmMeetingsRoute,
+  AppModulesCrmProductsRoute: AppModulesCrmProductsRouteWithChildren,
   AppModulesCrmIndexRoute: AppModulesCrmIndexRoute,
 }
 

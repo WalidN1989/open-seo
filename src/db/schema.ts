@@ -131,4 +131,5 @@ export const {
   webhookEndpoints,
   webhookSubscriptions,
   webhookDeliveries,
+  commerceProducts,
 } = schema;

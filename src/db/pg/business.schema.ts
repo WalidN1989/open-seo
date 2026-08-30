@@ -1,5 +1,6 @@
 /* oxlint-disable max-lines */
 import { sql } from "drizzle-orm";
+import type { AnyPgColumn } from "drizzle-orm/pg-core";
 import {
   index,
   integer,
@@ -666,5 +667,58 @@ export const businessAuditEvents = pgTable(
       table.createdAt,
     ),
     index("business_audit_events_actor_idx").on(table.actorUserId),
+  ],
+);
+
+/**
+ * Commerce: products.
+ *
+ * Money is stored in integer minor units so arithmetic never touches a float.
+ * A variant references its parent explicitly rather than being encoded in JSON,
+ * so a variant is queryable and joinable like any other product.
+ */
+export const commerceProducts = pgTable(
+  "commerce_products",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    // A variant points at its parent. The callback return type is what lets a
+    // table reference itself without a circular initialisation.
+    parentProductId: text("parent_product_id").references(
+      (): AnyPgColumn => commerceProducts.id,
+      { onDelete: "set null" },
+    ),
+    name: text("name").notNull(),
+    sku: text("sku").notNull(),
+    barcode: text("barcode"),
+    isbn: text("isbn"),
+    description: text("description"),
+    category: text("category"),
+    salePriceMinor: integer("sale_price_minor").notNull().default(0),
+    costPriceMinor: integer("cost_price_minor"),
+    reorderThreshold: integer("reorder_threshold").notNull().default(0),
+    status: text("status", { enum: ["active", "archived"] })
+      .notNull()
+      .default("active"),
+    createdAt: createdAt(),
+    updatedAt: text("updated_at").notNull().default(isoNow),
+  },
+  (table) => [
+    // A SKU identifies a product within one tenant, never across tenants.
+    uniqueIndex("commerce_products_org_sku_idx").on(
+      table.organizationId,
+      table.sku,
+    ),
+    index("commerce_products_org_status_idx").on(
+      table.organizationId,
+      table.status,
+    ),
+    index("commerce_products_org_name_idx").on(
+      table.organizationId,
+      table.name,
+    ),
+    index("commerce_products_parent_idx").on(table.parentProductId),
   ],
 );
