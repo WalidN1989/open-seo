@@ -536,6 +536,7 @@ export function WhatsappWorkspace() {
                   <div className="border-t border-base-300 p-3">
                     <SimpleForm
                       fields={["body"]}
+                      submitLabel="Send"
                       onSubmit={(values) =>
                         reply.mutate({
                           conversationId: selectedConversation.id,
@@ -1442,10 +1443,12 @@ const SECRET_FIELDS = new Set(["accessToken"]);
 function SimpleForm({
   fields,
   select,
+  submitLabel = "Save",
   onSubmit,
 }: {
   fields: string[];
   select?: { name: string; options: string[] };
+  submitLabel?: string;
   onSubmit: (values: Record<string, string>) => void;
 }) {
   return (
@@ -1482,10 +1485,14 @@ function SimpleForm({
           type={SECRET_FIELDS.has(field) ? "password" : "text"}
           autoComplete={SECRET_FIELDS.has(field) ? "off" : undefined}
           className="input input-bordered input-sm min-w-44 flex-1"
-          placeholder={field.replace(/([A-Z])/g, " $1")}
+          placeholder={
+            field === "body"
+              ? "Write a message…"
+              : field.replace(/([A-Z])/g, " $1")
+          }
         />
       ))}
-      <button className="btn btn-primary btn-sm">Save</button>
+      <button className="btn btn-primary btn-sm">{submitLabel}</button>
     </form>
   );
 }
