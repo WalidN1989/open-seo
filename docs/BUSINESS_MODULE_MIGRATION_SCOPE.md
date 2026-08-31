@@ -208,6 +208,21 @@ ok. Container logs show the ticker at 5s / 30s / 300s.
 - Add real Meta/Twilio/Deepgram/provider credential references and complete
   their external account verification steps.
 
+### 2026-08-31: Meta test-number activation and shared inbox
+
+The production Meta app callback and `messages` subscription were verified
+against `/api/whatsapp/meta`. The first live deliveries exposed a bootstrap
+deadlock: connection rows begin as `disconnected`, while the Meta handler only
+accepted rows already marked `connected`. A valid first signed delivery is now
+accepted unless the connection is explicitly in an `error` state, and the
+successful ingestion promotes it to `connected`.
+
+The WhatsApp workspace now returns conversation messages and renders a usable
+three-pane shared inbox: searchable conversation list, message thread and reply
+composer, plus CRM-contact, staff-assignment and status controls. It retains
+OpenSEO's existing shell and visual tokens rather than copying the legacy app's
+branding.
+
 ## Data model: the contact is the spine
 
 Decided 2026-08-30, and it governs every module still to be built.

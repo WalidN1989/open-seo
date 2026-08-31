@@ -362,6 +362,7 @@ async function getWhatsappWorkspace(organizationId: string) {
   const [
     connections,
     conversations,
+    messages,
     contacts,
     messageStats,
     templates,
@@ -378,6 +379,11 @@ async function getWhatsappWorkspace(organizationId: string) {
       .from(whatsappConversations)
       .where(eq(whatsappConversations.organizationId, organizationId))
       .orderBy(desc(whatsappConversations.lastMessageAt)),
+    db
+      .select()
+      .from(whatsappMessages)
+      .where(eq(whatsappMessages.organizationId, organizationId))
+      .orderBy(whatsappMessages.createdAt),
     db
       .select()
       .from(crmContacts)
@@ -415,6 +421,7 @@ async function getWhatsappWorkspace(organizationId: string) {
   return {
     connections,
     conversations,
+    messages,
     contacts,
     messageStats,
     templates,

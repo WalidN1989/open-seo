@@ -1190,7 +1190,11 @@ async function processMetaWebhook(
       });
       continue;
     }
-    if (connection.status !== "connected") {
+    // A newly configured connection starts as disconnected until Meta proves
+    // it can deliver. Accept that first signed delivery, then mark it connected
+    // below. Only an explicit error state is inactive; otherwise the old guard
+    // created an impossible loop where the first message could never connect.
+    if (connection.status === "error") {
       console.warn("whatsapp.webhook.inactive_connection", {
         connectionId: connection.id,
         organizationId: connection.organizationId,
