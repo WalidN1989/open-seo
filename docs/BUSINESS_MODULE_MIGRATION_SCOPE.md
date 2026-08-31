@@ -205,23 +205,88 @@ ok. Container logs show the ticker at 5s / 30s / 300s.
   are not transferred between services implicitly.
 - Add a `claude_haiku` integration only for tenants that should have automated
   replies. Deployment alone does not activate it.
-- Add real Meta/Twilio/Deepgram/provider credential references and complete
-  their external account verification steps.
+- Add real Twilio/Deepgram/other provider credentials and complete their
+  external account verification steps. Meta Cloud is now connected for the
+  OpenSEO test tenant as recorded below.
 
 ### 2026-08-31: Meta test-number activation and shared inbox
 
-The production Meta app callback and `messages` subscription were verified
-against `/api/whatsapp/meta`. The first live deliveries exposed a bootstrap
-deadlock: connection rows begin as `disconnected`, while the Meta handler only
-accepted rows already marked `connected`. A valid first signed delivery is now
-accepted unless the connection is explicitly in an `error` state, and the
-successful ingestion promotes it to `connected`.
+This is the canonical handoff for the working production Meta connection. Do
+not repeat setup or replace these identifiers without confirming the Meta app
+and tenant first.
 
-The WhatsApp workspace now returns conversation messages and renders a usable
-three-pane shared inbox: searchable conversation list, message thread and reply
-composer, plus CRM-contact, staff-assignment and status controls. It retains
-OpenSEO's existing shell and visual tokens rather than copying the legacy app's
-branding.
+#### Live Meta configuration (non-secret identifiers only)
+
+- Meta app: **DigitalUrgency CRM**, app ID `1418874713544812`, business ID
+  `1511599890173700`; the app is published.
+- System user: **CRM Integration**, ID `61593464683853`, with full access to
+  the app and test WABA.
+- Meta test number: `+1 555 197 1535`; phone number ID
+  `1315374581655552`; WABA ID `981351954964369`.
+- OpenSEO connection ID: `526289e2-4354-4c34-9dae-f1d565e856b7`, provider
+  `meta_cloud`.
+- Shared callback:
+  `https://open-seo-production-fa7d.up.railway.app/api/whatsapp/meta`.
+  Meta's `whatsapp_business_account` subscription is active and includes the
+  `messages` field.
+- Railway has the platform-wide `META_APP_SECRET` and `META_VERIFY_TOKEN`.
+  The tenant's permanent token is stored encrypted in
+  `whatsapp_connections.credentials`; it must never be copied into this file,
+  logs, commits, or browser output.
+- The permanent token was created with no expiry and only
+  `whatsapp_business_management` and `whatsapp_business_messaging`.
+- `+61 408 579 044` belongs to a separate Twilio project. Do not attach,
+  migrate, test, or modify it as part of this Meta connection.
+
+Callback verification returned HTTP 200 with the supplied challenge. A live
+message from the registered test recipient was ingested into OpenSEO and the
+connection moved to `connected`. The production route is payload-routed by
+Meta `phone_number_id`; do not restore per-tenant callback URLs.
+
+#### Bootstrap bug and fix
+
+The first live deliveries exposed a bootstrap deadlock: connection rows begin
+as `disconnected`, while the Meta handler only accepted rows already marked
+`connected`. A valid first signed delivery is now accepted unless the
+connection is explicitly in an `error` state, and successful ingestion then
+promotes it to `connected`. This shipped in `4cbab55` together with returning
+message rows from `getWhatsappWorkspace`.
+
+#### Inbox UI
+
+The WhatsApp workspace is now a real three-pane shared inbox: searchable
+conversation list, message thread and reply composer, plus CRM-contact,
+staff-assignment and status controls. It retains OpenSEO's shell, spacing,
+colors and component tokens rather than copying the legacy app's branding.
+
+The initial dashboard placed nine metric cards above the inbox and pushed the
+conversation and composer below the viewport. `14b32d0` made **Inbox** the
+default, viewport-height workspace and moved the other surfaces into top tabs:
+Contacts, Templates, Campaigns, Automation, AI Assistant, Order Requests,
+Reports and Settings. Metrics live under Reports; connection controls live
+under Settings. `3cd1f1f` corrected the composer copy from the leaked API field
+name `body` / generic `Save` to `Write a message…` / `Send`.
+
+Production deployment was visually verified in Chrome after each change. The
+brief Railway “Application failed to respond” page during the last container
+handover was transient; deployment `215e20f3-4399-4503-98a8-27c2eca884ab`
+started the ticker and Vite server normally, and the replacement deployment
+for `3cd1f1f` completed successfully.
+
+Validation for these changes: TypeScript passed, the production Vite build
+passed, and all 30 communications tests passed. No secret values were exposed
+or committed.
+
+#### Remaining WhatsApp work
+
+- Connect Claude Haiku only after `ANTHROPIC_API_KEY` exists in the Open SEO
+  Railway service and the tenant deliberately enables the `claude_haiku`
+  integration.
+- The imported live conversation currently has no linked CRM contact and is
+  unassigned. Link/assign it through the right-hand inbox panel when desired.
+- Add richer contact metadata, internal notes, tags, opt-in controls and unread
+  state only as real persisted multi-tenant fields; do not add decorative
+  controls that are not backed by the repository/service layer.
 
 ## Data model: the contact is the spine
 
@@ -258,6 +323,12 @@ pipeline.
 
 ### Done
 
+- **Meta Cloud WhatsApp is live end to end.** The published Meta app uses one
+  signed payload-routed callback, the tenant token is encrypted on its
+  connection row, a real inbound message reached OpenSEO, and the connection
+  activated. The WhatsApp page is now a tabbed, viewport-height shared inbox
+  with conversation search, thread/reply UI, CRM linking, assignment and
+  status management. (`4cbab55`, `14b32d0`, `3cd1f1f`)
 - **A provider is connected from its own page.** The Connect button on a
   provider detail page was a link to the connections list, so the page that
   explains how to connect could not connect. It now takes the name and
