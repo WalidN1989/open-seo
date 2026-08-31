@@ -404,7 +404,7 @@ export function WhatsappWorkspace() {
         />
       ) : null}
       {activeSection === "Inbox" ? (
-        <section className="overflow-hidden rounded-xl border border-base-300 bg-base-100">
+        <section className="flex h-[calc(100dvh-230px)] min-h-[480px] max-h-[760px] flex-col overflow-hidden rounded-xl border border-base-300 bg-base-100">
           <div className="flex items-center gap-2 border-b border-base-300 px-4 py-3">
             <MessageCircleMore className="size-4" />
             <h2 className="font-semibold">Inbox</h2>
@@ -413,8 +413,8 @@ export function WhatsappWorkspace() {
             </span>
           </div>
           {data.conversations.length ? (
-            <div className="grid h-[calc(100vh-250px)] min-h-[520px] lg:grid-cols-[280px_minmax(0,1fr)_270px]">
-              <aside className="border-b border-base-300 lg:border-r lg:border-b-0">
+            <div className="grid min-h-0 flex-1 lg:grid-cols-[280px_minmax(0,1fr)_270px]">
+              <aside className="min-h-0 border-b border-base-300 lg:border-r lg:border-b-0">
                 <label className="input input-bordered input-sm m-3 flex items-center gap-2">
                   <Search className="size-4 opacity-50" />
                   <input
@@ -473,7 +473,7 @@ export function WhatsappWorkspace() {
                 </div>
               </aside>
 
-              <div className="flex min-w-0 flex-col">
+              <div className="flex min-h-0 min-w-0 flex-col">
                 <header className="flex flex-wrap items-center gap-2 border-b border-base-300 px-4 py-3">
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-semibold">
@@ -508,7 +508,7 @@ export function WhatsappWorkspace() {
                     </select>
                   ) : null}
                 </header>
-                <div className="flex-1 space-y-3 overflow-y-auto bg-base-200/25 p-4">
+                <div className="min-h-0 flex-1 space-y-3 overflow-y-auto bg-base-200/25 p-4">
                   {selectedMessages.map((message) => (
                     <div
                       key={message.id}
@@ -533,10 +533,12 @@ export function WhatsappWorkspace() {
                   ) : null}
                 </div>
                 {selectedConversation ? (
-                  <div className="border-t border-base-300 p-3">
+                  <div className="shrink-0 border-t border-base-300 p-3">
                     <SimpleForm
                       fields={["body"]}
                       submitLabel="Send"
+                      isSubmitting={reply.isPending}
+                      resetOnSubmit
                       onSubmit={(values) =>
                         reply.mutate({
                           conversationId: selectedConversation.id,
@@ -1444,11 +1446,15 @@ function SimpleForm({
   fields,
   select,
   submitLabel = "Save",
+  isSubmitting = false,
+  resetOnSubmit = false,
   onSubmit,
 }: {
   fields: string[];
   select?: { name: string; options: string[] };
   submitLabel?: string;
+  isSubmitting?: boolean;
+  resetOnSubmit?: boolean;
   onSubmit: (values: Record<string, string>) => void;
 }) {
   return (
@@ -1457,14 +1463,14 @@ function SimpleForm({
       onSubmit={(event) => {
         event.preventDefault();
         const data = new FormData(event.currentTarget);
-        onSubmit(
-          Object.fromEntries(
-            [...fields, ...(select ? [select.name] : [])].map((name) => [
-              name,
-              fieldValue(data, name),
-            ]),
-          ),
+        const values = Object.fromEntries(
+          [...fields, ...(select ? [select.name] : [])].map((name) => [
+            name,
+            fieldValue(data, name),
+          ]),
         );
+        onSubmit(values);
+        if (resetOnSubmit) event.currentTarget.reset();
       }}
     >
       {select ? (
@@ -1484,6 +1490,7 @@ function SimpleForm({
           // which credentials are set, not their values.
           type={SECRET_FIELDS.has(field) ? "password" : "text"}
           autoComplete={SECRET_FIELDS.has(field) ? "off" : undefined}
+          disabled={isSubmitting}
           className="input input-bordered input-sm min-w-44 flex-1"
           placeholder={
             field === "body"
@@ -1492,7 +1499,9 @@ function SimpleForm({
           }
         />
       ))}
-      <button className="btn btn-primary btn-sm">{submitLabel}</button>
+      <button className="btn btn-primary btn-sm" disabled={isSubmitting}>
+        {isSubmitting ? "Sending…" : submitLabel}
+      </button>
     </form>
   );
 }

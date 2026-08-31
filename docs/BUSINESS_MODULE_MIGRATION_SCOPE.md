@@ -267,6 +267,15 @@ Reports and Settings. Metrics live under Reports; connection controls live
 under Settings. `3cd1f1f` corrected the composer copy from the leaked API field
 name `body` / generic `Save` to `Write a message…` / `Send`.
 
+Production testing then showed repeated outbound bubbles with distinct Meta
+message IDs. This was not webhook replay or duplicate rendering: the generic
+form left the draft in place and its submit button active, allowing the same
+text to be submitted repeatedly. The composer now clears immediately after a
+valid submit, disables its input/button while the mutation is pending, and
+shows `Sending…`. Its center column and transcript use `min-height: 0` inside a
+viewport-bounded flex layout, keeping the reply composer visible while only the
+message history scrolls.
+
 Production deployment was visually verified in Chrome after each change. The
 brief Railway “Application failed to respond” page during the last container
 handover was transient; deployment `215e20f3-4399-4503-98a8-27c2eca884ab`
