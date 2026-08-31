@@ -276,6 +276,11 @@ live in their own relational tables for both SQLite and Postgres and are exposed
 through guarded WhatsApp manage mutations. The inbox right rail now renders and
 edits those records without changing message delivery behavior.
 
+The Contacts tab now uses those same records in a readable operational table,
+supports adding a CRM contact, and exports the tenant's contact/consent/tag data
+as CSV in the browser. Import remains pending so its validation and duplicate
+handling can be implemented deliberately rather than inserting partial rows.
+
 Still pending from the verified parity map: contact import/export; complete Meta
 template lifecycle; campaign audiences and delivery reporting; default actions,
 keyword rules, quick replies and sequences; tenant Claude Haiku controls; order

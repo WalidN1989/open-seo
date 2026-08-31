@@ -11,6 +11,7 @@ import {
   Search,
   UserRound,
   Webhook,
+  Download,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -42,6 +43,7 @@ import {
   createWhatsappInternalNote,
   runIntegrationAction,
 } from "@/serverFunctions/communications";
+import { createCrmContact } from "@/serverFunctions/crm";
 import { convertWhatsappOrderRequest } from "@/serverFunctions/commerce";
 import { getStandardErrorMessage } from "@/client/lib/error-messages";
 import {
@@ -79,6 +81,71 @@ function formatWhatsappTime(value?: string | null) {
   }).format(date);
 }
 
+const quoteCsvValue = (value: string) => `"${value.replaceAll('"', '""')}"`;
+
+function exportWhatsappContacts(data: {
+  contacts: Array<{
+    id: string;
+    firstName: string;
+    lastName: string | null;
+    email: string | null;
+    phone: string | null;
+    whatsappPhone: string | null;
+  }>;
+  contactProfiles: Array<{
+    contactId: string;
+    marketingOptIn: boolean;
+    utilityOptIn: boolean;
+  }>;
+  tags: Array<{ id: string; name: string }>;
+  contactTagAssignments: Array<{ contactId: string; tagId: string }>;
+}) {
+  const rows = data.contacts.map((contact) => {
+    const profile = data.contactProfiles.find(
+      (item) => item.contactId === contact.id,
+    );
+    const tagIds = new Set(
+      data.contactTagAssignments
+        .filter((item) => item.contactId === contact.id)
+        .map((item) => item.tagId),
+    );
+    return [
+      contact.firstName,
+      contact.lastName ?? "",
+      contact.email ?? "",
+      contact.phone ?? "",
+      contact.whatsappPhone ?? "",
+      data.tags
+        .filter((tag) => tagIds.has(tag.id))
+        .map((tag) => tag.name)
+        .join("; "),
+      profile?.marketingOptIn ? "yes" : "no",
+      profile?.utilityOptIn ? "yes" : "no",
+    ];
+  });
+  const csv = [
+    [
+      "First name",
+      "Last name",
+      "Email",
+      "Phone",
+      "WhatsApp phone",
+      "Tags",
+      "Marketing opt-in",
+      "Utility opt-in",
+    ],
+    ...rows,
+  ]
+    .map((row) => row.map((value) => quoteCsvValue(value)).join(","))
+    .join("\n");
+  const url = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = `whatsapp-contacts-${new Date().toISOString().slice(0, 10)}.csv`;
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
+
 export function WhatsappWorkspace() {
   const client = useQueryClient();
   const [form, setForm] = useState<
@@ -88,6 +155,7 @@ export function WhatsappWorkspace() {
     | "campaign"
     | "automation"
     | "order"
+    | "contact"
     | null
   >(null);
   const [selectedConversationId, setSelectedConversationId] = useState<
@@ -269,6 +337,21 @@ export function WhatsappWorkspace() {
       await client.invalidateQueries({ queryKey: ["whatsapp"] });
       setForm(null);
       toast.success("Order request created");
+    },
+    onError: showError,
+  });
+  const createContact = useMutation({
+    mutationFn: (data: {
+      firstName: string;
+      lastName?: string;
+      email?: string;
+      phone?: string;
+      whatsappPhone?: string;
+    }) => createCrmContact({ data }),
+    onSuccess: async () => {
+      await client.invalidateQueries({ queryKey: ["whatsapp"] });
+      setForm(null);
+      toast.success("Contact created");
     },
     onError: showError,
   });
@@ -456,6 +539,20 @@ export function WhatsappWorkspace() {
               summary: values.summary,
               amountCents: Math.round(Number(values.amount || 0) * 100),
               conversationId: values.conversationId || undefined,
+            })
+          }
+        />
+      ) : null}
+      {form === "contact" ? (
+        <SimpleForm
+          fields={["firstName", "lastName", "email", "phone", "whatsappPhone"]}
+          onSubmit={(values) =>
+            createContact.mutate({
+              firstName: values.firstName,
+              lastName: values.lastName || undefined,
+              email: values.email || undefined,
+              phone: values.phone || undefined,
+              whatsappPhone: values.whatsappPhone || undefined,
             })
           }
         />
@@ -876,18 +973,85 @@ export function WhatsappWorkspace() {
       ) : null}
       {activeSection === "Contacts" ? (
         <Panel title="Contacts" icon={UserRound}>
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-base-300 p-3">
+            <p className="text-sm text-base-content/60">
+              {data.contacts.length} contact
+              {data.contacts.length === 1 ? "" : "s"}
+            </p>
+            <div className="flex gap-2">
+              <button
+                className="btn btn-outline btn-sm"
+                disabled={!data.contacts.length}
+                onClick={() => exportWhatsappContacts(data)}
+              >
+                <Download className="size-4" /> Export
+              </button>
+              <button
+                className="btn btn-primary btn-sm"
+                onClick={() => setForm("contact")}
+              >
+                <Plus className="size-4" /> Add contact
+              </button>
+            </div>
+          </div>
           {data.contacts.length ? (
-            data.contacts.map((contact) => (
-              <Row
-                key={contact.id}
-                title={
-                  [contact.firstName, contact.lastName]
-                    .filter(Boolean)
-                    .join(" ") || "WhatsApp contact"
-                }
-                detail={contact.whatsappPhone || contact.phone || "No phone"}
-              />
-            ))
+            <div className="overflow-x-auto">
+              <table className="table table-sm">
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Phone</th>
+                    <th>Tags</th>
+                    <th>Marketing</th>
+                    <th>Utility</th>
+                    <th>Added</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.contacts.map((contactRow) => {
+                    const profile = data.contactProfiles.find(
+                      (item) => item.contactId === contactRow.id,
+                    );
+                    const tagIds = new Set(
+                      data.contactTagAssignments
+                        .filter((item) => item.contactId === contactRow.id)
+                        .map((item) => item.tagId),
+                    );
+                    return (
+                      <tr key={contactRow.id}>
+                        <td className="font-medium">
+                          {[contactRow.firstName, contactRow.lastName]
+                            .filter(Boolean)
+                            .join(" ") || "WhatsApp contact"}
+                        </td>
+                        <td>
+                          {contactRow.whatsappPhone || contactRow.phone || "—"}
+                        </td>
+                        <td>
+                          <div className="flex flex-wrap gap-1">
+                            {data.tags
+                              .filter((tag) => tagIds.has(tag.id))
+                              .map((tag) => (
+                                <span
+                                  key={tag.id}
+                                  className="badge badge-ghost badge-sm"
+                                >
+                                  {tag.name}
+                                </span>
+                              ))}
+                          </div>
+                        </td>
+                        <td>{profile?.marketingOptIn ? "Opted in" : "No"}</td>
+                        <td>{profile?.utilityOptIn ? "Opted in" : "No"}</td>
+                        <td>
+                          {new Date(contactRow.createdAt).toLocaleDateString()}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           ) : (
             <Empty text="Contacts linked from WhatsApp conversations will appear here." />
           )}
