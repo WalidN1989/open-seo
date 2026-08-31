@@ -1,6 +1,6 @@
 /* oxlint-disable max-lines, max-lines-per-function */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type React from "react";
 import {
   Bot,
@@ -92,9 +92,14 @@ export function WhatsappWorkspace() {
   const [conversationSearch, setConversationSearch] = useState("");
   const [activeSection, setActiveSection] =
     useState<(typeof whatsappSections)[number]>("Inbox");
+  const transcriptEndRef = useRef<HTMLDivElement>(null);
   const query = useQuery({
     queryKey: ["whatsapp", "workspace"],
     queryFn: () => getWhatsappWorkspace(),
+    // Meta reaches the server quickly. Poll only while this page is visible so
+    // the operator sees inbound messages without manually refreshing.
+    refetchInterval: 2_500,
+    refetchIntervalInBackground: false,
   });
   const connection = useMutation({
     mutationFn: (data: {
@@ -219,6 +224,14 @@ export function WhatsappWorkspace() {
     },
     onError: showError,
   });
+  const latestMessageId = query.data?.messages.at(-1)?.id;
+  useEffect(() => {
+    if (activeSection !== "Inbox") return;
+    const frame = requestAnimationFrame(() => {
+      transcriptEndRef.current?.scrollIntoView({ block: "end" });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [activeSection, latestMessageId, selectedConversationId]);
   if (query.isLoading) return <Loading />;
   if (query.isError) return <ErrorBox error={query.error} />;
   const data = query.data!;
@@ -531,6 +544,7 @@ export function WhatsappWorkspace() {
                   {!selectedMessages.length ? (
                     <Empty text="No messages in this conversation yet." />
                   ) : null}
+                  <div ref={transcriptEndRef} aria-hidden="true" />
                 </div>
                 {selectedConversation ? (
                   <div className="shrink-0 border-t border-base-300 p-3">

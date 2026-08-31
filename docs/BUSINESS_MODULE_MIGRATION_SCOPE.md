@@ -276,6 +276,14 @@ shows `Sending…`. Its center column and transcript use `min-height: 0` inside 
 viewport-bounded flex layout, keeping the reply composer visible while only the
 message history scrolls.
 
+Inbound latency was measured from Meta's message timestamp to the production
+insert: recent samples were 1.633s and 2.664s. The apparent longer delay was a
+stale browser, not webhook transport. Until a push channel is introduced, the
+visible WhatsApp workspace refetches every 2.5 seconds (paused in background
+tabs) and scrolls the selected transcript to its newest message when the latest
+message ID changes. Do not add a second webhook, cron job or AI retry loop to
+solve this UI-refresh concern.
+
 Production deployment was visually verified in Chrome after each change. The
 brief Railway “Application failed to respond” page during the last container
 handover was transient; deployment `215e20f3-4399-4503-98a8-27c2eca884ab`
