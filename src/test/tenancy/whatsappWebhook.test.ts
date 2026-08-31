@@ -264,10 +264,10 @@ describe("routing by payload identity", () => {
     expect(await messagesFor(ORG_A)).toHaveLength(0);
   });
 
-  it("does not deliver to an inactive connection", async () => {
+  it("does not deliver to a connection explicitly placed in error", async () => {
     await db
       .update(schema.whatsappConnections)
-      .set({ status: "disconnected" })
+      .set({ status: "error" })
       .where(eq(schema.whatsappConnections.id, WHATSAPP_A));
 
     await post(
