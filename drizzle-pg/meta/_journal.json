@@ -281,6 +281,13 @@
       "when": 1788110598319,
       "tag": "0039_tearful_butterfly",
       "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1788208024118,
+      "tag": "0040_thick_skrulls",
+      "breakpoints": true
     }
   ]
 }

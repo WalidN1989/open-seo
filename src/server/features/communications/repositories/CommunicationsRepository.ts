@@ -16,6 +16,11 @@ import {
   whatsappConnections,
   whatsappConversations,
   whatsappMessages,
+  whatsappContactProfiles,
+  whatsappTags,
+  whatsappContactTagAssignments,
+  whatsappContactAttributes,
+  whatsappInternalNotes,
   whatsappOrderRequests,
   whatsappTemplates,
 } from "@/db/schema";
@@ -31,6 +36,10 @@ import type {
   createWhatsappTemplateSchema,
   createWebhookEndpointSchema,
   updateWhatsappConversationSchema,
+  updateWhatsappContactProfileSchema,
+  addWhatsappContactTagSchema,
+  upsertWhatsappContactAttributeSchema,
+  createWhatsappInternalNoteSchema,
 } from "@/types/schemas/communications";
 import type {
   InboundWhatsappMessage,
@@ -369,6 +378,11 @@ async function getWhatsappWorkspace(organizationId: string) {
     campaigns,
     automations,
     orders,
+    contactProfiles,
+    tags,
+    contactTagAssignments,
+    contactAttributes,
+    internalNotes,
   ] = await Promise.all([
     db
       .select()
@@ -417,6 +431,29 @@ async function getWhatsappWorkspace(organizationId: string) {
       .from(whatsappOrderRequests)
       .where(eq(whatsappOrderRequests.organizationId, organizationId))
       .orderBy(desc(whatsappOrderRequests.createdAt)),
+    db
+      .select()
+      .from(whatsappContactProfiles)
+      .where(eq(whatsappContactProfiles.organizationId, organizationId)),
+    db
+      .select()
+      .from(whatsappTags)
+      .where(eq(whatsappTags.organizationId, organizationId))
+      .orderBy(whatsappTags.name),
+    db
+      .select()
+      .from(whatsappContactTagAssignments)
+      .where(eq(whatsappContactTagAssignments.organizationId, organizationId)),
+    db
+      .select()
+      .from(whatsappContactAttributes)
+      .where(eq(whatsappContactAttributes.organizationId, organizationId))
+      .orderBy(whatsappContactAttributes.key),
+    db
+      .select()
+      .from(whatsappInternalNotes)
+      .where(eq(whatsappInternalNotes.organizationId, organizationId))
+      .orderBy(whatsappInternalNotes.createdAt),
   ]);
   return {
     connections,
@@ -428,7 +465,138 @@ async function getWhatsappWorkspace(organizationId: string) {
     campaigns,
     automations,
     orders,
+    contactProfiles,
+    tags,
+    contactTagAssignments,
+    contactAttributes,
+    internalNotes,
   };
+}
+
+async function updateWhatsappContactProfile(
+  organizationId: string,
+  input: z.infer<typeof updateWhatsappContactProfileSchema>,
+) {
+  const { contactId, ...changes } = input;
+  const [existing] = await db
+    .select()
+    .from(whatsappContactProfiles)
+    .where(
+      and(
+        eq(whatsappContactProfiles.organizationId, organizationId),
+        eq(whatsappContactProfiles.contactId, contactId),
+      ),
+    )
+    .limit(1);
+  if (existing) {
+    const [row] = await db
+      .update(whatsappContactProfiles)
+      .set({ ...changes, updatedAt: new Date().toISOString() })
+      .where(eq(whatsappContactProfiles.id, existing.id))
+      .returning();
+    return row;
+  }
+  const [row] = await db
+    .insert(whatsappContactProfiles)
+    .values({
+      id: crypto.randomUUID(),
+      organizationId,
+      contactId,
+      ...changes,
+    })
+    .returning();
+  return row;
+}
+
+async function addWhatsappContactTag(
+  organizationId: string,
+  input: z.infer<typeof addWhatsappContactTagSchema>,
+) {
+  const normalizedName = input.name.trim();
+  let [tag] = await db
+    .select()
+    .from(whatsappTags)
+    .where(
+      and(
+        eq(whatsappTags.organizationId, organizationId),
+        eq(whatsappTags.name, normalizedName),
+      ),
+    )
+    .limit(1);
+  if (!tag) {
+    [tag] = await db
+      .insert(whatsappTags)
+      .values({
+        id: crypto.randomUUID(),
+        organizationId,
+        name: normalizedName,
+      })
+      .returning();
+  }
+  const [existing] = await db
+    .select()
+    .from(whatsappContactTagAssignments)
+    .where(
+      and(
+        eq(whatsappContactTagAssignments.contactId, input.contactId),
+        eq(whatsappContactTagAssignments.tagId, tag.id),
+      ),
+    )
+    .limit(1);
+  if (!existing)
+    await db.insert(whatsappContactTagAssignments).values({
+      id: crypto.randomUUID(),
+      organizationId,
+      contactId: input.contactId,
+      tagId: tag.id,
+    });
+  return tag;
+}
+
+async function upsertWhatsappContactAttribute(
+  organizationId: string,
+  input: z.infer<typeof upsertWhatsappContactAttributeSchema>,
+) {
+  const [existing] = await db
+    .select()
+    .from(whatsappContactAttributes)
+    .where(
+      and(
+        eq(whatsappContactAttributes.contactId, input.contactId),
+        eq(whatsappContactAttributes.key, input.key),
+      ),
+    )
+    .limit(1);
+  if (existing) {
+    const [row] = await db
+      .update(whatsappContactAttributes)
+      .set({ value: input.value, updatedAt: new Date().toISOString() })
+      .where(eq(whatsappContactAttributes.id, existing.id))
+      .returning();
+    return row;
+  }
+  const [row] = await db
+    .insert(whatsappContactAttributes)
+    .values({ id: crypto.randomUUID(), organizationId, ...input })
+    .returning();
+  return row;
+}
+
+async function createWhatsappInternalNote(
+  organizationId: string,
+  authorMemberId: string,
+  input: z.infer<typeof createWhatsappInternalNoteSchema>,
+) {
+  const [row] = await db
+    .insert(whatsappInternalNotes)
+    .values({
+      id: crypto.randomUUID(),
+      organizationId,
+      authorMemberId,
+      ...input,
+    })
+    .returning();
+  return row;
 }
 
 async function updateWhatsappConversation(
@@ -1066,6 +1234,10 @@ export const CommunicationsRepository = {
   startVoiceConversation,
   updateWhatsappCampaign,
   updateWhatsappConversation,
+  updateWhatsappContactProfile,
+  addWhatsappContactTag,
+  upsertWhatsappContactAttribute,
+  createWhatsappInternalNote,
   updateIntegration,
   updateIntegrationStatus,
   updateWhatsappDelivery,

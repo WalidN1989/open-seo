@@ -591,6 +591,129 @@ export const whatsappMessages = sqliteTable(
   ],
 );
 
+export const whatsappContactProfiles = sqliteTable(
+  "whatsapp_contact_profiles",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    contactId: text("contact_id")
+      .notNull()
+      .references(() => crmContacts.id, { onDelete: "cascade" }),
+    marketingOptIn: integer("marketing_opt_in", { mode: "boolean" })
+      .notNull()
+      .default(false),
+    utilityOptIn: integer("utility_opt_in", { mode: "boolean" })
+      .notNull()
+      .default(false),
+    useWhatsappName: integer("use_whatsapp_name", { mode: "boolean" })
+      .notNull()
+      .default(true),
+    updatedAt: text("updated_at")
+      .notNull()
+      .default(sql`(current_timestamp)`),
+  },
+  (table) => [
+    uniqueIndex("whatsapp_contact_profiles_org_contact_idx").on(
+      table.organizationId,
+      table.contactId,
+    ),
+  ],
+);
+
+export const whatsappTags = sqliteTable(
+  "whatsapp_tags",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    createdAt: createdAt(),
+  },
+  (table) => [
+    uniqueIndex("whatsapp_tags_org_name_idx").on(
+      table.organizationId,
+      table.name,
+    ),
+  ],
+);
+
+export const whatsappContactTagAssignments = sqliteTable(
+  "whatsapp_contact_tag_assignments",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    contactId: text("contact_id")
+      .notNull()
+      .references(() => crmContacts.id, { onDelete: "cascade" }),
+    tagId: text("tag_id")
+      .notNull()
+      .references(() => whatsappTags.id, { onDelete: "cascade" }),
+    createdAt: createdAt(),
+  },
+  (table) => [
+    uniqueIndex("whatsapp_contact_tags_contact_tag_idx").on(
+      table.contactId,
+      table.tagId,
+    ),
+    index("whatsapp_contact_tags_org_idx").on(table.organizationId),
+  ],
+);
+
+export const whatsappContactAttributes = sqliteTable(
+  "whatsapp_contact_attributes",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    contactId: text("contact_id")
+      .notNull()
+      .references(() => crmContacts.id, { onDelete: "cascade" }),
+    key: text("key").notNull(),
+    value: text("value").notNull(),
+    updatedAt: text("updated_at")
+      .notNull()
+      .default(sql`(current_timestamp)`),
+  },
+  (table) => [
+    uniqueIndex("whatsapp_contact_attributes_contact_key_idx").on(
+      table.contactId,
+      table.key,
+    ),
+    index("whatsapp_contact_attributes_org_idx").on(table.organizationId),
+  ],
+);
+
+export const whatsappInternalNotes = sqliteTable(
+  "whatsapp_internal_notes",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    conversationId: text("conversation_id")
+      .notNull()
+      .references(() => whatsappConversations.id, { onDelete: "cascade" }),
+    authorMemberId: text("author_member_id").references(() => member.id, {
+      onDelete: "set null",
+    }),
+    body: text("body").notNull(),
+    createdAt: createdAt(),
+  },
+  (table) => [
+    index("whatsapp_internal_notes_conversation_idx").on(
+      table.organizationId,
+      table.conversationId,
+      table.createdAt,
+    ),
+  ],
+);
+
 export const whatsappTemplates = sqliteTable(
   "whatsapp_templates",
   {

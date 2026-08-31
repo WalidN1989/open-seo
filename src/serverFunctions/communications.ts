@@ -24,6 +24,10 @@ import {
   endVoiceConversationSchema,
   launchWhatsappCampaignSchema,
   updateWhatsappConversationSchema,
+  updateWhatsappContactProfileSchema,
+  addWhatsappContactTagSchema,
+  upsertWhatsappContactAttributeSchema,
+  createWhatsappInternalNoteSchema,
   runIntegrationActionSchema,
 } from "@/types/schemas/communications";
 
@@ -121,6 +125,46 @@ export const updateWhatsappConversation = createServerFn({ method: "POST" })
   .validator(updateWhatsappConversationSchema)
   .handler(({ context, data }) =>
     CommunicationsService.updateWhatsappConversation(
+      context.organizationId,
+      context.userId,
+      data,
+    ),
+  );
+export const updateWhatsappContactProfile = createServerFn({ method: "POST" })
+  .middleware(requireAuthenticatedContext)
+  .validator(updateWhatsappContactProfileSchema)
+  .handler(({ context, data }) =>
+    CommunicationsService.updateWhatsappContactProfile(
+      context.organizationId,
+      context.userId,
+      data,
+    ),
+  );
+export const addWhatsappContactTag = createServerFn({ method: "POST" })
+  .middleware(requireAuthenticatedContext)
+  .validator(addWhatsappContactTagSchema)
+  .handler(({ context, data }) =>
+    CommunicationsService.addWhatsappContactTag(
+      context.organizationId,
+      context.userId,
+      data,
+    ),
+  );
+export const upsertWhatsappContactAttribute = createServerFn({ method: "POST" })
+  .middleware(requireAuthenticatedContext)
+  .validator(upsertWhatsappContactAttributeSchema)
+  .handler(({ context, data }) =>
+    CommunicationsService.upsertWhatsappContactAttribute(
+      context.organizationId,
+      context.userId,
+      data,
+    ),
+  );
+export const createWhatsappInternalNote = createServerFn({ method: "POST" })
+  .middleware(requireAuthenticatedContext)
+  .validator(createWhatsappInternalNoteSchema)
+  .handler(({ context, data }) =>
+    CommunicationsService.createWhatsappInternalNote(
       context.organizationId,
       context.userId,
       data,

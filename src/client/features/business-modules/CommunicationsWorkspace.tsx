@@ -1,4 +1,4 @@
-/* oxlint-disable max-lines, max-lines-per-function */
+/* oxlint-disable max-lines, max-lines-per-function, complexity */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import type React from "react";
@@ -36,6 +36,10 @@ import {
   startVoiceConversation,
   transcribeVoiceAudio,
   updateWhatsappConversation,
+  updateWhatsappContactProfile,
+  addWhatsappContactTag,
+  upsertWhatsappContactAttribute,
+  createWhatsappInternalNote,
   runIntegrationAction,
 } from "@/serverFunctions/communications";
 import { convertWhatsappOrderRequest } from "@/serverFunctions/commerce";
@@ -90,6 +94,10 @@ export function WhatsappWorkspace() {
     string | null
   >(null);
   const [conversationSearch, setConversationSearch] = useState("");
+  const [tagName, setTagName] = useState("");
+  const [attributeKey, setAttributeKey] = useState("");
+  const [attributeValue, setAttributeValue] = useState("");
+  const [internalNote, setInternalNote] = useState("");
   const [activeSection, setActiveSection] =
     useState<(typeof whatsappSections)[number]>("Inbox");
   const transcriptEndRef = useRef<HTMLDivElement>(null);
@@ -170,6 +178,46 @@ export function WhatsappWorkspace() {
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: ["whatsapp"] });
       toast.success("Conversation updated");
+    },
+    onError: showError,
+  });
+  const updateContactProfile = useMutation({
+    mutationFn: (data: {
+      contactId: string;
+      marketingOptIn?: boolean;
+      utilityOptIn?: boolean;
+      useWhatsappName?: boolean;
+    }) => updateWhatsappContactProfile({ data }),
+    onSuccess: async () => {
+      await client.invalidateQueries({ queryKey: ["whatsapp"] });
+    },
+    onError: showError,
+  });
+  const addContactTag = useMutation({
+    mutationFn: (data: { contactId: string; name: string }) =>
+      addWhatsappContactTag({ data }),
+    onSuccess: async () => {
+      setTagName("");
+      await client.invalidateQueries({ queryKey: ["whatsapp"] });
+    },
+    onError: showError,
+  });
+  const saveContactAttribute = useMutation({
+    mutationFn: (data: { contactId: string; key: string; value: string }) =>
+      upsertWhatsappContactAttribute({ data }),
+    onSuccess: async () => {
+      setAttributeKey("");
+      setAttributeValue("");
+      await client.invalidateQueries({ queryKey: ["whatsapp"] });
+    },
+    onError: showError,
+  });
+  const addInternalNote = useMutation({
+    mutationFn: (data: { conversationId: string; body: string }) =>
+      createWhatsappInternalNote({ data }),
+    onSuccess: async () => {
+      setInternalNote("");
+      await client.invalidateQueries({ queryKey: ["whatsapp"] });
     },
     onError: showError,
   });
@@ -254,6 +302,21 @@ export function WhatsappWorkspace() {
         (message) => message.conversationId === selectedConversation.id,
       )
     : [];
+  const selectedProfile = data.contactProfiles.find(
+    (profile) => profile.contactId === selectedContact?.id,
+  );
+  const selectedTagIds = new Set(
+    data.contactTagAssignments
+      .filter((assignment) => assignment.contactId === selectedContact?.id)
+      .map((assignment) => assignment.tagId),
+  );
+  const selectedTags = data.tags.filter((tag) => selectedTagIds.has(tag.id));
+  const selectedAttributes = data.contactAttributes.filter(
+    (attribute) => attribute.contactId === selectedContact?.id,
+  );
+  const selectedNotes = data.internalNotes.filter(
+    (note) => note.conversationId === selectedConversation?.id,
+  );
   const visibleConversations = data.conversations.filter((conversation) => {
     const term = conversationSearch.trim().toLowerCase();
     if (!term) return true;
@@ -564,7 +627,7 @@ export function WhatsappWorkspace() {
                 ) : null}
               </div>
 
-              <aside className="border-t border-base-300 p-4 lg:border-t-0 lg:border-l">
+              <aside className="min-h-0 overflow-y-auto border-t border-base-300 p-4 lg:border-t-0 lg:border-l">
                 <div className="mb-5 text-center">
                   <div className="mx-auto mb-2 flex size-12 items-center justify-center rounded-full bg-base-200">
                     <UserRound className="size-5" />
@@ -630,6 +693,175 @@ export function WhatsappWorkspace() {
                       Messages: {selectedMessages.length}
                       <br />
                       Status: {selectedConversation.status}
+                    </div>
+                    {selectedContact ? (
+                      <>
+                        <div className="space-y-2 border-t border-base-300 pt-4">
+                          <ContactToggle
+                            label="Marketing opt-in"
+                            checked={selectedProfile?.marketingOptIn ?? false}
+                            disabled={updateContactProfile.isPending}
+                            onChange={(marketingOptIn) =>
+                              updateContactProfile.mutate({
+                                contactId: selectedContact.id,
+                                marketingOptIn,
+                              })
+                            }
+                          />
+                          <ContactToggle
+                            label="Utility opt-in"
+                            checked={selectedProfile?.utilityOptIn ?? false}
+                            disabled={updateContactProfile.isPending}
+                            onChange={(utilityOptIn) =>
+                              updateContactProfile.mutate({
+                                contactId: selectedContact.id,
+                                utilityOptIn,
+                              })
+                            }
+                          />
+                          <ContactToggle
+                            label="Use WhatsApp name"
+                            checked={selectedProfile?.useWhatsappName ?? true}
+                            disabled={updateContactProfile.isPending}
+                            onChange={(useWhatsappName) =>
+                              updateContactProfile.mutate({
+                                contactId: selectedContact.id,
+                                useWhatsappName,
+                              })
+                            }
+                          />
+                        </div>
+                        <div className="space-y-2 border-t border-base-300 pt-4">
+                          <p className="text-xs font-semibold">Tags</p>
+                          <div className="flex flex-wrap gap-1">
+                            {selectedTags.map((tag) => (
+                              <span
+                                key={tag.id}
+                                className="badge badge-ghost badge-sm"
+                              >
+                                {tag.name}
+                              </span>
+                            ))}
+                          </div>
+                          <div className="flex gap-1">
+                            <input
+                              aria-label="New contact tag"
+                              className="input input-bordered input-sm min-w-0 flex-1"
+                              placeholder="Add tag"
+                              value={tagName}
+                              onChange={(event) =>
+                                setTagName(event.target.value)
+                              }
+                            />
+                            <button
+                              className="btn btn-outline btn-sm"
+                              disabled={
+                                !tagName.trim() || addContactTag.isPending
+                              }
+                              onClick={() =>
+                                addContactTag.mutate({
+                                  contactId: selectedContact.id,
+                                  name: tagName,
+                                })
+                              }
+                            >
+                              <Plus className="size-3" />
+                            </button>
+                          </div>
+                        </div>
+                        <div className="space-y-2 border-t border-base-300 pt-4">
+                          <p className="text-xs font-semibold">
+                            Custom parameters
+                          </p>
+                          {selectedAttributes.map((attribute) => (
+                            <p
+                              key={attribute.id}
+                              className="text-xs text-base-content/65"
+                            >
+                              <span className="font-medium text-base-content">
+                                {attribute.key}:
+                              </span>{" "}
+                              {attribute.value}
+                            </p>
+                          ))}
+                          <div className="grid grid-cols-2 gap-1">
+                            <input
+                              aria-label="Parameter key"
+                              className="input input-bordered input-sm min-w-0"
+                              placeholder="Key"
+                              value={attributeKey}
+                              onChange={(event) =>
+                                setAttributeKey(event.target.value)
+                              }
+                            />
+                            <input
+                              aria-label="Parameter value"
+                              className="input input-bordered input-sm min-w-0"
+                              placeholder="Value"
+                              value={attributeValue}
+                              onChange={(event) =>
+                                setAttributeValue(event.target.value)
+                              }
+                            />
+                          </div>
+                          <button
+                            className="btn btn-outline btn-sm w-full"
+                            disabled={
+                              !attributeKey.trim() ||
+                              !attributeValue.trim() ||
+                              saveContactAttribute.isPending
+                            }
+                            onClick={() =>
+                              saveContactAttribute.mutate({
+                                contactId: selectedContact.id,
+                                key: attributeKey,
+                                value: attributeValue,
+                              })
+                            }
+                          >
+                            Save parameter
+                          </button>
+                        </div>
+                      </>
+                    ) : null}
+                    <div className="space-y-2 border-t border-base-300 pt-4">
+                      <p className="text-xs font-semibold">Internal notes</p>
+                      <div className="max-h-28 space-y-2 overflow-y-auto">
+                        {selectedNotes.map((note) => (
+                          <div
+                            key={note.id}
+                            className="rounded-lg bg-base-200/60 p-2 text-xs"
+                          >
+                            <p>{note.body}</p>
+                            <p className="mt-1 text-[10px] text-base-content/45">
+                              {formatWhatsappTime(note.createdAt)}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                      <textarea
+                        aria-label="Internal note"
+                        className="textarea textarea-bordered textarea-sm w-full"
+                        placeholder="Only your team can see notes…"
+                        value={internalNote}
+                        onChange={(event) =>
+                          setInternalNote(event.target.value)
+                        }
+                      />
+                      <button
+                        className="btn btn-outline btn-sm w-full"
+                        disabled={
+                          !internalNote.trim() || addInternalNote.isPending
+                        }
+                        onClick={() =>
+                          addInternalNote.mutate({
+                            conversationId: selectedConversation.id,
+                            body: internalNote,
+                          })
+                        }
+                      >
+                        Add note
+                      </button>
                     </div>
                   </div>
                 ) : null}
@@ -784,6 +1016,31 @@ export function WhatsappWorkspace() {
         </Panel>
       ) : null}
     </Workspace>
+  );
+}
+
+function ContactToggle({
+  label,
+  checked,
+  disabled,
+  onChange,
+}: {
+  label: string;
+  checked: boolean;
+  disabled: boolean;
+  onChange: (checked: boolean) => void;
+}) {
+  return (
+    <label className="flex cursor-pointer items-center justify-between gap-3 text-xs">
+      <span>{label}</span>
+      <input
+        type="checkbox"
+        className="toggle toggle-primary toggle-sm"
+        checked={checked}
+        disabled={disabled}
+        onChange={(event) => onChange(event.currentTarget.checked)}
+      />
+    </label>
   );
 }
 

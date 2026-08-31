@@ -36,6 +36,10 @@ import type {
   endVoiceConversationSchema,
   launchWhatsappCampaignSchema,
   updateWhatsappConversationSchema,
+  updateWhatsappContactProfileSchema,
+  addWhatsappContactTagSchema,
+  upsertWhatsappContactAttributeSchema,
+  createWhatsappInternalNoteSchema,
   runIntegrationActionSchema,
 } from "@/types/schemas/communications";
 import { CommunicationsRepository } from "../repositories/CommunicationsRepository";
@@ -212,6 +216,106 @@ async function updateWhatsappConversation(
     },
   });
   return conversation;
+}
+
+async function updateWhatsappContactProfile(
+  organizationId: string,
+  userId: string,
+  input: z.infer<typeof updateWhatsappContactProfileSchema>,
+) {
+  await BusinessModuleService.requireAccess(
+    organizationId,
+    userId,
+    "whatsapp",
+    "manage",
+  );
+  if (
+    !(await CommunicationsRepository.contactBelongsToOrganization(
+      organizationId,
+      input.contactId,
+    ))
+  )
+    throw new Error("WhatsApp contact not found.");
+  return CommunicationsRepository.updateWhatsappContactProfile(
+    organizationId,
+    input,
+  );
+}
+
+async function addWhatsappContactTag(
+  organizationId: string,
+  userId: string,
+  input: z.infer<typeof addWhatsappContactTagSchema>,
+) {
+  await BusinessModuleService.requireAccess(
+    organizationId,
+    userId,
+    "whatsapp",
+    "manage",
+  );
+  if (
+    !(await CommunicationsRepository.contactBelongsToOrganization(
+      organizationId,
+      input.contactId,
+    ))
+  )
+    throw new Error("WhatsApp contact not found.");
+  return CommunicationsRepository.addWhatsappContactTag(organizationId, input);
+}
+
+async function upsertWhatsappContactAttribute(
+  organizationId: string,
+  userId: string,
+  input: z.infer<typeof upsertWhatsappContactAttributeSchema>,
+) {
+  await BusinessModuleService.requireAccess(
+    organizationId,
+    userId,
+    "whatsapp",
+    "manage",
+  );
+  if (
+    !(await CommunicationsRepository.contactBelongsToOrganization(
+      organizationId,
+      input.contactId,
+    ))
+  )
+    throw new Error("WhatsApp contact not found.");
+  return CommunicationsRepository.upsertWhatsappContactAttribute(
+    organizationId,
+    input,
+  );
+}
+
+async function createWhatsappInternalNote(
+  organizationId: string,
+  userId: string,
+  input: z.infer<typeof createWhatsappInternalNoteSchema>,
+) {
+  await BusinessModuleService.requireAccess(
+    organizationId,
+    userId,
+    "whatsapp",
+    "manage",
+  );
+  if (
+    !(await CommunicationsRepository.whatsappEntityBelongsToOrganization(
+      organizationId,
+      "conversation",
+      input.conversationId,
+    ))
+  )
+    throw new Error("WhatsApp conversation not found.");
+  const membership = await BusinessModuleRepository.findMembership(
+    organizationId,
+    userId,
+  );
+  if (!membership) throw new Error("Organization member not found.");
+  return CommunicationsRepository.createWhatsappInternalNote(
+    organizationId,
+    membership.id,
+    input,
+  );
 }
 
 async function createWhatsappCampaign(
@@ -1550,6 +1654,10 @@ export const CommunicationsService = {
   updateIntegration,
   transcribeVoiceAudio,
   updateWhatsappConversation,
+  updateWhatsappContactProfile,
+  addWhatsappContactTag,
+  upsertWhatsappContactAttribute,
+  createWhatsappInternalNote,
   verifyMetaWebhook,
   voiceWorkspace,
   whatsappWorkspace,

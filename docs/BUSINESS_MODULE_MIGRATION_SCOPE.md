@@ -259,6 +259,30 @@ conversation list, message thread and reply composer, plus CRM-contact,
 staff-assignment and status controls. It retains OpenSEO's shell, spacing,
 colors and component tokens rather than copying the legacy app's branding.
 
+### 2026-09-01: KWIC/legacy parity audit and contact operations
+
+A read-only Playwright audit compared the authenticated KWIC application, the
+legacy Digital Urgency WhatsApp workspace, and OpenSEO production. No messages,
+settings, tokens, opt-ins or provider controls were changed during the audit.
+The protected OpenSEO transport boundary remains the Meta webhook, connection
+credentials, message ingestion/persistence, 2.5-second inbox polling,
+duplicate-send protection and outbound send path. Feature migration must build
+around those paths rather than replace them.
+
+The first parity layer adds normalized, organization-scoped contact operations:
+marketing and utility consent, the WhatsApp-name preference, reusable contact
+tags, key/value contact attributes, and conversation-internal staff notes. They
+live in their own relational tables for both SQLite and Postgres and are exposed
+through guarded WhatsApp manage mutations. The inbox right rail now renders and
+edits those records without changing message delivery behavior.
+
+Still pending from the verified parity map: contact import/export; complete Meta
+template lifecycle; campaign audiences and delivery reporting; default actions,
+keyword rules, quick replies and sequences; tenant Claude Haiku controls; order
+request handling; detailed message/operator reports; `wa.me` links and the
+website widget; then advanced WhatsApp Flows, CTWA, catalogue and payment
+capabilities after the core is stable.
+
 The initial dashboard placed nine metric cards above the inbox and pushed the
 conversation and composer below the viewport. `14b32d0` made **Inbox** the
 default, viewport-height workspace and moved the other surfaces into top tabs:

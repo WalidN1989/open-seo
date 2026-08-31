@@ -46,6 +46,25 @@ export const updateWhatsappConversationSchema = z.object({
   contactId: z.string().min(1).nullable().optional(),
   status: z.enum(["open", "pending", "closed"]).optional(),
 });
+export const updateWhatsappContactProfileSchema = z.object({
+  contactId: z.string().min(1),
+  marketingOptIn: z.boolean().optional(),
+  utilityOptIn: z.boolean().optional(),
+  useWhatsappName: z.boolean().optional(),
+});
+export const addWhatsappContactTagSchema = z.object({
+  contactId: z.string().min(1),
+  name: z.string().trim().min(1).max(50),
+});
+export const upsertWhatsappContactAttributeSchema = z.object({
+  contactId: z.string().min(1),
+  key: z.string().trim().min(1).max(50),
+  value: z.string().trim().min(1).max(500),
+});
+export const createWhatsappInternalNoteSchema = z.object({
+  conversationId: z.string().min(1),
+  body: z.string().trim().min(1).max(4000),
+});
 export const createWhatsappCampaignSchema = z.object({
   name: z.string().trim().min(1).max(150),
   connectionId: z.string().min(1),
