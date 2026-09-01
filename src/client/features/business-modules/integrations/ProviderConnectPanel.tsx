@@ -40,6 +40,8 @@ export function ProviderConnectPanel({
 }: Props) {
   const queryClient = useQueryClient();
   const fields = entry.credentialFields ?? [];
+  const plainFields = fields.filter((field) => field.type !== "secret");
+  const secretFields = fields.filter((field) => field.type === "secret");
   const alreadySet = new Set(connection?.credentialKeysSet ?? []);
 
   const [displayName, setDisplayName] = useState(
@@ -190,7 +192,41 @@ export function ProviderConnectPanel({
           />
         </label>
 
-        {fields.map((field) => {
+        {/* Identifiers pair two-up; a secret takes its own row so a masked
+            field never sits beside a visible one and reads as the same kind
+            of thing. */}
+        <div className="grid gap-3 sm:grid-cols-2">
+          {plainFields.map((field) => (
+            <label key={field.key} className="form-control w-full">
+              <span className="label-text text-xs">
+                {field.label}
+                {field.required ? " *" : ""}
+              </span>
+              <input
+                className="input input-bordered input-sm w-full"
+                type="text"
+                inputMode={field.type === "url" ? "url" : undefined}
+                value={values[field.key] ?? stored[field.key] ?? ""}
+                onChange={(event) =>
+                  setValues((current) => ({
+                    ...current,
+                    [field.key]: event.target.value,
+                  }))
+                }
+                placeholder={field.placeholder}
+                autoComplete="off"
+                spellCheck={false}
+              />
+              {field.help ? (
+                <span className="label-text-alt mt-1 text-base-content/50">
+                  {field.help}
+                </span>
+              ) : null}
+            </label>
+          ))}
+        </div>
+
+        {secretFields.map((field) => {
           const isSet = alreadySet.has(field.key);
           return (
             <label key={field.key} className="form-control w-full">

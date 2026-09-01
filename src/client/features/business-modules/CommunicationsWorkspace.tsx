@@ -153,6 +153,23 @@ function exportWhatsappContacts(data: {
   URL.revokeObjectURL(url);
 }
 
+type ConversationStatusFilter =
+  | "all"
+  | (typeof whatsappConversationStatuses)[number];
+
+/**
+ * Narrow a select's value against the real status list. A cast would compile
+ * even after the options and the list drift apart.
+ */
+function isConversationStatusFilter(
+  value: string,
+): value is ConversationStatusFilter {
+  return (
+    value === "all" ||
+    (whatsappConversationStatuses as readonly string[]).includes(value)
+  );
+}
+
 export function WhatsappWorkspace() {
   const client = useQueryClient();
   const [form, setForm] = useState<
@@ -169,9 +186,8 @@ export function WhatsappWorkspace() {
     string | null
   >(null);
   const [conversationSearch, setConversationSearch] = useState("");
-  const [conversationStatusFilter, setConversationStatusFilter] = useState<
-    "all" | (typeof whatsappConversationStatuses)[number]
-  >("all");
+  const [conversationStatusFilter, setConversationStatusFilter] =
+    useState<ConversationStatusFilter>("all");
   const [tagName, setTagName] = useState("");
   const [attributeKey, setAttributeKey] = useState("");
   const [attributeValue, setAttributeValue] = useState("");
@@ -659,12 +675,12 @@ export function WhatsappWorkspace() {
                     aria-label="Filter conversations"
                     className="select select-bordered select-sm w-full"
                     value={conversationStatusFilter}
-                    onChange={(event) =>
-                      setConversationStatusFilter(
-                        event.currentTarget
-                          .value as typeof conversationStatusFilter,
-                      )
-                    }
+                    onChange={(event) => {
+                      const next = event.currentTarget.value;
+                      if (isConversationStatusFilter(next)) {
+                        setConversationStatusFilter(next);
+                      }
+                    }}
                   >
                     <option value="all">All</option>
                     <option value="open">Open</option>

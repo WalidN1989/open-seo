@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useParams } from "@tanstack/react-router";
 import { toast } from "sonner";
-import { ArrowLeft, Check } from "lucide-react";
+import { ArrowLeft, Check, TriangleAlert } from "lucide-react";
 import {
   checkIntegrationHealth,
   setIntegrationSyncSchedule,
@@ -90,6 +90,9 @@ export function IntegrationProviderDetailView() {
   }
 
   const connected = connection?.status === "connected";
+  // An errored connection is neither "connected" nor "available": saying
+  // either hides a store that has stopped syncing.
+  const errored = connection?.status === "error";
   const showsSync = entry.supportsCatalogueSync && connection;
 
   return (
@@ -106,7 +109,11 @@ export function IntegrationProviderDetailView() {
             <h1 className="font-semibold">{entry.name}</h1>
             <p className="mt-1 text-xs text-base-content/60">{entry.tagline}</p>
             <div className="mt-3">
-              {connected ? (
+              {errored ? (
+                <span className="badge badge-error badge-sm gap-1">
+                  <TriangleAlert className="size-3" /> Needs attention
+                </span>
+              ) : connected ? (
                 <span className="badge badge-success badge-sm gap-1">
                   <Check className="size-3" /> Connected
                 </span>
@@ -121,9 +128,19 @@ export function IntegrationProviderDetailView() {
           </div>
 
           {connection ? (
-            <div className="rounded-xl border border-base-300 p-4">
-              <h2 className="text-sm font-semibold">Connection health</h2>
-              <p className="mt-1 text-xs text-base-content/60">
+            <div
+              className={`rounded-xl border p-4 ${
+                errored ? "border-error/40 bg-error/5" : "border-base-300"
+              }`}
+            >
+              <h2 className="text-sm font-semibold">
+                {errored ? "Connection problem" : "Connection health"}
+              </h2>
+              <p
+                className={`mt-1 text-xs ${
+                  errored ? "text-error" : "text-base-content/60"
+                }`}
+              >
                 {connection.healthDetail ?? "Not checked yet"}
               </p>
               {connection.lastCheckedAt ? (
@@ -169,6 +186,7 @@ export function IntegrationProviderDetailView() {
           <dl className="rounded-xl border border-base-300 p-4 text-xs">
             <Meta label="By" value="OpenSEO" />
             <Meta label="Price" value="Included in your plan" />
+            <Meta label="Language" value="English" />
             <Meta label="Category" value={entry.category} />
           </dl>
 

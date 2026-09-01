@@ -186,29 +186,78 @@ export const integrationCatalogue: readonly IntegrationCatalogueEntry[] = [
     name: "Shopify",
     tagline: "Bring your Shopify store into the workspace",
     description:
-      "Connect a Shopify store with keys the merchant creates in Shopify's Dev Dashboard — nothing to install from us and no app-store review to wait for. Each variant syncs as its own row so per-variant prices and stock stay accurate.",
+      "Connect a Shopify store with keys the merchant creates in Shopify's own dashboard — nothing to install from us and no app-store review to wait for. Each variant syncs as its own row so per-variant prices and stock stay accurate.",
     category: "ecommerce",
     state: "planned",
     credentialFields: [
       {
         key: "SHOP_DOMAIN",
-        label: "Shop domain",
+        label: "Store domain",
         type: "text",
         required: true,
         placeholder: "your-shop.myshopify.com",
+        help: "The .myshopify.com domain, not your custom domain.",
       },
-      { key: "CLIENT_ID", label: "Client ID", type: "text", required: true },
+      {
+        key: "CLIENT_ID",
+        label: "Client ID",
+        type: "text",
+        required: true,
+        help: "Shopify shows this under Settings once you have created the app.",
+      },
       {
         key: "CLIENT_SECRET",
         label: "Client secret",
         type: "secret",
         required: true,
+        placeholder: "From the same Settings page",
+        help: "Stored server-side and never shown again after you save.",
       },
     ],
+    capabilities: ["products", "variants", "inventory"],
+    supportsCatalogueSync: true,
+    detail: {
+      headline: "Your Shopify catalogue, inside the workspace",
+      intro:
+        "Connect Shopify and the assistant answers from your real catalogue — titles, variants, prices, stock and a link straight to the product page. You create a small app on your own Shopify account and paste its two keys here; we never ask for your Shopify password, and you can revoke our access from your side whenever you like.",
+      features: [
+        {
+          title: "Variants handled properly",
+          bullets: [
+            "Each variant syncs as its own row with its own SKU, price and stock.",
+            "The assistant can tell a customer which size or edition is actually available.",
+          ],
+        },
+        {
+          title: "Live catalogue in chat",
+          bullets: [
+            "Product search answers from your synced Shopify products.",
+            "Every reply carries the product link so customers can buy immediately.",
+          ],
+        },
+        {
+          title: "Stays current on its own",
+          bullets: [
+            "Scheduled syncs fetch only what changed since the last check.",
+            "Edit a price in Shopify and it appears here without anyone pressing a button.",
+          ],
+        },
+      ],
+      requirements: [
+        "A Shopify store you administer, signed in with the account that owns it.",
+        "The app must be created from that same account — Shopify only issues keys when the app and the store belong to the same organisation.",
+        "Read access to products and inventory. We never request write access, customers or orders.",
+      ],
+    },
     howToConnect: [
-      "At dev.shopify.com, sign in with the account that owns the store and create an app.",
-      "Add read_products and read_inventory scopes, release the version, then install the app on the store.",
-      "The app and the store must belong to the same Shopify organisation, or Shopify refuses the keys.",
+      "At dev.shopify.com, sign in with the account that owns your store and create an app.",
+      "Give it any name. Under scopes add read_products and read_inventory, then click Release.",
+      "Click Install app and choose your store.",
+      "Open Settings, copy the Client ID and Client secret, and paste both below with your store domain.",
+    ],
+    notes: [
+      "You create the app on your own Shopify account, so you stay in control of it and can revoke it at any time.",
+      "Each Shopify variant becomes its own row, so per-variant prices and stock stay accurate.",
     ],
   },
   {
