@@ -1,5 +1,6 @@
-import { and, eq, or } from "drizzle-orm";
+import { inArray, and, eq, or } from "drizzle-orm";
 import { db } from "@/db";
+import { CATALOGUE_PROVIDER_KEYS } from "../providers/catalogueProviders";
 import { integrationConnections } from "@/db/schema";
 
 async function getConnection(organizationId: string, connectionId: string) {
@@ -134,7 +135,8 @@ async function listDueSyncs(limit: number) {
     .from(integrationConnections)
     .where(
       and(
-        eq(integrationConnections.providerKey, "woocommerce"),
+        // Every provider that has a catalogue adapter, not one hardcoded name.
+        inArray(integrationConnections.providerKey, CATALOGUE_PROVIDER_KEYS),
         eq(integrationConnections.status, "connected"),
         or(
           eq(integrationConnections.syncStatus, "queued"),

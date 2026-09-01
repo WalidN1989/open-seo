@@ -7,14 +7,9 @@ import {
   type StockMovementDraft,
 } from "../repositories/InventoryRepository";
 import { IntegrationSyncRepository } from "../repositories/IntegrationSyncRepository";
-import {
-  fetchProductPage,
-  fetchStoreHealth,
-  plainText,
-  toMinorUnits,
-} from "../providers/woocommerce";
+import { catalogueProviderFor } from "../providers/catalogueProviders";
 
-const WOOCOMMERCE = "woocommerce";
+const UNSUPPORTED = "This provider does not support catalogue sync.";
 const PAGE_SIZE = 50;
 // A page walk is bounded so a misbehaving store cannot spin the worker.
 const MAX_PAGES = 200;
@@ -43,7 +38,9 @@ async function checkHealth(
   const connection = await requireConnection(organizationId, connectionId);
 
   try {
-    const health = await fetchStoreHealth(connection);
+    const provider = catalogueProviderFor(connection.providerKey);
+    if (!provider) throw new AppError("VALIDATION_ERROR", UNSUPPORTED);
+    const health = await provider.health(connection);
     return stripCredentials(
       await IntegrationSyncRepository.recordHealth(
         organizationId,
@@ -133,6 +130,9 @@ async function setSchedule(
  */
 async function runSync(organizationId: string, connectionId: string) {
   const connection = await requireConnection(organizationId, connectionId);
+  // requireConnection already refused a provider with no adapter.
+  const provider = catalogueProviderFor(connection.providerKey);
+  if (!provider) throw new AppError("VALIDATION_ERROR", UNSUPPORTED);
   await IntegrationSyncRepository.setSyncState(organizationId, connectionId, {
     syncStatus: "running",
     syncError: null,
@@ -168,13 +168,13 @@ async function runSync(organizationId: string, connectionId: string) {
         );
         break;
       }
-      const products = await fetchProductPage(
+      const { drafts, nextCursor, done } = await provider.fetchPage(
         connection,
         page,
         PAGE_SIZE,
         modifiedAfter,
       );
-      if (products.length === 0) break;
+      if (drafts.length === 0) break;
 
       // Checkpoint before the page's work, not after the whole run. A run that
       // dies part-way used to leave the cursor untouched and start again from
@@ -196,45 +196,36 @@ async function runSync(organizationId: string, connectionId: string) {
       // emptied out from under it.
       const movements: StockMovementDraft[] = [];
 
-      for (const wooProduct of products) {
-        // A product with no SKU cannot be identified in a catalogue, and the
-        // assistant would have nothing to quote; fall back to the provider id.
-        const sku = wooProduct.sku?.trim() || `WOO-${wooProduct.id}`;
+      for (const draft of drafts) {
         const row = await CommerceRepository.upsertExternalProduct(
           organizationId,
           {
-            externalSource: WOOCOMMERCE,
-            externalId: String(wooProduct.id),
-            name: plainText(wooProduct.name) || wooProduct.name,
-            sku,
-            description:
-              plainText(wooProduct.short_description) ||
-              plainText(wooProduct.description) ||
-              null,
-            category: plainText(wooProduct.categories?.[0]?.name) || null,
-            salePriceMinor: toMinorUnits(
-              wooProduct.price ?? wooProduct.regular_price,
-            ),
-            productUrl: wooProduct.permalink?.trim() || null,
+            externalSource: connection.providerKey,
+            externalId: draft.externalId,
+            name: draft.name,
+            sku: draft.sku,
+            description: draft.description,
+            category: draft.category,
+            salePriceMinor: draft.salePriceMinor,
+            productUrl: draft.productUrl,
           },
         );
         synced += 1;
 
-        // Only stores that actually track stock have an opinion about it.
-        if (!row || !wooProduct.manage_stock) continue;
-        const target = wooProduct.stock_quantity;
-        if (typeof target !== "number") continue;
+        // Null means the store does not track stock for this item, which is a
+        // different answer from zero and must not be reconciled to it.
+        if (!row || draft.stockTarget === null) continue;
         const delta = await InventoryRepository.reconcileToQuantity(
           organizationId,
           row.id,
-          target,
+          draft.stockTarget,
         );
         if (delta === null) continue;
         movements.push({
           productId: row.id,
           movementType: "adjustment",
           quantityDelta: delta,
-          reason: "WooCommerce catalogue sync",
+          reason: "Catalogue sync",
         });
       }
 
@@ -244,7 +235,8 @@ async function runSync(organizationId: string, connectionId: string) {
         await InventoryRepository.applyMovements(organizationId, movements);
       }
 
-      if (products.length < PAGE_SIZE) break;
+      page = nextCursor - 1; // the loop's own increment lands on nextCursor
+      if (done) break;
     }
 
     const syncedTotal = baseCount + synced;
@@ -312,11 +304,8 @@ async function requireConnection(organizationId: string, connectionId: string) {
     connectionId,
   );
   if (!connection) throw new AppError("NOT_FOUND");
-  if (connection.providerKey !== WOOCOMMERCE) {
-    throw new AppError(
-      "VALIDATION_ERROR",
-      "Catalogue sync is only available for WooCommerce today.",
-    );
+  if (!catalogueProviderFor(connection.providerKey)) {
+    throw new AppError("VALIDATION_ERROR", UNSUPPORTED);
   }
   return connection;
 }

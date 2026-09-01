@@ -236,7 +236,18 @@ describe("authorization and isolation", () => {
     });
     await expect(
       CatalogueSyncService.queueSync(ORG, USER, "conn_1"),
-    ).rejects.toThrow("only available for WooCommerce");
+    ).rejects.toThrow(/does not support catalogue sync/);
+  });
+
+  it("accepts a provider that has a catalogue adapter", async () => {
+    // Shopify gained one; the gate must not be a hardcoded provider name.
+    mocks.getConnection.mockResolvedValue({
+      ...CONNECTION,
+      providerKey: "shopify",
+    });
+    await expect(
+      CatalogueSyncService.queueSync(ORG, USER, "conn_1"),
+    ).resolves.not.toThrow();
   });
 });
 
