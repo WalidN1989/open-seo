@@ -11,8 +11,6 @@ import { catalogueProviderFor } from "../providers/catalogueProviders";
 
 const UNSUPPORTED = "This provider does not support catalogue sync.";
 const PAGE_SIZE = 50;
-// A page walk is bounded so a misbehaving store cannot spin the worker.
-const MAX_PAGES = 200;
 /**
  * Pages per run. A catalogue of a few thousand products cannot be fetched,
  * upserted and stock-reconciled inside one request, so a run stops at a page
@@ -150,31 +148,22 @@ async function runSync(organizationId: string, connectionId: string) {
         : null;
 
     let synced = 0;
-    const startPage = Math.max(1, connection.syncCursor || 1);
-    // A run that starts at page one is a fresh pass, so the running total
+    const startCursor = connection.syncCursor || provider.initialCursor;
+    // A run that starts at the provider's first cursor is a fresh pass, so the running total
     // restarts rather than accumulating across syncs forever.
-    const baseCount = startPage === 1 ? 0 : (connection.syncedCount ?? 0);
-    const lastPage = Math.min(startPage + PAGES_PER_RUN - 1, MAX_PAGES);
+    const baseCount =
+      startCursor === provider.initialCursor
+        ? 0
+        : (connection.syncedCount ?? 0);
     let finished = true;
+    let cursor = startCursor;
 
-    for (let page = startPage; page <= MAX_PAGES; page += 1) {
-      if (page > lastPage) {
-        // More to do than fits here. Stop cleanly on a page boundary.
-        finished = false;
-        await IntegrationSyncRepository.setSyncState(
-          organizationId,
-          connectionId,
-          { syncStatus: "queued", syncError: null, syncCursor: page },
-        );
-        break;
-      }
-      const { drafts, nextCursor, done } = await provider.fetchPage(
-        connection,
-        page,
-        PAGE_SIZE,
-        modifiedAfter,
-      );
-      if (drafts.length === 0) break;
+    for (let pageIndex = 0; pageIndex < PAGES_PER_RUN; pageIndex += 1) {
+      const { drafts, sourceItemCount, nextCursor, done } =
+        await provider.fetchPage(connection, cursor, PAGE_SIZE, modifiedAfter);
+      // A Shopify product can legitimately have no variant rows. Completion
+      // is about source products, not the number of rows they expand into.
+      if (sourceItemCount === 0) break;
 
       // Checkpoint before the page's work, not after the whole run. A run that
       // dies part-way used to leave the cursor untouched and start again from
@@ -186,7 +175,7 @@ async function runSync(organizationId: string, connectionId: string) {
         {
           syncStatus: "running",
           syncError: null,
-          syncCursor: page,
+          syncCursor: cursor,
           syncedCount: baseCount + synced,
         },
       );
@@ -210,8 +199,6 @@ async function runSync(organizationId: string, connectionId: string) {
             productUrl: draft.productUrl,
           },
         );
-        synced += 1;
-
         // Null means the store does not track stock for this item, which is a
         // different answer from zero and must not be reconciled to it.
         if (!row || draft.stockTarget === null) continue;
@@ -235,20 +222,29 @@ async function runSync(organizationId: string, connectionId: string) {
         await InventoryRepository.applyMovements(organizationId, movements);
       }
 
-      page = nextCursor - 1; // the loop's own increment lands on nextCursor
+      // Progress is measured in provider products. Shopify can turn one
+      // product into several variant rows, so counting drafts made a page of
+      // 50 products misleadingly appear as (for example) "82 products".
+      synced += sourceItemCount;
       if (done) break;
+      cursor = nextCursor;
+      if (pageIndex === PAGES_PER_RUN - 1) finished = false;
     }
 
     const syncedTotal = baseCount + synced;
     if (!finished) {
-      // Partway through. The state row was already set to queued above; only
-      // the running total is added here, and lastSyncedAt is deliberately not
-      // stamped so the incremental filter still covers the whole catalogue.
+      // Partway through. Re-queue at the provider's opaque next cursor. In
+      // Shopify this is a large product id, not a sequential page number.
       return stripCredentials(
         await IntegrationSyncRepository.setSyncState(
           organizationId,
           connectionId,
-          { syncStatus: "queued", syncError: null, syncedCount: syncedTotal },
+          {
+            syncStatus: "queued",
+            syncError: null,
+            syncCursor: cursor,
+            syncedCount: syncedTotal,
+          },
         ),
       );
     }

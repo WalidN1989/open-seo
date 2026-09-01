@@ -27,6 +27,8 @@ type CatalogueDraft = {
 
 type CataloguePage = {
   drafts: CatalogueDraft[];
+  /** Provider products consumed, distinct from rows/variants produced. */
+  sourceItemCount: number;
   /** Where the next call should resume from. */
   nextCursor: number;
   /** True when the provider has nothing more to give. */
@@ -34,6 +36,8 @@ type CataloguePage = {
 };
 
 type CatalogueProvider = {
+  /** First cursor: WooCommerce uses page 1; Shopify uses since_id 0. */
+  initialCursor: number;
   /** How the connection health line describes the store. */
   health: (
     connection: IntegrationRecord,
@@ -52,6 +56,7 @@ type CatalogueProvider = {
  * WooCommerce pages by number and stores one row per product.
  */
 const wooProvider: CatalogueProvider = {
+  initialCursor: 1,
   health: woocommerce.fetchStoreHealth,
   async fetchPage(connection, cursor, limit, modifiedAfter, fetcher) {
     const page = Math.max(1, cursor);
@@ -84,6 +89,7 @@ const wooProvider: CatalogueProvider = {
     }));
     return {
       drafts,
+      sourceItemCount: products.length,
       nextCursor: page + 1,
       done: products.length < limit,
     };
@@ -98,6 +104,7 @@ const wooProvider: CatalogueProvider = {
  * assistant one price for an item sold in three sizes.
  */
 const shopifyProvider: CatalogueProvider = {
+  initialCursor: 0,
   health: shopify.fetchStoreHealth,
   async fetchPage(connection, cursor, limit, modifiedAfter, fetcher) {
     const shop = await shopify.shopDomainFor(connection);
@@ -131,6 +138,7 @@ const shopifyProvider: CatalogueProvider = {
     }
     return {
       drafts,
+      sourceItemCount: products.length,
       nextCursor,
       done: products.length < limit,
     };

@@ -225,6 +225,17 @@ The app must first have a released version with only `read_products` and
 organization. A Dev Dashboard app showing zero installs cannot authenticate.
 The catalogue sync remains read-only and stores one row per Shopify variant.
 
+The **BooxWorm** store (`d80e66.myshopify.com`) is installed and connected in
+production. Its health check reports 2,683 Shopify products. The first live
+batch exposed two progress bugs: 50 Shopify products expanded to 82 variant
+rows, so the UI incorrectly said “82 products”, and the generic sync loop
+compared Shopify's opaque product-ID cursor as though it were a sequential page
+number. Progress now counts source products while continuing to store every
+variant row, and each scheduler run follows five provider cursors before
+re-queuing. While a full import is queued or running, the UI says that the
+import is in progress instead of showing an older “last synced” timestamp.
+No Shopify Client ID, secret, or access token is recorded in this ledger.
+
 ### 2026-08-31: Meta test-number activation and shared inbox
 
 This is the canonical handoff for the working production Meta connection. Do

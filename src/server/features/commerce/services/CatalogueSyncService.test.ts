@@ -307,6 +307,22 @@ describe("a catalogue too large for one request", () => {
     expect(requestedPages()).toEqual([6, 7, 8, 9, 10]);
   });
 
+  it("treats provider cursors as opaque values, not sequential page numbers", async () => {
+    mocks.fetchProductPage.mockImplementation((_c: unknown, cursor: number) =>
+      Promise.resolve(
+        cursor === 1
+          ? Array.from({ length: 50 }, (_, index) =>
+              wooProduct({ id: 900_000 + index, sku: `SKU-${index}` }),
+            )
+          : [],
+      ),
+    );
+    await CatalogueSyncService.runSync(ORG, CONNECTION.id);
+    // Woo's adapter converts its response to cursor 2. Shopify's equivalent
+    // is a large product id; the service must simply pass either value back.
+    expect(requestedPages()).toEqual([1, 2]);
+  });
+
   it("finishes, clears the cursor and stamps the sync time", async () => {
     mocks.fetchProductPage.mockImplementation((_c: unknown, page: number) =>
       Promise.resolve(page === 1 ? [wooProduct()] : []),

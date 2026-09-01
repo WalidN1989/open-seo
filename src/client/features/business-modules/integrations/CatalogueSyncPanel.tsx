@@ -73,9 +73,14 @@ export function CatalogueSyncPanel({
           max={storeTotal}
         />
       ) : null}
-      {connection.lastSyncedAt ? (
+      {connection.lastSyncedAt && !inFlight ? (
         <p className="mt-1 text-xs text-base-content/40">
           Last synced {new Date(connection.lastSyncedAt).toLocaleString()}
+        </p>
+      ) : null}
+      {inFlight ? (
+        <p className="mt-1 text-xs text-base-content/40">
+          Import in progress — the count updates after each batch
         </p>
       ) : null}
       {connection.syncError ? (

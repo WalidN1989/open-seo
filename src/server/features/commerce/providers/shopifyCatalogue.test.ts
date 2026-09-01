@@ -111,6 +111,8 @@ describe("a Shopify product becomes one row per variant", () => {
       ]),
     );
     expect(page.drafts).toHaveLength(2);
+    // Progress follows Shopify products, not the variant rows stored locally.
+    expect(page.sourceItemCount).toBe(1);
     expect(page.drafts.map((d) => d.name)).toEqual([
       "The Daily Stoic — Paperback",
       "The Daily Stoic — Hardcover",
