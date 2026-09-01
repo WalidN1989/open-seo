@@ -149,12 +149,34 @@ async function upsertExternalProduct(
   },
 ) {
   const now = new Date().toISOString();
+  const [existingExternal] = await db
+    .select({ id: commerceProducts.id })
+    .from(commerceProducts)
+    .where(
+      and(
+        eq(commerceProducts.organizationId, organizationId),
+        eq(commerceProducts.externalSource, input.externalSource),
+        eq(commerceProducts.externalId, input.externalId),
+      ),
+    )
+    .limit(1);
+  const skuOwner = await findProductBySku(organizationId, input.sku);
+  // Shopify and WooCommerce both permit duplicate merchant-entered SKUs,
+  // while OpenSEO deliberately keeps SKU unique within a workspace. Preserve
+  // the real SKU when possible and add the provider identity only for the
+  // colliding row. The suffix is deterministic, so later syncs update rather
+  // than multiply that product.
+  const sku =
+    !skuOwner || skuOwner.id === existingExternal?.id
+      ? input.sku
+      : `${input.sku}-${input.externalSource.toUpperCase()}-${input.externalId}`;
   const [row] = await db
     .insert(commerceProducts)
     .values({
       id: crypto.randomUUID(),
       organizationId,
       ...input,
+      sku,
       updatedAt: now,
     })
     .onConflictDoUpdate({
@@ -165,7 +187,7 @@ async function upsertExternalProduct(
       ],
       set: {
         name: input.name,
-        sku: input.sku,
+        sku,
         description: input.description,
         category: input.category,
         salePriceMinor: input.salePriceMinor,
