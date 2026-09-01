@@ -188,7 +188,7 @@ export const integrationCatalogue: readonly IntegrationCatalogueEntry[] = [
     description:
       "Connect a Shopify store with keys the merchant creates in Shopify's own dashboard — nothing to install from us and no app-store review to wait for. Each variant syncs as its own row so per-variant prices and stock stay accurate.",
     category: "ecommerce",
-    state: "planned",
+    state: "connectable",
     credentialFields: [
       {
         key: "SHOP_DOMAIN",
@@ -199,19 +199,12 @@ export const integrationCatalogue: readonly IntegrationCatalogueEntry[] = [
         help: "The .myshopify.com domain, not your custom domain.",
       },
       {
-        key: "CLIENT_ID",
-        label: "Client ID",
-        type: "text",
-        required: true,
-        help: "Shopify shows this under Settings once you have created the app.",
-      },
-      {
-        key: "CLIENT_SECRET",
-        label: "Client secret",
+        key: "ADMIN_ACCESS_TOKEN",
+        label: "Admin API access token",
         type: "secret",
         required: true,
-        placeholder: "From the same Settings page",
-        help: "Stored server-side and never shown again after you save.",
+        placeholder: "shpat_...",
+        help: "Shown once when you install the app on your store. Stored encrypted and never shown again.",
       },
     ],
     capabilities: ["products", "variants", "inventory"],
@@ -245,18 +238,18 @@ export const integrationCatalogue: readonly IntegrationCatalogueEntry[] = [
       ],
       requirements: [
         "A Shopify store you administer, signed in with the account that owns it.",
-        "The app must be created from that same account — Shopify only issues keys when the app and the store belong to the same organisation.",
+        "A custom app created in that store's own admin, so the token belongs to the store you are connecting.",
         "Read access to products and inventory. We never request write access, customers or orders.",
       ],
     },
     howToConnect: [
-      "At dev.shopify.com, sign in with the account that owns your store and create an app.",
-      "Give it any name. Under scopes add read_products and read_inventory, then click Release.",
-      "Click Install app and choose your store.",
-      "Open Settings, copy the Client ID and Client secret, and paste both below with your store domain.",
+      "In Shopify admin, open Settings, Apps and sales channels, Develop apps.",
+      "Create an app, then under Configuration add the read_products and read_inventory scopes.",
+      "Click Install app. Shopify shows the Admin API access token once.",
+      "Paste that token below with your .myshopify.com domain.",
     ],
     notes: [
-      "You create the app on your own Shopify account, so you stay in control of it and can revoke it at any time.",
+      "You create the app in your own Shopify admin, so you stay in control of it and can uninstall it at any time.",
       "Each Shopify variant becomes its own row, so per-variant prices and stock stay accurate.",
     ],
   },
