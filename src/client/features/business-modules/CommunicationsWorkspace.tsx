@@ -433,6 +433,7 @@ export function WhatsappWorkspace() {
     <Workspace
       title="WhatsApp"
       subtitle="Shared inbox, campaigns, templates, automations, and order requests."
+      compact={activeSection === "Inbox"}
       actions={
         <>
           <button
@@ -592,7 +593,7 @@ export function WhatsappWorkspace() {
         />
       ) : null}
       {activeSection === "Inbox" ? (
-        <section className="flex h-[calc(100dvh-190px)] min-h-[520px] flex-col overflow-hidden rounded-xl border border-base-300 bg-base-100">
+        <section className="flex h-[calc(100dvh-112px)] min-h-[520px] flex-col overflow-hidden rounded-xl border border-base-300 bg-base-100">
           {data.conversations.length ? (
             <div className="grid min-h-0 flex-1 lg:grid-cols-[256px_minmax(0,1fr)_250px]">
               <aside className="min-h-0 border-b border-base-300 lg:border-r lg:border-b-0">
@@ -1794,23 +1795,27 @@ function Workspace({
   subtitle,
   actions,
   children,
+  compact = false,
 }: {
   title: string;
   subtitle: string;
   actions: React.ReactNode;
   children: React.ReactNode;
+  compact?: boolean;
 }) {
   return (
-    <div className="space-y-5">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-3xl font-semibold tracking-tight">{title}</h1>
-          <p className="mt-1 text-base leading-6 text-base-content/65">
-            {subtitle}
-          </p>
+    <div className={compact ? "space-y-2" : "space-y-5"}>
+      {!compact ? (
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h1 className="text-3xl font-semibold tracking-tight">{title}</h1>
+            <p className="mt-1 text-base leading-6 text-base-content/65">
+              {subtitle}
+            </p>
+          </div>
+          <div className="flex gap-2">{actions}</div>
         </div>
-        <div className="flex gap-2">{actions}</div>
-      </div>
+      ) : null}
       {children}
     </div>
   );
