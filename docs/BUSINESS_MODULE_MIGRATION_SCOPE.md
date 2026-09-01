@@ -907,3 +907,9 @@ messages, and the send mutation are unchanged. Build, TypeScript, and targeted
 lint passed. Local browser startup remains blocked by the repository's Vite/
 Cloudflare dev server not binding a port in this restricted environment; visual
 verification must therefore be repeated after the branch deploys.
+
+The inbox also supports direct contact conversion. When a conversation is not
+linked, the operator enters only a name; the application creates a CRM contact
+using the conversation's existing WhatsApp number and links the conversation in
+the same action. This avoids the previous failure mode where a separately
+created contact existed but the chat continued to display the raw number.

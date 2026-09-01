@@ -176,6 +176,7 @@ export function WhatsappWorkspace() {
   const [attributeKey, setAttributeKey] = useState("");
   const [attributeValue, setAttributeValue] = useState("");
   const [internalNote, setInternalNote] = useState("");
+  const [newContactName, setNewContactName] = useState("");
   const [activeSection, setActiveSection] =
     useState<(typeof whatsappSections)[number]>("Inbox");
   const transcriptEndRef = useRef<HTMLDivElement>(null);
@@ -362,6 +363,37 @@ export function WhatsappWorkspace() {
       await client.invalidateQueries({ queryKey: ["whatsapp"] });
       setForm(null);
       toast.success("Contact created");
+    },
+    onError: showError,
+  });
+  const createAndLinkContact = useMutation({
+    mutationFn: async (data: {
+      conversationId: string;
+      displayName: string;
+      whatsappPhone: string;
+    }) => {
+      const nameParts = data.displayName.trim().split(/\s+/);
+      const firstName = nameParts.shift()!;
+      const contact = await createCrmContact({
+        data: {
+          firstName,
+          lastName: nameParts.join(" ") || undefined,
+          phone: data.whatsappPhone,
+          whatsappPhone: data.whatsappPhone,
+        },
+      });
+      await updateWhatsappConversation({
+        data: {
+          conversationId: data.conversationId,
+          contactId: contact.id,
+        },
+      });
+      return contact;
+    },
+    onSuccess: async () => {
+      await client.invalidateQueries({ queryKey: ["whatsapp"] });
+      setNewContactName("");
+      toast.success("Contact created and linked to this conversation");
     },
     onError: showError,
   });
@@ -841,6 +873,45 @@ export function WhatsappWorkspace() {
                         ))}
                       </select>
                     </label>
+                    {!selectedContact ? (
+                      <div className="space-y-2 rounded-lg border border-primary/25 bg-primary/5 p-2.5">
+                        <p className="text-xs font-medium">
+                          Create contact from this chat
+                        </p>
+                        <p className="text-[11px] text-base-content/55">
+                          {selectedConversation.externalConversationId}
+                        </p>
+                        <input
+                          aria-label="New contact name"
+                          className="input input-bordered input-sm w-full"
+                          placeholder="Contact name"
+                          value={newContactName}
+                          onChange={(event) =>
+                            setNewContactName(event.target.value)
+                          }
+                        />
+                        <button
+                          className="btn btn-primary btn-sm w-full"
+                          disabled={
+                            !newContactName.trim() ||
+                            !selectedConversation.externalConversationId ||
+                            createAndLinkContact.isPending
+                          }
+                          onClick={() =>
+                            createAndLinkContact.mutate({
+                              conversationId: selectedConversation.id,
+                              displayName: newContactName,
+                              whatsappPhone:
+                                selectedConversation.externalConversationId!,
+                            })
+                          }
+                        >
+                          {createAndLinkContact.isPending
+                            ? "Creating…"
+                            : "Create & link"}
+                        </button>
+                      </div>
+                    ) : null}
                     <div className="rounded-lg bg-base-200/60 p-3 text-xs text-base-content/65">
                       Messages: {selectedMessages.length}
                       <br />
