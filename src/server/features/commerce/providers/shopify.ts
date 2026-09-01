@@ -8,7 +8,24 @@ type IntegrationRecord = {
 };
 
 /** The Admin API version this client is written against. */
-const API_VERSION = "2024-10";
+const API_VERSION = "2026-07";
+
+const tokenSchema = z.object({
+  access_token: z.string().min(1),
+  expires_in: z.number().positive(),
+});
+
+let cachedToken:
+  | { key: string; value: string; refreshAfter: number }
+  | undefined;
+
+async function credentialFingerprint(values: string[]) {
+  const bytes = new TextEncoder().encode(values.join("\u0000"));
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  return Array.from(new Uint8Array(digest), (byte) =>
+    byte.toString(16).padStart(2, "0"),
+  ).join("");
+}
 
 /**
  * Shopify answers only on the store's own myshopify.com host. A custom
@@ -28,12 +45,51 @@ export function normalizeShopDomain(value: string): string {
   return shop.toLowerCase();
 }
 
-async function credentials(connection: IntegrationRecord) {
-  const [domain, accessToken] = await Promise.all([
+async function credentials(
+  connection: IntegrationRecord,
+  fetcher: typeof fetch,
+) {
+  const [domain, clientId, clientSecret] = await Promise.all([
     resolveConnectionCredential(connection, "SHOP_DOMAIN"),
-    resolveConnectionCredential(connection, "ADMIN_ACCESS_TOKEN"),
+    resolveConnectionCredential(connection, "CLIENT_ID"),
+    resolveConnectionCredential(connection, "CLIENT_SECRET"),
   ]);
-  return { shop: normalizeShopDomain(domain), accessToken };
+  const shop = normalizeShopDomain(domain);
+  const cacheKey = await credentialFingerprint([shop, clientId, clientSecret]);
+  if (
+    fetcher === fetch &&
+    cachedToken?.key === cacheKey &&
+    cachedToken.refreshAfter > Date.now()
+  ) {
+    return { shop, accessToken: cachedToken.value };
+  }
+  const response = await fetcher(`https://${shop}/admin/oauth/access_token`, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      grant_type: "client_credentials",
+      client_id: clientId,
+      client_secret: clientSecret,
+    }),
+    redirect: "error",
+    signal: AbortSignal.timeout(20_000),
+  });
+  const payload: unknown = await response.json().catch(() => null);
+  if (!response.ok) {
+    throw new Error(`Shopify authentication failed (HTTP ${response.status}).`);
+  }
+  const token = tokenSchema.safeParse(payload);
+  if (!token.success)
+    throw new Error("Shopify returned an invalid access token.");
+  if (fetcher === fetch) {
+    cachedToken = {
+      key: cacheKey,
+      value: token.data.access_token,
+      refreshAfter:
+        Date.now() + Math.max(60, token.data.expires_in - 300) * 1_000,
+    };
+  }
+  return { shop, accessToken: token.data.access_token };
 }
 
 async function request(
@@ -42,7 +98,7 @@ async function request(
   params: URLSearchParams,
   fetcher: typeof fetch,
 ) {
-  const { shop, accessToken } = await credentials(connection);
+  const { shop, accessToken } = await credentials(connection, fetcher);
   const url = new URL(`https://${shop}/admin/api/${API_VERSION}${path}`);
   url.search = params.toString();
   const response = await fetcher(url.href, {
@@ -61,6 +117,22 @@ async function request(
     );
   }
   return response;
+}
+
+export async function fetchStoreName(
+  connection: IntegrationRecord,
+  fetcher: typeof fetch = fetch,
+) {
+  const response = await request(
+    connection,
+    "/shop.json",
+    new URLSearchParams(),
+    fetcher,
+  );
+  const parsed = z
+    .object({ shop: z.object({ name: z.string().optional() }).optional() })
+    .safeParse(await response.json());
+  return parsed.success ? (parsed.data.shop?.name ?? null) : null;
 }
 
 /** Products the store holds, for the connection health line. */
@@ -216,6 +288,7 @@ export function productUrl(
 }
 
 export async function shopDomainFor(connection: IntegrationRecord) {
-  const { shop } = await credentials(connection);
-  return shop;
+  return normalizeShopDomain(
+    await resolveConnectionCredential(connection, "SHOP_DOMAIN"),
+  );
 }

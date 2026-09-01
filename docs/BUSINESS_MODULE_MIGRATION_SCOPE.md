@@ -209,6 +209,22 @@ ok. Container logs show the ticker at 5s / 30s / 300s.
   external account verification steps. Meta Cloud is now connected for the
   OpenSEO test tenant as recorded below.
 
+### 2026-09-01: Shopify Dev Dashboard authentication
+
+Shopify no longer issues a copyable `shpat_` token for newly created Dev
+Dashboard apps. The Shopify catalogue connection therefore stores three tenant
+credentials: the `.myshopify.com` store domain, Client ID, and encrypted Client
+secret. On every new worker or before token expiry, the server exchanges the
+Client ID and secret at `/admin/oauth/access_token` using the
+`client_credentials` grant, caches only the returned access token in memory,
+and refreshes it before Shopify's 24-hour expiry. Secrets and access tokens must
+never be committed, logged, placed in URLs, or returned to the browser.
+
+The app must first have a released version with only `read_products` and
+`read_inventory`, and it must be installed on a store in the same Shopify
+organization. A Dev Dashboard app showing zero installs cannot authenticate.
+The catalogue sync remains read-only and stores one row per Shopify variant.
+
 ### 2026-08-31: Meta test-number activation and shared inbox
 
 This is the canonical handoff for the working production Meta connection. Do

@@ -3,7 +3,11 @@ import { describe, expect, it, vi } from "vitest";
 vi.mock("@/server/lib/connection-secrets", () => ({
   resolveConnectionCredential: (_c: unknown, suffix: string) =>
     Promise.resolve(
-      suffix === "SHOP_DOMAIN" ? "d80e66.myshopify.com" : "shpat_token",
+      suffix === "SHOP_DOMAIN"
+        ? "d80e66.myshopify.com"
+        : suffix === "CLIENT_ID"
+          ? "client-id"
+          : "client-secret",
     ),
 }));
 
@@ -18,12 +22,23 @@ const connection = {
 };
 
 function respond(products: unknown[]) {
-  return vi.fn<typeof fetch>().mockResolvedValue(
-    new Response(JSON.stringify({ products }), {
-      status: 200,
-      headers: { "content-type": "application/json" },
-    }),
-  );
+  return vi
+    .fn<typeof fetch>()
+    .mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          access_token: "short-lived-access-token",
+          expires_in: 86_399,
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      ),
+    )
+    .mockResolvedValueOnce(
+      new Response(JSON.stringify({ products }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      }),
+    );
 }
 
 function product(overrides: Record<string, unknown> = {}) {

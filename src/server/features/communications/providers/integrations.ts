@@ -1,5 +1,6 @@
 import { resolveConnectionCredential } from "@/server/lib/connection-secrets";
 import { z } from "zod";
+import { fetchStoreName } from "@/server/features/commerce/providers/shopify";
 
 type IntegrationRecord = {
   providerKey: string;
@@ -179,33 +180,12 @@ export async function testIntegrationConnection(
         detail: "Custom API secret is configured",
       };
     case "shopify": {
-      const domain = await credentialValue(connection, "SHOP_DOMAIN");
-      const token = await credentialValue(connection, "ADMIN_ACCESS_TOKEN");
-      // Accept a pasted URL or a bare domain; Shopify only answers on its own
-      // .myshopify.com host, never a custom storefront domain.
-      const shop = domain
-        .trim()
-        .replace(/^https?:\/\//, "")
-        .replace(/\/.*$/, "");
-      if (!/^[a-z0-9-]+\.myshopify\.com$/i.test(shop)) {
-        throw new Error(
-          "Use the .myshopify.com domain, not your custom storefront domain.",
-        );
-      }
-      const body = await checkedJson(
-        `https://${shop}/admin/api/2024-10/shop.json`,
-        { "X-Shopify-Access-Token": token },
-        fetcher,
-      );
-      const parsed = z
-        .object({ shop: z.object({ name: z.string().optional() }).optional() })
-        .safeParse(body);
+      const shopName = await fetchStoreName(connection, fetcher);
       return {
         providerKey: connection.providerKey,
-        detail:
-          parsed.success && parsed.data.shop?.name
-            ? `Connected to ${parsed.data.shop.name}`
-            : "Shopify store authenticated",
+        detail: shopName
+          ? `Connected to ${shopName}`
+          : "Shopify store authenticated",
       };
     }
     default:
