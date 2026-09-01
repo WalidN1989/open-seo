@@ -268,6 +268,10 @@ async function runSync(organizationId: string, connectionId: string) {
       ),
     );
   } catch (error) {
+    const cause =
+      error instanceof Error && error.cause instanceof Error
+        ? error.cause.message
+        : null;
     return stripCredentials(
       await IntegrationSyncRepository.setSyncState(
         organizationId,
@@ -276,10 +280,15 @@ async function runSync(organizationId: string, connectionId: string) {
           syncStatus: "error",
           syncCursor: 0,
           fullResync: false,
+          // Drizzle's top-level message is usually only the SQL statement;
+          // Postgres puts the actionable constraint or column failure in the
+          // nested cause. Persist that safe database message so operators can
+          // diagnose a real store import without container-log access.
           syncError:
-            error instanceof Error
+            cause?.slice(0, 300) ??
+            (error instanceof Error
               ? error.message.slice(0, 300)
-              : "Sync failed",
+              : "Sync failed"),
         },
       ),
     );
