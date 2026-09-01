@@ -889,3 +889,21 @@ as an oversight.**
   worker's limits partway through, stranding queued rows and leaving the
   campaign stuck in `running`. Same drain covers the messages; the campaign
   status needs its own reconcile.
+
+## WhatsApp inbox parity checkpoint (2026-09-01)
+
+The shared inbox now follows the proven legacy operator layout without changing
+the provider pipeline: a compact three-pane viewport, searchable and
+status-filtered conversation list, Bot/staff assignment, open/solved controls,
+conversation age, bottom-anchored Send composer, and the existing CRM/contact
+operations rail. The add-conversation icon intentionally opens contact creation
+because a new Meta conversation cannot send arbitrary free-form text outside
+the customer-service window; approved-template initiation remains a separate
+workflow.
+
+Protected boundaries were not changed: Meta webhook verification and routing,
+message-id deduplication, 2.5-second visible-tab polling, persisted outbound
+messages, and the send mutation are unchanged. Build, TypeScript, and targeted
+lint passed. Local browser startup remains blocked by the repository's Vite/
+Cloudflare dev server not binding a port in this restricted environment; visual
+verification must therefore be repeated after the branch deploys.
