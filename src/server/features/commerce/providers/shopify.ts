@@ -71,7 +71,7 @@ async function credentials(
       client_id: clientId,
       client_secret: clientSecret,
     }),
-    redirect: "error",
+    redirect: "manual",
     signal: AbortSignal.timeout(20_000),
   });
   const payload: unknown = await response.json().catch(() => null);
