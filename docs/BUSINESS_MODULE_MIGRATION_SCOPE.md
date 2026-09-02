@@ -974,3 +974,8 @@ For an agent whose credential reference is `OPENSEO_VOICE`, Railway supplies
 model fallback. These names and `VOICE_AI_MODEL` are included in the Railway
 runtime-variable allowlist. The database addition is migration 0063 and must be
 applied before the new deployment starts serving voice requests.
+
+The authenticated application shell exposes Voice Agent as a fixed floating
+button at the lower-right on desktop and mobile. It routes into the existing
+organization-authorized Voice workspace and is hidden while that workspace is
+already open; it does not create a second recording or provider pipeline.
