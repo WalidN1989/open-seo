@@ -34,6 +34,26 @@ function respond(products: unknown[]) {
       ),
     )
     .mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          shop: {
+            domain: "booxworm.lk",
+            myshopify_domain: "d80e66.myshopify.com",
+          },
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      ),
+    )
+    .mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          access_token: "short-lived-access-token",
+          expires_in: 86_399,
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      ),
+    )
+    .mockResolvedValueOnce(
       new Response(JSON.stringify({ products }), {
         status: 200,
         headers: { "content-type": "application/json" },
@@ -190,8 +210,12 @@ describe("a Shopify product becomes one row per variant", () => {
       respond([product()]),
     );
     expect(page.drafts[0].productUrl).toBe(
-      "https://d80e66.myshopify.com/products/the-daily-stoic",
+      "https://booxworm.lk/products/the-daily-stoic",
     );
+    expect(page.rewriteProductUrlOrigin).toEqual({
+      from: "https://d80e66.myshopify.com",
+      to: "https://booxworm.lk",
+    });
   });
 });
 

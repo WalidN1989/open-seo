@@ -159,11 +159,29 @@ async function runSync(organizationId: string, connectionId: string) {
     let cursor = startCursor;
 
     for (let pageIndex = 0; pageIndex < PAGES_PER_RUN; pageIndex += 1) {
-      const { drafts, sourceItemCount, nextCursor, done } =
-        await provider.fetchPage(connection, cursor, PAGE_SIZE, modifiedAfter);
+      const {
+        drafts,
+        sourceItemCount,
+        nextCursor,
+        done,
+        rewriteProductUrlOrigin,
+      } = await provider.fetchPage(
+        connection,
+        cursor,
+        PAGE_SIZE,
+        modifiedAfter,
+      );
       // A Shopify product can legitimately have no variant rows. Completion
       // is about source products, not the number of rows they expand into.
       if (sourceItemCount === 0) break;
+      if (rewriteProductUrlOrigin) {
+        await CommerceRepository.rewriteExternalProductUrlOrigin(
+          organizationId,
+          connection.providerKey,
+          rewriteProductUrlOrigin.from,
+          rewriteProductUrlOrigin.to,
+        );
+      }
 
       // Checkpoint before the page's work, not after the whole run. A run that
       // dies part-way used to leave the cursor untouched and start again from

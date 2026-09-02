@@ -33,6 +33,7 @@ type CataloguePage = {
   nextCursor: number;
   /** True when the provider has nothing more to give. */
   done: boolean;
+  rewriteProductUrlOrigin?: { from: string; to: string };
 };
 
 type CatalogueProvider = {
@@ -107,7 +108,11 @@ const shopifyProvider: CatalogueProvider = {
   initialCursor: 0,
   health: shopify.fetchStoreHealth,
   async fetchPage(connection, cursor, limit, modifiedAfter, fetcher) {
-    const shop = await shopify.shopDomainFor(connection);
+    const adminShop = await shopify.shopDomainFor(connection);
+    const storefrontShop = await shopify.fetchStorefrontDomain(
+      connection,
+      fetcher,
+    );
     const { products, nextCursor } = await shopify.fetchProductPage(
       connection,
       Math.max(0, cursor),
@@ -118,7 +123,7 @@ const shopifyProvider: CatalogueProvider = {
     const drafts: CatalogueDraft[] = [];
     for (const product of products) {
       const description = shopify.plainText(product.body_html) || null;
-      const url = shopify.productUrl(shop, product);
+      const url = shopify.productUrl(storefrontShop, product);
       for (const variant of product.variants) {
         drafts.push({
           // The variant id, not the product id: each variant is its own row
@@ -141,6 +146,10 @@ const shopifyProvider: CatalogueProvider = {
       sourceItemCount: products.length,
       nextCursor,
       done: products.length < limit,
+      rewriteProductUrlOrigin: {
+        from: `https://${adminShop}`,
+        to: `https://${storefrontShop}`,
+      },
     };
   },
 };

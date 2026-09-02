@@ -237,6 +237,12 @@ import is in progress instead of showing an older “last synced” timestamp.
 The first clean retry then exposed that Shopify's 13-digit product IDs do not
 fit PostgreSQL's 32-bit `integer`; `integration_connections.sync_cursor` is now
 a 64-bit `bigint` in Postgres so the resumable cursor can be persisted.
+The Products workspace now filters by WooCommerce or Shopify (with All as the
+default) and labels each imported row's source. Shopify sync reads the shop's
+primary public domain and writes customer-facing product links against that
+domain. For BooxWorm this changes redirecting `d80e66.myshopify.com` links to
+direct `booxworm.lk` links; a normal resumed batch also rewrites links on rows
+imported before this fix, without restarting the catalogue walk.
 No Shopify Client ID, secret, or access token is recorded in this ledger.
 
 ### 2026-08-31: Meta test-number activation and shared inbox

@@ -190,11 +190,13 @@ describe("product list paging", () => {
       limit: 50,
       offset: 100,
       search: "stoic",
+      externalSource: "shopify",
     });
     expect(mocks.listProducts).toHaveBeenCalledWith(ORG, {
       limit: 50,
       offset: 100,
       search: "stoic",
+      externalSource: "shopify",
     });
   });
 

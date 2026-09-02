@@ -1,4 +1,4 @@
-import { and, asc, count, eq, like, or } from "drizzle-orm";
+import { and, asc, count, eq, like, or, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { commerceProducts } from "@/db/schema";
 import type {
@@ -15,6 +15,9 @@ import type {
 function productFilters(organizationId: string, input: ListProductsInput) {
   const filters = [eq(commerceProducts.organizationId, organizationId)];
   if (input.status) filters.push(eq(commerceProducts.status, input.status));
+  if (input.externalSource) {
+    filters.push(eq(commerceProducts.externalSource, input.externalSource));
+  }
   if (input.search) {
     const term = `%${input.search}%`;
     const match = or(
@@ -199,6 +202,29 @@ async function upsertExternalProduct(
   return row;
 }
 
+/** Replace an integration's redirecting product-link origin in one query. */
+async function rewriteExternalProductUrlOrigin(
+  organizationId: string,
+  externalSource: string,
+  fromOrigin: string,
+  toOrigin: string,
+) {
+  if (fromOrigin === toOrigin) return;
+  await db
+    .update(commerceProducts)
+    .set({
+      productUrl: sql`replace(${commerceProducts.productUrl}, ${fromOrigin}, ${toOrigin})`,
+      updatedAt: new Date().toISOString(),
+    })
+    .where(
+      and(
+        eq(commerceProducts.organizationId, organizationId),
+        eq(commerceProducts.externalSource, externalSource),
+        like(commerceProducts.productUrl, `${fromOrigin}/%`),
+      ),
+    );
+}
+
 export const CommerceRepository = {
   upsertExternalProduct,
   listProducts,
@@ -207,4 +233,5 @@ export const CommerceRepository = {
   createProduct,
   updateProduct,
   listVariants,
+  rewriteExternalProductUrlOrigin,
 };

@@ -55,6 +55,7 @@ export const productIdSchema = z.object({ id: z.string().min(1) });
 export const listProductsSchema = z.object({
   search: z.string().trim().max(200).optional(),
   status: productStatusSchema.optional(),
+  externalSource: z.enum(["woocommerce", "shopify"]).optional(),
   limit: z.number().int().min(1).max(200).default(50),
   offset: z.number().int().min(0).max(1_000_000).default(0),
 });

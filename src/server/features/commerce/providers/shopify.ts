@@ -18,6 +18,9 @@ const tokenSchema = z.object({
 let cachedToken:
   | { key: string; value: string; refreshAfter: number }
   | undefined;
+let cachedStorefrontDomain:
+  | { adminShop: string; storefrontShop: string }
+  | undefined;
 
 async function credentialFingerprint(values: string[]) {
   const bytes = new TextEncoder().encode(values.join("\u0000"));
@@ -133,6 +136,32 @@ export async function fetchStoreName(
     .object({ shop: z.object({ name: z.string().optional() }).optional() })
     .safeParse(await response.json());
   return parsed.success ? (parsed.data.shop?.name ?? null) : null;
+}
+
+/** The primary public domain customers should see, not the Admin API host. */
+export async function fetchStorefrontDomain(
+  connection: IntegrationRecord,
+  fetcher: typeof fetch = fetch,
+) {
+  const adminShop = await shopDomainFor(connection);
+  if (fetcher === fetch && cachedStorefrontDomain?.adminShop === adminShop) {
+    return cachedStorefrontDomain.storefrontShop;
+  }
+  const response = await request(
+    connection,
+    "/shop.json",
+    new URLSearchParams({ fields: "domain,myshopify_domain" }),
+    fetcher,
+  );
+  const parsed = z
+    .object({ shop: z.object({ domain: z.string().optional() }).optional() })
+    .safeParse(await response.json());
+  const candidate = parsed.success ? parsed.data.shop?.domain : undefined;
+  const storefrontShop = normalizeStorefrontDomain(candidate ?? adminShop);
+  if (fetcher === fetch) {
+    cachedStorefrontDomain = { adminShop, storefrontShop };
+  }
+  return storefrontShop;
 }
 
 /** Products the store holds, for the connection health line. */
@@ -285,6 +314,22 @@ export function productUrl(
   product: ShopifyProduct,
 ): string | null {
   return product.handle ? `https://${shop}/products/${product.handle}` : null;
+}
+
+export function normalizeStorefrontDomain(value: string): string {
+  const hostname = value
+    .trim()
+    .replace(/^https?:\/\//, "")
+    .replace(/\/.*$/, "")
+    .toLowerCase();
+  if (
+    !/^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)+$/i.test(
+      hostname,
+    )
+  ) {
+    throw new Error("Shopify returned an invalid storefront domain.");
+  }
+  return hostname;
 }
 
 export async function shopDomainFor(connection: IntegrationRecord) {

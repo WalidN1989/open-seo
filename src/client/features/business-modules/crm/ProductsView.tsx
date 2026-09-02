@@ -30,18 +30,20 @@ export function CrmProductsView() {
   const queryClient = useQueryClient();
   const money = useWorkspaceCurrency();
   const [search, setSearch] = useState("");
+  const [source, setSource] = useState<"" | "woocommerce" | "shopify">("");
   const [adding, setAdding] = useState(false);
   const [page, setPage] = useState(0);
   const [editingId, setEditingId] = useState<string | null>(null);
 
   const query = useQuery({
-    queryKey: [...PRODUCTS_KEY, search, page],
+    queryKey: [...PRODUCTS_KEY, search, source, page],
     queryFn: () =>
       listCommerceProducts({
         data: {
           limit: PAGE_SIZE,
           offset: page * PAGE_SIZE,
           search: search.trim() || undefined,
+          externalSource: source || undefined,
         },
       }),
     // Keeps the current page on screen while the next one loads, instead of
@@ -88,17 +90,32 @@ export function CrmProductsView() {
         </button>
       </div>
 
-      <input
-        value={search}
-        onChange={(event) => {
-          setSearch(event.target.value);
-          // Otherwise a search run from page 4 lands on an empty page 4 of
-          // the new, shorter result set.
-          setPage(0);
-        }}
-        placeholder="Search by name, SKU, barcode or ISBN..."
-        className="input input-bordered input-sm w-full max-w-md"
-      />
+      <div className="flex flex-wrap gap-2">
+        <input
+          value={search}
+          onChange={(event) => {
+            setSearch(event.target.value);
+            // Otherwise a search run from page 4 lands on an empty page 4 of
+            // the new, shorter result set.
+            setPage(0);
+          }}
+          placeholder="Search by name, SKU, barcode or ISBN..."
+          className="input input-bordered input-sm w-full max-w-md"
+        />
+        <select
+          aria-label="Filter products by platform"
+          className="select select-bordered select-sm"
+          value={source}
+          onChange={(event) => {
+            setSource(event.target.value as typeof source);
+            setPage(0);
+          }}
+        >
+          <option value="">All platforms</option>
+          <option value="woocommerce">WooCommerce</option>
+          <option value="shopify">Shopify</option>
+        </select>
+      </div>
 
       {adding ? (
         <form
@@ -228,6 +245,11 @@ export function CrmProductsView() {
                     <p className="truncate text-xs text-base-content/50">
                       {product.sku}
                       {product.category ? ` · ${product.category}` : ""}
+                      {product.externalSource === "woocommerce"
+                        ? " · WooCommerce"
+                        : product.externalSource === "shopify"
+                          ? " · Shopify"
+                          : ""}
                     </p>
                   </div>
                 </div>
