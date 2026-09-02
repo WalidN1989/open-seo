@@ -295,6 +295,13 @@
       "when": 1788324325789,
       "tag": "0041_magenta_the_professor",
       "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1788371268145,
+      "tag": "0042_supreme_star_brand",
+      "breakpoints": true
     }
   ]
 }

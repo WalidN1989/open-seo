@@ -871,7 +871,12 @@ async function createVoiceAgent(
 ) {
   const [row] = await db
     .insert(voiceAgentConfigs)
-    .values({ id: crypto.randomUUID(), organizationId, ...input })
+    .values({
+      id: crypto.randomUUID(),
+      organizationId,
+      ...input,
+      status: "active",
+    })
     .returning();
   return row;
 }

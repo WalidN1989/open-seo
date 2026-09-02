@@ -949,3 +949,28 @@ linked, the operator enters only a name; the application creates a CRM contact
 using the conversation's existing WhatsApp number and links the conversation in
 the same action. This avoids the previous failure mode where a separately
 created contact existed but the chat continued to display the raw number.
+
+## Voice agent learning checkpoint (2026-09-02)
+
+The browser Voice Agent now retains its existing Deepgram transcription and
+speech path while adding the proven SEO-Master conversation model: Anthropic
+answers receive trusted OpenSEO platform knowledge, an organization-scoped
+catalogue snapshot, and durable lessons learned by that specific agent. The
+browser offers a continuous conversation mode with silence detection, echo
+cancellation, automatic transcription, spoken replies, and automatic listening
+after playback. Manual recording remains available as a fallback.
+
+The slow scheduler mines new voice transcripts at most once per 20 hours. It
+keeps only customer-stated facts, vocabulary, stable preferences, recurring
+questions and corrections; it explicitly excludes transient stock/prices,
+credentials, sensitive payment data and the agent's own answers. Lessons are
+bounded to 40 and keyed by both `organization_id` and `agent_config_id`, so one
+tenant or agent can never teach another. The scheduler catches one agent's
+failure without suppressing other tenants.
+
+For an agent whose credential reference is `OPENSEO_VOICE`, Railway supplies
+`OPENSEO_VOICE_DEEPGRAM_API_KEY` and optionally the tenant-specific
+`OPENSEO_VOICE_ANTHROPIC_API_KEY`; the shared `ANTHROPIC_API_KEY` remains the
+model fallback. These names and `VOICE_AI_MODEL` are included in the Railway
+runtime-variable allowlist. The database addition is migration 0063 and must be
+applied before the new deployment starts serving voice requests.

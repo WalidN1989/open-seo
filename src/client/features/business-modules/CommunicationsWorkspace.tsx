@@ -1353,14 +1353,23 @@ function ContactToggle({
 export function VoiceWorkspace() {
   const client = useQueryClient();
   const [adding, setAdding] = useState(false);
+  const [agentName, setAgentName] = useState("OpenSEO Assistant");
+  const [credentialReference, setCredentialReference] =
+    useState("OPENSEO_VOICE");
   const [recordingConversationId, setRecordingConversationId] = useState<
     string | null
   >(null);
+  const [continuousConversationId, setContinuousConversationId] = useState<
+    string | null
+  >(null);
+  const continuousRef = useRef<string | null>(null);
   const recorderRef = useRef<{
     recorder: MediaRecorder;
     chunks: Blob[];
     conversationId: string;
     stream: MediaStream;
+    audioContext?: AudioContext;
+    animationFrame?: number;
   } | null>(null);
   const query = useQuery({
     queryKey: ["voice", "workspace"],
@@ -1377,6 +1386,8 @@ export function VoiceWorkspace() {
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: ["voice"] });
       setAdding(false);
+      setAgentName("OpenSEO Assistant");
+      setCredentialReference("OPENSEO_VOICE");
       toast.success("Voice agent created");
     },
     onError: showError,
@@ -1414,7 +1425,7 @@ export function VoiceWorkspace() {
       audioBase64: string;
       mimeType: string;
     }) => transcribeVoiceAudio({ data: { ...data, language: "multi" } }),
-    onSuccess: async (result) => {
+    onSuccess: async (result, variables) => {
       await client.invalidateQueries({ queryKey: ["voice"] });
       toast.success(`Heard: ${result.transcript}`);
       if ("replyError" in result && result.replyError) {
@@ -1426,25 +1437,50 @@ export function VoiceWorkspace() {
         const audio = new Audio(
           `data:${result.mimeType};base64,${result.audioBase64}`,
         );
+        audio.addEventListener("ended", () => {
+          if (continuousRef.current === variables.conversationId) {
+            void beginRecording(variables.conversationId, true);
+          }
+        });
         await audio.play().catch(() => {
           toast.warning(
             "The reply is ready, but browser audio playback was blocked.",
           );
+          if (continuousRef.current === variables.conversationId) {
+            void beginRecording(variables.conversationId, true);
+          }
         });
+      } else if (continuousRef.current === variables.conversationId) {
+        void beginRecording(variables.conversationId, true);
       }
     },
     onError: showError,
   });
-  const beginRecording = async (conversationId: string) => {
+  const beginRecording = async (conversationId: string, continuous = false) => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        },
+      });
       const recorder = new MediaRecorder(stream);
-      const state = { recorder, chunks: [] as Blob[], conversationId, stream };
+      const state: {
+        recorder: MediaRecorder;
+        chunks: Blob[];
+        conversationId: string;
+        stream: MediaStream;
+        audioContext?: AudioContext;
+        animationFrame?: number;
+      } = { recorder, chunks: [], conversationId, stream };
       recorderRef.current = state;
       recorder.ondataavailable = (event) => {
         if (event.data.size) state.chunks.push(event.data);
       };
       recorder.onstop = async () => {
+        if (state.animationFrame) cancelAnimationFrame(state.animationFrame);
+        await state.audioContext?.close();
         stream.getTracks().forEach((track) => track.stop());
         const blob = new Blob(state.chunks, { type: recorder.mimeType });
         setRecordingConversationId(null);
@@ -1457,11 +1493,54 @@ export function VoiceWorkspace() {
       };
       recorder.start();
       setRecordingConversationId(conversationId);
+      if (continuous) {
+        continuousRef.current = conversationId;
+        setContinuousConversationId(conversationId);
+        const audioContext = new AudioContext();
+        const analyser = audioContext.createAnalyser();
+        analyser.fftSize = 512;
+        audioContext.createMediaStreamSource(stream).connect(analyser);
+        state.audioContext = audioContext;
+        const levels = new Uint8Array(analyser.frequencyBinCount);
+        const startedAt = Date.now();
+        let heardSpeech = false;
+        let quietSince: number | null = null;
+        const listen = () => {
+          if (recorder.state !== "recording") return;
+          analyser.getByteFrequencyData(levels);
+          const average =
+            levels.reduce((total, value) => total + value, 0) / levels.length;
+          if (average > 14) {
+            heardSpeech = true;
+            quietSince = null;
+          } else if (heardSpeech) {
+            quietSince ??= Date.now();
+            if (Date.now() - quietSince > 1100) {
+              recorder.stop();
+              return;
+            }
+          }
+          if (Date.now() - startedAt > 30_000) {
+            recorder.stop();
+            return;
+          }
+          state.animationFrame = requestAnimationFrame(listen);
+        };
+        listen();
+      }
     } catch (error) {
+      continuousRef.current = null;
+      setContinuousConversationId(null);
       showError(error);
     }
   };
-  const stopRecording = () => recorderRef.current?.recorder.stop();
+  const stopRecording = (endContinuous = false) => {
+    if (endContinuous) {
+      continuousRef.current = null;
+      setContinuousConversationId(null);
+    }
+    recorderRef.current?.recorder.stop();
+  };
   if (query.isLoading) return <Loading />;
   if (query.isError) return <ErrorBox error={query.error} />;
   return (
@@ -1478,24 +1557,49 @@ export function VoiceWorkspace() {
       }
     >
       {adding ? (
-        <SimpleForm
-          fields={[
-            "name",
-            "speechToTextProvider",
-            "textToSpeechProvider",
-            "modelProvider",
-            "credentialReference",
-          ]}
-          onSubmit={(values) =>
-            mutation.mutate({
-              name: values.name,
-              speechToTextProvider: values.speechToTextProvider,
-              textToSpeechProvider: values.textToSpeechProvider,
-              modelProvider: values.modelProvider,
-              credentialReference: values.credentialReference,
-            })
-          }
-        />
+        <div className="rounded-box border border-base-300 bg-base-100 p-4">
+          <div className="grid gap-3 md:grid-cols-[1fr_1fr_auto]">
+            <label className="form-control">
+              <span className="label-text mb-1 text-xs">Agent name</span>
+              <input
+                className="input input-bordered input-sm"
+                value={agentName}
+                onChange={(event) => setAgentName(event.currentTarget.value)}
+              />
+            </label>
+            <label className="form-control">
+              <span className="label-text mb-1 text-xs">
+                Railway credential reference
+              </span>
+              <input
+                className="input input-bordered input-sm"
+                value={credentialReference}
+                onChange={(event) =>
+                  setCredentialReference(event.currentTarget.value)
+                }
+              />
+            </label>
+            <button
+              className="btn btn-primary btn-sm self-end"
+              disabled={!agentName.trim() || !credentialReference.trim()}
+              onClick={() =>
+                mutation.mutate({
+                  name: agentName.trim(),
+                  speechToTextProvider: "deepgram",
+                  textToSpeechProvider: "deepgram",
+                  modelProvider: "anthropic",
+                  credentialReference: credentialReference.trim(),
+                })
+              }
+            >
+              Create agent
+            </button>
+          </div>
+          <p className="mt-2 text-xs text-base-content/55">
+            Uses Deepgram for listening and speech, Anthropic for answers, and
+            learns durable lessons from this organization&apos;s conversations.
+          </p>
+        </div>
       ) : null}
       <Metrics
         items={[
@@ -1549,13 +1653,27 @@ export function VoiceWorkspace() {
                         className={`btn btn-xs ${recordingConversationId === conversation.id ? "btn-error" : "btn-primary"}`}
                         onClick={() =>
                           recordingConversationId === conversation.id
-                            ? stopRecording()
+                            ? stopRecording(
+                                continuousConversationId === conversation.id,
+                              )
                             : beginRecording(conversation.id)
                         }
                       >
                         {recordingConversationId === conversation.id
                           ? "Stop recording"
                           : "Record"}
+                      </button>
+                      <button
+                        className={`btn btn-xs ${continuousConversationId === conversation.id ? "btn-error" : "btn-outline"}`}
+                        onClick={() =>
+                          continuousConversationId === conversation.id
+                            ? stopRecording(true)
+                            : beginRecording(conversation.id, true)
+                        }
+                      >
+                        {continuousConversationId === conversation.id
+                          ? "Stop conversation"
+                          : "Conversation mode"}
                       </button>
                       <button
                         className="btn btn-ghost btn-xs"
@@ -1577,14 +1695,17 @@ export function VoiceWorkspace() {
                     }
                   />
                 ) : null}
-                {messages.slice(0, 5).map((message) => (
-                  <p key={message.id} className="text-sm">
-                    <span className="font-medium capitalize">
-                      {message.speaker}:
-                    </span>{" "}
-                    {message.transcript}
-                  </p>
-                ))}
+                {messages
+                  .toReversed()
+                  .slice(-20)
+                  .map((message) => (
+                    <p key={message.id} className="text-sm">
+                      <span className="font-medium capitalize">
+                        {message.speaker}:
+                      </span>{" "}
+                      {message.transcript}
+                    </p>
+                  ))}
               </div>
             );
           })

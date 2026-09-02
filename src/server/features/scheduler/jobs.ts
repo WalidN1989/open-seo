@@ -4,6 +4,7 @@ import { reconcileStaleAudits } from "@/server/features/audit/services/auditReco
 import { runScheduledRankChecks } from "@/server/features/rank-tracking/services/scheduledRankChecks";
 import { CommunicationsService } from "@/server/features/communications/services/CommunicationsService";
 import { CatalogueSyncService } from "@/server/features/commerce/services/CatalogueSyncService";
+import { runDueVoiceLearning } from "@/server/features/communications/services/VoiceLearningService";
 
 let registered = false;
 
@@ -43,6 +44,14 @@ export function registerBusinessCronJobs() {
     tier: "standard",
     run: async () => {
       await withPgClient(() => CatalogueSyncService.runDueSyncs());
+    },
+  });
+
+  registerCronJob({
+    name: "voice.learnFromConversations",
+    tier: "slow",
+    run: async () => {
+      await withPgClient(() => runDueVoiceLearning());
     },
   });
 

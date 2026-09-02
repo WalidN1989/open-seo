@@ -3,6 +3,7 @@ import { dirname } from "node:path";
 
 const runtimeVariableNames = [
   "AUTH_MODE",
+  "ANTHROPIC_API_KEY",
   "AUTUMN_SECRET_KEY",
   "AUTUMN_WEBHOOK_SECRET",
   "BETTER_AUTH_SECRET",
@@ -21,6 +22,8 @@ const runtimeVariableNames = [
   "META_VERIFY_TOKEN",
   "OPENROUTER_API_KEY",
   "OPENROUTER_MODEL",
+  "OPENSEO_VOICE_ANTHROPIC_API_KEY",
+  "OPENSEO_VOICE_DEEPGRAM_API_KEY",
   "POLICY_AUD",
   "POSTGRES_DATABASE_URL",
   "POSTHOG_HOST",
@@ -29,6 +32,7 @@ const runtimeVariableNames = [
   "TEAM_DOMAIN",
   "TURNSTILE_SECRET_KEY",
   "TURNSTILE_SITE_KEY",
+  "VOICE_AI_MODEL",
 ] as const;
 
 const outputPath = process.argv[2];

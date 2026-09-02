@@ -9,6 +9,7 @@ describe("voice Claude agent", () => {
       const body = typeof init?.body === "string" ? init.body : "";
       expect(body).toContain("Never invent prices");
       expect(body).toContain("Where are you located?");
+      expect(body).toContain("Organization: Bookshop");
       return Response.json({
         content: [
           { type: "text", text: "A staff member needs to confirm that." },
@@ -19,6 +20,8 @@ describe("voice Claude agent", () => {
       agentName: "Ava",
       credentialReference: "SHOP",
       history: [{ speaker: "user", transcript: "Where are you located?" }],
+      businessContext:
+        "Organization: Bookshop. Learned preference: keep answers brief.",
       fetcher,
     });
     expect(result.reply).toContain("staff member");

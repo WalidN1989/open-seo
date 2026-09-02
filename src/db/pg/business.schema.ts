@@ -803,11 +803,46 @@ export const voiceAgentConfigs = pgTable(
     textToSpeechProvider: text("text_to_speech_provider"),
     modelProvider: text("model_provider"),
     credentialReference: text("credential_reference"),
+    lastLearnedAt: text("last_learned_at"),
     status: text("status").notNull().default("draft"),
     createdAt: createdAt(),
     updatedAt: text("updated_at").notNull().default(isoNow),
   },
   (table) => [index("voice_agent_configs_org_idx").on(table.organizationId)],
+);
+
+/** Durable, tenant-safe lessons mined from an agent's own conversations. */
+export const voiceAgentLessons = pgTable(
+  "voice_agent_lessons",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    agentConfigId: text("agent_config_id")
+      .notNull()
+      .references(() => voiceAgentConfigs.id, { onDelete: "cascade" }),
+    kind: text("kind", {
+      enum: [
+        "fact",
+        "vocabulary",
+        "preference",
+        "recurring_question",
+        "correction",
+      ],
+    }).notNull(),
+    lesson: text("lesson").notNull(),
+    seenCount: integer("seen_count").notNull().default(1),
+    createdAt: createdAt(),
+    updatedAt: text("updated_at").notNull().default(isoNow),
+  },
+  (table) => [
+    index("voice_agent_lessons_agent_rank_idx").on(
+      table.organizationId,
+      table.agentConfigId,
+      table.seenCount,
+    ),
+  ],
 );
 
 export const voiceConversations = pgTable(

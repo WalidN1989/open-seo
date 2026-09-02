@@ -134,6 +134,7 @@ export const {
   whatsappAutomationRules,
   whatsappOrderRequests,
   voiceAgentConfigs,
+  voiceAgentLessons,
   voiceConversations,
   voiceConversationMessages,
   webhookEndpoints,

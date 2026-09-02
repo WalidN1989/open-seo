@@ -60,6 +60,7 @@ import {
 } from "../providers/signatures";
 import { deliverWebhook, validateWebhookUrl } from "../providers/webhooks";
 import { speakWithDeepgram, transcribeWithDeepgram } from "../providers/voice";
+import { buildVoiceAgentContext } from "./VoiceAgentContext";
 import { generateWhatsappAiReply } from "../providers/whatsapp-ai";
 import {
   runApifyActor,
@@ -717,10 +718,18 @@ async function transcribeVoiceAudio(
         agentName: agent.name,
         credentialReference: agent.credentialReference,
         history,
+        businessContext: await buildVoiceAgentContext(
+          organizationId,
+          agent.id,
+          result.transcript,
+        ),
       });
       const speech = await speakWithDeepgram(
         agent.credentialReference,
-        generated.reply,
+        generated.reply
+          .replaceAll(/https?:\/\/\S+/g, "")
+          .replaceAll(/\s{2,}/g, " ")
+          .trim(),
       );
       await CommunicationsRepository.appendVoiceTranscript(organizationId, {
         conversationId: input.conversationId,
