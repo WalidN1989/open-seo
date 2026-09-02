@@ -1,5 +1,8 @@
 import { z } from "zod";
-import { getRequiredEnvValue } from "@/server/lib/runtime-env";
+import {
+  getOptionalEnvValue,
+  getRequiredEnvValue,
+} from "@/server/lib/runtime-env";
 
 function credentialName(reference: string, suffix: string): string {
   const prefix = reference
@@ -10,8 +13,10 @@ function credentialName(reference: string, suffix: string): string {
 }
 
 async function deepgramKey(reference: string | null): Promise<string> {
-  if (!reference) throw new Error("Voice agent has no credential reference.");
-  return getRequiredEnvValue(credentialName(reference, "DEEPGRAM_API_KEY"));
+  const tenantKey = reference
+    ? await getOptionalEnvValue(credentialName(reference, "DEEPGRAM_API_KEY"))
+    : null;
+  return tenantKey ?? getRequiredEnvValue("DEEPGRAM_API_KEY");
 }
 
 function bytesFromBase64(value: string): ArrayBuffer {

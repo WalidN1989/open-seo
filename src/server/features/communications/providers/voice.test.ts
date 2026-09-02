@@ -3,6 +3,7 @@ import { speakWithDeepgram, transcribeWithDeepgram } from "./voice";
 
 afterEach(() => {
   delete process.env.TEST_VOICE_DEEPGRAM_API_KEY;
+  delete process.env.DEEPGRAM_API_KEY;
 });
 
 describe("Deepgram voice provider", () => {
@@ -47,5 +48,20 @@ describe("Deepgram voice provider", () => {
     );
     expect(result.mimeType).toBe("audio/mpeg");
     expect(atob(result.audioBase64)).toBe("audio");
+  });
+
+  it("uses the shared Railway key when no tenant override exists", async () => {
+    process.env.DEEPGRAM_API_KEY = "shared-key";
+    await speakWithDeepgram(
+      "OPENSEO_VOICE",
+      "Hello",
+      "aura-2-asteria-en",
+      async (_input, init) => {
+        expect(new Headers(init?.headers).get("Authorization")).toBe(
+          "Token shared-key",
+        );
+        return new Response(new TextEncoder().encode("audio"));
+      },
+    );
   });
 });
