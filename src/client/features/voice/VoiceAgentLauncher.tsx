@@ -1,3 +1,4 @@
+/* oxlint-disable max-lines-per-function */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Bot, LoaderCircle, Mic, PhoneOff, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -10,6 +11,11 @@ import {
   transcribeVoiceAudio,
 } from "@/serverFunctions/communications";
 import { getStandardErrorMessage } from "@/client/lib/error-messages";
+import {
+  startVoiceActivity,
+  stepVoiceActivity,
+  voiceDisplayLevel,
+} from "./voiceActivity";
 
 async function blobToBase64(blob: Blob) {
   const buffer = await blob.arrayBuffer();
@@ -24,9 +30,12 @@ export function VoiceAgentLauncher() {
   const [open, setOpen] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [listening, setListening] = useState(false);
+  const [level, setLevel] = useState(0);
   const [status, setStatus] = useState("Ready to talk");
   const recorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const animationFrameRef = useRef<number | null>(null);
   const continuousRef = useRef(false);
   const conversationRef = useRef<string | null>(null);
 
@@ -36,12 +45,26 @@ export function VoiceAgentLauncher() {
     enabled: open,
   });
 
-  const stopListening = () => {
-    continuousRef.current = false;
-    if (recorderRef.current?.state === "recording") recorderRef.current.stop();
+  const releaseMicrophone = () => {
+    if (animationFrameRef.current !== null) {
+      cancelAnimationFrame(animationFrameRef.current);
+      animationFrameRef.current = null;
+    }
+    void audioContextRef.current?.close().catch(() => undefined);
+    audioContextRef.current = null;
     streamRef.current?.getTracks().forEach((track) => track.stop());
     streamRef.current = null;
     setListening(false);
+    setLevel(0);
+  };
+
+  const stopListening = (submit = true) => {
+    continuousRef.current = false;
+    const recorder = recorderRef.current;
+    if (!submit && recorder) recorder.onstop = null;
+    if (recorder?.state === "recording") recorder.stop();
+    recorderRef.current = null;
+    releaseMicrophone();
   };
 
   const transcribe = useMutation({
@@ -98,10 +121,8 @@ export function VoiceAgentLauncher() {
         if (event.data.size) chunks.push(event.data);
       };
       recorder.onstop = async () => {
-        stream.getTracks().forEach((track) => track.stop());
-        streamRef.current = null;
+        releaseMicrophone();
         recorderRef.current = null;
-        setListening(false);
         if (!chunks.length) return;
         setStatus("Thinking…");
         const blob = new Blob(chunks, { type: recorder.mimeType });
@@ -111,9 +132,45 @@ export function VoiceAgentLauncher() {
           mimeType: blob.type || "audio/webm",
         });
       };
+
+      const audioContext = new AudioContext();
+      const analyser = audioContext.createAnalyser();
+      analyser.fftSize = 512;
+      audioContext.createMediaStreamSource(stream).connect(analyser);
+      audioContextRef.current = audioContext;
+      const samples = new Uint8Array(analyser.frequencyBinCount);
+      let activity = startVoiceActivity(performance.now());
+      const monitor = () => {
+        if (recorder.state !== "recording") return;
+        analyser.getByteTimeDomainData(samples);
+        let sum = 0;
+        for (const sample of samples) {
+          const deviation = (sample - 128) / 128;
+          sum += deviation * deviation;
+        }
+        const loudness = Math.sqrt(sum / samples.length);
+        setLevel(voiceDisplayLevel(loudness));
+        const next = stepVoiceActivity(activity, loudness, performance.now());
+        activity = next.state;
+        if (next.action === "submit") {
+          recorder.stop();
+          return;
+        }
+        if (next.action === "discard") {
+          recorder.onstop = null;
+          recorder.stop();
+          recorderRef.current = null;
+          releaseMicrophone();
+          continuousRef.current = false;
+          setStatus("Conversation paused — tap the microphone when ready");
+          return;
+        }
+        animationFrameRef.current = requestAnimationFrame(monitor);
+      };
       recorder.start();
+      monitor();
       setListening(true);
-      setStatus("Listening… tap Stop when you finish");
+      setStatus("Listening…");
     } catch (error) {
       continuousRef.current = false;
       setStatus(getStandardErrorMessage(error));
@@ -147,7 +204,7 @@ export function VoiceAgentLauncher() {
   });
 
   const endConversation = async () => {
-    stopListening();
+    stopListening(false);
     const activeConversationId = conversationRef.current;
     conversationRef.current = null;
     setConversationId(null);
@@ -162,11 +219,11 @@ export function VoiceAgentLauncher() {
 
   const toggle = () => {
     if (open) {
-      void endConversation();
       setOpen(false);
       return;
     }
     setOpen(true);
+    if (!conversationRef.current && !start.isPending) start.mutate();
   };
 
   useEffect(() => {
@@ -178,14 +235,17 @@ export function VoiceAgentLauncher() {
         return;
       event.preventDefault();
       setOpen(true);
+      if (!conversationRef.current && !start.isPending) start.mutate();
     };
     window.addEventListener("keydown", shortcut);
     return () => window.removeEventListener("keydown", shortcut);
-  }, []);
+  }, [start]);
 
   useEffect(
     () => () => {
       continuousRef.current = false;
+      if (animationFrameRef.current !== null)
+        cancelAnimationFrame(animationFrameRef.current);
       streamRef.current?.getTracks().forEach((track) => track.stop());
     },
     [],
@@ -214,10 +274,7 @@ export function VoiceAgentLauncher() {
               type="button"
               className="btn btn-square btn-ghost btn-sm"
               aria-label="Close Voice Agent"
-              onClick={() => {
-                void endConversation();
-                setOpen(false);
-              }}
+              onClick={() => setOpen(false)}
             >
               <X className="size-4" />
             </button>
@@ -240,7 +297,8 @@ export function VoiceAgentLauncher() {
             ) : (
               <div className="grid min-h-44 place-items-center text-center text-sm text-base-content/60">
                 <p>
-                  Tap Start conversation, allow microphone access, and speak.
+                  Allow microphone access and speak. OpenSEO will notice when
+                  you finish.
                 </p>
               </div>
             )}
@@ -269,8 +327,18 @@ export function VoiceAgentLauncher() {
                   disabled={transcribe.isPending}
                   onClick={() =>
                     listening
-                      ? recorderRef.current?.stop()
-                      : void beginListening()
+                      ? stopListening(false)
+                      : (() => {
+                          continuousRef.current = true;
+                          void beginListening();
+                        })()
+                  }
+                  style={
+                    listening
+                      ? {
+                          boxShadow: `0 0 0 ${4 + level * 12}px color-mix(in oklab, var(--color-error) 25%, transparent)`,
+                        }
+                      : undefined
                   }
                 >
                   {transcribe.isPending ? (
@@ -278,7 +346,7 @@ export function VoiceAgentLauncher() {
                   ) : (
                     <Mic className="size-4" />
                   )}
-                  {listening ? "Stop & send" : "Speak"}
+                  {listening ? "Listening" : "Speak"}
                 </button>
                 <button
                   type="button"
@@ -299,7 +367,7 @@ export function VoiceAgentLauncher() {
         aria-label="Open Voice Agent"
         aria-expanded={open}
         title="Voice Agent · Ctrl+Space or ⌘⇧Space"
-        className="group fixed right-4 bottom-5 z-50 flex items-center gap-2 rounded-full border border-primary/25 bg-primary px-3 py-3 text-primary-content shadow-xl shadow-primary/20 transition hover:-translate-y-0.5 hover:shadow-2xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary md:right-6 md:bottom-6"
+        className={`group fixed right-4 bottom-5 z-50 flex items-center gap-2 rounded-full border border-primary/25 px-3 py-3 text-primary-content shadow-xl shadow-primary/20 transition hover:-translate-y-0.5 hover:shadow-2xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary md:right-6 md:bottom-6 ${listening ? "animate-pulse bg-error" : conversationId ? "bg-success" : "bg-primary"}`}
       >
         <span className="relative grid size-7 place-items-center rounded-full bg-primary-content/15">
           <Bot className="size-4" aria-hidden="true" />

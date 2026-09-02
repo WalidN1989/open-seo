@@ -258,6 +258,17 @@ releases the microphone. `Ctrl+Space` opens it on Windows/Linux and
 Spotlight. Railway may supply either `<PREFIX>_DEEPGRAM_API_KEY` or the shared
 `DEEPGRAM_API_KEY`; no provider secret is exposed to the browser.
 
+A direct review of SEO-Master's `support-chat` and testable VAD state machine
+identified the remaining difference between a recorder and a conversation.
+OpenSEO now starts listening from the launcher in one click, submits a turn
+after 1.4 seconds of natural silence, allows 20 seconds for the person to begin,
+ignores noises shorter than 250 ms, discards a wholly silent turn instead of
+sending empty audio to Deepgram, and reopens the microphone after spoken
+playback. Collapsing the panel preserves the active session; the floating
+control changes state while listening or connected, and End explicitly closes
+the conversation. The state machine is isolated and unit tested so microphone
+threshold changes do not require browser-only testing.
+
 ### 2026-08-31: Meta test-number activation and shared inbox
 
 This is the canonical handoff for the working production Meta connection. Do
