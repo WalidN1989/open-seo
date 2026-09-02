@@ -1,7 +1,7 @@
 import * as React from "react";
-import { Link, useLocation, useNavigate } from "@tanstack/react-router";
+import { Link, useLocation } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { Bot, Menu, Mic } from "lucide-react";
+import { Menu } from "lucide-react";
 import {
   MissingSeoSetupModal,
   MobileSidebarDrawer,
@@ -13,6 +13,7 @@ import { BILLING_ROUTE } from "@/shared/billing";
 import { getSeoApiKeyStatus } from "@/serverFunctions/config";
 import { getProjects } from "@/serverFunctions/projects";
 import { getLastProjectId } from "@/client/lib/active-project";
+import { VoiceAgentLauncher } from "@/client/features/voice/VoiceAgentLauncher";
 
 const DATAFORSEO_HELP_PATH = "/help/dataforseo-api-key";
 
@@ -161,44 +162,6 @@ export function AuthenticatedAppLayout({
 
       <VoiceAgentLauncher />
     </div>
-  );
-}
-
-function VoiceAgentLauncher() {
-  const navigate = useNavigate();
-  React.useEffect(() => {
-    const openVoiceAgent = (event: KeyboardEvent) => {
-      const supportedShortcut =
-        (event.ctrlKey || (event.metaKey && event.shiftKey)) &&
-        event.code === "Space";
-      if (!supportedShortcut) return;
-      event.preventDefault();
-      void navigate({
-        to: "/modules/$moduleKey",
-        params: { moduleKey: "voice" },
-      });
-    };
-    window.addEventListener("keydown", openVoiceAgent);
-    return () => window.removeEventListener("keydown", openVoiceAgent);
-  }, [navigate]);
-  return (
-    <Link
-      to="/modules/$moduleKey"
-      params={{ moduleKey: "voice" }}
-      aria-label="Open Voice Agent"
-      title="Voice Agent · Ctrl+Space or ⌘⇧Space"
-      className="group fixed right-4 bottom-5 z-40 flex items-center gap-2 rounded-full border border-primary/25 bg-primary px-3 py-3 text-primary-content shadow-xl shadow-primary/20 transition hover:-translate-y-0.5 hover:shadow-2xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary md:right-6 md:bottom-6"
-    >
-      <span className="relative grid size-7 place-items-center rounded-full bg-primary-content/15">
-        <Bot className="size-4" aria-hidden="true" />
-        <span className="absolute -right-1 -bottom-1 grid size-3.5 place-items-center rounded-full bg-success text-success-content ring-2 ring-primary">
-          <Mic className="size-2.5" aria-hidden="true" />
-        </span>
-      </span>
-      <span className="max-w-0 overflow-hidden whitespace-nowrap text-sm font-semibold opacity-0 transition-all duration-200 group-hover:max-w-28 group-hover:pr-1 group-hover:opacity-100 group-focus-visible:max-w-28 group-focus-visible:pr-1 group-focus-visible:opacity-100">
-        Voice Agent
-      </span>
-    </Link>
   );
 }
 

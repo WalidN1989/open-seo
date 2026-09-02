@@ -245,6 +245,19 @@ direct `booxworm.lk` links; a normal resumed batch also rewrites links on rows
 imported before this fix, without restarting the catalogue walk.
 No Shopify Client ID, secret, or access token is recorded in this ledger.
 
+### 2026-09-02: floating browser voice conversation
+
+The global floating Voice Agent control is a conversation trigger, not a link
+to the Voice Agent administration page. It opens an in-place transcript panel,
+creates the organization's default Deepgram/Anthropic agent on first use,
+starts a browser conversation, requests microphone access, sends captured audio
+to Deepgram, plays the spoken response, and continues listening until the user
+stops or ends the conversation. Closing the panel ends the active session and
+releases the microphone. `Ctrl+Space` opens it on Windows/Linux and
+`Command+Shift+Space` opens it on macOS, where `Command+Space` is reserved by
+Spotlight. Railway may supply either `<PREFIX>_DEEPGRAM_API_KEY` or the shared
+`DEEPGRAM_API_KEY`; no provider secret is exposed to the browser.
+
 ### 2026-08-31: Meta test-number activation and shared inbox
 
 This is the canonical handoff for the working production Meta connection. Do
