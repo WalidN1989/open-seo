@@ -2,6 +2,7 @@
 import { sql } from "drizzle-orm";
 import type { AnyPgColumn } from "drizzle-orm/pg-core";
 import {
+  bigint,
   boolean,
   index,
   integer,
@@ -445,7 +446,9 @@ export const integrationConnections = pgTable(
     syncedCount: integer("synced_count").notNull().default(0),
     // Where a paged sync got to. A large catalogue cannot finish inside one
     // request, so a run stops at a page boundary and the next one resumes.
-    syncCursor: integer("sync_cursor").notNull().default(0),
+    // Shopify product ids exceed PostgreSQL's signed 32-bit integer range.
+    // `number` remains exact here because Shopify ids are below 2^53.
+    syncCursor: bigint("sync_cursor", { mode: "number" }).notNull().default(0),
     // Later syncs ask only for what changed. That is right for a schedule and
     // wrong for a person pressing the button, who means "fetch it all again" —
     // and it is the only way a new field backfills onto products the store has

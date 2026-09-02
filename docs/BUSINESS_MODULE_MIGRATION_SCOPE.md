@@ -234,6 +234,9 @@ number. Progress now counts source products while continuing to store every
 variant row, and each scheduler run follows five provider cursors before
 re-queuing. While a full import is queued or running, the UI says that the
 import is in progress instead of showing an older “last synced” timestamp.
+The first clean retry then exposed that Shopify's 13-digit product IDs do not
+fit PostgreSQL's 32-bit `integer`; `integration_connections.sync_cursor` is now
+a 64-bit `bigint` in Postgres so the resumable cursor can be persisted.
 No Shopify Client ID, secret, or access token is recorded in this ledger.
 
 ### 2026-08-31: Meta test-number activation and shared inbox

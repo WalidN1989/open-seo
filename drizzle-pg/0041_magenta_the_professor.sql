@@ -1,0 +1,1 @@
+ALTER TABLE "integration_connections" ALTER COLUMN "sync_cursor" SET DATA TYPE bigint;
