@@ -3,7 +3,7 @@
  * legacy CRM so a merchant sees the same catalogue they were shown there.
  *
  * Credentials are NOT part of this data. The legacy app stored provider
- * secrets in the database; OpenSEO stores only a reference and reads the real
+ * secrets in the database; Digital Urgency stores only a reference and reads the real
  * value from the deployment environment, so an entry declares the environment
  * suffixes it needs and the connect flow asks for the reference instead of the
  * secret. Porting the old credential forms verbatim would undo that.
@@ -212,7 +212,7 @@ export const integrationCatalogue: readonly IntegrationCatalogueEntry[] = [
         type: "secret",
         required: true,
         placeholder: "Paste the app secret",
-        help: "Stored encrypted. OpenSEO exchanges it for a short-lived Shopify access token automatically.",
+        help: "Stored encrypted. Digital Urgency exchanges it for a short-lived Shopify access token automatically.",
       },
     ],
     capabilities: ["products", "variants", "inventory"],

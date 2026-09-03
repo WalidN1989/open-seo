@@ -9,12 +9,12 @@ import {
 } from "@/db/schema";
 
 const platformKnowledge = [
-  "OpenSEO is a multi-organization business and SEO platform.",
+  "Digital Urgency is a multi-organization business and SEO platform.",
   "Its business workspace includes CRM leads, contacts, companies, inquiries, meetings, products, inventory, orders, analytics, WhatsApp, Voice Agent, and integrations.",
   "The integrations catalogue supports commerce and data providers including Shopify and WooCommerce. Product catalogue rows remain attributed to their source.",
   "WhatsApp provides a shared inbox, contacts, templates, campaigns, automation, an assistant, order requests, reports, and connection settings.",
   "Voice Agent provides browser voice conversations. Telephone calling is a separate provider capability and must not be promised unless configured.",
-  "OpenSEO SEO workspaces provide site audits, keyword research, rank tracking, backlinks, competitors, local SEO, and project context.",
+  "Digital Urgency SEO workspaces provide site audits, keyword research, rank tracking, backlinks, competitors, local SEO, and project context.",
 ].join("\n");
 
 export async function buildVoiceAgentContext(
@@ -103,7 +103,7 @@ export async function buildVoiceAgentContext(
     : "No durable conversation lessons have been learned yet.";
   return [
     `Organization: ${org?.name ?? "Current organization"}. CRM contact count: ${contactTotal?.value ?? 0}.`,
-    `OpenSEO platform knowledge:\n${platformKnowledge}`,
+    `Digital Urgency platform knowledge:\n${platformKnowledge}`,
     `Current organization catalogue snapshot:\n${productContext}`,
     `Durable lessons learned from this agent's past conversations:\n${learned}`,
   ].join("\n\n");

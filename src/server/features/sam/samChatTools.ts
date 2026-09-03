@@ -333,7 +333,7 @@ export function buildSamMcpTools(
     // made the agent narrate hosted/self-hosted framing at signed-in users).
     get_product_info: tool({
       description:
-        "The OpenSEO fact sheet: what the product does, plans/pricing, credit costs, integrations, MCP setup. Call before answering questions about OpenSEO itself. Uses no credits.",
+        "The Digital Urgency fact sheet: what the product does, plans/pricing, credit costs, integrations, MCP setup. Call before answering questions about Digital Urgency itself. Uses no credits.",
       inputSchema: z.object({}),
       execute: () => Promise.resolve({ factSheet: openSeoFactSheet }),
     }),

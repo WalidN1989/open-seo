@@ -184,7 +184,7 @@ export function IntegrationProviderDetailView() {
           ) : null}
 
           <dl className="rounded-xl border border-base-300 p-4 text-xs">
-            <Meta label="By" value="OpenSEO" />
+            <Meta label="By" value="Digital Urgency" />
             <Meta label="Price" value="Included in your plan" />
             <Meta label="Language" value="English" />
             <Meta label="Category" value={entry.category} />

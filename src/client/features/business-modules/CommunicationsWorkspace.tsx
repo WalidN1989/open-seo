@@ -1353,7 +1353,7 @@ function ContactToggle({
 export function VoiceWorkspace() {
   const client = useQueryClient();
   const [adding, setAdding] = useState(false);
-  const [agentName, setAgentName] = useState("OpenSEO Assistant");
+  const [agentName, setAgentName] = useState("Digital Urgency Assistant");
   const [credentialReference, setCredentialReference] =
     useState("OPENSEO_VOICE");
   const [recordingConversationId, setRecordingConversationId] = useState<
@@ -1386,7 +1386,7 @@ export function VoiceWorkspace() {
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: ["voice"] });
       setAdding(false);
-      setAgentName("OpenSEO Assistant");
+      setAgentName("Digital Urgency Assistant");
       setCredentialReference("OPENSEO_VOICE");
       toast.success("Voice agent created");
     },
@@ -1764,7 +1764,7 @@ export function IntegrationsWorkspace() {
         data: {
           endpointId,
           eventType: "openseo.webhook.test",
-          payload: { message: "OpenSEO signed webhook test" },
+          payload: { message: "Digital Urgency signed webhook test" },
         },
       }),
     onSuccess: async () => {

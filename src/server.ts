@@ -44,7 +44,7 @@ async function handleSelfHostedUserMcpRequest(
     Response.json(
       {
         error: "invalid_api_key",
-        error_description: "An OpenSEO API key is required",
+        error_description: "An Digital Urgency API key is required",
       },
       { status: 401 },
     )

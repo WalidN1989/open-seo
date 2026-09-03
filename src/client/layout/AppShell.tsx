@@ -183,8 +183,16 @@ function MobileTopBar({
       >
         <Menu className="h-5 w-5" />
       </button>
-      <Link to="/" className="ml-1 font-semibold text-base-content">
-        OpenSEO
+      <Link
+        to="/"
+        className="ml-1 flex min-w-0 items-center gap-1.5 font-semibold text-base-content"
+      >
+        <img
+          src="/digital-urgency-logo.png"
+          alt=""
+          className="size-6 shrink-0 object-contain"
+        />
+        <span className="truncate">Digital Urgency</span>
       </Link>
     </div>
   );

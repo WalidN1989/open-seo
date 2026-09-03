@@ -206,7 +206,7 @@ export function VoiceAgentLauncher() {
         latest.agents[0] ??
         (await createVoiceAgent({
           data: {
-            name: "OpenSEO Assistant",
+            name: "Digital Urgency Assistant",
             speechToTextProvider: "deepgram",
             textToSpeechProvider: "deepgram",
             modelProvider: "anthropic",
@@ -373,8 +373,8 @@ export function VoiceAgentLauncher() {
               <div className="grid h-full place-items-center gap-4 px-6 text-center">
                 <VoiceOrb state={orbState} level={level} size="lg" />
                 <p className="text-sm text-base-content/60">
-                  Allow microphone access and speak. OpenSEO notices when you
-                  finish.
+                  Allow microphone access and speak. Digital Urgency notices
+                  when you finish.
                 </p>
               </div>
             )}

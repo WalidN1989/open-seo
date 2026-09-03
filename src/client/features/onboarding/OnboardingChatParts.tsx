@@ -8,8 +8,6 @@ import {
 import { ArrowUp, Check, Globe, Loader2, Sparkles } from "lucide-react";
 import { FREE_ONBOARDING_QUESTION_LIMIT } from "@/shared/onboardingChat";
 
-const DISCORD_URL = "https://discord.gg/c9uGs3cFXr";
-
 export function SuggestedQuestions({
   questions,
   primaryQuestions = [],
@@ -65,24 +63,18 @@ export function WelcomeMessage({
       </div>
       <div className="min-w-0 flex-1 space-y-3 pt-0.5 text-sm">
         <div className="space-y-3 text-base-content/80">
-          <p>Hey, I’m Sam — welcome to OpenSEO.</p>
+          <p>Hey, I’m Sam — welcome to Digital Urgency.</p>
           <p>
-            To get full access to OpenSEO, you need to upgrade to the paid plan.
-            But, I’m here if you have any questions.
+            To get full access to Digital Urgency, you need to upgrade to the
+            paid plan. But, I’m here if you have any questions.
           </p>
           <p>
-            You can also{" "}
+            You can also email{" "}
             <a
-              href={DISCORD_URL}
-              target="_blank"
-              rel="noreferrer"
+              href="mailto:sales@digitalurgency.com.au"
               className="link link-primary"
             >
-              join the Discord
-            </a>{" "}
-            or email{" "}
-            <a href="mailto:ben@openseo.so" className="link link-primary">
-              ben@openseo.so
+              sales@digitalurgency.com.au
             </a>{" "}
             if you have any questions I can’t help you with.
           </p>
@@ -146,7 +138,9 @@ export function UpgradeSidebar({
           <Globe className="size-4" />
         </span>
         <div className="min-w-0">
-          <p className="font-medium text-base-content/80">Previewing OpenSEO</p>
+          <p className="font-medium text-base-content/80">
+            Previewing Digital Urgency
+          </p>
           <p className="truncate" title={domain}>
             {domain}
           </p>
@@ -187,16 +181,7 @@ export function UpgradeSidebar({
             {isStartingCheckout ? "Redirecting..." : "Upgrade to continue"}
           </button>
           <p className="text-center text-xs leading-relaxed text-base-content/55">
-            Want advice from other OpenSEO users?{" "}
-            <a
-              href={DISCORD_URL}
-              target="_blank"
-              rel="noreferrer"
-              className="link link-primary"
-            >
-              Join the Discord
-            </a>
-            .
+            Need advice? Email sales@digitalurgency.com.au.
           </p>
         </div>
       </div>
@@ -231,7 +216,8 @@ export function ChatGate({
           That’s all {FREE_ONBOARDING_QUESTION_LIMIT} free questions
         </p>
         <p className="mx-auto mt-1 max-w-md text-xs text-base-content/70">
-          Upgrade to keep working with Sam and unlock the full OpenSEO app.
+          Upgrade to keep working with Sam and unlock the full Digital Urgency
+          app.
         </p>
         <button
           type="button"
@@ -252,7 +238,7 @@ export function ChatGate({
 export function ChatComposer({
   busy,
   onSend,
-  placeholder = "Ask Sam about your strategy or OpenSEO…",
+  placeholder = "Ask Sam about your strategy or Digital Urgency…",
 }: {
   busy: boolean;
   onSend: (text: string) => void;

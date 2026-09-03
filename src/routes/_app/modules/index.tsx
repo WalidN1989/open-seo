@@ -117,8 +117,8 @@ function BusinessModulesPage() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Business Access</h1>
           <p className="mt-1 max-w-2xl text-sm text-base-content/60">
-            Add operational tools around OpenSEO without changing its SEO
-            engine. Owners can activate only the modules included for this
+            Add operational tools around Digital Urgency without changing its
+            SEO engine. Owners can activate only the modules included for this
             organization.
           </p>
         </div>
