@@ -224,6 +224,10 @@ export function VoiceAgentLauncher() {
     }
     setOpen(true);
     if (!conversationRef.current && !start.isPending) start.mutate();
+    else if (!listening && !transcribe.isPending) {
+      continuousRef.current = true;
+      void beginListening();
+    }
   };
 
   useEffect(() => {
@@ -320,42 +324,13 @@ export function VoiceAgentLauncher() {
                 Start conversation
               </button>
             ) : (
-              <>
-                <button
-                  type="button"
-                  className={`btn ${listening ? "btn-error" : "btn-primary"}`}
-                  disabled={transcribe.isPending}
-                  onClick={() =>
-                    listening
-                      ? stopListening(false)
-                      : (() => {
-                          continuousRef.current = true;
-                          void beginListening();
-                        })()
-                  }
-                  style={
-                    listening
-                      ? {
-                          boxShadow: `0 0 0 ${4 + level * 12}px color-mix(in oklab, var(--color-error) 25%, transparent)`,
-                        }
-                      : undefined
-                  }
-                >
-                  {transcribe.isPending ? (
-                    <LoaderCircle className="size-4 animate-spin" />
-                  ) : (
-                    <Mic className="size-4" />
-                  )}
-                  {listening ? "Listening" : "Speak"}
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-ghost"
-                  onClick={() => void endConversation()}
-                >
-                  <PhoneOff className="size-4" /> End
-                </button>
-              </>
+              <button
+                type="button"
+                className="btn btn-ghost"
+                onClick={() => void endConversation()}
+              >
+                <PhoneOff className="size-4" /> End conversation
+              </button>
             )}
           </footer>
         </section>
@@ -367,6 +342,13 @@ export function VoiceAgentLauncher() {
         aria-label="Open Voice Agent"
         aria-expanded={open}
         title="Voice Agent · Ctrl+Space or ⌘⇧Space"
+        style={
+          listening
+            ? {
+                boxShadow: `0 0 0 ${5 + level * 14}px color-mix(in oklab, var(--color-error) 24%, transparent)`,
+              }
+            : undefined
+        }
         className={`group fixed right-4 bottom-5 z-50 flex items-center gap-2 rounded-full border border-primary/25 px-3 py-3 text-primary-content shadow-xl shadow-primary/20 transition hover:-translate-y-0.5 hover:shadow-2xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary md:right-6 md:bottom-6 ${listening ? "animate-pulse bg-error" : conversationId ? "bg-success" : "bg-primary"}`}
       >
         <span className="relative grid size-7 place-items-center rounded-full bg-primary-content/15">

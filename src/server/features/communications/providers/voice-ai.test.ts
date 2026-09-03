@@ -27,4 +27,28 @@ describe("voice Claude agent", () => {
     expect(result.reply).toContain("staff member");
     delete process.env.SHOP_ANTHROPIC_API_KEY;
   });
+
+  it("uses the existing OpenRouter model when Anthropic is unavailable", async () => {
+    const previousAnthropic = process.env.ANTHROPIC_API_KEY;
+    delete process.env.ANTHROPIC_API_KEY;
+    process.env.OPENROUTER_API_KEY = "openrouter-key";
+    const fetcher = async (input: RequestInfo | URL, init?: RequestInit) => {
+      expect(String(input)).toContain("openrouter.ai");
+      expect(init?.headers).toMatchObject({
+        authorization: "Bearer openrouter-key",
+      });
+      return Response.json({
+        choices: [{ message: { content: "Yes, I can hear you." } }],
+      });
+    };
+    const result = await generateVoiceAgentReply({
+      agentName: "OpenSEO Assistant",
+      credentialReference: "OPENSEO_VOICE",
+      history: [{ speaker: "user", transcript: "Can you hear me?" }],
+      fetcher,
+    });
+    expect(result.reply).toBe("Yes, I can hear you.");
+    delete process.env.OPENROUTER_API_KEY;
+    if (previousAnthropic) process.env.ANTHROPIC_API_KEY = previousAnthropic;
+  });
 });

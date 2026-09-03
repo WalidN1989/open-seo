@@ -269,6 +269,17 @@ control changes state while listening or connected, and End explicitly closes
 the conversation. The state machine is isolated and unit tested so microphone
 threshold changes do not require browser-only testing.
 
+Production then confirmed Deepgram transcription was healthy while answer
+generation failed because the OpenSEO service could not resolve an Anthropic
+key. Deepgram supplies speech recognition and speech synthesis; it does not
+invent the business answer in this architecture. Voice replies now prefer the
+tenant or platform Anthropic key and fall back to OpenSEO's existing
+`OPENROUTER_API_KEY`, so the already-configured application model can produce
+the text that Deepgram speaks. The floating control now starts or resumes
+listening directly, the redundant Speak control and add-agent action are
+removed, silent standby lasts 60 seconds, and a continuous spoken turn may run
+for up to five minutes before the safety ceiling stops it.
+
 ### 2026-08-31: Meta test-number activation and shared inbox
 
 This is the canonical handoff for the working production Meta connection. Do

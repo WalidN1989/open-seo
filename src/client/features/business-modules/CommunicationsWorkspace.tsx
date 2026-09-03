@@ -1547,14 +1547,7 @@ export function VoiceWorkspace() {
     <Workspace
       title="Voice Agent"
       subtitle="Browser voice assistants now; telephony remains a separate provider capability."
-      actions={
-        <button
-          className="btn btn-primary btn-sm"
-          onClick={() => setAdding(true)}
-        >
-          <Plus className="size-4" /> Agent
-        </button>
-      }
+      actions={null}
     >
       {adding ? (
         <div className="rounded-box border border-base-300 bg-base-100 p-4">

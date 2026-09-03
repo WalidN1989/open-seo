@@ -9,8 +9,8 @@ export type VoiceActivityConfig = {
 export const VOICE_ACTIVITY_DEFAULTS: VoiceActivityConfig = {
   speechThreshold: 0.018,
   silenceMs: 1_400,
-  patienceMs: 20_000,
-  maxMs: 60_000,
+  patienceMs: 60_000,
+  maxMs: 300_000,
   minSpeechMs: 250,
 };
 
