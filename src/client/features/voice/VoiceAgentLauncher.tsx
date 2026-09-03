@@ -17,6 +17,15 @@ import {
   voiceDisplayLevel,
 } from "./voiceActivity";
 
+/**
+ * The workspace returns newest first, which put every answer above the question
+ * that prompted it. Sorting ascending also fixes the slice, which was keeping
+ * the oldest forty rather than the most recent.
+ */
+function byTime(a: { createdAt: string }, b: { createdAt: string }) {
+  return a.createdAt.localeCompare(b.createdAt);
+}
+
 async function blobToBase64(blob: Blob) {
   const buffer = await blob.arrayBuffer();
   const bytes = new Uint8Array(buffer);
@@ -30,6 +39,7 @@ export function VoiceAgentLauncher() {
   const [open, setOpen] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [listening, setListening] = useState(false);
+  const [speaking, setSpeaking] = useState(false);
   const [level, setLevel] = useState(0);
   const [status, setStatus] = useState("Ready to talk");
   const recorderRef = useRef<MediaRecorder | null>(null);
@@ -93,10 +103,13 @@ export function VoiceAgentLauncher() {
         const audio = new Audio(
           `data:${result.mimeType};base64,${result.audioBase64}`,
         );
+        setSpeaking(true);
         audio.addEventListener("ended", () => {
+          setSpeaking(false);
           if (continuousRef.current) void beginListening();
         });
         await audio.play().catch(() => {
+          setSpeaking(false);
           setStatus("Reply ready — tap the microphone to continue");
           continuousRef.current = false;
         });
@@ -266,6 +279,7 @@ export function VoiceAgentLauncher() {
 
   const messages = workspace.data?.messages
     .filter((message) => message.conversationId === conversationId)
+    .toSorted(byTime)
     .slice(-40);
 
   // Past conversations, newest first, with the first thing said in each so a
@@ -273,14 +287,20 @@ export function VoiceAgentLauncher() {
   const pastConversations = (workspace.data?.conversations ?? [])
     .filter((conversation) => conversation.id !== conversationId)
     .map((conversation) => {
-      const turns = (workspace.data?.messages ?? []).filter(
-        (message) => message.conversationId === conversation.id,
-      );
+      const turns = (workspace.data?.messages ?? [])
+        .filter((message) => message.conversationId === conversation.id)
+        .toSorted(byTime);
       return { conversation, turns };
     })
     .filter((entry) => entry.turns.length > 0);
 
-  const orbState = listening ? "listening" : conversationId ? "live" : "idle";
+  const orbState = speaking
+    ? "speaking"
+    : listening
+      ? "listening"
+      : conversationId
+        ? "live"
+        : "idle";
 
   return (
     <>
@@ -434,40 +454,68 @@ const ORB_SIZES = {
 /**
  * The agent, drawn rather than iconified.
  *
- * Concentric rings that widen with what the microphone is actually hearing, so
- * the control shows the conversation's state instead of a logo that looks the
- * same whether or not anything is working.
+ * Concentric rings that widen with what the microphone is actually hearing,
+ * and a colour that says whose turn it is: green while it listens to you, red
+ * while it is speaking. Someone glancing at the orb should know whether to
+ * talk or wait without reading the status line.
  */
 function VoiceOrb({
   state,
   level,
   size,
 }: {
-  state: "idle" | "live" | "listening";
+  state: "idle" | "live" | "listening" | "speaking";
   level: number;
   size: keyof typeof ORB_SIZES;
 }) {
   const listening = state === "listening";
+  const speaking = state === "speaking";
+  // Semantic tokens, not literals, so the orb follows the theme in both modes.
+  const tone = speaking
+    ? {
+        halo: "bg-error/20",
+        inner: "bg-error/30",
+        core: "from-error to-error/70",
+        ring: "ring-error/40",
+        glow: "shadow-error/30",
+      }
+    : listening
+      ? {
+          halo: "bg-success/20",
+          inner: "bg-success/30",
+          core: "from-success to-success/70",
+          ring: "ring-success/40",
+          glow: "shadow-success/30",
+        }
+      : {
+          halo: "bg-primary/20",
+          inner: "bg-primary/15",
+          core: "from-primary to-primary/70",
+          ring: "ring-primary/40",
+          glow: "shadow-primary/30",
+        };
+
   return (
     <span
       className={`relative grid ${ORB_SIZES[size]} shrink-0 place-items-center`}
       aria-hidden="true"
     >
       {/* Driven by the measured level, not a fixed animation: a still ring
-          means the microphone is genuinely hearing nothing. */}
+          means the microphone is genuinely hearing nothing. While speaking
+          there is no input to measure, so it breathes on its own instead. */}
       <span
-        className="absolute inset-0 rounded-full bg-primary/20 transition-transform duration-100"
+        className={`absolute inset-0 rounded-full ${tone.halo} transition-transform duration-100 ${speaking ? "animate-ping [animation-duration:1.6s]" : ""}`}
         style={{ transform: `scale(${1 + (listening ? level * 0.55 : 0)})` }}
       />
       <span
-        className={`absolute inset-[15%] rounded-full ${listening ? "bg-primary/30" : "bg-primary/15"} transition-transform duration-150`}
+        className={`absolute inset-[15%] rounded-full ${tone.inner} transition-transform duration-150`}
         style={{ transform: `scale(${1 + (listening ? level * 0.3 : 0)})` }}
       />
       <span
-        className={`relative grid size-1/2 place-items-center rounded-full bg-gradient-to-br from-primary to-primary/70 shadow-lg shadow-primary/30 ${state === "idle" ? "" : "ring-2 ring-primary/40"}`}
+        className={`relative grid size-1/2 place-items-center rounded-full bg-gradient-to-br ${tone.core} shadow-lg ${tone.glow} ${state === "idle" ? "" : `ring-2 ${tone.ring}`}`}
       >
         <span
-          className={`size-1/3 rounded-full bg-primary-content ${listening ? "animate-pulse" : ""}`}
+          className={`size-1/3 rounded-full bg-base-100 ${listening || speaking ? "animate-pulse" : ""}`}
         />
       </span>
     </span>
