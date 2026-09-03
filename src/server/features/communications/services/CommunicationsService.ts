@@ -699,6 +699,10 @@ async function transcribeVoiceAudio(
     input.mimeType,
     input.language,
   );
+  // Nothing was said. Save no turn and generate no reply: an empty message
+  // would pollute the transcript and the history the agent learns from.
+  if (!result.transcript) return { ...result, heardNothing: true as const };
+
   await CommunicationsRepository.appendVoiceTranscript(organizationId, {
     conversationId: input.conversationId,
     speaker: "user",

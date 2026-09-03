@@ -1,6 +1,6 @@
 /* oxlint-disable max-lines-per-function */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Bot, LoaderCircle, Mic, PhoneOff, X } from "lucide-react";
+import { History, LoaderCircle, Mic, PhoneOff, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
@@ -38,6 +38,7 @@ export function VoiceAgentLauncher() {
   const animationFrameRef = useRef<number | null>(null);
   const continuousRef = useRef(false);
   const conversationRef = useRef<string | null>(null);
+  const [showHistory, setShowHistory] = useState(false);
 
   const workspace = useQuery({
     queryKey: ["voice", "workspace"],
@@ -75,6 +76,14 @@ export function VoiceAgentLauncher() {
     }) => transcribeVoiceAudio({ data: { ...data, language: "multi" } }),
     onSuccess: async (result) => {
       await client.invalidateQueries({ queryKey: ["voice"] });
+      // A pause is not a failure. Keep the microphone open and say so plainly
+      // rather than ending the conversation on an error the person did not
+      // cause.
+      if ("heardNothing" in result && result.heardNothing) {
+        setStatus("Listening…");
+        if (continuousRef.current) void beginListening();
+        return;
+      }
       if ("replyError" in result && result.replyError) {
         setStatus(result.replyError);
         return;
@@ -257,26 +266,49 @@ export function VoiceAgentLauncher() {
 
   const messages = workspace.data?.messages
     .filter((message) => message.conversationId === conversationId)
-    .slice(-8);
+    .slice(-40);
+
+  // Past conversations, newest first, with the first thing said in each so a
+  // row is recognisable without opening it.
+  const pastConversations = (workspace.data?.conversations ?? [])
+    .filter((conversation) => conversation.id !== conversationId)
+    .map((conversation) => {
+      const turns = (workspace.data?.messages ?? []).filter(
+        (message) => message.conversationId === conversation.id,
+      );
+      return { conversation, turns };
+    })
+    .filter((entry) => entry.turns.length > 0);
+
+  const orbState = listening ? "listening" : conversationId ? "live" : "idle";
 
   return (
     <>
       {open ? (
         <section
           aria-label="Voice Agent conversation"
-          className="fixed right-4 bottom-24 z-50 flex w-[min(24rem,calc(100vw-2rem))] flex-col overflow-hidden rounded-2xl border border-base-300 bg-base-100 shadow-2xl md:right-6"
+          /* Translucent over the app rather than a flat card: the panel floats
+             above whatever you were reading, so it should not look like it
+             replaced it. */
+          className="fixed right-4 bottom-24 z-50 flex h-[min(34rem,calc(100vh-9rem))] w-[min(25rem,calc(100vw-2rem))] flex-col overflow-hidden rounded-3xl border border-base-content/10 bg-base-100/80 shadow-2xl ring-1 ring-base-content/5 backdrop-blur-xl md:right-6"
         >
-          <header className="flex items-center gap-3 border-b border-base-300 px-4 py-3">
-            <span className="grid size-9 place-items-center rounded-full bg-primary text-primary-content">
-              <Bot className="size-5" />
-            </span>
-            <div className="min-w-0 flex-1">
-              <h2 className="font-semibold">OpenSEO Voice Agent</h2>
-              <p className="truncate text-xs text-base-content/60">{status}</p>
-            </div>
+          <header className="flex items-center gap-3 px-4 pt-4 pb-3">
+            <VoiceOrb state={orbState} level={level} size="sm" />
+            <p className="min-w-0 flex-1 truncate text-sm text-base-content/70">
+              {status}
+            </p>
             <button
               type="button"
-              className="btn btn-square btn-ghost btn-sm"
+              className={`btn btn-circle btn-ghost btn-sm ${showHistory ? "text-primary" : ""}`}
+              aria-label="Past conversations"
+              aria-pressed={showHistory}
+              onClick={() => setShowHistory((value) => !value)}
+            >
+              <History className="size-4" />
+            </button>
+            <button
+              type="button"
+              className="btn btn-circle btn-ghost btn-sm"
               aria-label="Close Voice Agent"
               onClick={() => setOpen(false)}
             >
@@ -284,49 +316,72 @@ export function VoiceAgentLauncher() {
             </button>
           </header>
 
-          <div className="min-h-52 space-y-2 overflow-y-auto bg-base-200/40 p-4">
-            {messages?.length ? (
-              messages.map((message) => (
-                <div
-                  key={message.id}
-                  className={`chat ${message.speaker === "user" ? "chat-end" : "chat-start"}`}
-                >
-                  <div
-                    className={`chat-bubble text-sm ${message.speaker === "user" ? "chat-bubble-primary" : ""}`}
+          <div className="flex-1 space-y-2 overflow-y-auto px-4 pb-2">
+            {showHistory ? (
+              pastConversations.length ? (
+                pastConversations.map(({ conversation, turns }) => (
+                  <details
+                    key={conversation.id}
+                    className="rounded-2xl border border-base-content/10 bg-base-200/40 p-3"
                   >
-                    {message.transcript}
-                  </div>
-                </div>
+                    <summary className="cursor-pointer list-none text-sm">
+                      <span className="block truncate font-medium">
+                        {turns[0]?.transcript ?? "Conversation"}
+                      </span>
+                      <span className="text-xs text-base-content/50">
+                        {new Date(conversation.startedAt).toLocaleString()} ·{" "}
+                        {turns.length} turn{turns.length === 1 ? "" : "s"}
+                      </span>
+                    </summary>
+                    <div className="mt-3 space-y-2">
+                      {turns.map((turn) => (
+                        <Bubble key={turn.id} message={turn} />
+                      ))}
+                    </div>
+                  </details>
+                ))
+              ) : (
+                <p className="grid h-full place-items-center px-6 text-center text-sm text-base-content/50">
+                  Past conversations will appear here once you have had one.
+                </p>
+              )
+            ) : messages?.length ? (
+              messages.map((message) => (
+                <Bubble key={message.id} message={message} />
               ))
             ) : (
-              <div className="grid min-h-44 place-items-center text-center text-sm text-base-content/60">
-                <p>
-                  Allow microphone access and speak. OpenSEO will notice when
-                  you finish.
+              <div className="grid h-full place-items-center gap-4 px-6 text-center">
+                <VoiceOrb state={orbState} level={level} size="lg" />
+                <p className="text-sm text-base-content/60">
+                  Allow microphone access and speak. OpenSEO notices when you
+                  finish.
                 </p>
               </div>
             )}
           </div>
 
-          <footer className="flex items-center justify-center gap-3 border-t border-base-300 p-4">
+          <footer className="flex items-center justify-center gap-3 px-4 pt-2 pb-5">
             {!conversationId ? (
               <button
                 type="button"
-                className="btn btn-primary"
+                aria-label="Start conversation"
                 disabled={start.isPending}
                 onClick={() => start.mutate()}
+                className="group relative grid size-16 place-items-center rounded-full bg-primary text-primary-content shadow-lg shadow-primary/30 transition hover:scale-105 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary disabled:opacity-60"
               >
+                {/* A ring that keeps breathing while idle, so the control reads
+                    as ready rather than as a button waiting to be found. */}
+                <span className="absolute inset-0 animate-ping rounded-full bg-primary/25 [animation-duration:2.4s]" />
                 {start.isPending ? (
-                  <LoaderCircle className="size-4 animate-spin" />
+                  <LoaderCircle className="size-6 animate-spin" />
                 ) : (
-                  <Mic className="size-4" />
+                  <Mic className="relative size-6" />
                 )}
-                Start conversation
               </button>
             ) : (
               <button
                 type="button"
-                className="btn btn-ghost"
+                className="btn btn-ghost btn-sm gap-2 rounded-full"
                 onClick={() => void endConversation()}
               >
                 <PhoneOff className="size-4" /> End conversation
@@ -341,26 +396,80 @@ export function VoiceAgentLauncher() {
         onClick={toggle}
         aria-label="Open Voice Agent"
         aria-expanded={open}
-        title="Voice Agent · Ctrl+Space or ⌘⇧Space"
-        style={
-          listening
-            ? {
-                boxShadow: `0 0 0 ${5 + level * 14}px color-mix(in oklab, var(--color-error) 24%, transparent)`,
-              }
-            : undefined
-        }
-        className={`group fixed right-4 bottom-5 z-50 flex items-center gap-2 rounded-full border border-primary/25 px-3 py-3 text-primary-content shadow-xl shadow-primary/20 transition hover:-translate-y-0.5 hover:shadow-2xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary md:right-6 md:bottom-6 ${listening ? "animate-pulse bg-error" : conversationId ? "bg-success" : "bg-primary"}`}
+        title="Voice Agent · Ctrl+Space or \u2318\u21e7Space"
+        className="group fixed right-4 bottom-5 z-50 grid size-14 place-items-center rounded-full transition hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary md:right-6 md:bottom-6"
       >
-        <span className="relative grid size-7 place-items-center rounded-full bg-primary-content/15">
-          <Bot className="size-4" aria-hidden="true" />
-          <span className="absolute -right-1 -bottom-1 grid size-3.5 place-items-center rounded-full bg-success text-success-content ring-2 ring-primary">
-            <Mic className="size-2.5" aria-hidden="true" />
-          </span>
-        </span>
-        <span className="max-w-0 overflow-hidden whitespace-nowrap text-sm font-semibold opacity-0 transition-all duration-200 group-hover:max-w-28 group-hover:pr-1 group-hover:opacity-100 group-focus-visible:max-w-28 group-focus-visible:pr-1 group-focus-visible:opacity-100">
+        <VoiceOrb state={orbState} level={level} size="md" />
+        <span className="pointer-events-none absolute right-full mr-3 rounded-full bg-base-content px-2.5 py-1 text-xs font-medium whitespace-nowrap text-base-100 opacity-0 transition group-hover:opacity-100 group-focus-visible:opacity-100">
           Voice Agent
         </span>
       </button>
     </>
+  );
+}
+
+function Bubble({
+  message,
+}: {
+  message: { speaker: string; transcript: string };
+}) {
+  const mine = message.speaker === "user";
+  return (
+    <div className={`chat ${mine ? "chat-end" : "chat-start"}`}>
+      <div
+        className={`chat-bubble text-sm ${mine ? "chat-bubble-primary" : "bg-base-200/70"}`}
+      >
+        {message.transcript}
+      </div>
+    </div>
+  );
+}
+
+const ORB_SIZES = {
+  sm: "size-8",
+  md: "size-14",
+  lg: "size-24",
+} as const;
+
+/**
+ * The agent, drawn rather than iconified.
+ *
+ * Concentric rings that widen with what the microphone is actually hearing, so
+ * the control shows the conversation's state instead of a logo that looks the
+ * same whether or not anything is working.
+ */
+function VoiceOrb({
+  state,
+  level,
+  size,
+}: {
+  state: "idle" | "live" | "listening";
+  level: number;
+  size: keyof typeof ORB_SIZES;
+}) {
+  const listening = state === "listening";
+  return (
+    <span
+      className={`relative grid ${ORB_SIZES[size]} shrink-0 place-items-center`}
+      aria-hidden="true"
+    >
+      {/* Driven by the measured level, not a fixed animation: a still ring
+          means the microphone is genuinely hearing nothing. */}
+      <span
+        className="absolute inset-0 rounded-full bg-primary/20 transition-transform duration-100"
+        style={{ transform: `scale(${1 + (listening ? level * 0.55 : 0)})` }}
+      />
+      <span
+        className={`absolute inset-[15%] rounded-full ${listening ? "bg-primary/30" : "bg-primary/15"} transition-transform duration-150`}
+        style={{ transform: `scale(${1 + (listening ? level * 0.3 : 0)})` }}
+      />
+      <span
+        className={`relative grid size-1/2 place-items-center rounded-full bg-gradient-to-br from-primary to-primary/70 shadow-lg shadow-primary/30 ${state === "idle" ? "" : "ring-2 ring-primary/40"}`}
+      >
+        <span
+          className={`size-1/3 rounded-full bg-primary-content ${listening ? "animate-pulse" : ""}`}
+        />
+      </span>
+    </span>
   );
 }

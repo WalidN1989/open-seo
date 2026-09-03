@@ -82,9 +82,12 @@ export async function transcribeWithDeepgram(
   }
   const channel = parsed.data.results.channels[0];
   const alternative = channel.alternatives[0];
-  if (!alternative?.transcript.trim()) throw new Error("Nothing was heard.");
+  // Silence is an ordinary outcome of listening, not a failure. Throwing here
+  // ended the conversation and showed the caller an alarming generic error
+  // every time they paused. The empty transcript is the answer; the caller
+  // decides what to do with it.
   return {
-    transcript: alternative.transcript.trim(),
+    transcript: alternative?.transcript.trim() ?? "",
     language:
       alternative.languages?.[0] ?? channel.detected_language ?? language,
   };
