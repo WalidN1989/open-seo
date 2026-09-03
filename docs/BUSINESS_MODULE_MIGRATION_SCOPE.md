@@ -280,6 +280,25 @@ listening directly, the redundant Speak control and add-agent action are
 removed, silent standby lasts 60 seconds, and a continuous spoken turn may run
 for up to five minutes before the safety ceiling stops it.
 
+### 2026-09-03: Railway cost containment
+
+Railway usage investigation found that the application normally used only a
+few hundred MB, but every production deployment ran the complete ~7,400-module
+Vite build after the paid runtime container started. Zero-downtime handover
+kept the old container live while the new one built, and the service RAM chart
+peaked above 20 GB during frequent development deployments. The Docker image
+now contains the completed build; runtime startup performs only preflight,
+migrations, runtime-binding generation, the scheduler ticker and `vite
+preview`. Public build variables are declared as Docker build arguments while
+provider credentials remain runtime-only.
+
+The ticker also called the `fast` tier every five seconds even though no fast
+job was registered. Valid fast-tier routing remains available for future work,
+but Railway now schedules only the active `standard` and `slow` tiers. This
+removes roughly 17,280 empty internal requests per day without changing the
+30-second catalogue/webhook work or the five-minute SEO, audit and voice
+learning work.
+
 ### 2026-08-31: Meta test-number activation and shared inbox
 
 This is the canonical handoff for the working production Meta connection. Do

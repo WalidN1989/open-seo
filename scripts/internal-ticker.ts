@@ -10,8 +10,8 @@
  * On Cloudflare, leave it unstarted and the platform's own crons apply.
  */
 import {
+  ACTIVE_INTERNAL_CRON_TIERS,
   CRON_TIER_INTERVAL_MS,
-  CRON_TIERS,
   INTERNAL_CRON_PATH,
   type CronTier,
 } from "../src/shared/internal-cron";
@@ -67,7 +67,7 @@ async function tick(tier: CronTier) {
   }
 }
 
-for (const tier of CRON_TIERS) {
+for (const tier of ACTIVE_INTERNAL_CRON_TIERS) {
   const interval = CRON_TIER_INTERVAL_MS[tier];
   setInterval(() => void tick(tier), interval);
   console.log(`[ticker] ${tier} tier every ${interval / 1000}s`);

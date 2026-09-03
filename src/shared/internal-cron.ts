@@ -8,6 +8,14 @@ export const INTERNAL_CRON_PATH = "/api/internal/cron";
 export const CRON_TIERS = ["fast", "standard", "slow"] as const;
 export type CronTier = (typeof CRON_TIERS)[number];
 
+// Tiers that currently contain production jobs. Keep `fast` as a valid tier
+// for future latency-sensitive work, but do not wake the server every five
+// seconds while that tier is empty.
+export const ACTIVE_INTERNAL_CRON_TIERS = [
+  "standard",
+  "slow",
+] as const satisfies readonly CronTier[];
+
 // Cadences the ticker uses. `fast` exists because a WhatsApp reply that lands
 // five minutes late is not a slow feature, it is a broken one — and five
 // minutes is the *finest* granularity Cloudflare cron offers.
