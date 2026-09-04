@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { ContextDraftService } from "@/server/features/project-context/services/ContextDraftService";
 import { ProjectContextService } from "@/server/features/project-context/services/ProjectContextService";
 import { requireProjectContext } from "@/serverFunctions/middleware";
 import {
@@ -25,4 +26,19 @@ export const updateProjectContext = createServerFn({ method: "POST" })
       data.updates,
       "user",
     ),
+  );
+
+/**
+ * Reads the project's own website and drafts the two sections a website can
+ * answer. Deliberately returns the draft instead of saving it: the operator
+ * confirms it, so the stored memory keeps meaning "a person asserted this".
+ */
+export const draftProjectContextFromSite = createServerFn({ method: "POST" })
+  .middleware(requireProjectContext)
+  .validator(getProjectContextSchema)
+  .handler(async ({ context }) =>
+    ContextDraftService.draftContextFromSite({
+      organizationId: context.organizationId,
+      domain: context.project.domain,
+    }),
   );
