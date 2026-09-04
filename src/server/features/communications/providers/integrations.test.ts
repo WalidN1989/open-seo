@@ -45,6 +45,65 @@ describe("integration provider health checks", () => {
   );
 });
 
+// Fixed answers for the redirect and rejection cases; neither depends on the
+// request, so they live here rather than being rebuilt inside each test.
+const redirectingFetcher = async () =>
+  new Response(null, {
+    status: 302,
+    headers: { Location: "https://elsewhere.example/steal" },
+  });
+const unauthorizedFetcher = async () =>
+  Response.json({ error: "Unauthorized" }, { status: 401 });
+
+describe("how a provider check reaches the network", () => {
+  // The workerd runtime this app serves from rejects redirect: "error"
+  // outright — "Invalid redirect value, must be one of follow or manual" —
+  // so every provider check failed before a request was sent, and the stripped
+  // reason made it look like a bad key. This pins the value that runtime
+  // accepts.
+  it("never asks fetch for the redirect mode workerd rejects", async () => {
+    process.env.TEST_PROVIDER_API_KEY = "secret";
+    let redirectMode: RequestRedirect | undefined;
+    const fetcher = async (_input: RequestInfo | URL, init?: RequestInit) => {
+      redirectMode = init?.redirect;
+      return Response.json({ data: {} });
+    };
+    await testIntegrationConnection(
+      { providerKey: "firecrawl", credentialReference: "TEST_PROVIDER" },
+      fetcher,
+    );
+    expect(redirectMode).toBe("manual");
+    delete process.env.TEST_PROVIDER_API_KEY;
+  });
+
+  // With "manual" the 3xx comes back as a response instead of being followed,
+  // and an API endpoint that redirects is refused rather than sending the
+  // credential on to wherever Location points.
+  it("refuses a redirect instead of following it with the credential", async () => {
+    process.env.TEST_PROVIDER_API_KEY = "secret";
+    await expect(
+      testIntegrationConnection(
+        { providerKey: "firecrawl", credentialReference: "TEST_PROVIDER" },
+        redirectingFetcher,
+      ),
+    ).rejects.toThrow(/redirected \(302\)/);
+    delete process.env.TEST_PROVIDER_API_KEY;
+  });
+
+  it("names the host and calls a 401 a rejected credential", async () => {
+    process.env.TEST_PROVIDER_API_KEY = "secret";
+    await expect(
+      testIntegrationConnection(
+        { providerKey: "firecrawl", credentialReference: "TEST_PROVIDER" },
+        unauthorizedFetcher,
+      ),
+    ).rejects.toThrow(
+      "api.firecrawl.dev responded 401 — the credential was rejected.",
+    );
+    delete process.env.TEST_PROVIDER_API_KEY;
+  });
+});
+
 describe("Hunter lead discovery", () => {
   it("searches a bounded domain and keeps credentials out of the URL", async () => {
     process.env.TEST_HUNTER_API_KEY = "secret";

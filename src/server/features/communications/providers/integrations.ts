@@ -42,9 +42,21 @@ async function checkedJson(
   const response = await fetcher(url, {
     ...init,
     headers,
-    redirect: "error",
+    // Not "error": the workerd runtime this app serves from rejects that value
+    // outright, which made every provider check fail before a request was
+    // ever sent — Firecrawl, Apify, Hunter and WooCommerce all reported the
+    // same failure for weeks with the reason stripped. "manual" hands back the
+    // 3xx instead, and a redirect on an API endpoint is refused below like any
+    // other non-2xx: the credential must not follow a Location header to a
+    // host we did not choose.
+    redirect: "manual",
     signal: AbortSignal.timeout(20_000),
   });
+  if (response.status >= 300 && response.status < 400) {
+    throw new Error(
+      `${new URL(url).host} redirected (${response.status}); refusing to follow with a credential.`,
+    );
+  }
   const body: unknown = await response.json().catch(() => null);
   if (!response.ok) {
     // The host and status only. The response body is not repeated: some
