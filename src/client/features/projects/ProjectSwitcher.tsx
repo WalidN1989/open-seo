@@ -1,6 +1,6 @@
 import * as React from "react";
 import { Link, useRouter } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Check,
   ChevronsUpDown,
@@ -30,6 +30,7 @@ export function ProjectSwitcher({
   // useMatches() would re-render the whole sidebar on every route change for
   // a value only a click needs.
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [creating, setCreating] = React.useState(false);
   // Controlled open state rather than daisyUI's CSS focus-within dropdown:
   // focus-within can't guarantee the search input ends up focused on open
@@ -90,10 +91,22 @@ export function ProjectSwitcher({
     // the active organization rather than the project in the address. Moving
     // the session first means CRM, Integrations and WhatsApp are showing the
     // new client by the time the page they land on renders.
-    void setActiveProject({ data: { projectId: project.id } }).catch(() => {
-      // The next project-scoped request re-authorizes and switches anyway, so
-      // a failed switch costs a render, not correctness.
-    });
+    void setActiveProject({ data: { projectId: project.id } })
+      .then(() => {
+        // Every cached business-module answer belongs to the organization we
+        // just left. Their query keys name the module and nothing else —
+        // correct while an organization could never change mid-session, wrong
+        // the moment switching project switches organization — so React Query
+        // would serve the previous client's products, integrations and module
+        // settings under the new client's name. Drop the cache rather than
+        // invalidate it: stale data must not stay on screen while a refetch
+        // is in flight when the two belong to different clients.
+        queryClient.clear();
+      })
+      .catch(() => {
+        // The next project-scoped request re-authorizes and switches anyway,
+        // so a failed switch costs a render, not correctness.
+      });
     // Stay on the current page in the new project: the deepest matched route
     // whose path's only dynamic segment is the project id. Deeper routes (a
     // rank tracker, an audit result) reference entities owned by the old
