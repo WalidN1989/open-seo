@@ -79,7 +79,7 @@ export function ProjectContextPage({ projectId }: { projectId: string }) {
     // draft, open form, or edit state can carry over to another project.
     <div key={projectId} className="space-y-8">
       <p className="text-sm text-base-content/70">
-        What SAM, Claude Code, and any connected MCP client know about this
+        What every AI assistant connected to this workspace knows about this
         project. They read it before they work and write back what they learn,
         so correct anything that looks wrong.
       </p>
@@ -162,8 +162,8 @@ function ProseSections({
     <form onSubmit={handleSubmit} className="space-y-5">
       {missingSections.length === PROJECT_CONTEXT_SECTION_KEYS.length ? (
         <EmptyState>
-          Nothing written down yet. Fill in what you can — or ask SAM to draft
-          it from your site and confirm what it got right.
+          Nothing written down yet. Fill in what you can — the goal and
+          positioning matter most, because nothing can infer those for you.
         </EmptyState>
       ) : null}
 

@@ -81,7 +81,7 @@ export function CompetitorsSection({
       {competitors.length === 0 ? (
         adding ? null : (
           <EmptyState>
-            No competitors yet. Add the sites you compete with, or ask SAM to
+            No competitors yet. Add the sites you compete with, or let an agent
             find them from your rankings and save them here.
           </EmptyState>
         )
