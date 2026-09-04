@@ -11,7 +11,11 @@ import {
 } from "lucide-react";
 import { getProjects, setActiveProject } from "@/serverFunctions/projects";
 import { resetOrganizationScopedQueries } from "@/client/lib/organization-scoped-queries";
-import { projectAddress, setLastProjectId } from "@/client/lib/active-project";
+import {
+  isProjectAtAddress,
+  projectAddress,
+  setLastProjectId,
+} from "@/client/lib/active-project";
 import { CreateProjectModal } from "@/client/features/projects/CreateProjectModal";
 import type { ProjectSummary } from "./types";
 
@@ -50,8 +54,10 @@ export function ProjectSwitcher({
     queryFn: () => getProjects(),
   });
   const projects = projectsQuery.data ?? [];
-  const activeProject =
-    projects.find((project) => project.id === activeProjectId) ?? null;
+  const isActiveProject = (project: { id: string; slug?: string | null }) =>
+    isProjectAtAddress(project, activeProjectId);
+
+  const activeProject = projects.find(isActiveProject) ?? null;
 
   const showSearch = projects.length >= SEARCH_THRESHOLD;
   const normalizedQuery = query.trim().toLowerCase();
@@ -86,7 +92,7 @@ export function ProjectSwitcher({
   const handleSelect = (project: ProjectSummary) => {
     closePanel();
     onCloseDrawer?.();
-    if (project.id === activeProjectId) return;
+    if (isActiveProject(project)) return;
     setLastProjectId(project.id);
     // Each project owns its own organization, and the business modules read
     // the active organization rather than the project in the address. Moving
@@ -320,7 +326,7 @@ export function ProjectSwitcher({
               className="menu max-h-[min(60vh,21rem)] w-full flex-nowrap overflow-y-auto p-2"
             >
               {filteredProjects.map((project, index) => {
-                const isActive = project.id === activeProjectId;
+                const isActive = isActiveProject(project);
                 const isHighlighted = showSearch && index === highlightIndex;
                 return (
                   <li key={project.id} role="presentation">

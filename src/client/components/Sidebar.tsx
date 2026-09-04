@@ -21,7 +21,7 @@ import { SamSidebarPanel } from "@/client/features/sam/SamSidebarPanel";
 import { ThemePreferenceMenuItems } from "@/client/components/ThemePreferenceMenuItems";
 import { closeDropdown } from "@/client/lib/dropdown";
 import { signOutAndRedirect, useSession } from "@/lib/auth-client";
-import { isHostedClientAuthMode } from "@/lib/auth-mode";
+import { isHostedClientAuthMode, isUserClientAuthMode } from "@/lib/auth-mode";
 import { BILLING_ROUTE } from "@/shared/billing";
 
 interface SidebarProps {
@@ -245,7 +245,12 @@ function SidebarViewTab({
 
 function SidebarFooter({ onNavigate }: { onNavigate?: () => void }) {
   const { data: session } = useSession();
+  // Billing is hosted-only: self-hosted deployments have no subscription.
   const isHostedMode = isHostedClientAuthMode();
+  // Signing out is not. Self-hosted has real accounts with real passwords, and
+  // gating the way out on hosted mode left those deployments with no way to
+  // leave the session at all.
+  const hasUserAccounts = isUserClientAuthMode();
   const email = session?.user?.email;
 
   const closeMenu = () => {
@@ -287,7 +292,7 @@ function SidebarFooter({ onNavigate }: { onNavigate?: () => void }) {
               </li>
             ) : null}
             <ThemePreferenceMenuItems />
-            {isHostedMode ? (
+            {hasUserAccounts ? (
               <>
                 <li
                   aria-hidden

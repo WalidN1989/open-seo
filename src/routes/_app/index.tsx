@@ -5,6 +5,7 @@ import { getProjects } from "@/serverFunctions/projects";
 import {
   clearLastProjectId,
   getLastProjectId,
+  projectAddress,
 } from "@/client/lib/active-project";
 import {
   getErrorCode,
@@ -41,7 +42,7 @@ function IndexRedirect() {
 
     void navigate({
       to: "/p/$projectId",
-      params: { projectId: (target ?? data[0]).id },
+      params: { projectId: projectAddress(target ?? data[0]) },
     });
   }, [data, navigate]);
 

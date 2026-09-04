@@ -44,3 +44,18 @@ export function projectAddress(project: {
 }): string {
   return project.slug ?? project.id;
 }
+
+/**
+ * Whether this project is the one the address refers to.
+ *
+ * An address is a slug now and was an id before, and both still resolve, so
+ * both have to be recognised. Comparing ids alone is what left the switcher
+ * reading "Select project" with a project plainly open.
+ */
+export function isProjectAtAddress(
+  project: { id: string; slug?: string | null },
+  address: string | null,
+): boolean {
+  if (!address) return false;
+  return project.id === address || project.slug === address;
+}

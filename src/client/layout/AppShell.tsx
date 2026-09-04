@@ -12,7 +12,7 @@ import { Sidebar } from "@/client/components/Sidebar";
 import { BILLING_ROUTE } from "@/shared/billing";
 import { getSeoApiKeyStatus } from "@/serverFunctions/config";
 import { getProjects } from "@/serverFunctions/projects";
-import { getLastProjectId } from "@/client/lib/active-project";
+import { getLastProjectId, projectAddress } from "@/client/lib/active-project";
 import { VoiceAgentLauncher } from "@/client/features/voice/VoiceAgentLauncher";
 
 const DATAFORSEO_HELP_PATH = "/help/dataforseo-api-key";
@@ -46,11 +46,16 @@ export function AuthenticatedAppLayout({
     getLastProjectId(),
   );
   const fallbackProjects = projectsQuery.data ?? [];
-  const fallbackProjectId =
-    fallbackProjects.find((project) => project.id === rememberedProjectId)
-      ?.id ??
-    fallbackProjects[0]?.id ??
+  // The remembered value is an id; the address in a link is the slug where one
+  // exists. Resolve the project first, then ask it for its address, so the
+  // sidebar links read /p/booxworm rather than a UUID.
+  const fallbackProject =
+    fallbackProjects.find((project) => project.id === rememberedProjectId) ??
+    fallbackProjects[0] ??
     null;
+  const fallbackProjectId = fallbackProject
+    ? projectAddress(fallbackProject)
+    : null;
   // Once the projects list loads, fallbackProjectId is the validated choice
   // (remembered-if-valid, else most recent). Before it loads, fall back to the
   // remembered id so the project nav renders immediately; a stale id here only
