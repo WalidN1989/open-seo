@@ -457,7 +457,12 @@ html[data-theme="openseo-dark"] .alert-error {
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
-  animation: auth-sheen 9s linear infinite;
+  /* The rise is folded in here rather than stacked as a second class: two
+     rules each setting the animation shorthand on one element leave only the
+     later one running, and the sheen was the one that lost. */
+  animation:
+    auth-rise 600ms cubic-bezier(0.2, 0.7, 0.2, 1) both,
+    auth-sheen 9s linear infinite;
 }
 
 /* Sits behind the headline, centred on it; blur and low alpha keep it a

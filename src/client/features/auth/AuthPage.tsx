@@ -196,7 +196,7 @@ export function AuthPageShell({
           <div className="m-auto flex w-full max-w-md flex-col items-center gap-10 py-10 text-center">
             <div className="relative space-y-4">
               <div aria-hidden className="auth-halo" />
-              <h2 className="auth-headline-sheen auth-rise relative text-balance font-serif text-5xl leading-[1.05] tracking-tight xl:text-6xl">
+              <h2 className="auth-headline-sheen relative text-balance font-serif text-5xl leading-[1.05] tracking-tight xl:text-6xl">
                 Every client, one workspace
               </h2>
               <p className="auth-rise auth-rise-2 relative mx-auto max-w-sm text-base text-base-content/60">
