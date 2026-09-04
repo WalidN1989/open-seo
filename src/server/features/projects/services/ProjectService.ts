@@ -1,11 +1,13 @@
 import {
   archiveProject,
   createProject,
+  createProjectInOwnOrganization,
   getProjectForMember,
   getProjectForOrganization,
   listArchivedProjects,
   listProjects,
   listProjectsEnsuringOne,
+  listProjectsForMemberEnsuringOne,
   restoreProject,
   setProjectDomain,
   setProjectMarket,
@@ -15,7 +17,9 @@ import {
 export const ProjectService = {
   listProjects,
   listProjectsEnsuringOne,
+  listProjectsForMemberEnsuringOne,
   createProject,
+  createProjectInOwnOrganization,
   updateProject,
   setProjectDomain,
   setProjectMarket,

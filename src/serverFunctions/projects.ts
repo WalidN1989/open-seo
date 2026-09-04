@@ -1,4 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
+import { getRequest } from "@tanstack/react-start/server";
+import { getAuth } from "@/lib/auth";
+import { AppError } from "@/server/lib/errors";
 import { ProjectService } from "@/server/features/projects/services/ProjectService";
 import {
   requireAuthenticatedContext,
@@ -18,16 +21,52 @@ const projectScopedSchema = z.object({ projectId: z.string().min(1) });
 
 export const getProjects = createServerFn({ method: "POST" })
   .middleware(requireAuthenticatedContext)
+  // Across every organization the user belongs to, not just the active one:
+  // each project owns its own organization, so listing by the active one would
+  // show whichever single project you were already looking at.
   .handler(async ({ context }) =>
-    ProjectService.listProjectsEnsuringOne(context.organizationId),
+    ProjectService.listProjectsForMemberEnsuringOne(
+      context.userId,
+      context.organizationId,
+    ),
   );
 
 export const createProject = createServerFn({ method: "POST" })
   .middleware(requireAuthenticatedContext)
   .validator(createProjectSchema)
+  // A new project is a new client, so it gets an organization of its own and
+  // is isolated from every project already in the workspace.
   .handler(async ({ data, context }) =>
-    ProjectService.createProject(context.organizationId, data),
+    ProjectService.createProjectInOwnOrganization(
+      context.userId,
+      data,
+      (body) => getAuth().api.createOrganization({ body }),
+    ),
   );
+
+/**
+ * Points the session at the organization that owns this project.
+ *
+ * Every business module reads the active organization and nothing else, so
+ * this one call is what makes switching project also switch which client's
+ * integrations, products and conversations are visible.
+ */
+export const setActiveProject = createServerFn({ method: "POST" })
+  .middleware(requireAuthenticatedContext)
+  .validator(projectScopedSchema)
+  .handler(async ({ data, context }) => {
+    const project = await ProjectService.getProjectForMember(
+      context.userId,
+      data.projectId,
+    );
+    if (!project) throw new AppError("NOT_FOUND");
+
+    await getAuth().api.setActiveOrganization({
+      body: { organizationId: project.organizationId },
+      headers: getRequest().headers,
+    });
+    return { organizationId: project.organizationId };
+  });
 
 export const updateProject = createServerFn({ method: "POST" })
   .middleware(requireProjectContext)

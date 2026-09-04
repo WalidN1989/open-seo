@@ -63,6 +63,24 @@ async function getProjectById(projectId: string) {
  * first and checking membership second leaves a window between them, and makes
  * it possible to use the row before the check has run.
  */
+/**
+ * Every project the user can reach, across every organization they belong to.
+ *
+ * Each project owns its own organization so one client's data cannot be read
+ * from another's workspace. The switcher therefore cannot list by organization
+ * — that would show exactly one project, whichever was active — so it lists by
+ * membership instead.
+ */
+async function listProjectsForMember(userId: string) {
+  const rows = await db
+    .select({ project: projects })
+    .from(projects)
+    .innerJoin(member, eq(member.organizationId, projects.organizationId))
+    .where(and(eq(member.userId, userId), isNull(projects.archivedAt)))
+    .orderBy(desc(projects.createdAt), desc(projects.id));
+  return rows.map((row) => row.project);
+}
+
 async function getProjectForMember(userId: string, projectId: string) {
   const [row] = await db
     .select({ project: projects })
@@ -243,6 +261,7 @@ export const ProjectRepository = {
   getProjectForOrganization,
   getProjectById,
   getProjectForMember,
+  listProjectsForMember,
   createProject,
   updateProject,
   updateProjectDomain,

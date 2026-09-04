@@ -9,7 +9,7 @@ import {
   Search,
   Settings,
 } from "lucide-react";
-import { getProjects } from "@/serverFunctions/projects";
+import { getProjects, setActiveProject } from "@/serverFunctions/projects";
 import { setLastProjectId } from "@/client/lib/active-project";
 import { CreateProjectModal } from "@/client/features/projects/CreateProjectModal";
 import type { ProjectSummary } from "./types";
@@ -86,6 +86,14 @@ export function ProjectSwitcher({
     onCloseDrawer?.();
     if (project.id === activeProjectId) return;
     setLastProjectId(project.id);
+    // Each project owns its own organization, and the business modules read
+    // the active organization rather than the project in the address. Moving
+    // the session first means CRM, Integrations and WhatsApp are showing the
+    // new client by the time the page they land on renders.
+    void setActiveProject({ data: { projectId: project.id } }).catch(() => {
+      // The next project-scoped request re-authorizes and switches anyway, so
+      // a failed switch costs a render, not correctness.
+    });
     // Stay on the current page in the new project: the deepest matched route
     // whose path's only dynamic segment is the project id. Deeper routes (a
     // rank tracker, an audit result) reference entities owned by the old

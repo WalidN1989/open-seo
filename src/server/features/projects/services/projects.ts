@@ -7,6 +7,7 @@ import type {
   UpdateProjectInput,
 } from "@/types/schemas/projects";
 import { ProjectRepository } from "@/server/features/projects/repositories/ProjectRepository";
+import { createOrganizationForProject } from "@/server/auth/project-organization";
 import { normalizeBacklinksTarget } from "@/server/lib/dataforseoBacklinksTarget";
 import { AppError } from "@/server/lib/errors";
 import { assertLanguageForLocation } from "@/server/lib/market";
@@ -86,6 +87,28 @@ export async function listProjectsEnsuringOne(organizationId: string) {
 }
 
 /**
+ * The switcher's list: every project the user can reach, across every
+ * organization they belong to.
+ *
+ * Listing by the active organization would show exactly one project once each
+ * project owns its own organization, so membership is the right axis. The
+ * fallback organization only matters for a brand-new account that has no
+ * project at all yet.
+ */
+export async function listProjectsForMemberEnsuringOne(
+  userId: string,
+  fallbackOrganizationId: string,
+) {
+  const existing = await ProjectRepository.listProjectsForMember(userId);
+  if (existing.length > 0) return existing.map(mapProject);
+
+  await ProjectRepository.tryCreateDefaultProject(fallbackOrganizationId);
+  return (await ProjectRepository.listProjectsForMember(userId)).map(
+    mapProject,
+  );
+}
+
+/**
  * Validates and canonicalizes a project domain (lowercase bare host, www and
  * protocol/path stripped) with the same rules the backlink fetch will apply
  * later, so junk fails at save time instead of at the first paid call.
@@ -101,6 +124,27 @@ function normalizeProjectDomain(domain: string | undefined) {
       "Enter a valid domain, like acme.com.",
     );
   }
+}
+
+/**
+ * Creates a project inside a brand-new organization of its own, so a client
+ * added today is isolated from every client added before it. The caller passes
+ * Better Auth's createOrganization; keeping it injected leaves this testable
+ * and avoids importing auth.ts into a service.
+ */
+export async function createProjectInOwnOrganization(
+  userId: string,
+  input: CreateProjectInput,
+  createOrganization: Parameters<
+    typeof createOrganizationForProject
+  >[0]["createOrganization"],
+) {
+  const organizationId = await createOrganizationForProject({
+    userId,
+    projectName: input.name,
+    createOrganization,
+  });
+  return createProject(organizationId, input);
 }
 
 export async function createProject(
