@@ -3,7 +3,6 @@ import { Link, useParams } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { ArrowLeft, Check, TriangleAlert } from "lucide-react";
 import {
-  checkIntegrationHealth,
   setIntegrationSyncSchedule,
   syncIntegrationCatalogue,
 } from "@/serverFunctions/commerce";
@@ -11,6 +10,7 @@ import { getIntegrationsWorkspace } from "@/serverFunctions/communications";
 import { integrationCatalogue } from "@/shared/integration-catalogue";
 import { ProviderConnectPanel } from "./ProviderConnectPanel";
 import { CatalogueSyncPanel } from "./CatalogueSyncPanel";
+import { verifyConnection } from "./verifyConnection";
 import { getStandardErrorMessage } from "@/client/lib/error-messages";
 
 const WORKSPACE_KEY = ["integrations", "workspace"];
@@ -46,10 +46,16 @@ export function IntegrationProviderDetailView() {
 
   const check = useMutation({
     mutationFn: () =>
-      checkIntegrationHealth({ data: { connectionId: connection!.id } }),
-    onSuccess: async () => {
+      verifyConnection({
+        connectionId: connection!.id,
+        supportsCatalogueSync: Boolean(entry?.supportsCatalogueSync),
+      }),
+    // Report what the provider said rather than "Connection checked", which
+    // read as success even when the check had just failed.
+    onSuccess: async (result) => {
       await refresh();
-      toast.success("Connection checked");
+      if (result.ok) toast.success(result.detail);
+      else toast.error(result.detail);
     },
     onError: (error) => toast.error(getStandardErrorMessage(error)),
   });

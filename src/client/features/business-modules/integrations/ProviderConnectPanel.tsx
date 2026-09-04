@@ -2,7 +2,6 @@ import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Eye, EyeOff, Loader2, Trash2 } from "lucide-react";
-import { checkIntegrationHealth } from "@/serverFunctions/commerce";
 import {
   createIntegration,
   deleteIntegration,
@@ -11,6 +10,7 @@ import {
 } from "@/serverFunctions/communications";
 import type { IntegrationCatalogueEntry } from "@/shared/integration-catalogue";
 import { getStandardErrorMessage } from "@/client/lib/error-messages";
+import { verifyConnection } from "./verifyConnection";
 
 type ExistingConnection = {
   id: string;
@@ -85,20 +85,15 @@ export function ProviderConnectPanel({
   // that cannot reach the provider are not a connection, so we check them
   // immediately and report what the provider actually said.
   const verify = async (connectionId: string) => {
-    try {
-      const health = await checkIntegrationHealth({ data: { connectionId } });
-      if (health?.status === "connected") {
-        toast.success(health.healthDetail ?? "Connected");
-        return;
-      }
-      toast.error(
-        health?.healthDetail ?? "Saved, but the credentials did not work.",
-      );
-    } catch (error) {
-      toast.error(
-        `Saved, but the check failed: ${getStandardErrorMessage(error)}`,
-      );
+    const result = await verifyConnection({
+      connectionId,
+      supportsCatalogueSync: Boolean(entry.supportsCatalogueSync),
+    });
+    if (result.ok) {
+      toast.success(result.detail);
+      return;
     }
+    toast.error(`Saved, but the check failed: ${result.detail}`);
   };
 
   const save = useMutation({
