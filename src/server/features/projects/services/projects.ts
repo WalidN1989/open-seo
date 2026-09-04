@@ -17,6 +17,7 @@ function mapProject(project: {
   id: string;
   name: string;
   domain: string | null;
+  slug: string | null;
   locationCode: number;
   languageCode: string;
   createdAt: string;
@@ -25,6 +26,9 @@ function mapProject(project: {
     id: project.id,
     name: project.name,
     domain: project.domain,
+    // The readable address segment; null on anything created before slugs, and
+    // callers fall back to the id.
+    slug: project.slug,
     // Default market for the project's data calls (MCP tools and the web UI
     // fall back to these when a call omits locationCode/languageCode).
     locationCode: project.locationCode,

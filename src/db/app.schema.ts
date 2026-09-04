@@ -50,6 +50,10 @@ export const projects = sqliteTable(
       .references(() => organization.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
     domain: text("domain"),
+    // A readable URL segment: /p/booxworm rather than /p/fe7b986f-5a61-...
+    // Nullable, and resolution always accepts the id too, so every link ever
+    // shared keeps working and a project without one is not broken.
+    slug: text("slug"),
     // Default DataForSEO location/language for the project, set during
     // onboarding and reused by every project-scoped data call.
     locationCode: integer("location_code").notNull().default(2840),
@@ -62,6 +66,7 @@ export const projects = sqliteTable(
     archivedAt: text("archived_at"),
   },
   (table) => [
+    uniqueIndex("projects_slug_uidx").on(table.slug),
     // Only the auto-created Default/null-domain project is a singleton. This
     // guards the get-or-create race that can happen when several requests enter
     // a new organization at once, without forbidding users from manually

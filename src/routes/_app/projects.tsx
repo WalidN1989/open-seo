@@ -11,6 +11,7 @@ import {
 import { getStandardErrorMessage } from "@/client/lib/error-messages";
 import { getLastProjectId } from "@/client/lib/active-project";
 import { CreateProjectModal } from "@/client/features/projects/CreateProjectModal";
+import { projectAddress } from "@/client/lib/active-project";
 
 export const Route = createFileRoute("/_app/projects")({
   component: ProjectsPage,
@@ -62,7 +63,7 @@ function ProjectsPage() {
               <li key={project.id}>
                 <Link
                   to="/p/$projectId/settings"
-                  params={{ projectId: project.id }}
+                  params={{ projectId: projectAddress(project) }}
                   className="flex items-center justify-between gap-3 p-3 transition-colors hover:bg-base-200/40"
                 >
                   <span className="flex min-w-0 flex-col">

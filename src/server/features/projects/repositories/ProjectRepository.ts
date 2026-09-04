@@ -1,7 +1,18 @@
-import { and, count, desc, eq, isNotNull, isNull, sql } from "drizzle-orm";
+import {
+  and,
+  count,
+  desc,
+  eq,
+  isNotNull,
+  isNull,
+  like,
+  or,
+  sql,
+} from "drizzle-orm";
 import { db } from "@/db";
 import { member, projects } from "@/db/schema";
 import { AppError } from "@/server/lib/errors";
+import { nextAvailableProjectSlug, toProjectSlug } from "@/shared/project-slug";
 
 async function listProjects(organizationId: string) {
   return db.query.projects.findMany({
@@ -26,6 +37,17 @@ async function countProjects(organizationId: string) {
   return row?.value ?? 0;
 }
 
+/**
+ * A project address is either its slug or its id.
+ *
+ * Slugs make the address readable; ids are what every link shared, bookmarked
+ * or written down before slugs existed still carries. Accepting both means
+ * nothing that ever worked stops working.
+ */
+function matchesProjectAddress(address: string) {
+  return or(eq(projects.id, address), eq(projects.slug, address));
+}
+
 async function getProjectForOrganization(
   projectId: string,
   organizationId: string,
@@ -35,7 +57,7 @@ async function getProjectForOrganization(
     .from(projects)
     .where(
       and(
-        eq(projects.id, projectId),
+        matchesProjectAddress(projectId),
         eq(projects.organizationId, organizationId),
         isNull(projects.archivedAt),
       ),
@@ -88,7 +110,7 @@ async function getProjectForMember(userId: string, projectId: string) {
     .innerJoin(member, eq(member.organizationId, projects.organizationId))
     .where(
       and(
-        eq(projects.id, projectId),
+        matchesProjectAddress(projectId),
         eq(member.userId, userId),
         isNull(projects.archivedAt),
       ),
@@ -107,9 +129,36 @@ async function createProject(
   const id = crypto.randomUUID();
   const [row] = await db
     .insert(projects)
-    .values({ id, organizationId, name, domain, ...market })
+    .values({
+      id,
+      organizationId,
+      name,
+      domain,
+      slug: await reserveProjectSlug(name),
+      ...market,
+    })
     .returning();
   return row;
+}
+
+/**
+ * Picks a free slug for a new project.
+ *
+ * Only the slugs that could collide are read — anything starting with the same
+ * base — rather than the whole table, so this stays cheap as the deployment
+ * grows. The unique index is still the authority: a slug taken between this
+ * read and the insert fails the insert rather than producing a duplicate.
+ */
+async function reserveProjectSlug(name: string) {
+  const base = toProjectSlug(name);
+  const rows = await db
+    .select({ slug: projects.slug })
+    .from(projects)
+    .where(like(projects.slug, `${base}%`));
+  return nextAvailableProjectSlug(
+    name,
+    rows.flatMap((row) => (row.slug ? [row.slug] : [])),
+  );
 }
 
 async function updateProject(
@@ -202,6 +251,7 @@ async function tryCreateDefaultProject(organizationId: string) {
       organizationId,
       name: "Default",
       domain: null,
+      slug: await reserveProjectSlug("Default"),
     })
     .onConflictDoNothing()
     .returning({ id: projects.id });

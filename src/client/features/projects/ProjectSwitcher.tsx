@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import { getProjects, setActiveProject } from "@/serverFunctions/projects";
 import { resetOrganizationScopedQueries } from "@/client/lib/organization-scoped-queries";
-import { setLastProjectId } from "@/client/lib/active-project";
+import { projectAddress, setLastProjectId } from "@/client/lib/active-project";
 import { CreateProjectModal } from "@/client/features/projects/CreateProjectModal";
 import type { ProjectSummary } from "./types";
 
@@ -124,7 +124,10 @@ export function ProjectSwitcher({
     // not carried over — filters and session ids belong to the old project.
     const template = stayable?.fullPath ?? "/p/$projectId";
     void router.navigate({
-      href: template.split("$projectId").join(project.id).replace(/\/$/, ""),
+      href: template
+        .split("$projectId")
+        .join(projectAddress(project))
+        .replace(/\/$/, ""),
     });
   };
 
@@ -262,7 +265,7 @@ export function ProjectSwitcher({
         {activeProject ? (
           <Link
             to="/p/$projectId/settings"
-            params={{ projectId: activeProject.id }}
+            params={{ projectId: projectAddress(activeProject) }}
             aria-label="Project settings"
             title="Project settings"
             onClick={() => {

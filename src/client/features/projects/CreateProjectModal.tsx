@@ -11,6 +11,7 @@ import {
 } from "@/client/features/keywords/locations";
 import { ProjectMarketFields } from "@/client/features/projects/ProjectMarketFields";
 import { createProject } from "@/serverFunctions/projects";
+import { projectAddress } from "@/client/lib/active-project";
 
 export function CreateProjectModal({ onClose }: { onClose: () => void }) {
   const navigate = useNavigate();
@@ -40,7 +41,7 @@ export function CreateProjectModal({ onClose }: { onClose: () => void }) {
       // Console and finish setting up the workspace.
       void navigate({
         to: "/p/$projectId/settings/integrations",
-        params: { projectId: created.id },
+        params: { projectId: projectAddress(created) },
       });
     },
     onError: (error) =>

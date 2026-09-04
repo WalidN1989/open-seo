@@ -302,6 +302,13 @@
       "when": 1788371268145,
       "tag": "0042_supreme_star_brand",
       "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1788548634569,
+      "tag": "0043_steady_inertia",
+      "breakpoints": true
     }
   ]
 }

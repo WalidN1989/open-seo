@@ -30,3 +30,17 @@ export function clearLastProjectId(): void {
     // Ignore private-mode / disabled-storage failures.
   }
 }
+
+/**
+ * The address segment to put in a link for this project.
+ *
+ * The slug is what makes /p/booxworm readable; the id is the fallback for a
+ * project created before slugs existed. Resolution accepts either, so a link
+ * built from the id is still correct — just uglier.
+ */
+export function projectAddress(project: {
+  id: string;
+  slug?: string | null;
+}): string {
+  return project.slug ?? project.id;
+}
