@@ -25,7 +25,7 @@ export const USER_STAFF_A = "user_staff_a";
 export const USER_OWNER_B = "user_owner_b";
 export const USER_OWNER_C = "user_owner_c";
 /** Belongs to A and B. The only way to exercise switching. */
-const USER_CONSULTANT = "user_consultant";
+export const USER_CONSULTANT = "user_consultant";
 
 const MEMBER_OWNER_A = "member_owner_a";
 const MEMBER_STAFF_A = "member_staff_a";
