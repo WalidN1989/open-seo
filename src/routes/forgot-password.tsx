@@ -7,7 +7,7 @@ import {
 } from "@/client/features/auth/AuthPage";
 import { getFieldError, getFormError } from "@/client/lib/forms";
 import { authClient } from "@/lib/auth-client";
-import { isHostedClientAuthMode } from "@/lib/auth-mode";
+import { isUserClientAuthMode } from "@/lib/auth-mode";
 import { getSignInSearch, normalizeAuthRedirect } from "@/lib/auth-redirect";
 import { z } from "zod";
 
@@ -23,7 +23,10 @@ export const Route = createFileRoute("/forgot-password")({
 function ForgotPasswordPage() {
   const search = Route.useSearch();
   const redirectTo = normalizeAuthRedirect(search.redirect);
-  const isHostedMode = isHostedClientAuthMode();
+  // Password reset works wherever accounts do. Gating it on hosted mode left
+  // self-hosted deployments with a permanently disabled form, and the server is
+  // the real authority on whether an email provider is configured.
+  const canResetPassword = isUserClientAuthMode();
 
   const form = useForm({
     defaultValues: {
@@ -81,7 +84,7 @@ function ForgotPasswordPage() {
               helperText={
                 isSuccess
                   ? `If an account exists for ${submittedEmail}, we sent a reset link.`
-                  : isHostedMode
+                  : canResetPassword
                     ? "Enter your email and we'll send you a password reset link."
                     : "Password reset isn't available right now."
               }
@@ -127,7 +130,7 @@ function ForgotPasswordPage() {
                               field.handleChange(event.target.value)
                             }
                             autoComplete="email"
-                            disabled={!isHostedMode}
+                            disabled={!canResetPassword}
                             required
                           />
                           {error ? (
@@ -143,7 +146,7 @@ function ForgotPasswordPage() {
                   ) : null}
                   <button
                     className="btn btn-soft w-full"
-                    disabled={!isHostedMode || isSubmitting}
+                    disabled={!canResetPassword || isSubmitting}
                   >
                     {isSubmitting ? "Sending reset link..." : "Send reset link"}
                   </button>

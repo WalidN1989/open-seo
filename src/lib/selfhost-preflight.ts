@@ -150,6 +150,65 @@ function checkAuthMode(env: EnvRecord, items: PreflightItem[]): void {
   });
 }
 
+function checkTransactionalEmail(env: EnvRecord, items: PreflightItem[]): void {
+  // Only modes with application accounts can send an account email, and only
+  // they need one: password reset is the feature that silently dead-ends
+  // without a provider.
+  const mode = get(env, "AUTH_MODE") ?? "cloudflare_access";
+  if (mode !== "selfhosted" && mode !== "hosted") return;
+
+  if (get(env, "RESEND_API_KEY")) {
+    items.push(
+      get(env, "RESEND_FROM_EMAIL")
+        ? {
+            key: "auth",
+            name: "RESEND_API_KEY",
+            level: "ok",
+            message: `Account email via Resend from ${get(env, "RESEND_FROM_EMAIL")}`,
+          }
+        : {
+            key: "auth",
+            name: "RESEND_FROM_EMAIL",
+            level: "fail",
+            message:
+              "RESEND_API_KEY is set without RESEND_FROM_EMAIL. Set a sender on a domain verified in Resend, for example: OpenSEO <no-reply@example.com>",
+          },
+    );
+    return;
+  }
+
+  if (get(env, "LOOPS_API_KEY")) {
+    const missing = [
+      "LOOPS_TRANSACTIONAL_RESET_PASSWORD_ID",
+      "LOOPS_TRANSACTIONAL_VERIFY_EMAIL_ID",
+    ].filter((name) => !get(env, name));
+    items.push(
+      missing.length
+        ? {
+            key: "auth",
+            name: "LOOPS_API_KEY",
+            level: "warn",
+            message: `Loops is missing ${missing.join(", ")} — password reset will fail.`,
+          }
+        : {
+            key: "auth",
+            name: "LOOPS_API_KEY",
+            level: "ok",
+            message: "Account email via Loops",
+          },
+    );
+    return;
+  }
+
+  items.push({
+    key: "auth",
+    name: "RESEND_API_KEY",
+    level: "warn",
+    message:
+      "No email provider configured — password reset cannot send. Set RESEND_API_KEY and RESEND_FROM_EMAIL.",
+  });
+}
+
 function checkDatabase(env: EnvRecord, items: PreflightItem[]): void {
   if (get(env, "DATABASE_PROVIDER") !== "postgres") {
     items.push({
@@ -279,6 +338,7 @@ function checkOptionalFeatures(env: EnvRecord, items: PreflightItem[]): void {
 export function runSelfhostChecks(env: EnvRecord): PreflightItem[] {
   const items: PreflightItem[] = [];
   checkAuthMode(env, items);
+  checkTransactionalEmail(env, items);
   checkDatabase(env, items);
   checkDataForSeo(env, items);
   checkOptionalFeatures(env, items);

@@ -19,11 +19,11 @@ import {
   hasHostedTurnstileConfig,
 } from "@/lib/auth-turnstile";
 import { getOrCreateDefaultHostedOrganization } from "@/server/auth/default-hosted-organization";
+import { upsertHostedSignupContact } from "@/server/email/loops";
 import {
-  sendHostedPasswordResetEmail,
-  sendHostedVerificationEmail,
-  upsertHostedSignupContact,
-} from "@/server/email/loops";
+  sendAccountVerificationEmail,
+  sendPasswordResetEmail,
+} from "@/server/email/transactional";
 
 const hostedBaseUrlSchema = z
   .string()
@@ -76,7 +76,7 @@ function createAuth() {
       resetPasswordTokenExpiresIn: 60 * 60,
       revokeSessionsOnPasswordReset: true,
       sendResetPassword: async ({ user, url }) => {
-        await sendHostedPasswordResetEmail({
+        await sendPasswordResetEmail({
           email: user.email,
           resetUrl: url,
         });
@@ -88,7 +88,7 @@ function createAuth() {
           sendOnSignUp: true,
           autoSignInAfterVerification: true,
           sendVerificationEmail: async ({ user, url }) => {
-            await sendHostedVerificationEmail({
+            await sendAccountVerificationEmail({
               email: user.email,
               confirmationUrl: url,
             });

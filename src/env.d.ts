@@ -39,6 +39,11 @@ declare namespace Cloudflare {
     META_VERIFY_TOKEN?: string;
     LOOPS_TRANSACTIONAL_VERIFY_EMAIL_ID?: string;
     LOOPS_TRANSACTIONAL_RESET_PASSWORD_ID?: string;
+    // Resend is the alternative transactional sender for account emails. It
+    // carries its own HTML, so it needs no per-template ids — only a key and a
+    // sender on a domain verified in the Resend account.
+    RESEND_API_KEY?: string;
+    RESEND_FROM_EMAIL?: string;
     AUTUMN_SECRET_KEY?: string;
     AUTUMN_WEBHOOK_SECRET?: string;
     // HMAC secret for the operator-only GDPR storage-erasure endpoint.

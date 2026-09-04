@@ -7,7 +7,7 @@ import {
 } from "@/client/features/auth/AuthPage";
 import { getFieldError, getFormError } from "@/client/lib/forms";
 import { authClient } from "@/lib/auth-client";
-import { isHostedClientAuthMode } from "@/lib/auth-mode";
+import { isUserClientAuthMode } from "@/lib/auth-mode";
 import { getSignInSearch, normalizeAuthRedirect } from "@/lib/auth-redirect";
 import {
   HOSTED_PASSWORD_MAX_LENGTH,
@@ -58,17 +58,17 @@ function getResetPasswordErrorMessage(error: string | undefined) {
 }
 
 function getResetPasswordPageCopy({
-  isHostedMode,
+  canResetPassword,
   isComplete,
   routeError,
   hasToken,
 }: {
-  isHostedMode: boolean;
+  canResetPassword: boolean;
   isComplete: boolean;
   routeError: string | null;
   hasToken: boolean;
 }) {
-  if (!isHostedMode) {
+  if (!canResetPassword) {
     return {
       title: "Reset password",
       helperText: "Password reset isn't available right now.",
@@ -101,7 +101,10 @@ function getResetPasswordPageCopy({
 function ResetPasswordPage() {
   const search = Route.useSearch();
   const redirectTo = normalizeAuthRedirect(search.redirect);
-  const isHostedMode = isHostedClientAuthMode();
+  // Password reset works wherever accounts do. Gating it on hosted mode left
+  // self-hosted deployments with a permanently disabled form, and the server is
+  // the real authority on whether an email provider is configured.
+  const canResetPassword = isUserClientAuthMode();
   const routeError = getResetPasswordErrorMessage(search.error);
   const token = typeof search.token === "string" ? search.token : null;
   const form = useForm({
@@ -161,7 +164,7 @@ function ResetPasswordPage() {
         {({ isComplete, submitError, isSubmitting }) => {
           const errorMessage = getFormError(submitError);
           const pageCopy = getResetPasswordPageCopy({
-            isHostedMode,
+            canResetPassword,
             isComplete,
             routeError,
             hasToken: !!token,
@@ -183,7 +186,7 @@ function ResetPasswordPage() {
                 </p>
               }
             >
-              {!isHostedMode ? null : isComplete ? (
+              {!canResetPassword ? null : isComplete ? (
                 <a
                   href={
                     redirectTo === "/"

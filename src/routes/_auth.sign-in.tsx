@@ -130,7 +130,7 @@ function SignInPage() {
                 : "text-sm text-base-content/50"
             }
           >
-            {showEmailForm && hasGoogleAuth ? (
+            {showEmailForm ? (
               <Link
                 to="/forgot-password"
                 search={getSignInSearch(redirectTo)}
