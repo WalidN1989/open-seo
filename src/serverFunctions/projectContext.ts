@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { CompetitorSuggestionService } from "@/server/features/project-context/services/CompetitorSuggestionService";
 import { ContextDraftService } from "@/server/features/project-context/services/ContextDraftService";
 import { ProjectContextService } from "@/server/features/project-context/services/ProjectContextService";
 import { requireProjectContext } from "@/serverFunctions/middleware";
@@ -40,5 +41,23 @@ export const draftProjectContextFromSite = createServerFn({ method: "POST" })
     ContextDraftService.draftContextFromSite({
       organizationId: context.organizationId,
       domain: context.project.domain,
+    }),
+  );
+
+/**
+ * Suggests competitor domains from the project's saved keywords. Charges
+ * DataForSEO credits, and like the site draft it suggests rather than saves —
+ * a shared results page is not the same thing as a competitor.
+ */
+export const suggestProjectCompetitors = createServerFn({ method: "POST" })
+  .middleware(requireProjectContext)
+  .validator(getProjectContextSchema)
+  .handler(async ({ context }) =>
+    CompetitorSuggestionService.suggestCompetitors({
+      projectId: context.projectId,
+      domain: context.project.domain,
+      locationCode: context.project.locationCode,
+      languageCode: context.project.languageCode,
+      billingCustomer: context,
     }),
   );

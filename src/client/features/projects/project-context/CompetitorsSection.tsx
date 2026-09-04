@@ -1,6 +1,14 @@
 import * as React from "react";
-import { Pencil, Plus } from "lucide-react";
+import { useMutation } from "@tanstack/react-query";
+import { Loader2, Pencil, Plus, Radar } from "lucide-react";
+import { toast } from "sonner";
+import { getStandardErrorMessage } from "@/client/lib/error-messages";
+import { suggestProjectCompetitors } from "@/serverFunctions/projectContext";
 import type { ProjectContextUpdate } from "@/types/schemas/projectContext";
+import {
+  CompetitorSuggestions,
+  type CompetitorSuggestion,
+} from "./CompetitorSuggestions";
 import {
   ConfirmDeleteButton,
   EmptyState,
@@ -23,6 +31,45 @@ export function CompetitorsSection({
   const update = useContextUpdate(projectId);
   const [adding, setAdding] = React.useState(false);
   const [editingId, setEditingId] = React.useState<string | null>(null);
+  const [suggested, setSuggested] = React.useState<{
+    suggestions: CompetitorSuggestion[];
+    keywordsUsed: number;
+  } | null>(null);
+  const [addingDomain, setAddingDomain] = React.useState<string | null>(null);
+
+  const suggest = useMutation({
+    mutationFn: () => suggestProjectCompetitors({ data: { projectId } }),
+    onSuccess: (result) => {
+      if (result.status === "no_keywords") {
+        toast.error(
+          "Save some keywords first — competitors are found from the terms you're chasing.",
+        );
+        return;
+      }
+      setSuggested(result);
+    },
+    onError: (error) => toast.error(getStandardErrorMessage(error)),
+  });
+
+  // Accepting one suggestion drops it from the panel, so the list only ever
+  // shows what is still on offer.
+  const acceptSuggestion = (domain: string) => {
+    setAddingDomain(domain);
+    update.mutate([{ addCompetitors: [{ domain, name: "", notes: "" }] }], {
+      onSuccess: () =>
+        setSuggested((current) =>
+          current
+            ? {
+                ...current,
+                suggestions: current.suggestions.filter(
+                  (item) => item.domain !== domain,
+                ),
+              }
+            : current,
+        ),
+      onSettled: () => setAddingDomain(null),
+    });
+  };
 
   const save = (previousDomain: string | null, draft: CompetitorDraft) => {
     const ops: ProjectContextUpdate[] = [];
@@ -57,16 +104,41 @@ export function CompetitorsSection({
         title="Competitors"
         hint="The sites you measure yourself against."
         action={
-          <button
-            type="button"
-            className="btn btn-ghost btn-xs"
-            onClick={() => setAdding(true)}
-          >
-            <Plus className="size-3.5" />
-            Add competitor
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              className="btn btn-ghost btn-xs"
+              disabled={suggest.isPending}
+              onClick={() => suggest.mutate()}
+            >
+              {suggest.isPending ? (
+                <Loader2 className="size-3.5 animate-spin" />
+              ) : (
+                <Radar className="size-3.5" />
+              )}
+              {suggest.isPending ? "Searching…" : "Suggest from keywords"}
+            </button>
+            <button
+              type="button"
+              className="btn btn-ghost btn-xs"
+              onClick={() => setAdding(true)}
+            >
+              <Plus className="size-3.5" />
+              Add competitor
+            </button>
+          </div>
         }
       />
+
+      {suggested ? (
+        <CompetitorSuggestions
+          suggestions={suggested.suggestions}
+          keywordsUsed={suggested.keywordsUsed}
+          pendingDomain={addingDomain}
+          onAdd={acceptSuggestion}
+          onDismiss={() => setSuggested(null)}
+        />
+      ) : null}
 
       {adding ? (
         <div className={listClass}>

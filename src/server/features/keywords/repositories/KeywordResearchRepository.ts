@@ -361,11 +361,29 @@ async function removeSavedKeywords(
   return deletedCount;
 }
 
+/**
+ * The project's saved keywords, newest first, as bare strings.
+ *
+ * Competitor discovery needs a keyword set and nothing else about them, so it
+ * reads through here rather than paying for the filtering, tag joins and
+ * counts that listSavedKeywordsByProject does for the table UI.
+ */
+async function listKeywordTermsByProject(projectId: string, limit: number) {
+  const rows = await db
+    .select({ keyword: savedKeywords.keyword })
+    .from(savedKeywords)
+    .where(eq(savedKeywords.projectId, projectId))
+    .orderBy(desc(savedKeywords.createdAt))
+    .limit(limit);
+  return rows.map((row) => row.keyword);
+}
+
 export const KeywordResearchRepository = {
   upsertKeywordMetric,
   countSavedKeywords,
   saveKeywordsToProject,
   listSavedKeywordsByProject,
+  listKeywordTermsByProject,
   addTagsToSavedKeywords: SavedKeywordTagsRepository.addTagsToSavedKeywords,
   replaceTagsForSavedKeywords:
     SavedKeywordTagsRepository.replaceTagsForSavedKeywords,
