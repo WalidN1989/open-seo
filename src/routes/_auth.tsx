@@ -36,7 +36,7 @@ function AuthPageLayout() {
   }
 
   return (
-    <AuthPageShell>
+    <AuthPageShell showcase>
       <Outlet />
     </AuthPageShell>
   );

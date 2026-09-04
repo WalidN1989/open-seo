@@ -121,14 +121,78 @@ export function AuthPageCard({
   );
 }
 
-export function AuthPageShell({ children }: { children: React.ReactNode }) {
+/**
+ * The signed-out pages get a headline and a looping still beside the form;
+ * everything else keeps the plain centred card.
+ *
+ * Opt-in rather than default because the same shell wraps mid-flow states —
+ * the authenticated loading gate, the onboarding chat — where a full-height
+ * marketing panel would be noise around a spinner.
+ */
+export function AuthPageShell({
+  children,
+  showcase = false,
+}: {
+  children: React.ReactNode;
+  showcase?: boolean;
+}) {
+  if (!showcase) {
+    return (
+      // `h-[100dvh]` + `overflow-y-auto` makes this a scroll container, and the
+      // auto-margin child centers when it fits but stays fully reachable (top and
+      // bottom) when it's taller than the viewport. Plain `justify-center` clips
+      // the overflow with no way to scroll to it.
+      <div className="h-[100dvh] flex flex-col items-center overflow-y-auto p-4 bg-base-200">
+        <div className="m-auto flex w-full flex-col items-center">
+          {children}
+        </div>
+      </div>
+    );
+  }
+
   return (
-    // `h-[100dvh]` + `overflow-y-auto` makes this a scroll container, and the
-    // auto-margin child centers when it fits but stays fully reachable (top and
-    // bottom) when it's taller than the viewport. Plain `justify-center` clips
-    // the overflow with no way to scroll to it.
-    <div className="h-[100dvh] flex flex-col items-center overflow-y-auto p-4 bg-base-200">
-      <div className="m-auto flex w-full flex-col items-center">{children}</div>
+    <div className="min-h-[100dvh] bg-base-200 lg:grid lg:grid-cols-2 lg:gap-8 lg:p-6">
+      {/* The form column is its own scroll container so a tall form stays
+          reachable without the panel beside it scrolling away. */}
+      <div className="flex min-h-[100dvh] flex-col items-center overflow-y-auto p-4 lg:min-h-0 lg:p-8">
+        <div className="m-auto flex w-full max-w-sm flex-col items-center gap-8">
+          <div className="hidden w-full space-y-3 lg:block">
+            <h2 className="text-balance font-serif text-4xl leading-tight tracking-tight xl:text-5xl">
+              Every client, one workspace
+            </h2>
+            <p className="text-base-content/60">
+              Search performance, CRM and conversations for every site you run.
+            </p>
+          </div>
+          {children}
+        </div>
+      </div>
+
+      <AuthShowcase />
+    </div>
+  );
+}
+
+/**
+ * Decoration, so it is hidden from assistive technology and skipped on small
+ * screens entirely — no reason to spend a phone's data on a background.
+ */
+function AuthShowcase() {
+  return (
+    <div className="hidden lg:block">
+      <video
+        className="h-full w-full rounded-2xl object-cover"
+        src="/login-hero.mp4"
+        poster="/login-hero-poster.jpg"
+        autoPlay
+        muted
+        loop
+        // iOS refuses to autoplay without this and opens fullscreen instead.
+        playsInline
+        preload="metadata"
+        aria-hidden
+        tabIndex={-1}
+      />
     </div>
   );
 }
