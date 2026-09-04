@@ -116,12 +116,36 @@ export function ProseSections({
     );
   };
 
+  const isEmpty =
+    missingSections.length === PROJECT_CONTEXT_SECTION_KEYS.length;
+
+  // One button, placed wherever the eye already is. On an empty form that is
+  // the box telling the person to draft from their site — putting the button
+  // four textareas below that sentence, next to Save, made it invisible in
+  // practice. Once anything is written the box is gone and the footer has it.
+  const draftButton = (
+    <button
+      type="button"
+      className="btn btn-ghost btn-sm"
+      disabled={draftFromSite.isPending}
+      onClick={() => draftFromSite.mutate()}
+    >
+      {draftFromSite.isPending ? (
+        <Loader2 className="size-4 animate-spin" />
+      ) : (
+        <Sparkles className="size-4" />
+      )}
+      {draftFromSite.isPending ? "Reading your site…" : "Draft from my site"}
+    </button>
+  );
+
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
-      {missingSections.length === PROJECT_CONTEXT_SECTION_KEYS.length ? (
+      {isEmpty ? (
         <EmptyState>
           Nothing written down yet. Draft the overview from your site, then
           write the goal yourself — nothing can infer that one for you.
+          <span className="mt-3 block">{draftButton}</span>
         </EmptyState>
       ) : null}
 
@@ -169,21 +193,9 @@ export function ProseSections({
       })}
 
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <button
-          type="button"
-          className="btn btn-ghost btn-sm"
-          disabled={draftFromSite.isPending}
-          onClick={() => draftFromSite.mutate()}
-        >
-          {draftFromSite.isPending ? (
-            <Loader2 className="size-4 animate-spin" />
-          ) : (
-            <Sparkles className="size-4" />
-          )}
-          {draftFromSite.isPending
-            ? "Reading your site…"
-            : "Draft from my site"}
-        </button>
+        {/* Empty span keeps Save on the right when the draft button has moved
+            up into the empty state. */}
+        {isEmpty ? <span /> : draftButton}
         <button
           type="submit"
           className="btn btn-primary btn-sm"
