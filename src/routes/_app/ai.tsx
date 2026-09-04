@@ -41,11 +41,81 @@ export const Route = createFileRoute("/_app/ai")({
   component: AiPage,
 });
 
+/**
+ * What the setup guides say in each mode.
+ *
+ * Hosted runs the OAuth provider, so a client signs in when prompted.
+ * Self-hosted does not — /mcp there takes an API key as a Bearer header — so
+ * its commands carry the key and its prose points at Settings rather than at a
+ * login that never appears. The key instructions used to be gated to hosted,
+ * which hid them in the one mode that requires them. Codex has no header flag
+ * and reads a bearer token from an environment variable instead.
+ */
+function guideCopy(hosted: boolean, mcpUrl: string) {
+  const keyPlaceholder = "oseo_PASTE_YOUR_KEY_HERE";
+  if (hosted) {
+    return {
+      keyPlaceholder,
+      urlNote: "Sign in with Digital Urgency when prompted.",
+      claudeCommand: `claude mcp add --transport http --scope user openseo ${mcpUrl}`,
+      claudeAfter: "Approve the login when prompted.",
+      codexCommand: `codex mcp add openseo --url ${mcpUrl}`,
+      codexAfter: "Approve the login when prompted.",
+      desktopLoginStep: "Approve the Digital Urgency login when prompted.",
+    };
+  }
+  return {
+    keyPlaceholder,
+    urlNote: "This instance authenticates with an API key rather than a login.",
+    claudeCommand: `claude mcp add --transport http --scope user openseo ${mcpUrl} --header "Authorization: Bearer ${keyPlaceholder}"`,
+    claudeAfter:
+      "Replace the placeholder with your key before running it, then check /mcp in Claude Code.",
+    codexCommand: `codex mcp add openseo --url ${mcpUrl} --bearer-token-env-var OPENSEO_API_KEY`,
+    codexAfter:
+      "Codex reads the key from an environment variable: export OPENSEO_API_KEY with your key in the shell that launches it.",
+    desktopLoginStep:
+      "This connector flow signs in with OAuth, which a self-hosted instance does not run. Use the Claude Code or Codex command above with an API key instead.",
+  };
+}
+
+/**
+ * Where to get a key, worded for the mode: hosted offers it as the headless
+ * alternative to the OAuth login; self-hosted makes it the only way in.
+ */
+function KeyHint({
+  hosted,
+  keyPlaceholder,
+}: {
+  hosted: boolean;
+  keyPlaceholder: string;
+}) {
+  return hosted ? (
+    <p className="mt-2 text-xs text-base-content/55">
+      For headless or CI setups, use an API key from{" "}
+      <Link className="link link-primary" to="/settings">
+        Settings
+      </Link>{" "}
+      instead of the OAuth login.
+    </p>
+  ) : (
+    <p className="mt-2 text-xs text-base-content/55">
+      Create one under{" "}
+      <Link className="link link-primary" to="/settings">
+        Settings → API keys → Create API key
+      </Link>
+      , then paste it where the commands below say{" "}
+      <code className="font-mono">{keyPlaceholder}</code>. It is shown once.
+    </p>
+  );
+}
+
 function AiPage() {
   const mcpUrl =
     typeof window === "undefined"
       ? "https://app.openseo.so/mcp"
       : `${window.location.origin}/mcp`;
+  const hosted = isHostedClientAuthMode();
+  const copy = guideCopy(hosted, mcpUrl);
 
   return (
     <div className="h-full overflow-auto bg-base-100 px-4 py-12 md:px-6 md:py-16 pb-24 md:pb-12">
@@ -94,17 +164,9 @@ function AiPage() {
           <p className="mt-2.5 text-xs text-base-content/55 leading-relaxed">
             Paste this into any MCP client. This URL points at the Digital
             Urgency instance you are using now, whether hosted, self-hosted, or
-            local. Sign in with Digital Urgency when prompted.
+            local. {copy.urlNote}
           </p>
-          {isHostedClientAuthMode() ? (
-            <p className="mt-2 text-xs text-base-content/55">
-              For headless or CI setups, use an API key from{" "}
-              <Link className="link link-primary" to="/settings">
-                Settings
-              </Link>{" "}
-              instead of the OAuth login.
-            </p>
-          ) : null}
+          <KeyHint hosted={hosted} keyPlaceholder={copy.keyPlaceholder} />
         </section>
 
         <section className="mt-10">
@@ -123,16 +185,14 @@ function AiPage() {
                 Run this in your terminal:
               </p>
               <CodeBlock
-                code={`claude mcp add --transport http --scope user openseo ${mcpUrl}`}
+                code={copy.claudeCommand}
                 onCopy={() =>
                   captureClientEvent("mcp:setup_command_copy", {
                     agent: "claude-code",
                   })
                 }
               />
-              <p className="text-sm text-base-content/70">
-                Approve the login when prompted.
-              </p>
+              <p className="text-sm text-base-content/70">{copy.claudeAfter}</p>
             </Collapsible>
 
             <Collapsible
@@ -154,7 +214,7 @@ function AiPage() {
                   .
                 </li>
                 <li>Paste the MCP URL above and click Add.</li>
-                <li>Approve the Digital Urgency login when prompted.</li>
+                <li>{copy.desktopLoginStep}</li>
                 <li>
                   Optional: after Digital Urgency connects, click{" "}
                   <span className="font-medium text-base-content">
@@ -182,16 +242,14 @@ function AiPage() {
                 Run this in your terminal:
               </p>
               <CodeBlock
-                code={`codex mcp add openseo --url ${mcpUrl}`}
+                code={copy.codexCommand}
                 onCopy={() =>
                   captureClientEvent("mcp:setup_command_copy", {
                     agent: "codex",
                   })
                 }
               />
-              <p className="text-sm text-base-content/70">
-                Approve the login when prompted.
-              </p>
+              <p className="text-sm text-base-content/70">{copy.codexAfter}</p>
             </Collapsible>
 
             <Collapsible
@@ -216,7 +274,7 @@ function AiPage() {
                   .
                 </li>
                 <li>Paste the MCP URL above.</li>
-                <li>Approve the Digital Urgency login when prompted.</li>
+                <li>{copy.desktopLoginStep}</li>
               </ol>
             </Collapsible>
           </div>
