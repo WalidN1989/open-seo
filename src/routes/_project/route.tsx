@@ -1,23 +1,19 @@
 import * as React from "react";
 import { Outlet, createFileRoute, useParams } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
+import { resetOrganizationScopedQueries } from "@/client/lib/organization-scoped-queries";
 
 export const Route = createFileRoute("/_project")({
   component: ProjectRouteLayout,
 });
 
 /**
- * Drops cached answers when the project changes.
+ * Discards the previous client's business-module data when the project
+ * changes.
  *
- * Each project owns its own organization, and the business-module queries key
- * on the module alone — correct while an organization could never change
- * mid-session, wrong once switching project switches organization. Without
- * this, React Query serves the previous client's products, integrations and
- * module settings under the new client's name.
- *
- * The switcher clears the cache itself after it has moved the session. This
- * covers every other way a project changes — a link from the projects list, a
- * pasted URL, the back button — where nothing else would.
+ * The switcher does this itself once it has moved the session. This covers
+ * every other way a project changes — a link from the projects list, a pasted
+ * URL, the back button — where the switcher never runs.
  */
 function useClearCacheOnProjectChange() {
   const { projectId } = useParams({ strict: false });
@@ -27,7 +23,7 @@ function useClearCacheOnProjectChange() {
   React.useEffect(() => {
     if (!projectId || previous.current === projectId) return;
     previous.current = projectId;
-    queryClient.clear();
+    void resetOrganizationScopedQueries(queryClient);
   }, [projectId, queryClient]);
 }
 

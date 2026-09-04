@@ -10,6 +10,7 @@ import {
   Settings,
 } from "lucide-react";
 import { getProjects, setActiveProject } from "@/serverFunctions/projects";
+import { resetOrganizationScopedQueries } from "@/client/lib/organization-scoped-queries";
 import { setLastProjectId } from "@/client/lib/active-project";
 import { CreateProjectModal } from "@/client/features/projects/CreateProjectModal";
 import type { ProjectSummary } from "./types";
@@ -94,14 +95,10 @@ export function ProjectSwitcher({
     void setActiveProject({ data: { projectId: project.id } })
       .then(() => {
         // Every cached business-module answer belongs to the organization we
-        // just left. Their query keys name the module and nothing else —
-        // correct while an organization could never change mid-session, wrong
-        // the moment switching project switches organization — so React Query
-        // would serve the previous client's products, integrations and module
-        // settings under the new client's name. Drop the cache rather than
-        // invalidate it: stale data must not stay on screen while a refetch
-        // is in flight when the two belong to different clients.
-        queryClient.clear();
+        // just left, so it is discarded once the session has moved. The SEO
+        // queries carry the project id in their keys and are deliberately left
+        // alone — touching them is what stranded the dashboard on skeletons.
+        void resetOrganizationScopedQueries(queryClient);
       })
       .catch(() => {
         // The next project-scoped request re-authorizes and switches anyway,
