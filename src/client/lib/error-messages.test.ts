@@ -7,7 +7,7 @@ import {
 describe("getStandardErrorMessage", () => {
   it("maps known error codes to standard copy", () => {
     expect(getStandardErrorMessage(new Error("PAYMENT_REQUIRED"))).toBe(
-      "An active hosted subscription is required before you can use OpenSEO.",
+      "An active hosted subscription is required before you can use Digital Urgency.",
     );
   });
 
@@ -46,6 +46,26 @@ describe("coded error messages (CODE: detail)", () => {
     expect(getErrorCode(arbitrary)).toBeNull();
     expect(getStandardErrorMessage(arbitrary)).toBe(
       "Something failed: try again",
+    );
+  });
+});
+
+describe("integration check failures", () => {
+  // These used to arrive as a bare INTERNAL_ERROR, so a rejected API key and a
+  // provider outage were the same sentence: "An unexpected error occurred."
+  it("shows what the provider said rather than a generic sentence", () => {
+    expect(
+      getStandardErrorMessage(
+        new Error(
+          "INTEGRATION_CHECK_FAILED: api.firecrawl.dev responded 401 — the credential was rejected.",
+        ),
+      ),
+    ).toBe("api.firecrawl.dev responded 401 — the credential was rejected.");
+  });
+
+  it("falls back to its own copy when the provider said nothing", () => {
+    expect(getStandardErrorMessage(new Error("INTEGRATION_CHECK_FAILED"))).toBe(
+      "The provider rejected the connection. Check the credentials and try again.",
     );
   });
 });

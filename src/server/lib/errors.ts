@@ -24,7 +24,15 @@ export function asAppError(error: unknown): AppError | null {
 // a full https URL…") that self-hosters need to fix their deployment, and the
 // alternative is a generic card that makes every misconfiguration look the
 // same. Everything else stays stripped to its bare code.
-const CLIENT_DETAIL_ERROR_CODES = new Set<ErrorCode>(["AUTH_CONFIG_MISSING"]);
+// AUTH_CONFIG_MISSING and INTEGRATION_CHECK_FAILED both carry operator-facing
+// configuration detail — which key a provider rejected, which variable is
+// missing — and stripping it leaves someone guessing at a generic sentence.
+// Neither message contains a credential: the integration one is a status code
+// and a host.
+const CLIENT_DETAIL_ERROR_CODES = new Set<ErrorCode>([
+  "AUTH_CONFIG_MISSING",
+  "INTEGRATION_CHECK_FAILED",
+]);
 
 export function toClientError(error: unknown): Error {
   const appError = asAppError(error);

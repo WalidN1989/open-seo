@@ -260,6 +260,34 @@ async function getIntegration(organizationId: string, connectionId: string) {
   return row ?? null;
 }
 
+/**
+ * Records the outcome of a connection test.
+ *
+ * updateIntegrationStatus writes the status alone, which left a failed check
+ * showing "Connection problem" beside "Not checked yet" — the badge knew and
+ * the timestamp did not.
+ */
+async function recordIntegrationCheck(
+  organizationId: string,
+  connectionId: string,
+  outcome: { status: "connected" | "error"; detail: string },
+) {
+  await db
+    .update(integrationConnections)
+    .set({
+      status: outcome.status,
+      lastCheckedAt: new Date().toISOString(),
+      healthDetail: outcome.detail.slice(0, 300),
+      updatedAt: new Date().toISOString(),
+    })
+    .where(
+      and(
+        eq(integrationConnections.organizationId, organizationId),
+        eq(integrationConnections.id, connectionId),
+      ),
+    );
+}
+
 async function updateIntegrationStatus(
   organizationId: string,
   connectionId: string,
@@ -1245,6 +1273,7 @@ export const CommunicationsRepository = {
   createWhatsappInternalNote,
   updateIntegration,
   updateIntegrationStatus,
+  recordIntegrationCheck,
   updateWhatsappDelivery,
   updateWebhookDelivery,
   whatsappEntityBelongsToOrganization,

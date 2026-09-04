@@ -47,7 +47,15 @@ async function checkedJson(
   });
   const body: unknown = await response.json().catch(() => null);
   if (!response.ok) {
-    throw new Error(`Provider returned HTTP ${response.status}.`);
+    // The host and status only. The response body is not repeated: some
+    // providers echo the request, and the request carried the credential.
+    throw new Error(
+      `${new URL(url).host} responded ${response.status}${
+        response.status === 401 || response.status === 403
+          ? " — the credential was rejected"
+          : ""
+      }.`,
+    );
   }
   return body;
 }

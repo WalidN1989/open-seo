@@ -28,6 +28,8 @@ const STANDARD_MESSAGES: Record<ErrorCode, string> = {
   UPSTREAM_UNAVAILABLE:
     "The data provider is temporarily unavailable. Please retry in a moment.",
   CONFLICT: "This request conflicts with existing data.",
+  INTEGRATION_CHECK_FAILED:
+    "The provider rejected the connection. Check the credentials and try again.",
   INTERNAL_ERROR:
     "An unexpected error occurred. Please check server logs and try again.",
 };

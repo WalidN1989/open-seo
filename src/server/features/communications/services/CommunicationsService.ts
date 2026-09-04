@@ -1007,10 +1007,10 @@ async function testIntegration(
   if (!connection) throw new Error("Integration connection not found.");
   try {
     const result = await testIntegrationConnection(connection);
-    await CommunicationsRepository.updateIntegrationStatus(
+    await CommunicationsRepository.recordIntegrationCheck(
       organizationId,
       connection.id,
-      "connected",
+      { status: "connected", detail: result.detail },
     );
     await BusinessAuditRepository.record({
       organizationId,
@@ -1022,10 +1022,15 @@ async function testIntegration(
     });
     return result;
   } catch (error) {
-    await CommunicationsRepository.updateIntegrationStatus(
+    // Keep what the provider actually said. Reported as a coded error so the
+    // detail survives the wire: "api.firecrawl.dev responded 401 — the
+    // credential was rejected" is actionable, and the generic internal-error
+    // copy it used to become is not.
+    const detail = error instanceof Error ? error.message : "The check failed.";
+    await CommunicationsRepository.recordIntegrationCheck(
       organizationId,
       connection.id,
-      "error",
+      { status: "error", detail },
     );
     await BusinessAuditRepository.record({
       organizationId,
@@ -1035,7 +1040,7 @@ async function testIntegration(
       targetId: connection.id,
       metadata: { providerKey: connection.providerKey },
     });
-    throw error;
+    throw new AppError("INTEGRATION_CHECK_FAILED", detail);
   }
 }
 
