@@ -1,3 +1,4 @@
+import * as React from "react";
 import { z } from "zod";
 import {
   getCurrentAuthRedirect,
@@ -87,6 +88,13 @@ function GoogleLogo() {
   );
 }
 
+/**
+ * True inside the showcase shell, where the brand already sits top-left and
+ * repeating the logo above the form would be the same mark twice on one
+ * screen.
+ */
+const AuthShowcaseContext = React.createContext(false);
+
 export function AuthPageCard({
   title,
   helperText,
@@ -98,14 +106,17 @@ export function AuthPageCard({
   children: React.ReactNode;
   footer?: React.ReactNode;
 }) {
+  const inShowcase = React.useContext(AuthShowcaseContext);
   return (
     <div className="w-full max-w-xs space-y-6">
       <div className="text-center space-y-3">
-        <img
-          src="/digital-urgency-logo.png"
-          alt="Digital Urgency"
-          className="mx-auto size-10 rounded-lg"
-        />
+        {inShowcase ? null : (
+          <img
+            src="/digital-urgency-logo.png"
+            alt="Digital Urgency"
+            className="mx-auto size-10 rounded-lg"
+          />
+        )}
         <div>
           <h1 className="text-xl font-semibold">{title}</h1>
           {helperText ? (
@@ -151,25 +162,54 @@ export function AuthPageShell({
   }
 
   return (
-    <div className="min-h-[100dvh] bg-base-200 lg:grid lg:grid-cols-2 lg:gap-8 lg:p-6">
-      {/* The form column is its own scroll container so a tall form stays
-          reachable without the panel beside it scrolling away. */}
-      <div className="flex min-h-[100dvh] flex-col items-center overflow-y-auto p-4 lg:min-h-0 lg:p-8">
-        <div className="m-auto flex w-full max-w-sm flex-col items-center gap-8">
-          <div className="hidden w-full space-y-3 lg:block">
-            <h2 className="text-balance font-serif text-4xl leading-tight tracking-tight xl:text-5xl">
-              Every client, one workspace
-            </h2>
-            <p className="text-base-content/60">
-              Search performance, CRM and conversations for every site you run.
-            </p>
-          </div>
-          {children}
-        </div>
-      </div>
+    // Committed to the dark theme whatever the app is set to: the clip beside
+    // the form is lit for a dark surround, and a pale page next to it reads as
+    // two different products. Scoping data-theme here keeps every DaisyUI
+    // field and button on the same palette without touching the app's own
+    // theme preference.
+    <AuthShowcaseContext.Provider value>
+      <div
+        data-theme="openseo-dark"
+        className="min-h-[100dvh] bg-base-200 text-base-content lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] lg:gap-6 lg:p-5"
+      >
+        {/* The form column is its own scroll container so a tall form stays
+            reachable without the panel beside it scrolling away. */}
+        <div className="relative flex min-h-[100dvh] flex-col overflow-y-auto px-6 py-6 lg:min-h-0 lg:px-14 lg:py-10">
+          <a
+            href="/"
+            className="flex w-fit items-center gap-2.5 self-start"
+            aria-label="Digital Urgency"
+          >
+            <img
+              src="/digital-urgency-logo.png"
+              alt=""
+              className="size-8 rounded-md"
+            />
+            <span className="text-lg font-semibold tracking-tight">
+              Digital Urgency
+            </span>
+          </a>
 
-      <AuthShowcase />
-    </div>
+          <div className="m-auto flex w-full max-w-md flex-col gap-10 py-10">
+            <div className="space-y-4">
+              <h2 className="text-balance font-serif text-5xl leading-[1.05] tracking-tight xl:text-6xl">
+                Every client, one workspace
+              </h2>
+              <p className="max-w-sm text-base text-base-content/60">
+                Search performance, CRM and conversations for every site you
+                run.
+              </p>
+            </div>
+
+            <div className="flex w-full flex-col items-center rounded-2xl border border-base-300 bg-base-100 px-6 py-8 shadow-[0_1px_0_0_oklch(100%_0_0/0.04)_inset]">
+              {children}
+            </div>
+          </div>
+        </div>
+
+        <AuthShowcase />
+      </div>
+    </AuthShowcaseContext.Provider>
   );
 }
 
