@@ -2,6 +2,7 @@ import { createFileRoute, Link, Outlet } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronLeft } from "lucide-react";
 import { getProjects } from "@/serverFunctions/projects";
+import { isProjectAtAddress } from "@/client/lib/active-project";
 
 export const Route = createFileRoute("/_project/p/$projectId/settings")({
   component: ProjectSettingsLayout,
@@ -19,7 +20,9 @@ function ProjectSettingsLayout() {
     queryKey: ["projects"],
     queryFn: () => getProjects(),
   });
-  const project = projectsQuery.data?.find((entry) => entry.id === projectId);
+  const project = projectsQuery.data?.find((entry) =>
+    isProjectAtAddress(entry, projectId),
+  );
 
   return (
     <div className="h-full overflow-auto bg-base-100">

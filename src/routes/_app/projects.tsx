@@ -12,6 +12,7 @@ import { getStandardErrorMessage } from "@/client/lib/error-messages";
 import { getLastProjectId } from "@/client/lib/active-project";
 import { CreateProjectModal } from "@/client/features/projects/CreateProjectModal";
 import { projectAddress } from "@/client/lib/active-project";
+import { isProjectAtAddress } from "@/client/lib/active-project";
 
 export const Route = createFileRoute("/_app/projects")({
   component: ProjectsPage,
@@ -71,7 +72,7 @@ function ProjectsPage() {
                       <span className="truncate font-medium">
                         {project.name}
                       </span>
-                      {project.id === currentProjectId ? (
+                      {isProjectAtAddress(project, currentProjectId) ? (
                         <span className="shrink-0 rounded-full bg-base-300/70 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-base-content/60">
                           Current
                         </span>

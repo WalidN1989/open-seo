@@ -14,6 +14,7 @@ import {
   updateProject,
 } from "@/serverFunctions/projects";
 import type { ProjectSummary } from "./types";
+import { isProjectAtAddress } from "@/client/lib/active-project";
 
 export function ProjectGeneralSettings({ projectId }: { projectId: string }) {
   const projectsQuery = useQuery({
@@ -21,7 +22,8 @@ export function ProjectGeneralSettings({ projectId }: { projectId: string }) {
     queryFn: () => getProjects(),
   });
   const projects = projectsQuery.data ?? [];
-  const project = projects.find((entry) => entry.id === projectId) ?? null;
+  const project =
+    projects.find((entry) => isProjectAtAddress(entry, projectId)) ?? null;
 
   if (!project) {
     return (
