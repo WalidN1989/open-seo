@@ -177,31 +177,35 @@ export function AuthPageShell({
         <div className="relative flex min-h-[100dvh] flex-col overflow-y-auto px-6 py-6 lg:min-h-0 lg:px-14 lg:py-10">
           <a
             href="/"
-            className="flex w-fit items-center gap-2.5 self-start"
+            className="auth-rise flex w-fit items-center gap-2.5 self-center"
             aria-label="Digital Urgency"
           >
             <img
               src="/digital-urgency-logo.png"
               alt=""
-              className="size-8 rounded-md"
+              className="auth-logo-mark size-9 rounded-md"
             />
             <span className="text-lg font-semibold tracking-tight">
               Digital Urgency
             </span>
           </a>
 
-          <div className="m-auto flex w-full max-w-md flex-col gap-10 py-10">
-            <div className="space-y-4">
-              <h2 className="text-balance font-serif text-5xl leading-[1.05] tracking-tight xl:text-6xl">
+          {/* Everything in the column shares one centre line: the brand above,
+              the headline, the subhead and the card. The halo is positioned
+              against the headline block, which is why that block is relative. */}
+          <div className="m-auto flex w-full max-w-md flex-col items-center gap-10 py-10 text-center">
+            <div className="relative space-y-4">
+              <div aria-hidden className="auth-halo" />
+              <h2 className="auth-headline-sheen auth-rise relative text-balance font-serif text-5xl leading-[1.05] tracking-tight xl:text-6xl">
                 Every client, one workspace
               </h2>
-              <p className="max-w-sm text-base text-base-content/60">
+              <p className="auth-rise auth-rise-2 relative mx-auto max-w-sm text-base text-base-content/60">
                 Search performance, CRM and conversations for every site you
                 run.
               </p>
             </div>
 
-            <div className="flex w-full flex-col items-center rounded-2xl border border-base-300 bg-base-100 px-6 py-8 shadow-[0_1px_0_0_oklch(100%_0_0/0.04)_inset]">
+            <div className="auth-rise auth-rise-3 flex w-full flex-col items-center rounded-2xl border border-base-300 bg-base-100 px-6 py-8 shadow-[0_1px_0_0_oklch(100%_0_0/0.04)_inset]">
               {children}
             </div>
           </div>

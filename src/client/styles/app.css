@@ -370,3 +370,137 @@ html[data-theme="openseo-dark"] .alert-success {
 html[data-theme="openseo-dark"] .alert-error {
   @apply border-error/60 bg-error/20;
 }
+
+/* ---------------------------------------------------------------------------
+   Sign-in showcase motion.
+
+   Deliberately quiet: a login page should feel alive, not busy. The brand mark
+   bobs and tilts on a slow wave with a glow breathing in the logo's own cyan;
+   the headline carries a low-contrast sheen so it is not flat text on a flat
+   ground; a soft halo behind it gives the column depth. Everything is
+   switched off under prefers-reduced-motion, and the sheen falls back to
+   plain text there so nothing depends on the animation to be readable.
+   --------------------------------------------------------------------------- */
+
+@keyframes auth-logo-wave {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  25% {
+    transform: translateY(-4px) rotate(-2.5deg);
+  }
+  75% {
+    transform: translateY(2px) rotate(2.5deg);
+  }
+}
+
+@keyframes auth-logo-glow {
+  0%,
+  100% {
+    filter: drop-shadow(0 0 6px oklch(80% 0.14 220 / 0.45));
+  }
+  50% {
+    filter: drop-shadow(0 0 18px oklch(82% 0.15 220 / 0.9));
+  }
+}
+
+@keyframes auth-sheen {
+  from {
+    background-position: 200% 50%;
+  }
+  to {
+    background-position: -200% 50%;
+  }
+}
+
+@keyframes auth-halo {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  50% {
+    opacity: 0.85;
+    transform: translate(-50%, -50%) scale(1.08);
+  }
+}
+
+@keyframes auth-rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.auth-logo-mark {
+  animation:
+    auth-logo-wave 4s ease-in-out infinite,
+    auth-logo-glow 3s ease-in-out infinite;
+  will-change: transform, filter;
+}
+
+.auth-headline-sheen {
+  background: linear-gradient(
+    110deg,
+    oklch(92% 0 0) 0%,
+    oklch(92% 0 0) 42%,
+    oklch(100% 0 0) 50%,
+    oklch(92% 0 0) 58%,
+    oklch(92% 0 0) 100%
+  );
+  background-size: 250% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: auth-sheen 9s linear infinite;
+}
+
+/* Sits behind the headline, centred on it; blur and low alpha keep it a
+   glow rather than a spotlight. */
+.auth-halo {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 34rem;
+  height: 16rem;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(
+    closest-side,
+    oklch(70% 0.14 220 / 0.28),
+    oklch(70% 0.14 220 / 0.08) 55%,
+    transparent 100%
+  );
+  filter: blur(28px);
+  pointer-events: none;
+  animation: auth-halo 7s ease-in-out infinite;
+}
+
+.auth-rise {
+  animation: auth-rise 600ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+.auth-rise-2 {
+  animation-delay: 120ms;
+}
+.auth-rise-3 {
+  animation-delay: 240ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-logo-mark,
+  .auth-halo,
+  .auth-rise,
+  .auth-rise-2,
+  .auth-rise-3 {
+    animation: none;
+  }
+  .auth-headline-sheen {
+    animation: none;
+    background: none;
+    color: inherit;
+  }
+}
