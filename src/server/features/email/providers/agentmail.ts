@@ -7,30 +7,30 @@
 
 const BASE_URL = "https://api.agentmail.to/v0";
 
-export type AgentmailPod = {
+type AgentmailPod = {
   pod_id: string;
   name?: string;
   client_id?: string;
 };
-export type AgentmailInbox = {
+type AgentmailInbox = {
   pod_id: string;
   inbox_id: string;
   email: string;
   display_name?: string;
 };
-export type AgentmailApiKey = {
+type AgentmailApiKey = {
   api_key_id: string;
   api_key: string;
   prefix: string;
   pod_id?: string;
 };
-export type AgentmailWebhook = {
+type AgentmailWebhook = {
   webhook_id: string;
   url: string;
   secret: string;
   enabled: boolean;
 };
-export type AgentmailSendResult = { message_id: string; thread_id: string };
+type AgentmailSendResult = { message_id: string; thread_id: string };
 
 export type AgentmailMessage = {
   inbox_id: string;
@@ -59,7 +59,7 @@ export type AgentmailThread = {
   message_count?: number;
 };
 
-export type AgentmailEvent =
+type AgentmailEvent =
   | {
       event_type:
         | "message.received"
@@ -121,8 +121,15 @@ async function call<T>(
   if (!response.ok) {
     let detail = text.slice(0, 200);
     try {
-      const parsed = JSON.parse(text) as { message?: string; error?: string };
-      detail = parsed.message || parsed.error || detail;
+      const parsed: unknown = JSON.parse(text);
+      if (typeof parsed === "object" && parsed !== null) {
+        const { message, error } = parsed as {
+          message?: unknown;
+          error?: unknown;
+        };
+        if (typeof message === "string") detail = message;
+        else if (typeof error === "string") detail = error;
+      }
     } catch {
       // keep the raw excerpt
     }

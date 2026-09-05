@@ -35,7 +35,7 @@ describe("BusinessModuleService", () => {
 
   it("defaults every paid business module to disabled", async () => {
     const access = await BusinessModuleService.getAccess("org-1", "user-1");
-    expect(access).toHaveLength(5);
+    expect(access).toHaveLength(businessModuleCatalog.length);
     expect(access.every((module) => !module.enabled)).toBe(true);
     expect(access.every((module) => module.permission === null)).toBe(true);
   });
