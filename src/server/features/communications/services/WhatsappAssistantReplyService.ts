@@ -66,11 +66,9 @@ async function businessContext(
  * with their live prices, or a clear "nothing matched" so it does not guess.
  */
 async function lookupProducts(organizationId: string, query: string) {
-  const [rows, { currency }] = await Promise.all([
+  const [rows, currency] = await Promise.all([
     Repo.searchPricedProducts(organizationId, query),
-    Repo.listPricedProducts(organizationId).then(({ currency }) => ({
-      currency,
-    })),
+    Repo.currencyFor(organizationId),
   ]);
   if (!rows.length) {
     return `No catalogue item matches "${query}". Say the team will check whether it can be sourced; do not invent a price.`;

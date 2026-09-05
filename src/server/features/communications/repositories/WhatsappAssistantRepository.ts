@@ -274,6 +274,16 @@ async function searchPricedProducts(
     .limit(limit);
 }
 
+/** The currency every stored amount is in, defaulting like the rest of the app. */
+async function currencyFor(organizationId: string) {
+  const [settings] = await db
+    .select({ currency: businessSettings.currency })
+    .from(businessSettings)
+    .where(eq(businessSettings.organizationId, organizationId))
+    .limit(1);
+  return settings?.currency ?? "AUD";
+}
+
 /** The project this organization belongs to, for its context markdown. */
 async function projectIdForOrganization(organizationId: string) {
   const [row] = await db
@@ -336,6 +346,7 @@ export const WhatsappAssistantRepository = {
   deleteAskedQuestion,
   listPricedProducts,
   searchPricedProducts,
+  currencyFor,
   projectIdForOrganization,
   getConversationStatus,
   latestInboundExternalId,

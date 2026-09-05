@@ -184,7 +184,9 @@ export async function generateWhatsappAiReply(input: {
         tool_use_id: block.id,
         content:
           block.name === "lookup_products" && input.lookupProducts
-            ? await input.lookupProducts(String(block.input.query ?? ""))
+            ? await input.lookupProducts(
+                typeof block.input.query === "string" ? block.input.query : "",
+              )
             : JSON.stringify({ recorded: true }),
       })),
     );
