@@ -25,6 +25,7 @@ import {
 } from "./WhatsappAssistantService";
 
 const { withDefaults } = WhatsappAssistantService;
+const PROMPT_PRICE_LIMIT = 120;
 
 /** Everything the model may treat as fact about this business. */
 async function businessContext(
@@ -49,7 +50,9 @@ async function businessContext(
   }
   return buildBusinessContext({
     settings,
-    prices,
+    // A bookshop's whole catalogue does not belong in every prompt; the
+    // instant-answer tokens still resolve against the full list.
+    prices: prices.slice(0, PROMPT_PRICE_LIMIT),
     publishedAnswers: published.flatMap((item) =>
       item.blogUrl ? [{ question: item.question, url: item.blogUrl }] : [],
     ),
