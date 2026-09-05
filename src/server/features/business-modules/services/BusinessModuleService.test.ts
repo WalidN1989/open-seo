@@ -1,3 +1,4 @@
+import { businessModuleCatalog } from "@/shared/business-modules";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AppError } from "@/server/lib/errors";
 
