@@ -163,3 +163,39 @@ export function buildBusinessContext(input: {
   }
   return parts.join("\n\n");
 }
+
+export type CatalogueMatch = {
+  name: string;
+  sku: string;
+  salePriceMinor: number;
+  productUrl: string | null;
+  /** Null when stock is not tracked for the item. */
+  quantityOnHand: number | null;
+};
+
+/**
+ * What the model reads back from a catalogue lookup. Every line carries the
+ * four things a customer needs — title, price, availability, link — so the
+ * reply can repeat them without guessing at any.
+ */
+export function formatCatalogueMatches(
+  query: string,
+  rows: readonly CatalogueMatch[],
+  currency: string,
+): string {
+  if (!rows.length) {
+    return `No catalogue item matches "${query}". Tell the customer it is not in the catalogue right now, offer to note a pre-order so the team can source it, and record it with create_order_request if they agree. Do not invent a price.`;
+  }
+  return rows
+    .map((row) => {
+      const availability =
+        row.quantityOnHand === null
+          ? "availability: ask the team to confirm"
+          : row.quantityOnHand > 0
+            ? `in stock (${row.quantityOnHand})`
+            : "out of stock — offer a pre-order via create_order_request";
+      const link = row.productUrl ? `link: ${row.productUrl}` : "link: none";
+      return `- ${row.name} — ${formatMinor(row.salePriceMinor, currency)} — ${availability} — ${link} (SKU ${row.sku})`;
+    })
+    .join("\n");
+}

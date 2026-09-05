@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   applyPriceTokens,
   buildBusinessContext,
+  formatCatalogueMatches,
   formatMinor,
   looksLikeQuestion,
   matchesEscalation,
@@ -86,5 +87,53 @@ describe("buildBusinessContext", () => {
     );
     expect(context).toContain("https://example.com/blog/seo");
     expect(context).toContain("Oxley, Brisbane.");
+  });
+});
+
+describe("formatCatalogueMatches", () => {
+  it("gives title, price, availability and link on one line each", () => {
+    const text = formatCatalogueMatches(
+      "sell like crazy",
+      [
+        {
+          name: "Sell Like Crazy By Sabri Suby",
+          sku: "BX0262",
+          salePriceMinor: 390000,
+          productUrl: "https://booxworm.lk/products/sell-crazy-book-sabri-suby",
+          quantityOnHand: 5,
+        },
+        {
+          name: "Testing Wacom",
+          sku: "TW1",
+          salePriceMinor: 25000,
+          productUrl: null,
+          quantityOnHand: 0,
+        },
+        {
+          name: "Untracked",
+          sku: "U1",
+          salePriceMinor: 1000,
+          productUrl: null,
+          quantityOnHand: null,
+        },
+      ],
+      "LKR",
+    );
+    expect(text).toContain(
+      "- Sell Like Crazy By Sabri Suby — LKR 3900 — in stock (5) — link: https://booxworm.lk/products/sell-crazy-book-sabri-suby",
+    );
+    expect(text).toContain(
+      "Testing Wacom — LKR 250 — out of stock — offer a pre-order",
+    );
+    expect(text).toContain(
+      "Untracked — LKR 10 — availability: ask the team to confirm — link: none",
+    );
+  });
+
+  it("tells the model to offer a pre-order when nothing matches", () => {
+    const text = formatCatalogueMatches("mystery", [], "LKR");
+    expect(text).toContain('No catalogue item matches "mystery"');
+    expect(text).toContain("pre-order");
+    expect(text).toContain("Do not invent a price");
   });
 });

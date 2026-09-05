@@ -1,7 +1,8 @@
-import { and, desc, eq, like, or, sql } from "drizzle-orm";
+import { and, desc, eq, like, or, sql, sum } from "drizzle-orm";
 import { db } from "@/db";
 import {
   businessSettings,
+  commerceInventoryBalances,
   commerceProducts,
   projects,
   whatsappAskedQuestions,
@@ -252,13 +253,19 @@ async function searchPricedProducts(
     ),
   );
   const whole = `%${query.trim().toLowerCase()}%`;
-  return db
+  const rows = await db
     .select({
       name: commerceProducts.name,
       sku: commerceProducts.sku,
       salePriceMinor: commerceProducts.salePriceMinor,
+      productUrl: commerceProducts.productUrl,
+      quantityOnHand: sum(commerceInventoryBalances.quantityOnHand),
     })
     .from(commerceProducts)
+    .leftJoin(
+      commerceInventoryBalances,
+      eq(commerceInventoryBalances.productId, commerceProducts.id),
+    )
     .where(
       and(
         eq(commerceProducts.organizationId, organizationId),
@@ -270,8 +277,15 @@ async function searchPricedProducts(
         ),
       ),
     )
+    .groupBy(commerceProducts.id)
     .orderBy(commerceProducts.name)
     .limit(limit);
+  return rows.map((row) => ({
+    ...row,
+    // No balance row means stock is untracked, which is not the same as zero.
+    quantityOnHand:
+      row.quantityOnHand === null ? null : Number(row.quantityOnHand),
+  }));
 }
 
 /** The currency every stored amount is in, defaulting like the rest of the app. */

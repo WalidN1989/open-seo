@@ -5,7 +5,7 @@ import { WhatsappAssistantRepository as Repo } from "../repositories/WhatsappAss
 import {
   applyPriceTokens,
   buildBusinessContext,
-  formatMinor,
+  formatCatalogueMatches,
   looksLikeQuestion,
   matchesEscalation,
   normalizeQuestion,
@@ -70,15 +70,7 @@ async function lookupProducts(organizationId: string, query: string) {
     Repo.searchPricedProducts(organizationId, query),
     Repo.currencyFor(organizationId),
   ]);
-  if (!rows.length) {
-    return `No catalogue item matches "${query}". Say the team will check whether it can be sourced; do not invent a price.`;
-  }
-  return rows
-    .map(
-      (row) =>
-        `- ${row.name} — ${formatMinor(row.salePriceMinor, currency)} (SKU ${row.sku})`,
-    )
-    .join("\n");
+  return formatCatalogueMatches(query, rows, currency);
 }
 
 /** Queue, send, and record one outbound reply on the conversation. */

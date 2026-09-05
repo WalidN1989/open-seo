@@ -2,6 +2,7 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { eq } from "drizzle-orm";
 import {
   ORG_A,
+  ORG_B,
   USER_OWNER_A,
   WHATSAPP_A,
   createTenancyFixture,
@@ -9,6 +10,7 @@ import {
 } from "./fixture";
 import type * as AssistantModule from "@/server/features/communications/services/WhatsappAssistantService";
 import type * as ReplyModule from "@/server/features/communications/services/WhatsappAssistantReplyService";
+import type * as AssistantRepoModule from "@/server/features/communications/repositories/WhatsappAssistantRepository";
 import type * as RepositoryModule from "@/server/features/communications/repositories/CommunicationsRepository";
 import type * as DbSchema from "@/db/schema";
 
@@ -60,6 +62,7 @@ let db: TestDb;
 let schema: typeof DbSchema;
 let WhatsappAssistantService: typeof AssistantModule.WhatsappAssistantService;
 let replyToInbound: typeof ReplyModule.replyToInbound;
+let Repo: typeof AssistantRepoModule.WhatsappAssistantRepository;
 let CommunicationsRepository: typeof RepositoryModule.CommunicationsRepository;
 let connection: NonNullable<
   Awaited<
@@ -104,6 +107,8 @@ beforeAll(async () => {
     await import("@/server/features/communications/repositories/CommunicationsRepository"));
   ({ replyToInbound } =
     await import("@/server/features/communications/services/WhatsappAssistantReplyService"));
+  ({ WhatsappAssistantRepository: Repo } =
+    await import("@/server/features/communications/repositories/WhatsappAssistantRepository"));
   schema = await import("@/db/schema");
   const row =
     await CommunicationsRepository.getWhatsappConnectionById(WHATSAPP_A);
@@ -197,5 +202,20 @@ describe("autopilot", () => {
     expect(config.settings.autopilot).toBe(true);
     expect(config.settings.escalationKeywords).toContain("human");
     expect(config.ai.connected).toBe(false);
+  });
+});
+
+describe("catalogue lookup", () => {
+  it("finds an item by any words of its name, with stock, inside its own organization only", async () => {
+    const rows = await Repo.searchPricedProducts(ORG_A, "WIDGET alpha");
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({
+      name: "Alpha Widget",
+      sku: "ALPHA-1",
+      salePriceMinor: 150_000,
+      quantityOnHand: 40,
+    });
+    expect(await Repo.searchPricedProducts(ORG_B, "alpha widget")).toEqual([]);
+    expect(await Repo.searchPricedProducts(ORG_A, "nothing here")).toEqual([]);
   });
 });
