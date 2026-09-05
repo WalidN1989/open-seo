@@ -190,3 +190,63 @@ describe("the self-hosted fallback is preserved", () => {
     );
   });
 });
+
+describe("the key a connection's secret is stored under", () => {
+  // Every Twilio path — send, template, webhook signature — resolves
+  // AUTH_TOKEN, and every Meta path resolves ACCESS_TOKEN. Storing both as
+  // ACCESS_TOKEN let a Twilio connection save cleanly and then fail on its
+  // first message, with the secret encrypted under a name nothing read.
+  // Asserting through resolveCredential exercises the sender's exact read.
+  it("stores a Twilio auth token where the Twilio sender looks for it", async () => {
+    const created = await CommunicationsService.createWhatsappConnection(
+      ORG_A,
+      USER_OWNER_A,
+      {
+        provider: "twilio",
+        displayPhoneNumber: "+61400000001",
+        externalAccountId: "ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        accessToken: "twilio-auth-token",
+      },
+    );
+    await expect(resolveCredential(created, "AUTH_TOKEN")).resolves.toBe(
+      "twilio-auth-token",
+    );
+  });
+
+  it("keeps a Meta access token under ACCESS_TOKEN", async () => {
+    const created = await CommunicationsService.createWhatsappConnection(
+      ORG_A,
+      USER_OWNER_A,
+      {
+        provider: "meta_cloud",
+        displayPhoneNumber: "+94110000010",
+        phoneNumberId: "PN_KEY_TEST",
+        businessAccountId: "WABA_KEY_TEST",
+        accessToken: "meta-access-token",
+      },
+    );
+    await expect(resolveCredential(created, "ACCESS_TOKEN")).resolves.toBe(
+      "meta-access-token",
+    );
+  });
+
+  it("rotates a Twilio token into the same key, not the Meta one", async () => {
+    const created = await CommunicationsService.createWhatsappConnection(
+      ORG_A,
+      USER_OWNER_A,
+      {
+        provider: "twilio",
+        displayPhoneNumber: "+61400000002",
+        externalAccountId: "ACyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy",
+        accessToken: "first",
+      },
+    );
+    await CommunicationsService.updateWhatsappConnection(ORG_A, USER_OWNER_A, {
+      connectionId: created.id,
+      accessToken: "rotated",
+    });
+    await expect(
+      resolveCredential(await storedRow(created.id), "AUTH_TOKEN"),
+    ).resolves.toBe("rotated");
+  });
+});

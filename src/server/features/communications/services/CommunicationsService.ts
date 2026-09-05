@@ -105,6 +105,19 @@ async function whatsappWorkspace(organizationId: string, userId: string) {
     members,
   };
 }
+/**
+ * The key a provider's adapter reads its secret under.
+ *
+ * Meta calls it an access token and every Meta path resolves ACCESS_TOKEN.
+ * Twilio calls it an auth token and every Twilio path — send, template,
+ * webhook signature — resolves AUTH_TOKEN. Storing every provider's secret
+ * as ACCESS_TOKEN meant a Twilio connection saved cleanly and then failed on
+ * its first message, with the secret sitting encrypted under the wrong name.
+ */
+function credentialKeyFor(provider: string) {
+  return provider === "twilio" ? "AUTH_TOKEN" : "ACCESS_TOKEN";
+}
+
 async function createWhatsappConnection(
   organizationId: string,
   userId: string,
@@ -131,7 +144,7 @@ async function createWhatsappConnection(
     {
       ...rest,
       credentials: await encryptCredentials(
-        accessToken ? { ACCESS_TOKEN: accessToken } : {},
+        accessToken ? { [credentialKeyFor(input.provider)]: accessToken } : {},
       ),
     },
   );
@@ -973,7 +986,9 @@ async function updateWhatsappConnection(
       ...rest,
       credentials: await mergeCredentials(
         current.credentials,
-        accessToken ? { ACCESS_TOKEN: accessToken } : {},
+        accessToken
+          ? { [credentialKeyFor(current.provider)]: accessToken }
+          : {},
       ),
     },
   );
