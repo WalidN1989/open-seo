@@ -1366,3 +1366,115 @@ export const whatsappAskedQuestions = pgTable(
     ),
   ],
 );
+
+/**
+ * Email module. One account per organisation for now: an AgentMail inbox in
+ * that organisation's own pod, or later a mailbox reached over SMTP/IMAP.
+ * Threads and messages are mirrored from the provider so the inbox, search
+ * and the assistant work without a provider call per render. Nothing here is
+ * shared with the WhatsApp tables; the module is additive.
+ */
+export const emailAccounts = pgTable(
+  "email_accounts",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    provider: text("provider").notNull(),
+    displayName: text("display_name"),
+    address: text("address").notNull(),
+    podId: text("pod_id"),
+    inboxId: text("inbox_id"),
+    webhookId: text("webhook_id"),
+    /** Encrypted blob: API_KEY (pod-scoped) and WEBHOOK_SECRET. */
+    credentials: text("credentials"),
+    status: text("status").notNull().default("pending"),
+    lastError: text("last_error"),
+    /** Off: the assistant writes a draft for a person to approve. */
+    autopilot: boolean("autopilot").notNull().default(false),
+    createdAt: createdAt(),
+    updatedAt: text("updated_at").notNull().default(isoNow),
+  },
+  (table) => [
+    index("email_accounts_org_idx").on(table.organizationId),
+    uniqueIndex("email_accounts_provider_inbox_idx").on(
+      table.provider,
+      table.inboxId,
+    ),
+  ],
+);
+
+export const emailThreads = pgTable(
+  "email_threads",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    accountId: text("account_id")
+      .notNull()
+      .references(() => emailAccounts.id, { onDelete: "cascade" }),
+    externalThreadId: text("external_thread_id").notNull(),
+    subject: text("subject"),
+    preview: text("preview"),
+    /** JSON arrays of "Name <address>" strings, as the provider gives them. */
+    senders: text("senders").notNull().default("[]"),
+    recipients: text("recipients").notNull().default("[]"),
+    messageCount: integer("message_count").notNull().default(0),
+    status: text("status").notNull().default("open"),
+    lastMessageAt: text("last_message_at").notNull().default(isoNow),
+    createdAt: createdAt(),
+    updatedAt: text("updated_at").notNull().default(isoNow),
+  },
+  (table) => [
+    uniqueIndex("email_threads_account_external_idx").on(
+      table.accountId,
+      table.externalThreadId,
+    ),
+    index("email_threads_org_last_idx").on(
+      table.organizationId,
+      table.lastMessageAt,
+    ),
+  ],
+);
+
+export const emailMessages = pgTable(
+  "email_messages",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    accountId: text("account_id")
+      .notNull()
+      .references(() => emailAccounts.id, { onDelete: "cascade" }),
+    threadId: text("thread_id")
+      .notNull()
+      .references(() => emailThreads.id, { onDelete: "cascade" }),
+    /** Provider message id; null while a draft has not been sent. */
+    externalMessageId: text("external_message_id"),
+    direction: text("direction").notNull(),
+    fromAddress: text("from_address").notNull(),
+    toAddresses: text("to_addresses").notNull().default("[]"),
+    subject: text("subject"),
+    textBody: text("text_body"),
+    htmlBody: text("html_body"),
+    status: text("status").notNull(),
+    /** Set when the assistant wrote it, so the inbox can say so. */
+    authoredBy: text("authored_by"),
+    occurredAt: text("occurred_at").notNull().default(isoNow),
+    createdAt: createdAt(),
+  },
+  (table) => [
+    uniqueIndex("email_messages_account_external_idx").on(
+      table.accountId,
+      table.externalMessageId,
+    ),
+    index("email_messages_thread_idx").on(table.threadId, table.occurredAt),
+    index("email_messages_org_status_idx").on(
+      table.organizationId,
+      table.status,
+    ),
+  ],
+);

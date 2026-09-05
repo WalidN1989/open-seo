@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { Blocks, Bot, MessagesSquare, PlugZap } from "lucide-react";
+import { Blocks, Bot, Mail, MessagesSquare, PlugZap } from "lucide-react";
 import { getBusinessModuleAccess } from "@/serverFunctions/business-modules";
 import {
   businessModuleCatalog,
@@ -25,6 +25,7 @@ const MODULE_ICONS = {
   crm: Blocks,
   whatsapp: MessagesSquare,
   voice: Bot,
+  email: Mail,
   integrations: PlugZap,
 } satisfies Record<Exclude<BusinessModuleKey, "leads">, typeof Blocks>;
 

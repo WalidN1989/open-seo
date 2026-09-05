@@ -14,6 +14,7 @@ const ORGANIZATION_SCOPED_QUERY_ROOTS = [
   "business-modules",
   "commerce",
   "crm",
+  "email",
   "integrations",
   "voice",
   "whatsapp",

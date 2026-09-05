@@ -29,7 +29,7 @@ const { withDefaults } = WhatsappAssistantService;
 const PROMPT_PRICE_LIMIT = 120;
 
 /** Everything the model may treat as fact about this business. */
-async function businessContext(
+export async function businessContext(
   organizationId: string,
   settings: AssistantSettings,
 ) {
@@ -65,7 +65,7 @@ async function businessContext(
  * What the model sees when it asks about the catalogue: the matching items
  * with their live prices, or a clear "nothing matched" so it does not guess.
  */
-async function lookupProducts(organizationId: string, query: string) {
+export async function lookupProducts(organizationId: string, query: string) {
   const [rows, currency] = await Promise.all([
     Repo.searchPricedProducts(organizationId, query),
     Repo.currencyFor(organizationId),

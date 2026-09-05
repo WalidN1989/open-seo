@@ -5,6 +5,7 @@ import {
   Blocks,
   Bot,
   ContactRound,
+  Mail,
   MessagesSquare,
   PlugZap,
 } from "lucide-react";
@@ -31,6 +32,7 @@ const icons = {
   crm: Blocks,
   whatsapp: MessagesSquare,
   voice: Bot,
+  email: Mail,
   integrations: PlugZap,
 } satisfies Record<BusinessModuleKey, typeof Blocks>;
 

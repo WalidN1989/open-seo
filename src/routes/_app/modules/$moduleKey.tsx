@@ -13,6 +13,7 @@ import {
   VoiceWorkspace,
   WhatsappWorkspace,
 } from "@/client/features/business-modules/CommunicationsWorkspace";
+import { EmailWorkspace } from "@/client/features/business-modules/email/EmailWorkspace";
 
 export const Route = createFileRoute("/_app/modules/$moduleKey")({
   component: BusinessModulePage,
@@ -42,6 +43,12 @@ const capabilities: Record<BusinessModuleKey, readonly string[]> = {
     "Speech-to-text, model, and text-to-speech providers",
     "Conversation history and transcripts",
     "In-app support assistant foundation",
+  ],
+  email: [
+    "An inbox per business in its own AgentMail pod",
+    "Drafts for human approval, or autopilot replies",
+    "The same assistant brain as WhatsApp",
+    "A custom SMTP/IMAP mailbox, later",
   ],
   integrations: [
     "Provider connections with secret references",
@@ -87,6 +94,7 @@ function BusinessModulePage() {
             {moduleKey === "leads" ? <LeadsWorkspace /> : null}
             {moduleKey === "whatsapp" ? <WhatsappWorkspace /> : null}
             {moduleKey === "voice" ? <VoiceWorkspace /> : null}
+            {moduleKey === "email" ? <EmailWorkspace /> : null}
             {businessModuleKeySchema.options.includes(moduleKey) ? null : (
               <>
                 <div>
