@@ -32,6 +32,9 @@ export function asAppError(error: unknown): AppError | null {
 const CLIENT_DETAIL_ERROR_CODES = new Set<ErrorCode>([
   "AUTH_CONFIG_MISSING",
   "INTEGRATION_CHECK_FAILED",
+  // A conflict names what already exists so the operator knows which form
+  // to use instead; the message never carries an identifier or a secret.
+  "CONFLICT",
 ]);
 
 export function toClientError(error: unknown): Error {

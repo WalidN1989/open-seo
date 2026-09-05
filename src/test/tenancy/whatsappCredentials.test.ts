@@ -276,3 +276,56 @@ describe("the key a connection's secret is stored under", () => {
     );
   });
 });
+
+describe("more than one connection without a Meta phone number ID", () => {
+  it("lets two Twilio numbers coexist when the form leaves the Meta IDs blank", async () => {
+    const first = await CommunicationsService.createWhatsappConnection(
+      ORG_A,
+      USER_OWNER_A,
+      {
+        provider: "twilio",
+        displayPhoneNumber: "+61400000010",
+        externalAccountId: "ACaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        phoneNumberId: "",
+        businessAccountId: "",
+      },
+    );
+    const second = await CommunicationsService.createWhatsappConnection(
+      ORG_A,
+      USER_OWNER_A,
+      {
+        provider: "twilio",
+        displayPhoneNumber: "+61400000011",
+        externalAccountId: "ACbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        phoneNumberId: "",
+        businessAccountId: "",
+      },
+    );
+    expect(second.id).not.toBe(first.id);
+    expect((await storedRow(first.id)).phoneNumberId).toBeNull();
+  });
+
+  it("explains a duplicate instead of failing with an internal error", async () => {
+    const input = {
+      provider: "meta_cloud" as const,
+      displayPhoneNumber: "+94110000020",
+      phoneNumberId: "PN_DUPLICATE",
+      businessAccountId: "WABA_DUPLICATE",
+    };
+    await CommunicationsService.createWhatsappConnection(
+      ORG_A,
+      USER_OWNER_A,
+      input,
+    );
+    await expect(
+      CommunicationsService.createWhatsappConnection(
+        ORG_A,
+        USER_OWNER_A,
+        input,
+      ),
+    ).rejects.toMatchObject({
+      code: "CONFLICT",
+      message: expect.stringContaining("Update connection"),
+    });
+  });
+});

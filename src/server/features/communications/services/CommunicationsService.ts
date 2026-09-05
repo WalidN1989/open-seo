@@ -114,6 +114,44 @@ async function whatsappWorkspace(organizationId: string, userId: string) {
  * as ACCESS_TOKEN meant a Twilio connection saved cleanly and then failed on
  * its first message, with the secret sitting encrypted under the wrong name.
  */
+/**
+ * Drops fields the form left empty. An empty optional string is not "no
+ * value" to the database: Postgres treats "" as a real value in a unique
+ * index, so two Twilio connections with no Meta phone number ID would
+ * collide on ("twilio", ""). Null does not collide.
+ */
+function withoutBlanks<T extends Record<string, unknown>>(
+  input: T,
+): Partial<T> {
+  const kept: Partial<T> = {};
+  for (const [key, value] of Object.entries(input)) {
+    if (value !== undefined && value !== "")
+      Object.assign(kept, { [key]: value });
+  }
+  return kept;
+}
+
+/** True for a unique-index violation from either dialect the app runs on. */
+function isUniqueViolation(error: unknown): boolean {
+  let current: unknown = error;
+  for (let depth = 0; current && depth < 4; depth += 1) {
+    const candidate = current as {
+      code?: unknown;
+      message?: unknown;
+      cause?: unknown;
+    };
+    if (candidate.code === "23505") return true;
+    if (
+      typeof candidate.message === "string" &&
+      /unique constraint/i.test(candidate.message)
+    ) {
+      return true;
+    }
+    current = candidate.cause;
+  }
+  return false;
+}
+
 function credentialKeyFor(provider: string) {
   return provider === "twilio" ? "AUTH_TOKEN" : "ACCESS_TOKEN";
 }
@@ -139,15 +177,19 @@ async function createWhatsappConnection(
     );
   }
   const { accessToken, ...rest } = input;
+  const credentials = await encryptCredentials(
+    accessToken ? { [credentialKeyFor(input.provider)]: accessToken } : {},
+  );
   const connection = await CommunicationsRepository.createWhatsappConnection(
     organizationId,
-    {
-      ...rest,
-      credentials: await encryptCredentials(
-        accessToken ? { [credentialKeyFor(input.provider)]: accessToken } : {},
-      ),
-    },
-  );
+    { ...withoutBlanks(rest), provider: input.provider, credentials },
+  ).catch((error: unknown) => {
+    if (!isUniqueViolation(error)) throw error;
+    throw new AppError(
+      "CONFLICT",
+      "This number is already connected. Open its row under Settings and use Update connection to change the token or details.",
+    );
+  });
   await auditMutation(
     organizationId,
     userId,
@@ -982,11 +1024,7 @@ async function updateWhatsappConnection(
   // The form renders every field on every update, so an untouched box arrives
   // as an empty string. Blank means "keep what is stored" — the same rule the
   // token follows — otherwise saving a new token would wipe the number.
-  const changes = Object.fromEntries(
-    Object.entries(rest).filter(
-      ([, value]) => value !== undefined && value !== "",
-    ),
-  );
+  const changes = withoutBlanks(rest);
   const updated = await CommunicationsRepository.updateWhatsappConnection(
     organizationId,
     connectionId,
