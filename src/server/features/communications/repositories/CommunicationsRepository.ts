@@ -675,6 +675,7 @@ async function updateWhatsappConnection(
     displayPhoneNumber?: string;
     phoneNumberId?: string;
     businessAccountId?: string;
+    externalAccountId?: string;
     credentialReference?: string;
     /** Already-encrypted blob; the service owns encryption. */
     credentials: string | null;

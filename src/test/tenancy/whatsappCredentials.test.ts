@@ -271,6 +271,19 @@ describe("the key a connection's secret is stored under", () => {
     const row = await storedRow(created.id);
     expect(row.displayPhoneNumber).toBe("+61400000003");
     expect(row.externalAccountId).toBe("ACzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz");
+
+    // Moving the number to another subaccount is an update, not a new
+    // connection, so the conversations attached to it survive.
+    await CommunicationsService.updateWhatsappConnection(ORG_A, USER_OWNER_A, {
+      connectionId: created.id,
+      externalAccountId: "ACmovedmovedmovedmovedmovedmovedmov",
+    });
+    const moved = await storedRow(created.id);
+    expect(moved.externalAccountId).toBe("ACmovedmovedmovedmovedmovedmovedmov");
+    expect(moved.displayPhoneNumber).toBe("+61400000003");
+    await expect(resolveCredential(moved, "AUTH_TOKEN")).resolves.toBe(
+      "added-later",
+    );
     await expect(resolveCredential(row, "AUTH_TOKEN")).resolves.toBe(
       "added-later",
     );

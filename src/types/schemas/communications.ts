@@ -19,6 +19,9 @@ export const updateWhatsappConnectionSchema = z.object({
   displayPhoneNumber: z.string().trim().max(40).optional(),
   phoneNumberId: z.string().trim().max(200).optional(),
   businessAccountId: z.string().trim().max(200).optional(),
+  // A number can move to another Twilio subaccount; the connection — and the
+  // history hanging off it — should not have to be recreated for that.
+  externalAccountId: z.string().trim().max(200).optional(),
   credentialReference: z.string().trim().max(500).optional(),
   // Blank means "keep the stored one": the browser never receives it, so an
   // untouched field arrives empty and must not wipe a working token.

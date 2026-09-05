@@ -556,6 +556,7 @@ export function WhatsappWorkspace() {
             "connectionId",
             "accessToken",
             "displayPhoneNumber",
+            "externalAccountId",
             "phoneNumberId",
             "businessAccountId",
           ]}
@@ -564,6 +565,8 @@ export function WhatsappWorkspace() {
             connectionId: data.connections[0]?.id,
             displayPhoneNumber:
               data.connections[0]?.displayPhoneNumber ?? undefined,
+            externalAccountId:
+              data.connections[0]?.externalAccountId ?? undefined,
             phoneNumberId: data.connections[0]?.phoneNumberId ?? undefined,
             businessAccountId:
               data.connections[0]?.businessAccountId ?? undefined,
