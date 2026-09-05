@@ -49,7 +49,13 @@ export function AuthenticatedAppLayout({
   // The remembered value is an id; the address in a link is the slug where one
   // exists. Resolve the project first, then ask it for its address, so the
   // sidebar links read /p/booxworm rather than a UUID.
+  // The server says which project the session is on, and that wins: the
+  // business modules show the active organization's data, so the sidebar has
+  // to name the same project or the label lies about whose WhatsApp you are
+  // reading. The remembered and newest fallbacks only matter before the list
+  // loads or for an account with no active project yet.
   const fallbackProject =
+    fallbackProjects.find((project) => project.isActive) ??
     fallbackProjects.find((project) => project.id === rememberedProjectId) ??
     fallbackProjects[0] ??
     null;

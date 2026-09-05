@@ -98,18 +98,29 @@ export function ProjectSwitcher({
     // the active organization rather than the project in the address. Moving
     // the session first means CRM, Integrations and WhatsApp are showing the
     // new client by the time the page they land on renders.
+    // Inside a business module there is no project in the address, so there
+    // is nothing to navigate to: the page already shows whatever the session's
+    // organization is. Move the session, drop the old client's answers, and
+    // let the page refetch — you stay in WhatsApp, now for the new company.
+    const inModule = router.state.location.pathname.startsWith("/modules");
+
     void setActiveProject({ data: { projectId: project.id } })
-      .then(() => {
+      .then(async () => {
         // Every cached business-module answer belongs to the organization we
         // just left, so it is discarded once the session has moved. The SEO
         // queries carry the project id in their keys and are deliberately left
         // alone — touching them is what stranded the dashboard on skeletons.
-        void resetOrganizationScopedQueries(queryClient);
+        await resetOrganizationScopedQueries(queryClient);
+        // The list carries which project is active; it has just changed.
+        await queryClient.invalidateQueries({ queryKey: ["projects"] });
+        if (inModule) await router.invalidate();
       })
       .catch(() => {
         // The next project-scoped request re-authorizes and switches anyway,
         // so a failed switch costs a render, not correctness.
       });
+    if (inModule) return;
+
     // Stay on the current page in the new project: the deepest matched route
     // whose path's only dynamic segment is the project id. Deeper routes (a
     // rank tracker, an audit result) reference entities owned by the old

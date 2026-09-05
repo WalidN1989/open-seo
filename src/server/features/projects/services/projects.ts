@@ -101,14 +101,27 @@ export async function listProjectsEnsuringOne(organizationId: string) {
  */
 export async function listProjectsForMemberEnsuringOne(
   userId: string,
-  fallbackOrganizationId: string,
+  activeOrganizationId: string,
 ) {
-  const existing = await ProjectRepository.listProjectsForMember(userId);
-  if (existing.length > 0) return existing.map(mapProject);
+  // The session's organization marks which project is active. On pages with
+  // no project in the address — the business modules — the sidebar used to
+  // guess (last remembered, else newest) while the page showed the active
+  // organization's data, and the two disagreed: the label said Arijah while
+  // the modules were BooXworm's. This is the single source of truth instead.
+  const withActive = (
+    row: { organizationId: string } & Parameters<typeof mapProject>[0],
+  ) => ({
+    ...mapProject(row),
+    isActive: row.organizationId === activeOrganizationId,
+  });
 
-  await ProjectRepository.tryCreateDefaultProject(fallbackOrganizationId);
+  const existing = await ProjectRepository.listProjectsForMember(userId);
+  if (existing.length > 0) return existing.map(withActive);
+
+  // It doubles as the home for a brand-new account's first project.
+  await ProjectRepository.tryCreateDefaultProject(activeOrganizationId);
   return (await ProjectRepository.listProjectsForMember(userId)).map(
-    mapProject,
+    withActive,
   );
 }
 

@@ -153,18 +153,23 @@ export function Sidebar({ projectId, onNavigate, onClose }: SidebarProps) {
         ) : null}
       </div>
 
+      {/* The project switcher keeps its place on every page, module pages
+          included: it is the one control that says which client you are
+          looking at, and inside CRM or WhatsApp is exactly where that matters.
+          It used to be replaced by the module switcher there, so changing
+          client meant leaving the module and coming back. */}
+      <div className="px-3 pb-1">
+        <ProjectSwitcher
+          activeProjectId={projectId}
+          onCloseDrawer={onNavigate}
+        />
+      </div>
+
       {inModule && moduleKey ? (
         <div className="px-2 pb-1">
           <ModuleSwitcher moduleKey={moduleKey} onNavigate={onNavigate} />
         </div>
-      ) : (
-        <div className="px-3 pb-1">
-          <ProjectSwitcher
-            activeProjectId={projectId}
-            onCloseDrawer={onNavigate}
-          />
-        </div>
-      )}
+      ) : null}
 
       {projectId && !inModule ? (
         // Same underline tab idiom as the in-page tab strips (e.g. Domain
