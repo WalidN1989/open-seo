@@ -8,12 +8,15 @@ export const connectAgentmailSchema = z.object({
     .string()
     .trim()
     .toLowerCase()
-    .regex(
-      /^[a-z0-9][a-z0-9._-]{1,38}[a-z0-9]$/,
-      "Letters, digits, dots, dashes; 3–40 characters",
+    // People paste the whole address; only the part before @ is theirs to pick.
+    .transform((value) => value.replace(/@.*$/, ""))
+    .refine(
+      (value) =>
+        value === "" || /^[a-z0-9][a-z0-9._-]{1,38}[a-z0-9]$/.test(value),
+      "Use letters, digits, dots or dashes, 3 to 40 characters — just the part before the @",
     )
-    .optional()
-    .or(z.literal("").transform(() => undefined)),
+    .transform((value) => (value === "" ? undefined : value))
+    .optional(),
 });
 
 export const emailThreadIdSchema = z.object({ threadId: z.string().min(1) });

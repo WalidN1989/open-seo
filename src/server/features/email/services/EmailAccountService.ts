@@ -44,9 +44,20 @@ export function publicAccount(account: EmailAccountRow | null) {
 
 export function providerFailure(error: unknown): never {
   if (error instanceof AgentmailError) {
-    throw new AppError("INTEGRATION_CHECK_FAILED", error.message);
+    throw new AppError("INTEGRATION_CHECK_FAILED", explain(error));
   }
   throw error;
+}
+
+/** Turn the provider's status into the thing the operator can actually do. */
+function explain(error: AgentmailError): string {
+  if (error.status === 403 && error.path === "/pods") {
+    return "AgentMail refused to create a pod with this key. Use an organisation-level key with full permissions (create it under console.agentmail.to → API keys without choosing a pod or inbox), or check that your AgentMail plan includes pods.";
+  }
+  if (error.status === 401) {
+    return "AgentMail did not accept this key. Copy it again from console.agentmail.to → API keys.";
+  }
+  return error.message;
 }
 
 /**
