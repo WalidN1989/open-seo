@@ -3,7 +3,7 @@ import { toast } from "sonner";
 import { getStandardErrorMessage } from "@/client/lib/error-messages";
 import { getWhatsappAssistantConfig } from "@/serverFunctions/whatsappAssistant";
 
-export const ASSISTANT_QUERY_KEY = ["whatsapp", "assistant"] as const;
+const ASSISTANT_QUERY_KEY = ["whatsapp", "assistant"] as const;
 
 export function useAssistantConfig() {
   return useQuery({

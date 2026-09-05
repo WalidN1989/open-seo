@@ -6,7 +6,7 @@
 
 export type PriceToken = { name: string; price: string };
 
-export type AssistantSettingsLike = {
+type AssistantSettingsLike = {
   bookingLink?: string | null;
   timezone?: string | null;
   businessHoursStart?: string | null;
@@ -88,7 +88,7 @@ export function formatMinor(minor: number, currency: string): string {
 }
 
 /** Local time in the business's timezone, or null when the zone is unusable. */
-export function localClock(
+function localClock(
   timezone: string | null | undefined,
   now: Date,
 ): { time: string; weekday: string } | null {

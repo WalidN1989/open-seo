@@ -13,7 +13,7 @@ import {
 
 export type AssistantSettingsRow =
   typeof whatsappAssistantSettings.$inferSelect;
-export type AssistantSettingsInput = Partial<
+type AssistantSettingsInput = Partial<
   Omit<AssistantSettingsRow, "organizationId" | "createdAt" | "updatedAt">
 >;
 
