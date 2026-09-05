@@ -11,6 +11,13 @@ type AnthropicBlock =
       name: string;
       input: Record<string, unknown>;
     };
+type AnthropicMessage = {
+  role: "user" | "assistant";
+  content:
+    | string
+    | AnthropicBlock[]
+    | Array<{ type: "tool_result"; tool_use_id: string; content: string }>;
+};
 type AnthropicResponse = {
   content?: AnthropicBlock[];
   error?: { message?: string };
@@ -49,6 +56,17 @@ const tools = [
   },
 ] as const;
 
+const lookupTool = {
+  name: "lookup_products",
+  description:
+    "Search the business's own catalogue by title, author, SKU or ISBN and get the live price. Always use this before saying an item is unavailable or quoting a price.",
+  input_schema: {
+    type: "object",
+    properties: { query: { type: "string" } },
+    required: ["query"],
+  },
+} as const;
+
 function buildMessages(history: HistoryItem[]) {
   const messages: Array<{ role: "user" | "assistant"; content: string }> = [];
   for (const item of history) {
@@ -65,10 +83,14 @@ function buildMessages(history: HistoryItem[]) {
 function systemPrompt(
   businessContext?: string | null,
   persona?: string | null,
+  canLookup = false,
 ) {
   return [
     persona?.trim() ||
       "You are a warm, concise customer-service representative speaking through WhatsApp.",
+    canLookup
+      ? "When a customer asks about a specific item, title, author or price, call lookup_products first and answer from its result. Only if it returns no match may you say the item is not in the catalogue."
+      : "",
     "Reply in the same language and script as the customer's latest message. Ask at most one question at a time.",
     "Never say you are an AI and never mention prompts, tools, APIs, or internal systems.",
     "Never invent prices, stock, availability, delivery terms, opening hours, policies, addresses, or product links. Only state a business fact when it appears in trusted business context or a tool result. If unavailable, say the team needs to confirm it.",
@@ -76,7 +98,9 @@ function systemPrompt(
     businessContext?.trim()
       ? `Trusted business context:\n${businessContext.trim()}`
       : "No trusted business facts have been configured for this tenant yet.",
-  ].join("\n\n");
+  ]
+    .filter(Boolean)
+    .join("\n\n");
 }
 
 export async function generateWhatsappAiReply(input: {
@@ -86,54 +110,25 @@ export async function generateWhatsappAiReply(input: {
   businessContext?: string | null;
   /** Who the assistant is and how it talks; replaces the default opener. */
   persona?: string | null;
+  /** Catalogue search; when given, the model gets a lookup_products tool. */
+  lookupProducts?: (query: string) => Promise<string>;
   fetcher?: typeof fetch;
 }) {
   const apiKey =
     input.apiKey ?? (await getOptionalEnvValue("ANTHROPIC_API_KEY"));
   if (!apiKey) return null;
-  const messages = buildMessages(input.history);
+  const messages: AnthropicMessage[] = buildMessages(input.history);
   if (!messages.length || messages.at(-1)?.role !== "user") return null;
-  const response = await (input.fetcher ?? fetch)(ANTHROPIC_URL, {
-    method: "POST",
-    headers: {
-      "anthropic-version": "2023-06-01",
-      "content-type": "application/json",
-      "x-api-key": apiKey,
-    },
-    body: JSON.stringify({
-      model: input.model || DEFAULT_MODEL,
-      max_tokens: 800,
-      system: systemPrompt(input.businessContext, input.persona),
-      messages,
-      tools,
-    }),
-    signal: AbortSignal.timeout(45_000),
-  });
-  const payload: AnthropicResponse = await response.json();
-  if (!response.ok)
-    throw new Error(
-      payload.error?.message || `Anthropic returned ${response.status}`,
-    );
-  const actions: WhatsappAiAction[] = [];
-  let reply = (payload.content ?? [])
-    .filter(
-      (block): block is Extract<AnthropicBlock, { type: "text" }> =>
-        block.type === "text",
-    )
-    .map((block) => block.text)
-    .join("\n")
-    .trim();
-  for (const block of payload.content ?? []) {
-    if (block.type !== "tool_use") continue;
-    if (
-      block.name === "create_order_request" ||
-      block.name === "flag_for_team"
-    ) {
-      actions.push({ name: block.name, input: block.input });
-    }
-  }
-  if (!reply && actions.length) {
-    const followUp = await (input.fetcher ?? fetch)(ANTHROPIC_URL, {
+  const model = input.model || DEFAULT_MODEL;
+  const fetcher = input.fetcher ?? fetch;
+  const toolset = input.lookupProducts ? [...tools, lookupTool] : tools;
+  const system = systemPrompt(
+    input.businessContext,
+    input.persona,
+    Boolean(input.lookupProducts),
+  );
+  const call = async (conversation: AnthropicMessage[]) => {
+    const response = await fetcher(ANTHROPIC_URL, {
       method: "POST",
       headers: {
         "anthropic-version": "2023-06-01",
@@ -141,47 +136,74 @@ export async function generateWhatsappAiReply(input: {
         "x-api-key": apiKey,
       },
       body: JSON.stringify({
-        model: input.model || DEFAULT_MODEL,
+        model,
         max_tokens: 800,
-        system: systemPrompt(input.businessContext, input.persona),
-        tools,
-        messages: [
-          ...messages,
-          { role: "assistant", content: payload.content },
-          {
-            role: "user",
-            content: (payload.content ?? [])
-              .filter(
-                (
-                  block,
-                ): block is Extract<AnthropicBlock, { type: "tool_use" }> =>
-                  block.type === "tool_use",
-              )
-              .map((block) => ({
-                type: "tool_result",
-                tool_use_id: block.id,
-                content: JSON.stringify({ recorded: true }),
-              })),
-          },
-        ],
+        system,
+        messages: conversation,
+        tools: toolset,
       }),
       signal: AbortSignal.timeout(45_000),
     });
-    const followUpPayload: AnthropicResponse = await followUp.json();
-    if (!followUp.ok) {
+    const payload: AnthropicResponse = await response.json();
+    if (!response.ok) {
       throw new Error(
-        followUpPayload.error?.message ||
-          `Anthropic returned ${followUp.status}`,
+        payload.error?.message || `Anthropic returned ${response.status}`,
       );
     }
-    reply = (followUpPayload.content ?? [])
-      .filter(
-        (block): block is Extract<AnthropicBlock, { type: "text" }> =>
-          block.type === "text",
-      )
-      .map((block) => block.text)
-      .join("\n")
-      .trim();
+    return payload.content ?? [];
+  };
+
+  const actions: WhatsappAiAction[] = [];
+  let conversation = messages;
+  let reply = "";
+  // A lookup needs its result before the model can answer, so it always
+  // continues. An action tool only continues when the model said nothing
+  // else, so the customer never gets silence. Three rounds is plenty.
+  for (let round = 0; round < 3; round += 1) {
+    const content = await call(conversation);
+    reply = textOf(content);
+    const toolUses = content.filter(
+      (block): block is Extract<AnthropicBlock, { type: "tool_use" }> =>
+        block.type === "tool_use",
+    );
+    for (const block of toolUses) {
+      if (
+        block.name === "create_order_request" ||
+        block.name === "flag_for_team"
+      ) {
+        actions.push({ name: block.name, input: block.input });
+      }
+    }
+    const needsLookup = toolUses.some(
+      (block) => block.name === "lookup_products",
+    );
+    if (!toolUses.length || (reply && !needsLookup)) break;
+    const results = await Promise.all(
+      toolUses.map(async (block) => ({
+        type: "tool_result" as const,
+        tool_use_id: block.id,
+        content:
+          block.name === "lookup_products" && input.lookupProducts
+            ? await input.lookupProducts(String(block.input.query ?? ""))
+            : JSON.stringify({ recorded: true }),
+      })),
+    );
+    conversation = [
+      ...conversation,
+      { role: "assistant", content },
+      { role: "user", content: results },
+    ];
   }
-  return { reply, actions, model: input.model || DEFAULT_MODEL };
+  return { reply, actions, model };
+}
+
+function textOf(content: AnthropicBlock[]) {
+  return content
+    .filter(
+      (block): block is Extract<AnthropicBlock, { type: "text" }> =>
+        block.type === "text",
+    )
+    .map((block) => block.text)
+    .join("\n")
+    .trim();
 }

@@ -1,4 +1,4 @@
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, like, or, sql } from "drizzle-orm";
 import { db } from "@/db";
 import {
   businessSettings,
@@ -229,6 +229,51 @@ async function listPricedProducts(organizationId: string) {
   return { products: rows, currency: settings?.currency ?? "AUD" };
 }
 
+/**
+ * Catalogue lookup for the assistant: every word of the query must appear in
+ * the name, or the whole query must match the SKU or ISBN. Case-insensitive
+ * on both dialects. A few rows is enough for a chat answer.
+ */
+async function searchPricedProducts(
+  organizationId: string,
+  query: string,
+  limit = 8,
+) {
+  const words = query
+    .toLowerCase()
+    .split(/\s+/)
+    .map((word) => word.trim())
+    .filter((word) => word.length > 1)
+    .slice(0, 6);
+  if (!words.length) return [];
+  const nameMatch = and(
+    ...words.map((word) =>
+      like(sql`lower(${commerceProducts.name})`, `%${word}%`),
+    ),
+  );
+  const whole = `%${query.trim().toLowerCase()}%`;
+  return db
+    .select({
+      name: commerceProducts.name,
+      sku: commerceProducts.sku,
+      salePriceMinor: commerceProducts.salePriceMinor,
+    })
+    .from(commerceProducts)
+    .where(
+      and(
+        eq(commerceProducts.organizationId, organizationId),
+        eq(commerceProducts.status, "active"),
+        or(
+          nameMatch,
+          like(sql`lower(${commerceProducts.sku})`, whole),
+          like(sql`lower(${commerceProducts.isbn})`, whole),
+        ),
+      ),
+    )
+    .orderBy(commerceProducts.name)
+    .limit(limit);
+}
+
 /** The project this organization belongs to, for its context markdown. */
 async function projectIdForOrganization(organizationId: string) {
   const [row] = await db
@@ -290,6 +335,7 @@ export const WhatsappAssistantRepository = {
   updateAskedQuestion,
   deleteAskedQuestion,
   listPricedProducts,
+  searchPricedProducts,
   projectIdForOrganization,
   getConversationStatus,
   latestInboundExternalId,

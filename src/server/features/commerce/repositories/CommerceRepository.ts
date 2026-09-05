@@ -19,12 +19,15 @@ function productFilters(organizationId: string, input: ListProductsInput) {
     filters.push(eq(commerceProducts.externalSource, input.externalSource));
   }
   if (input.search) {
-    const term = `%${input.search}%`;
+    // LIKE is case-sensitive on Postgres and not on SQLite, so a search that
+    // worked in development found nothing in production ("money" never
+    // matched "Money"). Comparing lower-cased text behaves the same on both.
+    const term = `%${input.search.toLowerCase()}%`;
     const match = or(
-      like(commerceProducts.name, term),
-      like(commerceProducts.sku, term),
-      like(commerceProducts.barcode, term),
-      like(commerceProducts.isbn, term),
+      like(sql`lower(${commerceProducts.name})`, term),
+      like(sql`lower(${commerceProducts.sku})`, term),
+      like(sql`lower(${commerceProducts.barcode})`, term),
+      like(sql`lower(${commerceProducts.isbn})`, term),
     );
     if (match) filters.push(match);
   }

@@ -5,6 +5,7 @@ import { WhatsappAssistantRepository as Repo } from "../repositories/WhatsappAss
 import {
   applyPriceTokens,
   buildBusinessContext,
+  formatMinor,
   looksLikeQuestion,
   matchesEscalation,
   normalizeQuestion,
@@ -58,6 +59,28 @@ async function businessContext(
     ),
     projectContext,
   });
+}
+
+/**
+ * What the model sees when it asks about the catalogue: the matching items
+ * with their live prices, or a clear "nothing matched" so it does not guess.
+ */
+async function lookupProducts(organizationId: string, query: string) {
+  const [rows, { currency }] = await Promise.all([
+    Repo.searchPricedProducts(organizationId, query),
+    Repo.listPricedProducts(organizationId).then(({ currency }) => ({
+      currency,
+    })),
+  ]);
+  if (!rows.length) {
+    return `No catalogue item matches "${query}". Say the team will check whether it can be sourced; do not invent a price.`;
+  }
+  return rows
+    .map(
+      (row) =>
+        `- ${row.name} — ${formatMinor(row.salePriceMinor, currency)} (SKU ${row.sku})`,
+    )
+    .join("\n");
 }
 
 /** Queue, send, and record one outbound reply on the conversation. */
@@ -222,6 +245,7 @@ export async function replyToInbound(
       model: settings.model ?? (await getOptionalEnvValue("WHATSAPP_AI_MODEL")),
       businessContext: context,
       persona: settings.persona,
+      lookupProducts: (query) => lookupProducts(organizationId, query),
     });
     if (!result) return false;
     await applyActions(organizationId, conversationId, result.actions);
