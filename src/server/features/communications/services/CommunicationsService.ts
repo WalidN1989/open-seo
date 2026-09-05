@@ -979,11 +979,19 @@ async function updateWhatsappConnection(
   if (!current) throw new AppError("NOT_FOUND", "Connection not found.");
 
   const { connectionId, accessToken, ...rest } = input;
+  // The form renders every field on every update, so an untouched box arrives
+  // as an empty string. Blank means "keep what is stored" — the same rule the
+  // token follows — otherwise saving a new token would wipe the number.
+  const changes = Object.fromEntries(
+    Object.entries(rest).filter(
+      ([, value]) => value !== undefined && value !== "",
+    ),
+  );
   const updated = await CommunicationsRepository.updateWhatsappConnection(
     organizationId,
     connectionId,
     {
-      ...rest,
+      ...changes,
       credentials: await mergeCredentials(
         current.credentials,
         accessToken

@@ -249,4 +249,30 @@ describe("the key a connection's secret is stored under", () => {
       resolveCredential(await storedRow(created.id), "AUTH_TOKEN"),
     ).resolves.toBe("rotated");
   });
+
+  it("keeps the stored number and account when an update leaves them blank", async () => {
+    const created = await CommunicationsService.createWhatsappConnection(
+      ORG_A,
+      USER_OWNER_A,
+      {
+        provider: "twilio",
+        displayPhoneNumber: "+61400000003",
+        externalAccountId: "ACzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz",
+      },
+    );
+    // Exactly what the update form sends when only the token is filled in.
+    await CommunicationsService.updateWhatsappConnection(ORG_A, USER_OWNER_A, {
+      connectionId: created.id,
+      accessToken: "added-later",
+      displayPhoneNumber: "",
+      phoneNumberId: "",
+      businessAccountId: "",
+    });
+    const row = await storedRow(created.id);
+    expect(row.displayPhoneNumber).toBe("+61400000003");
+    expect(row.externalAccountId).toBe("ACzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz");
+    await expect(resolveCredential(row, "AUTH_TOKEN")).resolves.toBe(
+      "added-later",
+    );
+  });
 });

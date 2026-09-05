@@ -521,12 +521,14 @@ export function WhatsappWorkspace() {
       </nav>
       {form === "connection" ? (
         <SimpleForm
+          stacked
+          meta={CONNECTION_FIELD_META}
           fields={[
             "displayPhoneNumber",
-            "phoneNumberId",
-            "businessAccountId",
             "accessToken",
             "externalAccountId",
+            "phoneNumberId",
+            "businessAccountId",
             "credentialReference",
           ]}
           select={{
@@ -541,6 +543,8 @@ export function WhatsappWorkspace() {
       ) : null}
       {form === "connection-update" ? (
         <SimpleForm
+          stacked
+          meta={CONNECTION_FIELD_META}
           fields={[
             "connectionId",
             "accessToken",
@@ -548,6 +552,15 @@ export function WhatsappWorkspace() {
             "phoneNumberId",
             "businessAccountId",
           ]}
+          locked={["connectionId"]}
+          defaults={{
+            connectionId: data.connections[0]?.id,
+            displayPhoneNumber:
+              data.connections[0]?.displayPhoneNumber ?? undefined,
+            phoneNumberId: data.connections[0]?.phoneNumberId ?? undefined,
+            businessAccountId:
+              data.connections[0]?.businessAccountId ?? undefined,
+          }}
           onSubmit={(values) => {
             const parsed = updateWhatsappConnectionSchema.safeParse(values);
             if (parsed.success) connectionUpdate.mutate(parsed.data);
@@ -2137,12 +2150,64 @@ function showError(error: unknown) {
 }
 const SECRET_FIELDS = new Set(["accessToken"]);
 
+type FieldMeta = { label: string; hint?: string };
+
+/**
+ * Labels and hints for the connection forms. Both providers share one form,
+ * so each hint says which provider a field belongs to and where its value
+ * comes from — the questions an operator asks while filling it in.
+ */
+const CONNECTION_FIELD_META: Record<string, FieldMeta> = {
+  provider: {
+    label: "Provider",
+    hint: "meta_cloud for a number on Meta's Cloud API. twilio for a WhatsApp sender in a Twilio account.",
+  },
+  connectionId: {
+    label: "Connection",
+    hint: "Filled in from the connection being updated.",
+  },
+  displayPhoneNumber: {
+    label: "Phone number",
+    hint: "International format, e.g. +61400000000. Leave blank on an update to keep the stored one.",
+  },
+  phoneNumberId: {
+    label: "Phone number ID (Meta only)",
+    hint: "From WhatsApp Manager in Meta Business Suite. Leave empty for Twilio.",
+  },
+  businessAccountId: {
+    label: "Business account ID (Meta only)",
+    hint: "The WhatsApp Business Account ID in Meta Business Manager. Leave empty for Twilio.",
+  },
+  accessToken: {
+    label: "Access token (Meta) or Auth token (Twilio)",
+    hint: "Meta: a permanent system-user token. Twilio: the Auth Token under Account settings → API keys & tokens, in the account that owns the sender. Never shown again after saving.",
+  },
+  externalAccountId: {
+    label: "Account SID (Twilio only)",
+    hint: "The Twilio Account SID that owns the sender, starting with AC. A subaccount SID is fine. Leave empty for Meta.",
+  },
+  credentialReference: {
+    label: "Credential reference (optional)",
+    hint: "A note for your team on where this secret is kept.",
+  },
+};
+
+function placeholderFor(field: string) {
+  return field === "body"
+    ? "Write a message…"
+    : field.replace(/([A-Z])/g, " $1");
+}
+
 function SimpleForm({
   fields,
   select,
   submitLabel = "Save",
   isSubmitting = false,
   resetOnSubmit = false,
+  stacked = false,
+  meta,
+  defaults,
+  locked,
   onSubmit,
 }: {
   fields: string[];
@@ -2150,11 +2215,37 @@ function SimpleForm({
   submitLabel?: string;
   isSubmitting?: boolean;
   resetOnSubmit?: boolean;
+  /** One field per row with a label and hint, for forms people read slowly. */
+  stacked?: boolean;
+  meta?: Record<string, FieldMeta>;
+  defaults?: Record<string, string | undefined>;
+  /** Fields shown for context but not editable. */
+  locked?: readonly string[];
   onSubmit: (values: Record<string, string>) => void;
 }) {
+  const frame = "rounded-xl border border-primary/30 bg-primary/5 p-4";
+  const wrap = (field: string, control: React.ReactNode) => {
+    if (!stacked) return control;
+    const info = meta?.[field];
+    return (
+      <label key={field} className="form-control w-full">
+        <span className="mb-1 text-sm font-medium">
+          {info?.label ?? placeholderFor(field)}
+        </span>
+        {control}
+        {info?.hint ? (
+          <span className="mt-1 text-xs text-base-content/60">{info.hint}</span>
+        ) : null}
+      </label>
+    );
+  };
   return (
     <form
-      className="flex flex-wrap gap-2 rounded-xl border border-primary/30 bg-primary/5 p-4"
+      className={
+        stacked
+          ? `grid max-w-2xl gap-3 ${frame}`
+          : `flex flex-wrap gap-2 ${frame}`
+      }
       onSubmit={(event) => {
         event.preventDefault();
         const data = new FormData(event.currentTarget);
@@ -2168,35 +2259,49 @@ function SimpleForm({
         if (resetOnSubmit) event.currentTarget.reset();
       }}
     >
-      {select ? (
-        <select name={select.name} className="select select-bordered select-sm">
-          {select.options.map((item) => (
-            <option key={item}>{item}</option>
-          ))}
-        </select>
-      ) : null}
-      {fields.map((field, index) => (
-        <input
-          key={field}
-          name={field}
-          required={index === 0}
-          // A token is masked as it is typed and kept out of the browser's
-          // autofill store. It is never rendered back: the server returns
-          // which credentials are set, not their values.
-          type={SECRET_FIELDS.has(field) ? "password" : "text"}
-          autoComplete={SECRET_FIELDS.has(field) ? "off" : undefined}
-          disabled={isSubmitting}
-          className="input input-bordered input-sm min-w-44 flex-1"
-          placeholder={
-            field === "body"
-              ? "Write a message…"
-              : field.replace(/([A-Z])/g, " $1")
-          }
-        />
-      ))}
-      <button className="btn btn-primary btn-sm" disabled={isSubmitting}>
-        {isSubmitting ? "Sending…" : submitLabel}
-      </button>
+      {select
+        ? wrap(
+            select.name,
+            <select
+              name={select.name}
+              defaultValue={defaults?.[select.name]}
+              className={`select select-bordered select-sm ${stacked ? "w-full" : ""}`}
+            >
+              {select.options.map((item) => (
+                <option key={item}>{item}</option>
+              ))}
+            </select>,
+          )
+        : null}
+      {fields.map((field, index) =>
+        wrap(
+          field,
+          <input
+            key={field}
+            name={field}
+            required={index === 0}
+            // A token is masked as it is typed and kept out of the browser's
+            // autofill store. It is never rendered back: the server returns
+            // which credentials are set, not their values.
+            type={SECRET_FIELDS.has(field) ? "password" : "text"}
+            autoComplete={SECRET_FIELDS.has(field) ? "off" : undefined}
+            disabled={isSubmitting}
+            readOnly={locked?.includes(field)}
+            defaultValue={defaults?.[field]}
+            className={
+              stacked
+                ? "input input-bordered input-sm w-full"
+                : "input input-bordered input-sm min-w-44 flex-1"
+            }
+            placeholder={placeholderFor(field)}
+          />,
+        ),
+      )}
+      <div className={stacked ? "flex justify-end" : "contents"}>
+        <button className="btn btn-primary btn-sm" disabled={isSubmitting}>
+          {isSubmitting ? "Sending…" : submitLabel}
+        </button>
+      </div>
     </form>
   );
 }
