@@ -309,6 +309,13 @@
       "when": 1788548634569,
       "tag": "0043_steady_inertia",
       "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "7",
+      "when": 1788626819029,
+      "tag": "0044_regular_oracle",
+      "breakpoints": true
     }
   ]
 }

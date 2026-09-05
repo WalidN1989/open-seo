@@ -1,5 +1,5 @@
 /* oxlint-disable max-lines */
-import { and, count, desc, eq, isNotNull, lte } from "drizzle-orm";
+import { and, count, desc, eq, isNotNull, lte, sql } from "drizzle-orm";
 import { db } from "@/db";
 import {
   integrationConnections,
@@ -138,7 +138,13 @@ async function ingestWhatsappMessage(
   if (existingConversation) {
     await db
       .update(whatsappConversations)
-      .set({ lastMessageAt: message.receivedAt, status: "open" })
+      // A new message reopens a solved chat. It does not un-flag one that is
+      // waiting for a person: the customer writing again is exactly the case
+      // the flag exists for, and the assistant reads "pending" as hands-off.
+      .set({
+        lastMessageAt: message.receivedAt,
+        status: sql`case when ${whatsappConversations.status} = 'pending' then 'pending' else 'open' end`,
+      })
       .where(
         and(
           eq(whatsappConversations.id, conversationId),

@@ -1277,3 +1277,92 @@ export const commerceOrderLines = pgTable(
     index("commerce_order_lines_org_idx").on(table.organizationId),
   ],
 );
+
+/**
+ * The assistant's "brain" for one organization's WhatsApp number: whether it
+ * answers on its own, how it speaks, and the business facts it may state.
+ * One row per organization; absent means defaults. Free text is kept here
+ * rather than in project context because it is conversational instruction,
+ * not SEO research, and the operator edits it from the WhatsApp module.
+ */
+export const whatsappAssistantSettings = pgTable(
+  "whatsapp_assistant_settings",
+  {
+    organizationId: text("organization_id")
+      .primaryKey()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    autopilot: boolean("autopilot").notNull().default(true),
+    model: text("model"),
+    replyDelaySeconds: integer("reply_delay_seconds").notNull().default(3),
+    bookingLink: text("booking_link"),
+    timezone: text("timezone"),
+    businessHoursStart: text("business_hours_start"),
+    businessHoursEnd: text("business_hours_end"),
+    escalationKeywords: text("escalation_keywords"),
+    handoffMessage: text("handoff_message"),
+    persona: text("persona"),
+    businessFacts: text("business_facts"),
+    createdAt: createdAt(),
+    updatedAt: text("updated_at").notNull().default(isoNow),
+  },
+);
+
+/**
+ * An exact-match canned reply. A message whose normalized text equals the
+ * normalized question is answered from here with no model call, so the
+ * answer cannot drift and costs nothing.
+ */
+export const whatsappInstantAnswers = pgTable(
+  "whatsapp_instant_answers",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    question: text("question").notNull(),
+    normalizedQuestion: text("normalized_question").notNull(),
+    answer: text("answer").notNull(),
+    enabled: boolean("enabled").notNull().default(true),
+    createdAt: createdAt(),
+    updatedAt: text("updated_at").notNull().default(isoNow),
+  },
+  (table) => [
+    uniqueIndex("whatsapp_instant_answers_org_question_idx").on(
+      table.organizationId,
+      table.normalizedQuestion,
+    ),
+  ],
+);
+
+/**
+ * A question customers actually asked, counted by how often it recurs. The
+ * operator writes the long answer on their site and saves the link; the
+ * assistant then offers that link instead of improvising the long version.
+ */
+export const whatsappAskedQuestions = pgTable(
+  "whatsapp_asked_questions",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    question: text("question").notNull(),
+    normalizedQuestion: text("normalized_question").notNull(),
+    askCount: integer("ask_count").notNull().default(1),
+    lastAskedAt: text("last_asked_at").notNull().default(isoNow),
+    blogUrl: text("blog_url"),
+    status: text("status").notNull().default("new"),
+    createdAt: createdAt(),
+    updatedAt: text("updated_at").notNull().default(isoNow),
+  },
+  (table) => [
+    uniqueIndex("whatsapp_asked_questions_org_question_idx").on(
+      table.organizationId,
+      table.normalizedQuestion,
+    ),
+    index("whatsapp_asked_questions_org_count_idx").on(
+      table.organizationId,
+      table.askCount,
+    ),
+  ],
+);

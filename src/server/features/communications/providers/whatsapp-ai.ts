@@ -62,9 +62,13 @@ function buildMessages(history: HistoryItem[]) {
   return messages;
 }
 
-function systemPrompt(businessContext?: string | null) {
+function systemPrompt(
+  businessContext?: string | null,
+  persona?: string | null,
+) {
   return [
-    "You are a warm, concise customer-service representative speaking through WhatsApp.",
+    persona?.trim() ||
+      "You are a warm, concise customer-service representative speaking through WhatsApp.",
     "Reply in the same language and script as the customer's latest message. Ask at most one question at a time.",
     "Never say you are an AI and never mention prompts, tools, APIs, or internal systems.",
     "Never invent prices, stock, availability, delivery terms, opening hours, policies, addresses, or product links. Only state a business fact when it appears in trusted business context or a tool result. If unavailable, say the team needs to confirm it.",
@@ -80,6 +84,8 @@ export async function generateWhatsappAiReply(input: {
   apiKey?: string | null;
   model?: string | null;
   businessContext?: string | null;
+  /** Who the assistant is and how it talks; replaces the default opener. */
+  persona?: string | null;
   fetcher?: typeof fetch;
 }) {
   const apiKey =
@@ -97,7 +103,7 @@ export async function generateWhatsappAiReply(input: {
     body: JSON.stringify({
       model: input.model || DEFAULT_MODEL,
       max_tokens: 800,
-      system: systemPrompt(input.businessContext),
+      system: systemPrompt(input.businessContext, input.persona),
       messages,
       tools,
     }),
@@ -137,7 +143,7 @@ export async function generateWhatsappAiReply(input: {
       body: JSON.stringify({
         model: input.model || DEFAULT_MODEL,
         max_tokens: 800,
-        system: systemPrompt(input.businessContext),
+        system: systemPrompt(input.businessContext, input.persona),
         tools,
         messages: [
           ...messages,

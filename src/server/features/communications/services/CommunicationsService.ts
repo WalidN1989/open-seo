@@ -9,10 +9,7 @@ import {
   stripCredentials,
 } from "@/server/lib/connection-secrets";
 import { integrationCatalogue } from "@/shared/integration-catalogue";
-import {
-  getOptionalEnvValue,
-  getRequiredEnvValue,
-} from "@/server/lib/runtime-env";
+import { getRequiredEnvValue } from "@/server/lib/runtime-env";
 import type {
   createIntegrationSchema,
   deleteIntegrationSchema,
@@ -61,7 +58,6 @@ import {
 import { deliverWebhook, validateWebhookUrl } from "../providers/webhooks";
 import { speakWithDeepgram, transcribeWithDeepgram } from "../providers/voice";
 import { buildVoiceAgentContext } from "./VoiceAgentContext";
-import { generateWhatsappAiReply } from "../providers/whatsapp-ai";
 import {
   runApifyActor,
   scrapeWithFirecrawl,
@@ -69,6 +65,8 @@ import {
 } from "../providers/integrations";
 import { generateVoiceAgentReply } from "../providers/voice-ai";
 import { BusinessAuditRepository } from "@/server/features/business-modules/repositories/BusinessAuditRepository";
+import { isUniqueViolation } from "@/server/lib/db-errors";
+import { replyToInbound } from "./WhatsappAssistantReplyService";
 import { BusinessModuleRepository } from "@/server/features/business-modules/repositories/BusinessModuleRepository";
 
 async function auditMutation(
@@ -129,27 +127,6 @@ function withoutBlanks<T extends Record<string, unknown>>(
       Object.assign(kept, { [key]: value });
   }
   return kept;
-}
-
-/** True for a unique-index violation from either dialect the app runs on. */
-function isUniqueViolation(error: unknown): boolean {
-  let current: unknown = error;
-  for (let depth = 0; current && depth < 4; depth += 1) {
-    const candidate = current as {
-      code?: unknown;
-      message?: unknown;
-      cause?: unknown;
-    };
-    if (candidate.code === "23505") return true;
-    if (
-      typeof candidate.message === "string" &&
-      /unique constraint/i.test(candidate.message)
-    ) {
-      return true;
-    }
-    current = candidate.cause;
-  }
-  return false;
 }
 
 function credentialKeyFor(provider: string) {
@@ -1164,85 +1141,12 @@ async function ingestWhatsappGroup(
       message,
     );
     if (!ingestion.duplicate && ingestion.conversationId) {
-      let handledByAi = false;
-      const aiConnection =
-        await CommunicationsRepository.getIntegrationByProvider(
-          connection.organizationId,
-          "claude_haiku",
-        );
-      if (aiConnection?.status === "connected") {
-        try {
-          const history =
-            await CommunicationsRepository.getWhatsappConversationHistory(
-              connection.organizationId,
-              ingestion.conversationId,
-            );
-          const prefix = aiConnection.credentialReference?.trim();
-          const result = await generateWhatsappAiReply({
-            history,
-            apiKey: prefix
-              ? await getOptionalEnvValue(`${prefix}_API_KEY`)
-              : null,
-            model: await getOptionalEnvValue("WHATSAPP_AI_MODEL"),
-          });
-          if (result) {
-            for (const action of result.actions) {
-              if (action.name === "flag_for_team") {
-                await CommunicationsRepository.flagWhatsappConversationForTeam(
-                  connection.organizationId,
-                  ingestion.conversationId,
-                );
-                continue;
-              }
-              if (action.name !== "create_order_request") continue;
-              const rawAmount = Number(action.input.amount_cents || 0);
-              await CommunicationsRepository.createWhatsappOrder(
-                connection.organizationId,
-                {
-                  conversationId: ingestion.conversationId,
-                  summary:
-                    typeof action.input.summary === "string"
-                      ? action.input.summary.slice(0, 2000)
-                      : "Customer order enquiry",
-                  amountCents:
-                    Number.isSafeInteger(rawAmount) && rawAmount >= 0
-                      ? rawAmount
-                      : 0,
-                },
-              );
-            }
-            if (result.reply) {
-              const queued =
-                await CommunicationsRepository.createQueuedWhatsappMessage(
-                  connection.organizationId,
-                  ingestion.conversationId,
-                  result.reply,
-                );
-              const sent = await sendWhatsappText(
-                connection,
-                message.sender,
-                result.reply,
-              );
-              await CommunicationsRepository.completeWhatsappMessage(
-                connection.organizationId,
-                queued.id,
-                {
-                  externalMessageId: sent.externalMessageId,
-                  status: sent.status,
-                  sentAt: new Date().toISOString(),
-                },
-              );
-              handledByAi = true;
-            }
-          }
-        } catch (error) {
-          console.error(
-            "WhatsApp Claude assistant failed; using rule fallback",
-            error,
-          );
-        }
-      }
-      if (handledByAi) continue;
+      const handled = await replyToInbound(
+        connection,
+        ingestion.conversationId,
+        message,
+      );
+      if (handled) continue;
       const rules =
         await CommunicationsRepository.listMatchingWhatsappAutomations(
           connection.organizationId,

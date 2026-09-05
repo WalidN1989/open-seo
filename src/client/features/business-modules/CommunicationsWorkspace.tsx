@@ -16,6 +16,11 @@ import {
   MessageSquarePlus,
 } from "lucide-react";
 import { toast } from "sonner";
+import { AssistantConfigSection } from "./whatsapp/AssistantConfigSection";
+import {
+  AskedQuestionsSection,
+  InstantAnswersSection,
+} from "./whatsapp/AssistantKnowledgeSections";
 import {
   appendVoiceTranscript,
   createIntegration,
@@ -61,7 +66,9 @@ const whatsappSections = [
   "Templates",
   "Campaigns",
   "Automation",
-  "AI Assistant",
+  "AI Config",
+  "Instant Answers",
+  "Questions & Blog",
   "Order Requests",
   "Reports",
   "Settings",
@@ -1306,11 +1313,9 @@ export function WhatsappWorkspace() {
           )}
         </Panel>
       ) : null}
-      {activeSection === "AI Assistant" ? (
-        <Panel title="AI Assistant" icon={Bot}>
-          <Empty text="Connect Claude Haiku from Integrations to enable tenant-specific assisted replies." />
-        </Panel>
-      ) : null}
+      {activeSection === "AI Config" ? <AssistantConfigSection /> : null}
+      {activeSection === "Instant Answers" ? <InstantAnswersSection /> : null}
+      {activeSection === "Questions & Blog" ? <AskedQuestionsSection /> : null}
       {activeSection === "Settings" ? (
         <Panel title="WhatsApp connection" icon={Cable}>
           <div className="flex flex-wrap items-center justify-between gap-3 p-4">
