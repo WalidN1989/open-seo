@@ -12,8 +12,8 @@ export const connectAgentmailSchema = z.object({
     .transform((value) => value.replace(/@.*$/, ""))
     .refine(
       (value) =>
-        value === "" || /^[a-z0-9][a-z0-9._-]{1,38}[a-z0-9]$/.test(value),
-      "Use letters, digits, dots or dashes, 3 to 40 characters — just the part before the @",
+        value === "" || /^[a-z0-9][a-z0-9_-]{1,38}[a-z0-9]$/.test(value),
+      "Use letters, digits, dashes or underscores, 3 to 40 characters — just the part before the @",
     )
     .transform((value) => (value === "" ? undefined : value))
     .optional(),

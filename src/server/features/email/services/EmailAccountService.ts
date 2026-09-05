@@ -61,6 +61,28 @@ function explain(error: AgentmailError): string {
 }
 
 /**
+ * One pod per organisation, keyed by client_id. A previous attempt may have
+ * created the pod and failed later, so look before creating: a second pod
+ * would strand the first and split the business's inboxes.
+ */
+async function findOrCreatePod(
+  client: ReturnType<typeof agentmailClient>,
+  name: string,
+  organizationId: string,
+) {
+  const clientId = `openseo-${organizationId}`;
+  let pageToken: string | undefined;
+  for (let page = 0; page < 5; page += 1) {
+    const listed = await client.listPods(pageToken);
+    const found = listed.pods?.find((pod) => pod.client_id === clientId);
+    if (found) return found;
+    if (!listed.next_page_token) break;
+    pageToken = listed.next_page_token;
+  }
+  return client.createPod({ name, client_id: clientId });
+}
+
+/**
  * Turn the operator's organisation-level AgentMail key into a pod, an inbox
  * in that pod, a pod-scoped key, and a webhook for the inbox. Only the
  * pod-scoped key and the webhook secret are stored; the organisation key is
@@ -94,10 +116,7 @@ async function connectAgentmail(
 
   let account: EmailAccountRow | null = null;
   try {
-    const pod = await client.createPod({
-      name: projectName,
-      client_id: `openseo-${organizationId}`,
-    });
+    const pod = await findOrCreatePod(client, projectName, organizationId);
     const inbox = await client.createPodInbox(pod.pod_id, {
       username: input.username,
       display_name: input.displayName,

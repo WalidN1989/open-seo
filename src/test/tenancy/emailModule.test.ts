@@ -67,6 +67,10 @@ const fakeAgentmail: typeof fetch = async (input, init) => {
     auth: new Headers(init?.headers).get("authorization"),
     body,
   });
+  if (path === "/pods" && init?.method === "GET")
+    return json({
+      pods: [{ pod_id: "pod_old", name: "Other", client_id: "someone-else" }],
+    });
   if (path === "/pods") return json({ pod_id: "pod_1", name: body.name });
   if (path === "/pods/pod_1/inboxes")
     return json({
@@ -175,13 +179,14 @@ describe("connecting AgentMail", () => {
     expect(account && "credentials" in account).toBe(false);
     accountId = account!.id;
     expect(calls.map((c) => `${c.method} ${c.path}`)).toEqual([
+      "GET /pods",
       "POST /pods",
       "POST /pods/pod_1/inboxes",
       "POST /pods/pod_1/api-keys",
       "POST /webhooks",
     ]);
     expect(calls.every((c) => c.auth === "Bearer am_org_level_key")).toBe(true);
-    expect(calls[3]?.body).toMatchObject({
+    expect(calls[4]?.body).toMatchObject({
       url: `https://seo.example.com/api/email/${accountId}`,
       inbox_ids: ["inbox_1"],
     });

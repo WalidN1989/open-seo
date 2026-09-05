@@ -123,12 +123,19 @@ async function call<T>(
     try {
       const parsed: unknown = JSON.parse(text);
       if (typeof parsed === "object" && parsed !== null) {
-        const { message, error } = parsed as {
+        const { message, error, errors, details } = parsed as {
           message?: unknown;
           error?: unknown;
+          errors?: unknown;
+          details?: unknown;
         };
         if (typeof message === "string") detail = message;
         else if (typeof error === "string") detail = error;
+        // A validation failure names the field in a nested list; keep it.
+        const extra = errors ?? details;
+        if (extra !== undefined) {
+          detail = `${detail} ${JSON.stringify(extra).slice(0, 300)}`;
+        }
       }
     } catch {
       // keep the raw excerpt
@@ -154,6 +161,14 @@ export function agentmailClient(apiKey: string, fetcher: typeof fetch = fetch) {
       ),
     createPod: (input: { name?: string; client_id?: string }) =>
       call<AgentmailPod>(apiKey, "POST", "/pods", input, fetcher),
+    listPods: (pageToken?: string) =>
+      call<{ pods?: AgentmailPod[]; next_page_token?: string }>(
+        apiKey,
+        "GET",
+        `/pods?limit=100${pageToken ? `&page_token=${encodeURIComponent(pageToken)}` : ""}`,
+        undefined,
+        fetcher,
+      ),
     createPodInbox: (
       podId: string,
       input: {
