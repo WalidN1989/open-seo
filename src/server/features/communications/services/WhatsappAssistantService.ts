@@ -59,8 +59,8 @@ function withDefaults(row: AssistantSettingsRow | null): AssistantSettings {
 }
 
 /**
- * The assistant is shared by WhatsApp and Email, so either module's access
- * opens its configuration. A business running email only must still be able
+ * The assistant is shared by WhatsApp, Email and Social, so any of those
+ * modules' access opens its configuration. A business running email only must still be able
  * to tell its assistant who it is and what it may say.
  */
 export async function requireAssistantAccess(
@@ -77,12 +77,27 @@ export async function requireAssistantAccess(
     );
   } catch (error) {
     if (!(error instanceof AppError) || error.code !== "FORBIDDEN") throw error;
-    return BusinessModuleService.requireAccess(
-      organizationId,
-      userId,
-      "email",
-      permission,
-    );
+    try {
+      return await BusinessModuleService.requireAccess(
+        organizationId,
+        userId,
+        "email",
+        permission,
+      );
+    } catch (emailError) {
+      if (
+        !(emailError instanceof AppError) ||
+        emailError.code !== "FORBIDDEN"
+      ) {
+        throw emailError;
+      }
+      return BusinessModuleService.requireAccess(
+        organizationId,
+        userId,
+        "social",
+        permission,
+      );
+    }
   }
 }
 

@@ -330,6 +330,13 @@
       "when": 1788694054974,
       "tag": "0046_chief_magus",
       "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1788705650661,
+      "tag": "0047_heavy_moonstone",
+      "breakpoints": true
     }
   ]
 }

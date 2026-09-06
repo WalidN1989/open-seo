@@ -1484,3 +1484,112 @@ export const emailMessages = pgTable(
     ),
   ],
 );
+
+/**
+ * Social module. One Meta account per platform per organisation — an
+ * Instagram professional account or a Facebook Page — with its conversations
+ * mirrored so the inbox, search and the assistant read from here rather than
+ * from Meta on every render. Deliberately its own tables: WhatsApp's are
+ * shaped around a phone number and a template regime that does not apply.
+ */
+export const socialAccounts = pgTable(
+  "social_accounts",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    /** "instagram" or "messenger". */
+    platform: text("platform").notNull(),
+    displayName: text("display_name"),
+    /** The Instagram professional account id, or the Facebook Page id. */
+    externalAccountId: text("external_account_id").notNull(),
+    /** The Page the account posts through; Instagram messaging needs one. */
+    pageId: text("page_id"),
+    /** Encrypted: PAGE_ACCESS_TOKEN, APP_SECRET, VERIFY_TOKEN. */
+    credentials: text("credentials"),
+    status: text("status").notNull().default("pending"),
+    lastError: text("last_error"),
+    /** Off: the assistant drafts a reply for a person to approve. */
+    autopilot: boolean("autopilot").notNull().default(false),
+    createdAt: createdAt(),
+    updatedAt: text("updated_at").notNull().default(isoNow),
+  },
+  (table) => [
+    index("social_accounts_org_idx").on(table.organizationId),
+    // One inbox per account, so a delivery is never ambiguous between two.
+    uniqueIndex("social_accounts_platform_external_idx").on(
+      table.platform,
+      table.externalAccountId,
+    ),
+  ],
+);
+
+export const socialConversations = pgTable(
+  "social_conversations",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    accountId: text("account_id")
+      .notNull()
+      .references(() => socialAccounts.id, { onDelete: "cascade" }),
+    /** The person's scoped id on that platform; stable per account. */
+    participantId: text("participant_id").notNull(),
+    participantName: text("participant_name"),
+    preview: text("preview"),
+    messageCount: integer("message_count").notNull().default(0),
+    status: text("status").notNull().default("open"),
+    lastMessageAt: text("last_message_at").notNull().default(isoNow),
+    createdAt: createdAt(),
+    updatedAt: text("updated_at").notNull().default(isoNow),
+  },
+  (table) => [
+    uniqueIndex("social_conversations_account_participant_idx").on(
+      table.accountId,
+      table.participantId,
+    ),
+    index("social_conversations_org_last_idx").on(
+      table.organizationId,
+      table.lastMessageAt,
+    ),
+  ],
+);
+
+export const socialMessages = pgTable(
+  "social_messages",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    accountId: text("account_id")
+      .notNull()
+      .references(() => socialAccounts.id, { onDelete: "cascade" }),
+    conversationId: text("conversation_id")
+      .notNull()
+      .references(() => socialConversations.id, { onDelete: "cascade" }),
+    /** Meta's message id; null while a draft has not been sent. */
+    externalMessageId: text("external_message_id"),
+    direction: text("direction").notNull(),
+    body: text("body"),
+    /** A photo or story reply arrives as an attachment with no text. */
+    attachmentUrl: text("attachment_url"),
+    status: text("status").notNull(),
+    /** Set when the assistant wrote it, so the inbox can say so. */
+    authoredBy: text("authored_by"),
+    occurredAt: text("occurred_at").notNull().default(isoNow),
+    createdAt: createdAt(),
+  },
+  (table) => [
+    uniqueIndex("social_messages_account_external_idx").on(
+      table.accountId,
+      table.externalMessageId,
+    ),
+    index("social_messages_conversation_idx").on(
+      table.conversationId,
+      table.occurredAt,
+    ),
+  ],
+);

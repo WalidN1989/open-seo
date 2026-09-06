@@ -15,6 +15,7 @@ import {
   WhatsappWorkspace,
 } from "@/client/features/business-modules/CommunicationsWorkspace";
 import { EmailWorkspace } from "@/client/features/business-modules/email/EmailWorkspace";
+import { SocialWorkspace } from "@/client/features/business-modules/social/SocialWorkspace";
 
 export const Route = createFileRoute("/_app/modules/$moduleKey")({
   component: BusinessModulePage,
@@ -50,6 +51,12 @@ const capabilities: Record<BusinessModuleKey, readonly string[]> = {
     "Drafts for human approval, or autopilot replies",
     "The same assistant brain as WhatsApp",
     "A custom SMTP/IMAP mailbox, later",
+  ],
+  social: [
+    "Instagram direct messages and Messenger in one inbox",
+    "Drafts for human approval, or autopilot replies",
+    "The same assistant brain as WhatsApp and Email",
+    "Per-account Meta credentials, scoped to one business",
   ],
   integrations: [
     "Provider connections with secret references",
@@ -113,6 +120,7 @@ function BusinessModulePage() {
             {moduleKey === "whatsapp" ? <WhatsappWorkspace /> : null}
             {moduleKey === "voice" ? <VoiceWorkspace /> : null}
             {moduleKey === "email" ? <EmailWorkspace /> : null}
+            {moduleKey === "social" ? <SocialWorkspace /> : null}
             {businessModuleKeySchema.options.includes(moduleKey) ? null : (
               <>
                 <div>

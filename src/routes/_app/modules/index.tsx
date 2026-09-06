@@ -8,6 +8,7 @@ import {
   Mail,
   MessagesSquare,
   PlugZap,
+  Share2,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -33,6 +34,7 @@ const icons = {
   whatsapp: MessagesSquare,
   voice: Bot,
   email: Mail,
+  social: Share2,
   integrations: PlugZap,
 } satisfies Record<BusinessModuleKey, typeof Blocks>;
 

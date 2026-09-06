@@ -117,6 +117,7 @@ export function getModuleNavGroups(moduleKey: string) {
     whatsapp: { label: "WhatsApp", icon: Inbox },
     voice: { label: "Voice Agent", icon: LayoutDashboard },
     email: { label: "Email", icon: Inbox },
+    social: { label: "Social", icon: Inbox },
   }[moduleKey];
 
   if (!module) return [];

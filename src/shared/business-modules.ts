@@ -6,6 +6,7 @@ const businessModuleKeys = [
   "whatsapp",
   "voice",
   "email",
+  "social",
   "integrations",
 ] as const;
 
@@ -37,6 +38,11 @@ export const businessModuleCatalog = [
     key: "email",
     label: "Email",
     description: "An agent-run inbox with drafts, replies, and AI assistance.",
+  },
+  {
+    key: "social",
+    label: "Social",
+    description: "Instagram and Messenger conversations in one shared inbox.",
   },
   {
     key: "integrations",
