@@ -104,6 +104,15 @@ async function whatsappWorkspace(organizationId: string, userId: string) {
   };
 }
 /**
+ * The tabs that are not the inbox. Fetched when one of them is opened, so
+ * the inbox's poll does not carry five collections nobody is looking at.
+ */
+async function whatsappOperations(organizationId: string, userId: string) {
+  await BusinessModuleService.requireAccess(organizationId, userId, "whatsapp");
+  return CommunicationsRepository.getWhatsappOperations(organizationId);
+}
+
+/**
  * The key a provider's adapter reads its secret under.
  *
  * Meta calls it an access token and every Meta path resolves ACCESS_TOKEN.
@@ -1664,4 +1673,5 @@ export const CommunicationsService = {
   verifyMetaWebhook,
   voiceWorkspace,
   whatsappWorkspace,
+  whatsappOperations,
 };

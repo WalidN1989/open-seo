@@ -39,6 +39,7 @@ import {
   getIntegrationsWorkspace,
   getVoiceWorkspace,
   getWhatsappWorkspace,
+  getWhatsappOperations,
   launchWhatsappCampaign,
   retryWebhookDelivery,
   testWebhookEndpoint,
@@ -63,6 +64,15 @@ import {
 import { integrationProviders } from "@/shared/integration-providers";
 
 const whatsappConversationStatuses = ["open", "pending", "closed"] as const;
+/** Sections whose data the inbox poll has no reason to carry. */
+const OPERATIONS_SECTIONS = new Set([
+  "Templates",
+  "Campaigns",
+  "Automation",
+  "Order Requests",
+  "Reports",
+]);
+
 const whatsappSections = [
   "Inbox",
   "Contacts",
@@ -230,6 +240,13 @@ export function WhatsappWorkspace() {
     refetchInterval: 2_500,
     refetchIntervalInBackground: false,
   });
+  const operations = useQuery({
+    queryKey: ["whatsapp", "operations"],
+    queryFn: () => getWhatsappOperations(),
+    // Only what these tabs show, and only once one of them is open.
+    enabled: OPERATIONS_SECTIONS.has(activeSection),
+  });
+  const ops = operations.data;
   const connection = useMutation({
     mutationFn: (data: {
       provider: "meta_cloud" | "twilio" | "custom";
@@ -462,7 +479,7 @@ export function WhatsappWorkspace() {
   if (query.isError) return <ErrorBox error={query.error} />;
   const data = query.data!;
   const messageCount = (direction?: string, status?: string) =>
-    data.messageStats
+    (ops?.messageStats ?? [])
       .filter(
         (item) =>
           (!direction || item.direction === direction) &&
@@ -724,10 +741,10 @@ export function WhatsappWorkspace() {
                   data.conversations.filter((item) => item.status === "open")
                     .length,
                 ],
-                ["Templates", data.templates.length],
-                ["Campaigns", data.campaigns.length],
-                ["Automations", data.automations.length],
-                ["Order requests", data.orders.length],
+                ["Templates", (ops?.templates ?? []).length],
+                ["Campaigns", (ops?.campaigns ?? []).length],
+                ["Automations", (ops?.automations ?? []).length],
+                ["Order requests", (ops?.orders ?? []).length],
                 ["Inbound messages", messageCount("inbound")],
                 ["Outbound messages", messageCount("outbound")],
                 ["Failed messages", messageCount(undefined, "failed")],
@@ -1369,8 +1386,8 @@ export function WhatsappWorkspace() {
                   <Plus className="size-4" /> Template
                 </button>
               </div>
-              {data.templates.length ? (
-                data.templates.map((item) => (
+              {(ops?.templates ?? []).length ? (
+                (ops?.templates ?? []).map((item) => (
                   <Row
                     key={item.id}
                     title={item.name}
@@ -1392,8 +1409,8 @@ export function WhatsappWorkspace() {
                   <Plus className="size-4" /> Campaign
                 </button>
               </div>
-              {data.campaigns.length ? (
-                data.campaigns.map((item) => (
+              {(ops?.campaigns ?? []).length ? (
+                (ops?.campaigns ?? []).map((item) => (
                   <div key={item.id} className="flex items-center gap-2 pr-4">
                     <div className="min-w-0 flex-1">
                       <Row title={item.name} detail={item.status} />
@@ -1423,8 +1440,8 @@ export function WhatsappWorkspace() {
                   <Plus className="size-4" /> Automation
                 </button>
               </div>
-              {data.automations.length ? (
-                data.automations.map((item) => (
+              {(ops?.automations ?? []).length ? (
+                (ops?.automations ?? []).map((item) => (
                   <Row
                     key={item.id}
                     title={item.name}
@@ -1446,8 +1463,8 @@ export function WhatsappWorkspace() {
                   <Plus className="size-4" /> Order request
                 </button>
               </div>
-              {data.orders.length ? (
-                data.orders.map((item) => (
+              {(ops?.orders ?? []).length ? (
+                (ops?.orders ?? []).map((item) => (
                   <OrderRequestRow
                     key={item.id}
                     id={item.id}

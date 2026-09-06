@@ -401,17 +401,17 @@ async function completeWhatsappMessage(
   return row;
 }
 
+/**
+ * What the shared inbox needs, and only that. This is polled while the
+ * inbox is open, so anything a different tab shows is fetched by
+ * `getWhatsappOperations` when that tab is opened instead.
+ */
 async function getWhatsappWorkspace(organizationId: string) {
   const [
     connections,
     conversations,
     messages,
     contacts,
-    messageStats,
-    templates,
-    campaigns,
-    automations,
-    orders,
     contactProfiles,
     tags,
     contactTagAssignments,
@@ -438,34 +438,6 @@ async function getWhatsappWorkspace(organizationId: string) {
       .where(eq(crmContacts.organizationId, organizationId))
       .orderBy(desc(crmContacts.updatedAt)),
     db
-      .select({
-        direction: whatsappMessages.direction,
-        status: whatsappMessages.status,
-        count: count(),
-      })
-      .from(whatsappMessages)
-      .where(eq(whatsappMessages.organizationId, organizationId))
-      .groupBy(whatsappMessages.direction, whatsappMessages.status),
-    db
-      .select()
-      .from(whatsappTemplates)
-      .where(eq(whatsappTemplates.organizationId, organizationId))
-      .orderBy(desc(whatsappTemplates.createdAt)),
-    db
-      .select()
-      .from(whatsappCampaigns)
-      .where(eq(whatsappCampaigns.organizationId, organizationId))
-      .orderBy(desc(whatsappCampaigns.createdAt)),
-    db
-      .select()
-      .from(whatsappAutomationRules)
-      .where(eq(whatsappAutomationRules.organizationId, organizationId)),
-    db
-      .select()
-      .from(whatsappOrderRequests)
-      .where(eq(whatsappOrderRequests.organizationId, organizationId))
-      .orderBy(desc(whatsappOrderRequests.createdAt)),
-    db
       .select()
       .from(whatsappContactProfiles)
       .where(eq(whatsappContactProfiles.organizationId, organizationId)),
@@ -489,21 +461,60 @@ async function getWhatsappWorkspace(organizationId: string) {
       .where(eq(whatsappInternalNotes.organizationId, organizationId))
       .orderBy(whatsappInternalNotes.createdAt),
   ]);
+
   return {
     connections,
     conversations,
     messages,
     contacts,
-    messageStats,
-    templates,
-    campaigns,
-    automations,
-    orders,
     contactProfiles,
     tags,
     contactTagAssignments,
     contactAttributes,
     internalNotes,
+  };
+}
+
+/** Templates, campaigns, automations, orders and counts: their own tabs. */
+async function getWhatsappOperations(organizationId: string) {
+  const [messageStats, templates, campaigns, automations, orders] =
+    await Promise.all([
+      db
+        .select({
+          direction: whatsappMessages.direction,
+          status: whatsappMessages.status,
+          count: count(),
+        })
+        .from(whatsappMessages)
+        .where(eq(whatsappMessages.organizationId, organizationId))
+        .groupBy(whatsappMessages.direction, whatsappMessages.status),
+      db
+        .select()
+        .from(whatsappTemplates)
+        .where(eq(whatsappTemplates.organizationId, organizationId))
+        .orderBy(desc(whatsappTemplates.createdAt)),
+      db
+        .select()
+        .from(whatsappCampaigns)
+        .where(eq(whatsappCampaigns.organizationId, organizationId))
+        .orderBy(desc(whatsappCampaigns.createdAt)),
+      db
+        .select()
+        .from(whatsappAutomationRules)
+        .where(eq(whatsappAutomationRules.organizationId, organizationId)),
+      db
+        .select()
+        .from(whatsappOrderRequests)
+        .where(eq(whatsappOrderRequests.organizationId, organizationId))
+        .orderBy(desc(whatsappOrderRequests.createdAt)),
+    ]);
+
+  return {
+    messageStats,
+    templates,
+    campaigns,
+    automations,
+    orders,
   };
 }
 
@@ -1265,6 +1276,7 @@ export const CommunicationsRepository = {
   listMatchingWhatsappAutomations,
   memberBelongsToOrganization,
   getWhatsappWorkspace,
+  getWhatsappOperations,
   getWhatsappCampaignContext,
   getWhatsappConnectionById,
   getWhatsappConversationForSend,

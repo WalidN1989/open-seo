@@ -39,6 +39,15 @@ export const getWhatsappWorkspace = createServerFn({ method: "GET" })
       context.userId,
     ),
   );
+
+export const getWhatsappOperations = createServerFn({ method: "GET" })
+  .middleware(requireAuthenticatedContext)
+  .handler(({ context }) =>
+    CommunicationsService.whatsappOperations(
+      context.organizationId,
+      context.userId,
+    ),
+  );
 export const updateWhatsappConnection = createServerFn({ method: "POST" })
   .middleware(requireAuthenticatedContext)
   .validator(updateWhatsappConnectionSchema)
