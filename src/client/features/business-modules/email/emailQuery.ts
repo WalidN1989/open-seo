@@ -60,3 +60,39 @@ export function displayName(value: string) {
   const match = value.match(/^\s*"?([^"<]+?)"?\s*<[^>]+>\s*$/);
   return match ? match[1] : value;
 }
+
+/**
+ * Split a message into what was written now and the quoted history a mail
+ * client appends underneath: everything from the first "On … wrote:" line
+ * or the first line starting with ">" to the end.
+ */
+export function splitQuoted(text: string | null | undefined): {
+  fresh: string;
+  quoted: string | null;
+} {
+  const body = (text ?? "").replace(/\r\n/g, "\n");
+  const lines = body.split("\n");
+  const cut = lines.findIndex(
+    (line, index) =>
+      /^>/.test(line) ||
+      (/^On .+wrote:\s*$/.test(line) && index > 0) ||
+      /^-{2,}\s*Original Message\s*-{2,}$/i.test(line),
+  );
+  if (cut <= 0) return { fresh: body.trim(), quoted: null };
+  // A "wrote:" header often wraps onto two lines; take the previous line too
+  // when it starts the same sentence.
+  const start =
+    /^On .+$/.test(lines[cut - 1] ?? "") &&
+    !/wrote:\s*$/.test(lines[cut - 1] ?? "")
+      ? cut - 1
+      : cut;
+  return {
+    fresh: lines.slice(0, start).join("\n").trim(),
+    quoted: lines.slice(start).join("\n").trim() || null,
+  };
+}
+
+export function initialOf(value: string) {
+  const name = displayName(value).trim();
+  return (name[0] ?? "?").toUpperCase();
+}

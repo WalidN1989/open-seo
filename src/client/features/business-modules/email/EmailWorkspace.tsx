@@ -12,6 +12,8 @@ import {
   type EmailWorkspace as WorkspaceData,
   displayName,
   formatEmailTime,
+  initialOf,
+  splitQuoted,
   useEmailMutation,
   useEmailThread,
   useEmailWorkspace,
@@ -131,8 +133,17 @@ function ThreadList({
             onClick={() => onSelect(thread.id)}
           >
             <div className="flex items-center justify-between gap-2">
-              <span className="truncate font-medium">
-                {thread.senders.map(displayName).join(", ") || "Unknown sender"}
+              <span className="flex min-w-0 items-center gap-2">
+                <span
+                  className="flex size-7 shrink-0 items-center justify-center rounded-full bg-secondary/20 text-xs font-semibold"
+                  aria-hidden
+                >
+                  {initialOf(thread.senders[0] ?? "?")}
+                </span>
+                <span className="truncate font-semibold">
+                  {thread.senders.map(displayName).join(", ") ||
+                    "Unknown sender"}
+                </span>
               </span>
               <span className="shrink-0 text-xs text-base-content/55">
                 {formatEmailTime(thread.lastMessageAt)}
@@ -200,24 +211,11 @@ function ThreadView({ threadId }: { threadId: string }) {
       </header>
       <div className="flex-1 space-y-3 overflow-auto p-4">
         {messages.map((message) => (
-          <article
+          <MessageCard
             key={message.id}
-            className={`rounded-xl border p-3 text-sm ${message.direction === "inbound" ? "border-base-300" : message.direction === "draft" ? "border-warning/50 bg-warning/10" : "border-primary/30 bg-primary/5"}`}
-          >
-            <div className="mb-1 flex items-center justify-between gap-2 text-xs text-base-content/55">
-              <span className="truncate">
-                {message.direction === "inbound"
-                  ? message.fromAddress
-                  : message.direction === "draft"
-                    ? "Draft by assistant — not sent"
-                    : `You${message.authoredBy === "assistant" ? " (assistant)" : ""}`}
-              </span>
-              <span className="shrink-0">
-                {formatEmailTime(message.occurredAt)} · {message.status}
-              </span>
-            </div>
-            <p className="whitespace-pre-wrap">{message.textBody}</p>
-          </article>
+            message={message}
+            ownAddress={thread.recipients[0] ?? ""}
+          />
         ))}
       </div>
       <form
@@ -243,6 +241,90 @@ function ThreadView({ threadId }: { threadId: string }) {
         </button>
       </form>
     </section>
+  );
+}
+
+type ThreadMessage = NonNullable<
+  ReturnType<typeof useEmailThread>["data"]
+>["messages"][number];
+
+function MessageCard({
+  message,
+  ownAddress,
+}: {
+  message: ThreadMessage;
+  ownAddress: string;
+}) {
+  const [showQuoted, setShowQuoted] = useState(false);
+  const { fresh, quoted } = splitQuoted(message.textBody);
+  const inbound = message.direction === "inbound";
+  const draft = message.direction === "draft";
+  const who = inbound
+    ? message.fromAddress
+    : draft
+      ? "Assistant draft"
+      : message.authoredBy === "assistant"
+        ? "Assistant"
+        : "You";
+  return (
+    <article
+      className={`flex gap-3 rounded-xl border p-4 text-sm ${draft ? "border-warning/50 bg-warning/10" : inbound ? "border-base-300 bg-base-100" : "border-primary/20 bg-primary/5"}`}
+    >
+      <div
+        className={`flex size-9 shrink-0 items-center justify-center rounded-full text-sm font-semibold ${inbound ? "bg-secondary/20 text-secondary-content" : "bg-primary/20 text-primary"}`}
+        aria-hidden
+      >
+        {inbound
+          ? initialOf(message.fromAddress)
+          : draft
+            ? "✎"
+            : initialOf(ownAddress || "You")}
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="mb-1 flex items-baseline justify-between gap-3">
+          <div className="min-w-0 truncate">
+            <span className="font-semibold">
+              {inbound ? displayName(message.fromAddress) : who}
+            </span>
+            {inbound &&
+            displayName(message.fromAddress) !== message.fromAddress ? (
+              <span className="ml-2 text-xs text-base-content/55">
+                {message.fromAddress.replace(/^.*<([^>]+)>.*$/, "$1")}
+              </span>
+            ) : null}
+          </div>
+          <span className="shrink-0 text-xs text-base-content/55">
+            {formatEmailTime(message.occurredAt)}
+            {draft
+              ? " · not sent"
+              : message.status === "received"
+                ? ""
+                : ` · ${message.status}`}
+          </span>
+        </div>
+        <p className="whitespace-pre-wrap leading-relaxed">
+          {fresh || "(no text)"}
+        </p>
+        {quoted ? (
+          <div className="mt-2">
+            <button
+              type="button"
+              className="btn btn-ghost btn-xs px-2 text-base-content/60"
+              aria-expanded={showQuoted}
+              title={showQuoted ? "Hide quoted text" : "Show quoted text"}
+              onClick={() => setShowQuoted((value) => !value)}
+            >
+              …
+            </button>
+            {showQuoted ? (
+              <pre className="mt-2 whitespace-pre-wrap border-l-2 border-base-300 pl-3 font-sans text-xs text-base-content/60">
+                {quoted}
+              </pre>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
+    </article>
   );
 }
 
