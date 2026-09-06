@@ -196,6 +196,25 @@ export function agentmailClient(apiKey: string, fetcher: typeof fetch = fetch) {
         input,
         fetcher,
       ),
+    getInbox: (inboxId: string) =>
+      call<AgentmailInbox>(
+        apiKey,
+        "GET",
+        `/inboxes/${encodeURIComponent(inboxId)}`,
+        undefined,
+        fetcher,
+      ),
+    createInboxApiKey: (
+      inboxId: string,
+      input: { name?: string; permissions?: Record<string, boolean> },
+    ) =>
+      call<AgentmailApiKey>(
+        apiKey,
+        "POST",
+        `/inboxes/${encodeURIComponent(inboxId)}/api-keys`,
+        input,
+        fetcher,
+      ),
     createWebhook: (input: {
       url: string;
       event_types: string[];

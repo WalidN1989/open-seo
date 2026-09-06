@@ -124,8 +124,10 @@ function ProviderChoice() {
   const [form, setForm] = useState({
     displayName: "",
     username: "",
+    existingAddress: "",
     apiKey: "",
   });
+  const [mode, setMode] = useState<"create" | "adopt">("create");
   const connect = useEmailMutation(
     (input: typeof form) => connectAgentmail({ data: input }),
     "Inbox created and connected",
@@ -137,7 +139,11 @@ function ProviderChoice() {
         className="grid gap-3 rounded-xl border border-primary/30 bg-primary/5 p-4"
         onSubmit={(event) => {
           event.preventDefault();
-          connect.mutate(form);
+          connect.mutate(
+            mode === "adopt"
+              ? { ...form, username: "" }
+              : { ...form, existingAddress: "" },
+          );
         }}
       >
         <div className="flex items-center gap-2">
@@ -161,21 +167,63 @@ function ProviderChoice() {
             }
           />
         </label>
-        <label className="form-control">
-          <span className="mb-1 text-sm font-medium">Address (optional)</span>
-          <input
-            className={input}
-            placeholder="hello"
-            value={form.username}
-            onChange={(event) =>
-              setForm({ ...form, username: event.currentTarget.value })
-            }
-          />
-          <span className="mt-1 text-xs text-base-content/60">
-            Becomes hello@agentmail.to. Leave blank for a generated one. A
-            custom domain such as hello@mail.period.lk comes later.
-          </span>
-        </label>
+        <div className="flex flex-wrap gap-4 text-sm">
+          <label className="flex cursor-pointer items-center gap-2">
+            <input
+              type="radio"
+              className="radio radio-sm"
+              checked={mode === "create"}
+              onChange={() => setMode("create")}
+            />
+            New inbox in this business's pod
+          </label>
+          <label className="flex cursor-pointer items-center gap-2">
+            <input
+              type="radio"
+              className="radio radio-sm"
+              checked={mode === "adopt"}
+              onChange={() => setMode("adopt")}
+            />
+            An inbox I already have
+          </label>
+        </div>
+        {mode === "adopt" ? (
+          <label className="form-control">
+            <span className="mb-1 text-sm font-medium">
+              Existing inbox address
+            </span>
+            <input
+              className={input}
+              type="email"
+              placeholder="period@agentmail.to"
+              required
+              value={form.existingAddress}
+              onChange={(event) =>
+                setForm({ ...form, existingAddress: event.currentTarget.value })
+              }
+            />
+            <span className="mt-1 text-xs text-base-content/60">
+              As listed under Inboxes in the AgentMail console. The app creates
+              a key scoped to that inbox only, plus its webhook.
+            </span>
+          </label>
+        ) : (
+          <label className="form-control">
+            <span className="mb-1 text-sm font-medium">Address (optional)</span>
+            <input
+              className={input}
+              placeholder="hello"
+              value={form.username}
+              onChange={(event) =>
+                setForm({ ...form, username: event.currentTarget.value })
+              }
+            />
+            <span className="mt-1 text-xs text-base-content/60">
+              Becomes hello@agentmail.to. Leave blank for a generated one. A
+              custom domain such as hello@mail.period.lk comes later.
+            </span>
+          </label>
+        )}
         <label className="form-control">
           <span className="mb-1 text-sm font-medium">AgentMail API key</span>
           <input

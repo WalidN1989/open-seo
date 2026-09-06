@@ -93,6 +93,18 @@ const fakeAgentmail: typeof fetch = async (input, init) => {
     });
   if (/^\/inboxes\/inbox_1\/messages\/[^/]+\/reply$/.test(path))
     return json({ message_id: "<reply-1@agentmail.to>", thread_id: "thd_1" });
+  if (path === "/inboxes/period%40agentmail.to" && init?.method === "GET")
+    return json({
+      inbox_id: "period@agentmail.to",
+      email: "period@agentmail.to",
+      display_name: "Period.lk",
+    });
+  if (path === "/inboxes/period%40agentmail.to/api-keys")
+    return json({
+      api_key_id: "key_2",
+      api_key: "am_inbox_scoped_key",
+      prefix: "am_us_inbox_",
+    });
   if (path === "/inboxes/inbox_1/messages/send")
     return json({ message_id: "<sent-1@agentmail.to>", thread_id: "thd_new" });
   return json({ message: `unexpected ${path}` }, 404);
@@ -322,5 +334,38 @@ describe("receiving and replying", () => {
         eq(schema.emailMessages.externalMessageId, "<reply-1@agentmail.to>"),
       );
     expect(row?.status).toBe("delivered");
+  });
+});
+
+describe("adopting an inbox made by hand", () => {
+  it("swaps the account to the existing inbox with an inbox-scoped key and its own webhook", async () => {
+    await EmailAccountService.disconnect(ORG_A, USER_OWNER_A);
+    calls.length = 0;
+    const account = await EmailAccountService.connectAgentmail(
+      ORG_A,
+      USER_OWNER_A,
+      {
+        apiKey: "am_org_level_key",
+        displayName: "Period",
+        existingAddress: "Period@agentmail.to",
+      },
+    );
+    expect(account).toMatchObject({
+      id: accountId,
+      address: "period@agentmail.to",
+      inboxId: "period@agentmail.to",
+      status: "connected",
+    });
+    expect(calls.map((c) => `${c.method} ${c.path}`)).toEqual([
+      "GET /inboxes/period%40agentmail.to",
+      "POST /inboxes/period%40agentmail.to/api-keys",
+      "POST /webhooks",
+    ]);
+    expect(calls[2]?.body).toMatchObject({
+      inbox_ids: ["period@agentmail.to"],
+    });
+    const workspace = await EmailService.workspace(ORG_A, USER_OWNER_A);
+    // The thread from the first inbox is still there; history survives a swap.
+    expect(workspace.threads).toHaveLength(1);
   });
 });

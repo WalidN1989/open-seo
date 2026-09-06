@@ -58,6 +58,9 @@ async function updateAccount(
       | "lastError"
       | "autopilot"
       | "displayName"
+      | "address"
+      | "podId"
+      | "inboxId"
     >
   >,
 ) {

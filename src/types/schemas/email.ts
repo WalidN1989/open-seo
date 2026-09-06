@@ -1,6 +1,15 @@
 import { z } from "zod";
 
 export const connectAgentmailSchema = z.object({
+  /** An inbox that already exists in the AgentMail account, to adopt as is. */
+  existingAddress: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .email()
+    .max(320)
+    .optional()
+    .or(z.literal("").transform(() => undefined)),
   /** The organisation-level AgentMail key. Used once, never stored. */
   apiKey: z.string().trim().min(10).max(400),
   displayName: z.string().trim().min(1).max(120),
