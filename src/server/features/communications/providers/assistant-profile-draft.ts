@@ -14,9 +14,43 @@ import {
 
 const MAX_INPUT_CHARS = 60_000;
 
+/**
+ * Models answer "short lines under headings" as prose, a list, or a nested
+ * object in roughly equal measure. All three are the same knowledge; flatten
+ * them to text rather than fail the operator over the container.
+ */
+export function flattenToLines(value: unknown, depth = 0): string {
+  if (typeof value === "string") return value.trim();
+  if (typeof value === "number" || typeof value === "boolean")
+    return String(value);
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => flattenToLines(item, depth + 1))
+      .filter(Boolean)
+      .map((line) => (depth > 0 && !line.startsWith("-") ? `- ${line}` : line))
+      .join("\n");
+  }
+  if (value && typeof value === "object") {
+    return Object.entries(value)
+      .map(([heading, body]) => {
+        const lines = flattenToLines(body, depth + 1);
+        return lines ? `${heading}\n${lines}` : "";
+      })
+      .filter(Boolean)
+      .join("\n\n");
+  }
+  return "";
+}
+
 const profileSchema = z.object({
-  persona: z.string().trim().min(1).max(6000),
-  business_facts: z.string().trim().min(1).max(12000),
+  persona: z
+    .unknown()
+    .transform((value) => flattenToLines(value))
+    .pipe(z.string().min(1).max(6000)),
+  business_facts: z
+    .unknown()
+    .transform((value) => flattenToLines(value))
+    .pipe(z.string().min(1).max(12000)),
 });
 
 type AssistantProfileDraft = { persona: string; businessFacts: string };
@@ -78,8 +112,21 @@ export async function draftAssistantProfile(input: {
     systemPrompt: SYSTEM_PROMPT,
     userMessage: buildProfileUserMessage(input),
     apiKey: input.apiKey ?? null,
+    maxTokens: 2500,
     fetcher: input.fetcher,
   });
-  const draft = profileSchema.parse(parsed);
-  return { persona: draft.persona, businessFacts: draft.business_facts };
+  const draft = profileSchema.safeParse(parsed);
+  if (!draft.success) {
+    console.error(
+      "Assistant profile draft was unreadable",
+      JSON.stringify(parsed).slice(0, 600),
+    );
+    throw new Error(
+      "The model returned a draft that could not be read. Try again.",
+    );
+  }
+  return {
+    persona: draft.data.persona,
+    businessFacts: draft.data.business_facts,
+  };
 }

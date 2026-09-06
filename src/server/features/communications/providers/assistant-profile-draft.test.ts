@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildProfileUserMessage,
   draftAssistantProfile,
+  flattenToLines,
 } from "./assistant-profile-draft";
 
 describe("draftAssistantProfile", () => {
@@ -70,5 +71,17 @@ describe("draftAssistantProfile", () => {
         fetcher,
       }),
     ).rejects.toThrow();
+  });
+
+  it("flattens facts the model returned as an object of lists", () => {
+    const text = flattenToLines({
+      Services: ["Web design", "SEO"],
+      Contact: { Email: "hello@example.com", Phone: "+61 400 000 000" },
+      Hours: "Mon–Fri 9–5",
+    });
+    expect(text).toContain("Services\n- Web design\n- SEO");
+    expect(text).toContain("Contact\nEmail\nhello@example.com");
+    expect(text).toContain("Hours\nMon–Fri 9–5");
+    expect(flattenToLines("already text")).toBe("already text");
   });
 });

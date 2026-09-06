@@ -71,6 +71,7 @@ async function callAnthropic(
   userMessage: string,
   fetcher: typeof fetch,
   systemPrompt: string = SYSTEM_PROMPT,
+  maxTokens = 1200,
 ) {
   const response = await fetcher("https://api.anthropic.com/v1/messages", {
     method: "POST",
@@ -81,7 +82,7 @@ async function callAnthropic(
     },
     body: JSON.stringify({
       model: DEFAULT_MODEL,
-      max_tokens: 1200,
+      max_tokens: maxTokens,
       system: systemPrompt,
       messages: [{ role: "user", content: userMessage }],
     }),
@@ -103,8 +104,10 @@ async function callOpenRouter(
   model: string,
   userMessage: string,
   fetcher: typeof fetch,
-  systemPrompt: string = SYSTEM_PROMPT,
+  options: { systemPrompt?: string; maxTokens?: number } = {},
 ) {
+  const systemPrompt = options.systemPrompt ?? SYSTEM_PROMPT;
+  const maxTokens = options.maxTokens ?? 1200;
   const response = await fetcher(
     "https://openrouter.ai/api/v1/chat/completions",
     {
@@ -115,7 +118,7 @@ async function callOpenRouter(
       },
       body: JSON.stringify({
         model,
-        max_tokens: 1200,
+        max_tokens: maxTokens,
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userMessage },
@@ -170,6 +173,7 @@ export async function completeWithConfiguredModel(input: {
   systemPrompt: string;
   userMessage: string;
   apiKey?: string | null;
+  maxTokens?: number;
   fetcher?: typeof fetch;
 }): Promise<unknown> {
   const fetcher = input.fetcher ?? fetch;
@@ -182,6 +186,7 @@ export async function completeWithConfiguredModel(input: {
         input.userMessage,
         fetcher,
         input.systemPrompt,
+        input.maxTokens,
       ),
     );
   }
@@ -194,12 +199,9 @@ export async function completeWithConfiguredModel(input: {
   const model =
     (await getOptionalEnvValue("OPENROUTER_MODEL")) || "minimax/minimax-m3";
   return extractJson(
-    await callOpenRouter(
-      openRouterKey,
-      model,
-      input.userMessage,
-      fetcher,
-      input.systemPrompt,
-    ),
+    await callOpenRouter(openRouterKey, model, input.userMessage, fetcher, {
+      systemPrompt: input.systemPrompt,
+      maxTokens: input.maxTokens,
+    }),
   );
 }
