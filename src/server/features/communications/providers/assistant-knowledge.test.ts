@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   applyPriceTokens,
+  toPlainText,
+  toWhatsappText,
   buildBusinessContext,
   formatCatalogueMatches,
   formatMinor,
@@ -142,5 +144,44 @@ describe("formatCatalogueMatches", () => {
     expect(text).toContain('No catalogue item matches "mystery"');
     expect(text).toContain("pre-order");
     expect(text).toContain("Do not invent a price");
+  });
+});
+
+describe("channel formatting", () => {
+  const reply = [
+    "## Our details",
+    "",
+    "**Email:** sales@example.com",
+    "1. **SEO** – boost your rankings",
+    "2. __Web development__ – build your site",
+    "***Everything*** is fixed price.",
+    "Order at https://example.com/a*b",
+  ].join("\n");
+
+  it("turns a model's markdown into the emphasis WhatsApp understands", () => {
+    const text = toWhatsappText(reply);
+    expect(text).toContain("*Email:* sales@example.com");
+    expect(text).toContain("1. *SEO* – boost your rankings");
+    expect(text).toContain("2. _Web development_ – build your site");
+    expect(text).toContain("*Everything* is fixed price.");
+    expect(text.startsWith("Our details")).toBe(true);
+    // Never leaves a double asterisk for the customer to read.
+    expect(text).not.toContain("**");
+    // A bare URL is left exactly as it was written.
+    expect(text).toContain("https://example.com/a*b");
+  });
+
+  it("leaves an email body plain", () => {
+    const text = toPlainText(reply);
+    expect(text).toContain("Email: sales@example.com");
+    expect(text).toContain("1. SEO – boost your rankings");
+    expect(text).toContain("Everything is fixed price.");
+    expect(text).not.toContain("**");
+    expect(text).not.toContain("__");
+  });
+
+  it("leaves ordinary text with a stray asterisk alone", () => {
+    expect(toWhatsappText("2 * 3 is 6")).toBe("2 * 3 is 6");
+    expect(toPlainText("a * b")).toBe("a * b");
   });
 });

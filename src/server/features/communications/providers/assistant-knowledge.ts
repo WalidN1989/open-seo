@@ -220,3 +220,33 @@ export function formatCatalogueMatches(
     })
     .join("\n");
 }
+
+/** Markdown emphasis and headings, as a model tends to write them. */
+const HEADINGS = /^#{1,6}[ \t]+/gm;
+const BOLD_ITALIC = /\*\*\*(\S(?:[^*\n]*\S)?)\*\*\*/g;
+const BOLD = /\*\*(\S(?:[^*\n]*\S)?)\*\*/g;
+const UNDERSCORE_BOLD = /__(\S(?:[^_\n]*\S)?)__/g;
+
+/**
+ * WhatsApp has its own emphasis marks — *bold*, _italic_ — and shows the
+ * markdown a model writes, **like this**, as literal asterisks. Convert
+ * rather than strip, so the emphasis the assistant intended survives.
+ */
+export function toWhatsappText(text: string): string {
+  return text
+    .replace(HEADINGS, "")
+    .replace(BOLD_ITALIC, "*$1*")
+    .replace(BOLD, "*$1*")
+    .replace(UNDERSCORE_BOLD, "_$1_")
+    .trim();
+}
+
+/** An email body is plain text; emphasis marks are just noise in it. */
+export function toPlainText(text: string): string {
+  return text
+    .replace(HEADINGS, "")
+    .replace(BOLD_ITALIC, "$1")
+    .replace(BOLD, "$1")
+    .replace(UNDERSCORE_BOLD, "$1")
+    .trim();
+}

@@ -5,6 +5,7 @@ import { WhatsappAssistantRepository as Repo } from "../repositories/WhatsappAss
 import {
   applyPriceTokens,
   buildBusinessContext,
+  toWhatsappText,
   formatCatalogueMatches,
   looksLikeQuestion,
   matchesEscalation,
@@ -197,7 +198,9 @@ export async function replyToInbound(
         connection,
         conversationId,
         message.sender,
-        applyPriceTokens(instant.answer, await priceTokens(organizationId)),
+        toWhatsappText(
+          applyPriceTokens(instant.answer, await priceTokens(organizationId)),
+        ),
       );
       return true;
     }
@@ -240,7 +243,12 @@ export async function replyToInbound(
     if (!result) return false;
     await applyActions(organizationId, conversationId, result.actions);
     if (!result.reply) return false;
-    await sendReply(connection, conversationId, message.sender, result.reply);
+    await sendReply(
+      connection,
+      conversationId,
+      message.sender,
+      toWhatsappText(result.reply),
+    );
     return true;
   } catch (error) {
     console.error("WhatsApp assistant failed; using rule fallback", error);

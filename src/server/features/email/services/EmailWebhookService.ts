@@ -11,6 +11,7 @@ import {
   lookupProducts,
 } from "@/server/features/communications/services/WhatsappAssistantReplyService";
 import { generateWhatsappAiReply } from "@/server/features/communications/providers/whatsapp-ai";
+import { toPlainText } from "@/server/features/communications/providers/assistant-knowledge";
 import {
   addressOf,
   agentmailClient,
@@ -67,6 +68,9 @@ async function replyWithAssistant(
     lookupProducts: (query) => lookupProducts(organizationId, query),
   });
   if (!result?.reply) return;
+  // An email is plain text; markdown emphasis would reach the reader as
+  // asterisks around the words it was meant to lift.
+  const body = toPlainText(result.reply);
   if (account.autopilot) {
     const creds = await decryptCredentials(account.credentials);
     if (!creds.API_KEY || !account.inboxId || !inbound.externalMessageId)
@@ -74,12 +78,12 @@ async function replyWithAssistant(
     const sent = await agentmailClient(creds.API_KEY).replyToMessage(
       account.inboxId,
       inbound.externalMessageId,
-      { text: result.reply },
+      { text: body },
     );
     await recordOutbound(account, threadRow, sent, {
       to: [inbound.fromAddress],
       subject: inbound.subject,
-      text: result.reply,
+      text: body,
       authoredBy: ASSISTANT,
     });
     return;
@@ -93,7 +97,7 @@ async function replyWithAssistant(
     fromAddress: account.address,
     toAddresses: [inbound.fromAddress],
     subject: inbound.subject,
-    textBody: result.reply,
+    textBody: body,
     htmlBody: null,
     status: "draft",
     authoredBy: ASSISTANT,
