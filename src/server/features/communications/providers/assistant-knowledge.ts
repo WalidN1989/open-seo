@@ -188,14 +188,18 @@ export function formatCatalogueMatches(
   }
   return rows
     .map((row) => {
-      const availability =
-        row.quantityOnHand === null
-          ? "availability: ask the team to confirm"
-          : row.quantityOnHand > 0
+      const detail = [formatMinor(row.salePriceMinor, currency)];
+      // A service carries no inventory row. Silence is the honest answer
+      // about its stock; anything else invites the assistant to "check".
+      if (row.quantityOnHand !== null) {
+        detail.push(
+          row.quantityOnHand > 0
             ? `in stock (${row.quantityOnHand})`
-            : "out of stock — offer a pre-order via create_order_request";
-      const link = row.productUrl ? `link: ${row.productUrl}` : "link: none";
-      return `- ${row.name} — ${formatMinor(row.salePriceMinor, currency)} — ${availability} — ${link} (SKU ${row.sku})`;
+            : "out of stock — offer a pre-order via create_order_request",
+        );
+      }
+      if (row.productUrl) detail.push(`link: ${row.productUrl}`);
+      return `- ${row.name} — ${detail.join(" — ")} (SKU ${row.sku})`;
     })
     .join("\n");
 }
