@@ -74,7 +74,7 @@ export function splitQuoted(text: string | null | undefined): {
   const lines = body.split("\n");
   const cut = lines.findIndex(
     (line, index) =>
-      /^>/.test(line) ||
+      line.startsWith(">") ||
       (/^On .+wrote:\s*$/.test(line) && index > 0) ||
       /^-{2,}\s*Original Message\s*-{2,}$/i.test(line),
   );
