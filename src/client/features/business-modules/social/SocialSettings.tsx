@@ -4,6 +4,7 @@ import {
   connectSocialAccount,
   disconnectSocialAccount,
   setSocialAutopilot,
+  updateSocialAccount,
 } from "@/serverFunctions/social";
 import { SOCIAL_PLATFORMS } from "@/types/schemas/social";
 import {
@@ -85,6 +86,7 @@ function AccountCard({
           Disconnect
         </button>
       </div>
+      <RotateCredentials accountId={account.id} />
       <label className="flex cursor-pointer items-center justify-between gap-4 border-t border-base-300 pt-3">
         <span className="text-sm">
           <span className="block font-medium">Autopilot</span>
@@ -102,6 +104,67 @@ function AccountCard({
         />
       </label>
     </section>
+  );
+}
+
+/**
+ * A Page access token expires, so rotating one must not mean reconnecting
+ * and losing the conversations that hang off this account.
+ */
+function RotateCredentials({ accountId }: { accountId: string }) {
+  const [open, setOpen] = useState(false);
+  const [accessToken, setAccessToken] = useState("");
+  const rotate = useSocialMutation(
+    (token: string) =>
+      updateSocialAccount({ data: { accountId, accessToken: token } }),
+    "Token updated",
+  );
+  if (!open) {
+    return (
+      <button
+        type="button"
+        className="btn btn-ghost btn-xs self-start px-0 text-base-content/60"
+        onClick={() => setOpen(true)}
+      >
+        Replace the Page access token
+      </button>
+    );
+  }
+  return (
+    <form
+      className="flex flex-wrap items-end gap-2 border-t border-base-300 pt-3"
+      onSubmit={(event) => {
+        event.preventDefault();
+        rotate.mutate(accessToken, {
+          onSuccess: () => {
+            setAccessToken("");
+            setOpen(false);
+          },
+        });
+      }}
+    >
+      <label className="form-control min-w-60 flex-1">
+        <span className="mb-1 text-sm font-medium">New Page access token</span>
+        <input
+          className="input input-bordered input-sm w-full"
+          type="password"
+          autoComplete="off"
+          required
+          value={accessToken}
+          onChange={(event) => setAccessToken(event.currentTarget.value)}
+        />
+      </label>
+      <button className="btn btn-outline btn-sm" disabled={rotate.isPending}>
+        Save token
+      </button>
+      <button
+        type="button"
+        className="btn btn-ghost btn-sm"
+        onClick={() => setOpen(false)}
+      >
+        Cancel
+      </button>
+    </form>
   );
 }
 

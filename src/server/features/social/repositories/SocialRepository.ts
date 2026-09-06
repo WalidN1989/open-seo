@@ -8,7 +8,7 @@ import {
 
 export type SocialAccountRow = typeof socialAccounts.$inferSelect;
 export type SocialConversationRow = typeof socialConversations.$inferSelect;
-export type SocialMessageRow = typeof socialMessages.$inferSelect;
+type SocialMessageRow = typeof socialMessages.$inferSelect;
 
 const now = () => new Date().toISOString();
 

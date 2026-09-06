@@ -21,7 +21,7 @@ export type InboundSocialMessage = {
   isEcho: boolean;
 };
 
-export type SocialDelivery = {
+type SocialDelivery = {
   platform: SocialPlatform;
   /** The Instagram account id or Page id the message was addressed to. */
   accountExternalId: string;
