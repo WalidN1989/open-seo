@@ -73,6 +73,26 @@ timestamp, event, and delivery headers.
 
 ## Migration handoff ledger
 
+### 2026-09-06: compact integrations catalogue
+
+The approved catalogue now displays all 16 providers as a responsive 4-by-4
+logo/name grid on laptop and desktop viewports. The page heading, count,
+search, descriptions and repeated Connect buttons are removed from this view;
+each tile still links to its existing detail/configuration route. Category
+filters and real connected/available/built-in/planned states remain. Status
+failures are reported instead of presenting an unknown connection as available.
+Brand SVGs are local assets, with generic icons/wordmarks as fallbacks.
+
+Only the catalogue gets the viewport-height layout; connection and provider
+pages keep their existing scrolling layout. Small phone windows use two columns
+and scrolling rather than shrinking controls beyond usability. No connector,
+credential, sync, WhatsApp or scheduler logic changed in this UI work.
+
+Validation: TypeScript, targeted lint, production build, 19 catalogue tests,
+and isolated browser checks for all 16 tiles at 1280x720, 1440x900, 1920x1080
+and 2560x1440, asset loading, category filtering, the Shopify link and mobile
+horizontal overflow.
+
 ### 2026-09-06: approved WhatsApp presentation refresh
 
 WhatsApp now uses Inbox, Contacts and Orders as its primary navigation, with

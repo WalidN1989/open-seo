@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { Check, Search } from "lucide-react";
+import { Check, Circle, Minus, Webhook, Braces, Triangle } from "lucide-react";
 import { getIntegrationsWorkspace } from "@/serverFunctions/communications";
 import {
   integrationCatalogue,
@@ -10,171 +10,167 @@ import {
 } from "@/shared/integration-catalogue";
 import { getStandardErrorMessage } from "@/client/lib/error-messages";
 
-/**
- * The marketplace a merchant browses. Connection state comes from the
- * workspace, so a provider already connected reads as connected here rather
- * than only on the connections screen.
- */
-export function IntegrationsCatalogueView() {
-  const [category, setCategory] = useState<string>("all");
-  const [search, setSearch] = useState("");
+const logos: Record<string, string> = {
+  make: "make",
+  woocommerce: "woocommerce",
+  shopify: "shopify",
+  claude_haiku: "claude",
+  instagram: "instagram",
+  messenger: "messenger",
+  google_sheets: "googlesheets",
+  zoho: "zoho",
+  hubspot: "hubspot",
+  firecrawl: "firecrawl",
+};
 
+/** Compact presentation; provider routes and connection state remain unchanged. */
+export function IntegrationsCatalogueView() {
+  const [category, setCategory] = useState("all");
   const query = useQuery({
     queryKey: ["integrations", "workspace"],
     queryFn: () => getIntegrationsWorkspace(),
   });
-
-  const connectedKeys = useMemo(() => {
-    const keys = new Set<string>();
-    for (const connection of query.data?.connections ?? []) {
-      if (connection.status === "connected") keys.add(connection.providerKey);
-    }
-    return keys;
-  }, [query.data]);
-
-  const visible = useMemo(() => {
-    const term = search.trim().toLowerCase();
-    return integrationCatalogue.filter((entry) => {
-      if (category !== "all" && entry.category !== category) return false;
-      if (!term) return true;
-      return (
-        entry.name.toLowerCase().includes(term) ||
-        entry.tagline.toLowerCase().includes(term) ||
-        entry.description.toLowerCase().includes(term)
-      );
-    });
-  }, [category, search]);
+  const connectedKeys = useMemo(
+    () =>
+      new Set(
+        (query.data?.connections ?? [])
+          .filter((connection) => connection.status === "connected")
+          .map((connection) => connection.providerKey),
+      ),
+    [query.data],
+  );
+  const visible = integrationCatalogue.filter(
+    (entry) => category === "all" || entry.category === category,
+  );
 
   return (
-    <div className="space-y-5">
-      <div>
-        <h1 className="text-3xl font-semibold tracking-tight">Integrations</h1>
-        <p className="mt-1 text-base leading-6 text-base-content/65">
-          Connect the tools you already run. Credentials are read from the
-          deployment and never stored in the workspace database.
-        </p>
-      </div>
-
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div role="tablist" className="tabs tabs-box">
-          {integrationCategories.map((option) => (
-            <button
-              key={option.key}
-              role="tab"
-              className={`tab ${category === option.key ? "tab-active" : ""}`}
-              onClick={() => setCategory(option.key)}
-            >
-              {option.label}
-            </button>
-          ))}
-        </div>
-        <label className="input input-bordered input-sm flex items-center gap-2">
-          <Search className="size-4 opacity-50" />
-          <input
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="Search integrations..."
-            className="grow"
-          />
-        </label>
-      </div>
-
+    <section
+      className="integration-catalogue"
+      aria-label="Integrations catalogue"
+    >
+      <nav className="integration-filters" aria-label="Integration categories">
+        {integrationCategories.map((option) => (
+          <button
+            key={option.key}
+            aria-pressed={category === option.key}
+            onClick={() => setCategory(option.key)}
+          >
+            {option.label}
+          </button>
+        ))}
+      </nav>
       {query.isError ? (
-        <div className="alert alert-warning">
+        <div className="alert alert-warning text-sm">
           {getStandardErrorMessage(
             query.error,
-            "Connection state is unavailable, so everything below shows as not connected.",
+            "Connection status is unavailable. Open a connector to check its details.",
           )}
         </div>
       ) : null}
-
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+      <div className="integration-tile-grid">
         {visible.map((entry) => (
           <IntegrationCard
             key={entry.key}
             entry={entry}
             connected={connectedKeys.has(entry.key)}
+            statusKnown={query.isSuccess}
           />
         ))}
       </div>
-
-      {visible.length ? null : (
-        <p className="py-12 text-center text-sm text-base-content/50">
-          No integration matches that search.
-        </p>
-      )}
-    </div>
+      <div className="integration-legend" aria-label="Connection status legend">
+        <span>
+          <Check className="integration-connected size-4" /> Connected
+        </span>
+        <span>
+          <Circle className="size-3" /> Available
+        </span>
+        <span>
+          <Minus className="size-3" /> Built in
+        </span>
+        <span>
+          <span className="integration-soon">Soon</span> Coming soon
+        </span>
+      </div>
+    </section>
   );
 }
 
 function IntegrationCard({
   entry,
   connected,
+  statusKnown,
 }: {
   entry: IntegrationCatalogueEntry;
   connected: boolean;
+  statusKnown: boolean;
 }) {
+  const state = connected
+    ? "Connected"
+    : entry.state === "built_in"
+      ? "Built in"
+      : entry.state === "planned"
+        ? "Coming soon"
+        : statusKnown
+          ? "Available"
+          : "Status unavailable";
   return (
     <Link
       to="/modules/integrations/$providerKey"
       params={{ providerKey: entry.key }}
-      className="flex flex-col rounded-xl border border-base-300 bg-base-100 p-4 transition-colors hover:border-primary"
+      className={`integration-tile ${connected ? "is-connected" : ""}`}
+      aria-label={`${entry.name} — ${state}`}
+      title={`${entry.name}: ${entry.tagline}`}
     >
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h2 className="text-base font-semibold">{entry.name}</h2>
-          <p className="text-sm text-base-content/60">{entry.tagline}</p>
-        </div>
-        <StateBadge entry={entry} connected={connected} />
+      <span className="integration-tile-status" aria-hidden="true">
+        {connected ? (
+          <Check className="integration-connected size-4" />
+        ) : entry.state === "planned" ? (
+          <span className="integration-soon">Soon</span>
+        ) : entry.state === "built_in" ? (
+          <Minus className="size-4" />
+        ) : statusKnown ? (
+          <Circle className="size-3.5" />
+        ) : (
+          <span>…</span>
+        )}
+      </span>
+      <div className="integration-brand" aria-hidden="true">
+        <ProviderLogo providerKey={entry.key} />
       </div>
-
-      <p className="mt-3 grow text-sm leading-5 text-base-content/75">
-        {entry.description}
-      </p>
-
-      {entry.credentialFields?.length ? (
-        <p className="mt-3 text-xs text-base-content/50">
-          Needs{" "}
-          {entry.credentialFields
-            .map((field) => field.label.toLowerCase())
-            .join(", ")}
-        </p>
-      ) : null}
-
-      {entry.state === "connectable" ? (
-        <span
-          className={`btn btn-sm mt-4 ${connected ? "btn-ghost" : "btn-primary"}`}
-        >
-          {connected ? "Manage" : "Connect"}
-        </span>
-      ) : null}
+      <span className="integration-tile-name">
+        {entry.key === "make"
+          ? "Make.com"
+          : entry.key === "messenger"
+            ? "Messenger"
+            : entry.name}
+      </span>
     </Link>
   );
 }
 
-function StateBadge({
-  entry,
-  connected,
-}: {
-  entry: IntegrationCatalogueEntry;
-  connected: boolean;
-}) {
-  if (connected) {
+function ProviderLogo({ providerKey }: { providerKey: string }) {
+  if (logos[providerKey])
     return (
-      <span className="badge badge-success badge-sm shrink-0 gap-1">
-        <Check className="size-3" /> Connected
-      </span>
+      <img
+        src={`/integration-logos/${logos[providerKey]}.svg`}
+        alt=""
+        width="48"
+        height="48"
+      />
     );
-  }
-  if (entry.state === "built_in") {
-    return <span className="badge badge-sm shrink-0">Built in</span>;
-  }
-  if (entry.state === "planned") {
-    return (
-      <span className="badge badge-ghost badge-sm shrink-0">Coming soon</span>
-    );
-  }
+  if (providerKey === "webhooks") return <Webhook />;
+  if (providerKey === "custom") return <Braces />;
+  if (providerKey === "apify") return <Triangle className="text-emerald-500" />;
+  const wordmarks: Record<string, string> = {
+    hunter: "hunter",
+    payhere: "PayHere",
+    stripe: "stripe",
+  };
   return (
-    <span className="badge badge-outline badge-sm shrink-0">Available</span>
+    <span
+      className={`integration-wordmark ${providerKey === "hunter" ? "text-orange-500" : providerKey === "stripe" ? "text-violet-500" : "text-blue-600"}`}
+    >
+      {wordmarks[providerKey] ?? providerKey}
+    </span>
   );
 }

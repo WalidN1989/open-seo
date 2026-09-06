@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "../features/business-modules/whatsapp/workspace.css";
+@import "../features/business-modules/integrations/catalogue.css";
 
 @theme {
   --container-8xl: 88rem;
