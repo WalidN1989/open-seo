@@ -345,3 +345,23 @@ export async function sendWhatsappTemplate(
   }
   throw new Error("This provider cannot send WhatsApp templates yet.");
 }
+
+/**
+ * Twilio reads the HTTP response to its incoming-message webhook as an
+ * instruction: plain text is sent back to the customer as a message. A
+ * successful webhook must therefore answer with an empty TwiML document —
+ * "nothing to say" — while a failure keeps its plain reason, which Twilio
+ * only logs.
+ */
+export function whatsappWebhookResponse(result: {
+  status: number;
+  body: string;
+}): Response {
+  if (result.status >= 200 && result.status < 300) {
+    return new Response('<?xml version="1.0" encoding="UTF-8"?><Response/>', {
+      status: result.status,
+      headers: { "content-type": "text/xml" },
+    });
+  }
+  return new Response(result.body, { status: result.status });
+}

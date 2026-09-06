@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { CommunicationsService } from "@/server/features/communications/services/CommunicationsService";
+import { whatsappWebhookResponse } from "@/server/features/communications/providers/whatsapp";
 
 /**
  * The per-connection callback.
@@ -31,7 +32,7 @@ export const Route = createFileRoute("/api/whatsapp/$connectionId")({
           request.headers,
           await request.text(),
         );
-        return new Response(result.body, { status: result.status });
+        return whatsappWebhookResponse(result);
       },
     },
   },

@@ -4,6 +4,7 @@ import {
   parseTwilioPayload,
   sendWhatsappText,
   sendWhatsappTemplate,
+  whatsappWebhookResponse,
 } from "./whatsapp";
 import { verifyMetaSignature, verifyTwilioSignature } from "./signatures";
 
@@ -136,5 +137,23 @@ describe("WhatsApp provider boundaries", () => {
       status: "sent",
     });
     delete process.env.TEST_META_ACCESS_TOKEN;
+  });
+});
+
+describe("whatsappWebhookResponse", () => {
+  it("answers a handled webhook with empty TwiML so Twilio sends nothing back", async () => {
+    const response = whatsappWebhookResponse({ status: 200, body: "ok" });
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toBe("text/xml");
+    await expect(response.text()).resolves.toContain("<Response/>");
+  });
+
+  it("keeps a failure's reason as plain text", async () => {
+    const response = whatsappWebhookResponse({
+      status: 401,
+      body: "Invalid signature",
+    });
+    expect(response.status).toBe(401);
+    await expect(response.text()).resolves.toBe("Invalid signature");
   });
 });
