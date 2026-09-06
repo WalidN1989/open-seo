@@ -76,8 +76,8 @@ function ConnectedAccount({
           <span className="text-sm text-base-content/60">
             Off: the assistant writes a draft for every customer email and a
             person approves it under Drafts. On: it replies on its own. Either
-            way it uses the persona, facts, prices and instant answers from the
-            WhatsApp AI Config for this business.
+            way it uses the persona, facts, prices and contact details from the
+            Assistant tab, which this business shares with WhatsApp.
           </span>
         </span>
         <input

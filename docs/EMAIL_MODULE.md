@@ -32,8 +32,10 @@ from Dashboard → API Keys whose scope reads "Organization".
 - With **autopilot off** (default) the assistant writes a draft for each
   customer email; a person approves, edits or discards it under Drafts. With
   autopilot on it replies itself. Either way it uses the organisation's
-  WhatsApp AI Config: persona, business facts, live prices, product lookup.
-  A `claude_haiku` integration must be connected for the business.
+  assistant configuration — persona, business facts, address, contact email
+  and phone, live prices, product lookup — which is shared with WhatsApp and
+  editable from the module's own **Assistant** tab. A `claude_haiku`
+  integration must be connected for the business.
 - Delivery, bounce and complaint events update the mirrored message.
 - Disconnecting keeps every thread; only sending and receiving stop.
 
