@@ -84,6 +84,19 @@ const fakeAgentmail: typeof fetch = async (input, init) => {
       api_key: "am_pod_scoped_key",
       prefix: "am_",
     });
+  if (
+    path === "/webhooks" &&
+    new Headers(init?.headers).get("authorization") ===
+      "Bearer am_us_inbox_pasted" &&
+    body.inbox_ids
+  )
+    return json(
+      {
+        message:
+          "inbox_ids and pod_ids cannot be set when using an inbox-scoped API key is forbidden",
+      },
+      403,
+    );
   if (path === "/webhooks")
     return json({
       webhook_id: "wh_1",
@@ -367,5 +380,28 @@ describe("adopting an inbox made by hand", () => {
     const workspace = await EmailService.workspace(ORG_A, USER_OWNER_A);
     // The thread from the first inbox is still there; history survives a swap.
     expect(workspace.threads).toHaveLength(1);
+  });
+});
+
+describe("adopting with an inbox-scoped key", () => {
+  it("retries the webhook without inbox_ids when AgentMail refuses them", async () => {
+    await EmailAccountService.disconnect(ORG_A, USER_OWNER_A);
+    calls.length = 0;
+    const account = await EmailAccountService.connectAgentmail(
+      ORG_A,
+      USER_OWNER_A,
+      {
+        apiKey: "am_us_inbox_pasted",
+        displayName: "Period",
+        existingAddress: "period@agentmail.to",
+      },
+    );
+    expect(account?.status).toBe("connected");
+    const webhookCalls = calls.filter((c) => c.path === "/webhooks");
+    expect(webhookCalls).toHaveLength(2);
+    expect(webhookCalls[0]?.body).toMatchObject({
+      inbox_ids: ["period@agentmail.to"],
+    });
+    expect(webhookCalls[1]?.body).not.toHaveProperty("inbox_ids");
   });
 });

@@ -123,6 +123,35 @@ async function adoptExistingInbox(
 }
 
 /**
+ * An organisation key must name the inbox the webhook is for. An
+ * inbox-scoped key already implies it and AgentMail refuses the list, so
+ * the same request is sent again without it. Either key ends with a webhook
+ * that fires only for this inbox.
+ */
+async function createWebhookFor(
+  client: Client,
+  input: { url: string; inboxId: string; clientId: string },
+) {
+  const base = {
+    url: input.url,
+    event_types: WEBHOOK_EVENT_TYPES,
+    client_id: input.clientId,
+  };
+  try {
+    return await client.createWebhook({ ...base, inbox_ids: [input.inboxId] });
+  } catch (error) {
+    if (
+      error instanceof AgentmailError &&
+      error.status === 403 &&
+      /inbox-scoped/i.test(error.message)
+    ) {
+      return client.createWebhook(base);
+    }
+    throw error;
+  }
+}
+
+/**
  * Turn the operator's organisation-level AgentMail key into a pod, an inbox
  * in that pod, a pod-scoped key, and a webhook for the inbox. Only the
  * pod-scoped key and the webhook secret are stored; the organisation key is
@@ -180,11 +209,10 @@ async function connectAgentmail(
       podId: target.inbox.pod_id ?? null,
       inboxId: target.inbox.inbox_id,
     });
-    const webhook = await client.createWebhook({
+    const webhook = await createWebhookFor(client, {
       url: `${baseUrl}/api/email/${account.id}`,
-      event_types: WEBHOOK_EVENT_TYPES,
-      inbox_ids: [target.inbox.inbox_id],
-      client_id: `openseo-${account.id}`,
+      inboxId: target.inbox.inbox_id,
+      clientId: `openseo-${account.id}`,
     });
     const credentials = await encryptCredentials({
       API_KEY: target.apiKey.api_key,
