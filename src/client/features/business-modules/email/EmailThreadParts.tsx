@@ -12,8 +12,8 @@ import {
   initialOf,
   splitQuoted,
   useEmailMutation,
-  useEmailThread,
 } from "./emailQuery";
+import type { useEmailThread } from "./emailQuery";
 
 export type ThreadMessage = NonNullable<
   ReturnType<typeof useEmailThread>["data"]
