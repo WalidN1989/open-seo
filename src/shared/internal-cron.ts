@@ -28,3 +28,31 @@ export const CRON_TIER_INTERVAL_MS: Record<CronTier, number> = {
 export function isCronTier(value: string): value is CronTier {
   return (CRON_TIERS as readonly string[]).includes(value);
 }
+
+/** Env var a deployment sets to override one tier's cadence. */
+export function cronIntervalEnvVar(tier: CronTier): string {
+  return `INTERNAL_CRON_${tier.toUpperCase()}_MS`;
+}
+
+/**
+ * How often to tick a tier, honouring a deployment's override.
+ *
+ * Serverless Postgres bills for time awake rather than for queries, so a tick
+ * that finds nothing to do still costs: at thirty seconds the database never
+ * gets to suspend, and an install with no users pays all night for asking
+ * "is anything due?" and hearing no. A deployment that can tolerate scheduled
+ * work starting late should widen these — the wider the gap, the longer the
+ * database sleeps between ticks.
+ *
+ * Ignores anything unparseable or under a second so a typo cannot turn the
+ * ticker into a hot loop.
+ */
+export function cronTierIntervalMs(
+  tier: CronTier,
+  env: Record<string, string | undefined>,
+): number {
+  const raw = env[cronIntervalEnvVar(tier)];
+  const override = Number(raw);
+  if (raw && Number.isFinite(override) && override >= 1_000) return override;
+  return CRON_TIER_INTERVAL_MS[tier];
+}
