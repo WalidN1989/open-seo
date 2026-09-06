@@ -9,6 +9,7 @@ import {
   type IntegrationCatalogueEntry,
 } from "@/shared/integration-catalogue";
 import { getStandardErrorMessage } from "@/client/lib/error-messages";
+import { orderCatalogue } from "./catalogueOrder";
 
 const logos: Record<string, string> = {
   make: "make",
@@ -39,8 +40,15 @@ export function IntegrationsCatalogueView() {
       ),
     [query.data],
   );
-  const visible = integrationCatalogue.filter(
-    (entry) => category === "all" || entry.category === category,
+  const visible = useMemo(
+    () =>
+      orderCatalogue(
+        integrationCatalogue.filter(
+          (entry) => category === "all" || entry.category === category,
+        ),
+        connectedKeys,
+      ),
+    [category, connectedKeys],
   );
 
   return (
