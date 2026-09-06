@@ -9,6 +9,7 @@ import {
 } from "@/shared/business-modules";
 import { getStandardErrorMessage } from "@/client/lib/error-messages";
 import { LeadsWorkspace } from "@/client/features/business-modules/LeadsWorkspace";
+import { usePrefetchModules } from "@/client/features/business-modules/usePrefetchModules";
 import {
   VoiceWorkspace,
   WhatsappWorkspace,
@@ -64,6 +65,9 @@ function BusinessModulePage() {
   if (!parsed.success) throw notFound();
   const moduleKey = parsed.data;
   const module = businessModuleCatalog.find((item) => item.key === moduleKey)!;
+  // Warm the other modules while this one is being read, so switching to them
+  // is a cache read rather than another round trip.
+  usePrefetchModules(moduleKey);
   const accessQuery = useQuery({
     queryKey: ["business-modules", moduleKey, "access"],
     queryFn: () => requireBusinessModuleAccess({ data: { moduleKey } }),
