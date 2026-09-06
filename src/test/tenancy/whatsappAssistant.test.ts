@@ -155,7 +155,8 @@ describe("escalation and human takeover", () => {
     const first = await inbound("I want to speak to a HUMAN", "+61400000002");
     expect(first.handled).toBe(true);
     expect(sent.calls).toHaveLength(1);
-    expect(sent.calls[0]?.body).toContain("team member");
+    // The default hand-off promises a reply, not a specific wording.
+    expect(sent.calls[0]?.body).toContain("24 hours");
     const [conversation] = await db
       .select({ status: schema.whatsappConversations.status })
       .from(schema.whatsappConversations)

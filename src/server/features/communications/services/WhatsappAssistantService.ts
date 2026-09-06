@@ -29,7 +29,7 @@ export type Connection = NonNullable<
 export const DEFAULT_ESCALATION_KEYWORDS =
   "human, agent, manager, real person, speak to someone, call me, complaint, refund, cancel, angry, useless, scam, lawyer, legal, urgent, asap";
 export const DEFAULT_HANDOFF_MESSAGE =
-  "Thanks — I'm getting a team member to help you with this. Someone will reply here shortly.";
+  "Thanks for that — I'm assigning your case to the right team here. Someone will come back to you within 24 hours.";
 
 export type AssistantSettings = Omit<
   AssistantSettingsRow,

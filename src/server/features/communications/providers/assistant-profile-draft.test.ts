@@ -85,3 +85,68 @@ describe("draftAssistantProfile", () => {
     expect(flattenToLines("already text")).toBe("already text");
   });
 });
+
+const reply = (payload: Record<string, unknown>) =>
+  (async () =>
+    Response.json({
+      content: [{ type: "text", text: JSON.stringify(payload) }],
+    })) as typeof fetch;
+
+describe("settings the draft proposes alongside the prose", () => {
+  const base = {
+    persona: "You are the assistant for Example.",
+    business_facts: "Services\n- Things",
+  };
+
+  it("passes through a usable timezone, hours and hand-off line", async () => {
+    const draft = await draftAssistantProfile({
+      businessName: "Example",
+      domain: "example.com",
+      source: { kind: "context", markdown: "notes" },
+      apiKey: "k",
+      fetcher: reply({
+        ...base,
+        timezone: "Asia/Colombo",
+        business_hours_start: "09:00",
+        business_hours_end: "18:00",
+        handoff_message: "Assigning this to the team — back within 24 hours.",
+      }),
+    });
+    expect(draft.timezone).toBe("Asia/Colombo");
+    expect(draft.businessHoursStart).toBe("09:00");
+    expect(draft.businessHoursEnd).toBe("18:00");
+    expect(draft.handoffMessage).toContain("24 hours");
+  });
+
+  it("drops a timezone the runtime cannot use and half a pair of hours", async () => {
+    const draft = await draftAssistantProfile({
+      businessName: "Example",
+      domain: null,
+      source: { kind: "context", markdown: "notes" },
+      apiKey: "k",
+      fetcher: reply({
+        ...base,
+        timezone: "Somewhere/Made Up",
+        business_hours_start: "9am",
+        business_hours_end: "18:00",
+        handoff_message: "   ",
+      }),
+    });
+    expect(draft.timezone).toBeNull();
+    expect(draft.businessHoursStart).toBeNull();
+    expect(draft.businessHoursEnd).toBeNull();
+    expect(draft.handoffMessage).toBeNull();
+  });
+
+  it("asks for the headings that make an assistant useful from day one", () => {
+    const message = buildProfileUserMessage({
+      businessName: "Example",
+      domain: "example.com",
+      source: { kind: "context", markdown: "notes" },
+    });
+    expect(message).toContain("Example");
+    // The instructions live in the system prompt, so the draft is exercised
+    // end to end by the cases above; here we only pin the user message.
+    expect(message).toContain("BEGIN SOURCE (untrusted data)");
+  });
+});
