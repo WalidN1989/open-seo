@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Globe, Sparkles } from "lucide-react";
+import { Sparkles } from "lucide-react";
 import {
   draftWhatsappAssistantProfile,
   updateWhatsappAssistantSettings,
@@ -8,6 +8,7 @@ import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { getStandardErrorMessage } from "@/client/lib/error-messages";
 import { ASSISTANT_MODELS } from "@/types/schemas/whatsappAssistant";
+import { AssistantDraftPanel } from "./AssistantDraftPanel";
 import { AssistantStatusBanner } from "./AssistantStatusBanner";
 import { PriceTokenList } from "./PriceTokenList";
 import {
@@ -22,7 +23,12 @@ const MODEL_LABELS: Record<(typeof ASSISTANT_MODELS)[number], string> = {
   "claude-opus-5": "Claude Opus 5 — best judgement, highest cost",
 };
 
-export function AssistantConfigSection() {
+/** Shared by both channels; `channel` hides the controls only one of them has. */
+export function AssistantConfigSection({
+  channel = "whatsapp",
+}: {
+  channel?: "whatsapp" | "email";
+} = {}) {
   const query = useAssistantConfig();
   if (query.isPending) {
     return (
@@ -36,6 +42,7 @@ export function AssistantConfigSection() {
     <ConfigForm
       key={query.data.settings.updatedAt ?? "defaults"}
       config={query.data}
+      channel={channel}
     />
   );
 }
@@ -60,7 +67,13 @@ function Field({
   );
 }
 
-function ConfigForm({ config }: { config: AssistantConfig }) {
+function ConfigForm({
+  config,
+  channel,
+}: {
+  config: AssistantConfig;
+  channel: "whatsapp" | "email";
+}) {
   const { settings, ai, priceTokens } = config;
   const [form, setForm] = useState({
     autopilot: settings.autopilot,
@@ -147,21 +160,23 @@ function ConfigForm({ config }: { config: AssistantConfig }) {
     >
       <AssistantStatusBanner ai={ai} />
 
-      <label className="flex cursor-pointer items-center justify-between gap-4 rounded-xl border border-base-300 p-4">
-        <span>
-          <span className="block font-medium">Autopilot</span>
-          <span className="text-sm text-base-content/60">
-            When on, the assistant answers incoming messages on its own. When
-            off, only instant answers, escalation and automation rules run.
+      {channel === "whatsapp" ? (
+        <label className="flex cursor-pointer items-center justify-between gap-4 rounded-xl border border-base-300 p-4">
+          <span>
+            <span className="block font-medium">Autopilot</span>
+            <span className="text-sm text-base-content/60">
+              When on, the assistant answers incoming messages on its own. When
+              off, only instant answers, escalation and automation rules run.
+            </span>
           </span>
-        </span>
-        <input
-          type="checkbox"
-          className="toggle toggle-primary"
-          checked={form.autopilot}
-          onChange={(event) => set("autopilot", event.currentTarget.checked)}
-        />
-      </label>
+          <input
+            type="checkbox"
+            className="toggle toggle-primary"
+            checked={form.autopilot}
+            onChange={(event) => set("autopilot", event.currentTarget.checked)}
+          />
+        </label>
+      ) : null}
 
       <div className="grid gap-4 md:grid-cols-2">
         <Field label="Model">
@@ -182,27 +197,29 @@ function ConfigForm({ config }: { config: AssistantConfig }) {
             ))}
           </select>
         </Field>
-        <Field
-          label="Reply delay (seconds)"
-          hint="Waits this long after their last message so several quick messages get one considered reply. 0 to 8."
-        >
-          <input
-            type="number"
-            min={0}
-            max={8}
-            className={input}
-            value={form.replyDelaySeconds}
-            onChange={(event) =>
-              set(
-                "replyDelaySeconds",
-                Math.max(
-                  0,
-                  Math.min(8, Number(event.currentTarget.value) || 0),
-                ),
-              )
-            }
-          />
-        </Field>
+        {channel === "whatsapp" ? (
+          <Field
+            label="Reply delay (seconds)"
+            hint="Waits this long after their last message so several quick messages get one considered reply. 0 to 8."
+          >
+            <input
+              type="number"
+              min={0}
+              max={8}
+              className={input}
+              value={form.replyDelaySeconds}
+              onChange={(event) =>
+                set(
+                  "replyDelaySeconds",
+                  Math.max(
+                    0,
+                    Math.min(8, Number(event.currentTarget.value) || 0),
+                  ),
+                )
+              }
+            />
+          </Field>
+        ) : null}
         <Field
           label="Booking link"
           hint="Calendly or similar. Until one is set the assistant offers a call-back instead of inventing a link."
@@ -323,32 +340,11 @@ function ConfigForm({ config }: { config: AssistantConfig }) {
         )}
       </section>
 
-      <section
-        className={`flex flex-wrap items-center justify-between gap-3 rounded-xl border p-4 ${empty ? "border-primary/40 bg-primary/5" : "border-base-300"}`}
-      >
-        <div className="flex items-start gap-3 text-sm">
-          <Globe className="mt-0.5 size-4 shrink-0" />
-          <p>
-            {empty ? (
-              <>
-                <span className="font-medium">Nothing here yet.</span> Draft the
-                persona and business facts from what this business has already
-                published, then review and save.
-              </>
-            ) : (
-              "Re-draft both boxes from the Context tab or the website. You review before anything is saved."
-            )}
-          </p>
-        </div>
-        <button
-          type="button"
-          className="btn btn-outline btn-sm"
-          disabled={draft.isPending}
-          onClick={() => draft.mutate()}
-        >
-          {draft.isPending ? "Reading…" : "Draft from my site"}
-        </button>
-      </section>
+      <AssistantDraftPanel
+        empty={empty}
+        pending={draft.isPending}
+        onDraft={() => draft.mutate()}
+      />
 
       <Field
         label="Persona & identity"

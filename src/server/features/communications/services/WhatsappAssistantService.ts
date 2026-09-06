@@ -5,6 +5,7 @@ import { resolveConnectionCredential } from "@/server/lib/connection-secrets";
 import { getOptionalEnvValue } from "@/server/lib/runtime-env";
 import { BusinessAuditRepository } from "@/server/features/business-modules/repositories/BusinessAuditRepository";
 import { BusinessModuleService } from "@/server/features/business-modules/services/BusinessModuleService";
+import type { BusinessModulePermission } from "@/shared/business-modules";
 import type {
   createInstantAnswerSchema,
   updateAskedQuestionSchema,
@@ -55,6 +56,34 @@ function withDefaults(row: AssistantSettingsRow | null): AssistantSettings {
     businessFacts: row?.businessFacts ?? null,
     updatedAt: row?.updatedAt ?? null,
   };
+}
+
+/**
+ * The assistant is shared by WhatsApp and Email, so either module's access
+ * opens its configuration. A business running email only must still be able
+ * to tell its assistant who it is and what it may say.
+ */
+export async function requireAssistantAccess(
+  organizationId: string,
+  userId: string,
+  permission: BusinessModulePermission = "view",
+) {
+  try {
+    return await BusinessModuleService.requireAccess(
+      organizationId,
+      userId,
+      "whatsapp",
+      permission,
+    );
+  } catch (error) {
+    if (!(error instanceof AppError) || error.code !== "FORBIDDEN") throw error;
+    return BusinessModuleService.requireAccess(
+      organizationId,
+      userId,
+      "email",
+      permission,
+    );
+  }
 }
 
 async function audit(
@@ -124,7 +153,7 @@ async function aiStatus(organizationId: string) {
 }
 
 async function getConfig(organizationId: string, userId: string) {
-  await BusinessModuleService.requireAccess(organizationId, userId, "whatsapp");
+  await requireAssistantAccess(organizationId, userId);
   const [row, instantAnswers, askedQuestions, prices, ai] = await Promise.all([
     Repo.getSettings(organizationId),
     Repo.listInstantAnswers(organizationId),
@@ -146,12 +175,7 @@ async function updateSettings(
   userId: string,
   input: z.infer<typeof updateAssistantSettingsSchema>,
 ) {
-  await BusinessModuleService.requireAccess(
-    organizationId,
-    userId,
-    "whatsapp",
-    "admin",
-  );
+  await requireAssistantAccess(organizationId, userId, "admin");
   const values = Object.fromEntries(
     Object.entries(input).filter(([, value]) => value !== undefined),
   );
@@ -173,12 +197,7 @@ async function createInstantAnswer(
   userId: string,
   input: z.infer<typeof createInstantAnswerSchema>,
 ) {
-  await BusinessModuleService.requireAccess(
-    organizationId,
-    userId,
-    "whatsapp",
-    "admin",
-  );
+  await requireAssistantAccess(organizationId, userId, "admin");
   const row = await Repo.createInstantAnswer(organizationId, {
     question: input.question,
     normalizedQuestion: normalizeQuestion(input.question),
@@ -204,12 +223,7 @@ async function updateInstantAnswer(
   userId: string,
   input: z.infer<typeof updateInstantAnswerSchema>,
 ) {
-  await BusinessModuleService.requireAccess(
-    organizationId,
-    userId,
-    "whatsapp",
-    "admin",
-  );
+  await requireAssistantAccess(organizationId, userId, "admin");
   const { id, ...rest } = input;
   const row = await Repo.updateInstantAnswer(organizationId, id, {
     ...rest,
@@ -227,12 +241,7 @@ async function deleteInstantAnswer(
   userId: string,
   id: string,
 ) {
-  await BusinessModuleService.requireAccess(
-    organizationId,
-    userId,
-    "whatsapp",
-    "admin",
-  );
+  await requireAssistantAccess(organizationId, userId, "admin");
   if (!(await Repo.deleteInstantAnswer(organizationId, id))) {
     throw new AppError("NOT_FOUND", "Instant answer not found.");
   }
@@ -245,12 +254,7 @@ async function updateAskedQuestion(
   userId: string,
   input: z.infer<typeof updateAskedQuestionSchema>,
 ) {
-  await BusinessModuleService.requireAccess(
-    organizationId,
-    userId,
-    "whatsapp",
-    "admin",
-  );
+  await requireAssistantAccess(organizationId, userId, "admin");
   const { id, ...rest } = input;
   const values: { blogUrl?: string | null; status?: string } = { ...rest };
   // A saved link means the answer is live unless the operator said otherwise.
@@ -266,12 +270,7 @@ async function deleteAskedQuestion(
   userId: string,
   id: string,
 ) {
-  await BusinessModuleService.requireAccess(
-    organizationId,
-    userId,
-    "whatsapp",
-    "admin",
-  );
+  await requireAssistantAccess(organizationId, userId, "admin");
   if (!(await Repo.deleteAskedQuestion(organizationId, id))) {
     throw new AppError("NOT_FOUND", "Question not found.");
   }

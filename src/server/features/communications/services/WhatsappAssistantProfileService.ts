@@ -1,6 +1,5 @@
 import { AppError } from "@/server/lib/errors";
 import { BusinessAuditRepository } from "@/server/features/business-modules/repositories/BusinessAuditRepository";
-import { BusinessModuleService } from "@/server/features/business-modules/services/BusinessModuleService";
 import { ProjectContextService } from "@/server/features/project-context/services/ProjectContextService";
 import {
   firecrawlConnection,
@@ -12,7 +11,10 @@ import {
   draftAssistantProfile,
   type ProfileSource,
 } from "../providers/assistant-profile-draft";
-import { resolveAiKey } from "./WhatsappAssistantService";
+import {
+  requireAssistantAccess,
+  resolveAiKey,
+} from "./WhatsappAssistantService";
 
 /** Below this, the Context tab is a header and blanks, not knowledge. */
 const CONTEXT_MIN_CHARS = 120;
@@ -37,12 +39,7 @@ async function contextSource(projectId: string): Promise<ProfileSource | null> {
  * its website otherwise. Returns a draft for review, never saves.
  */
 async function draftProfile(organizationId: string, userId: string) {
-  await BusinessModuleService.requireAccess(
-    organizationId,
-    userId,
-    "whatsapp",
-    "admin",
-  );
+  await requireAssistantAccess(organizationId, userId, "admin");
   const project = await Repo.projectForOrganization(organizationId);
   if (!project)
     throw new AppError("NOT_FOUND", "No project for this business.");

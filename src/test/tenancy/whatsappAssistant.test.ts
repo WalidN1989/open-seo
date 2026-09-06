@@ -3,7 +3,9 @@ import { eq } from "drizzle-orm";
 import {
   ORG_A,
   ORG_B,
+  ORG_C,
   USER_OWNER_A,
+  USER_OWNER_C,
   WHATSAPP_A,
   createTenancyFixture,
   type TestDb,
@@ -13,6 +15,7 @@ import type * as ReplyModule from "@/server/features/communications/services/Wha
 import type * as AssistantRepoModule from "@/server/features/communications/repositories/WhatsappAssistantRepository";
 import type * as RepositoryModule from "@/server/features/communications/repositories/CommunicationsRepository";
 import type * as DbSchema from "@/db/schema";
+import type * as WhatsappProvider from "@/server/features/communications/providers/whatsapp";
 
 const mockEnv = vi.hoisted(
   () => ({ DATABASE_PROVIDER: "d1" }) as { DATABASE_PROVIDER: string },
@@ -41,9 +44,9 @@ const sent = vi.hoisted(() => ({
   total: 0,
 }));
 vi.mock("@/server/features/communications/providers/whatsapp", async () => {
-  const actual = await vi.importActual<
-    typeof import("@/server/features/communications/providers/whatsapp")
-  >("@/server/features/communications/providers/whatsapp");
+  const actual = await vi.importActual<typeof WhatsappProvider>(
+    "@/server/features/communications/providers/whatsapp",
+  );
   return {
     ...actual,
     sendWhatsappText: async (
@@ -218,5 +221,33 @@ describe("catalogue lookup", () => {
     });
     expect(await Repo.searchPricedProducts(ORG_B, "alpha widget")).toEqual([]);
     expect(await Repo.searchPricedProducts(ORG_A, "nothing here")).toEqual([]);
+  });
+});
+
+describe("a business that runs email but not WhatsApp", () => {
+  it("can still open and save the assistant configuration", async () => {
+    await db
+      .insert(schema.organizationModuleEntitlements)
+      .values({
+        id: "ent_email_c",
+        organizationId: ORG_C,
+        moduleKey: "email",
+        status: "enabled",
+      })
+      .onConflictDoNothing();
+
+    const config = await WhatsappAssistantService.getConfig(
+      ORG_C,
+      USER_OWNER_C,
+    );
+    expect(config.settings.autopilot).toBe(true);
+
+    const saved = await WhatsappAssistantService.updateSettings(
+      ORG_C,
+      USER_OWNER_C,
+      { contactEmail: "hello@gamma.test", address: "1 Gamma Road" },
+    );
+    expect(saved.contactEmail).toBe("hello@gamma.test");
+    expect(saved.address).toBe("1 Gamma Road");
   });
 });

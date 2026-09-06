@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { PenLine } from "lucide-react";
 import { sendEmailReply, setEmailThreadStatus } from "@/serverFunctions/email";
+import { AssistantConfigSection } from "../whatsapp/AssistantConfigSection";
 import { EmailSettings } from "./EmailSettings";
 import {
   type EmailWorkspace as WorkspaceData,
@@ -13,7 +14,7 @@ import {
 } from "./emailQuery";
 import { Compose, DraftsList, MessageCard } from "./EmailThreadParts";
 
-const SECTIONS = ["Inbox", "Drafts", "Settings"] as const;
+const SECTIONS = ["Inbox", "Drafts", "Assistant", "Settings"] as const;
 
 export function EmailWorkspace() {
   const query = useEmailWorkspace();
@@ -70,6 +71,9 @@ export function EmailWorkspace() {
         ))}
       </nav>
       {section === "Settings" ? <EmailSettings data={data} /> : null}
+      {section === "Assistant" ? (
+        <AssistantConfigSection channel="email" />
+      ) : null}
       {section === "Drafts" ? <DraftsList data={data} /> : null}
       {section === "Inbox" ? (
         !connected ? (
