@@ -672,6 +672,7 @@ async function updateWhatsappConnection(
   organizationId: string,
   connectionId: string,
   input: {
+    provider?: string;
     displayPhoneNumber?: string;
     phoneNumberId?: string;
     businessAccountId?: string;

@@ -613,6 +613,10 @@ export function WhatsappWorkspace() {
             <SimpleForm
               stacked
               meta={CONNECTION_FIELD_META}
+              select={{
+                name: "provider",
+                options: ["meta_cloud", "twilio", "custom"],
+              }}
               fields={[
                 "connectionId",
                 "accessToken",

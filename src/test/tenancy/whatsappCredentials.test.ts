@@ -336,9 +336,85 @@ describe("more than one connection without a Meta phone number ID", () => {
         USER_OWNER_A,
         input,
       ),
-    ).rejects.toMatchObject({
-      code: "CONFLICT",
-      message: expect.stringContaining("Update connection"),
+    ).rejects.toMatchObject({ code: "CONFLICT" });
+    const error = await CommunicationsService.createWhatsappConnection(
+      ORG_A,
+      USER_OWNER_A,
+      input,
+    ).catch((thrown: unknown) => thrown);
+    // The message has to name the form that fixes it, not just the clash.
+    expect(String(error)).toContain("Update connection");
+  });
+});
+
+describe("moving a business to a number on another provider", () => {
+  it("keeps the connection, its conversations and its history, and swaps the secret", async () => {
+    const created = await CommunicationsService.createWhatsappConnection(
+      ORG_A,
+      USER_OWNER_A,
+      {
+        provider: "meta_cloud",
+        displayPhoneNumber: "+94110000030",
+        phoneNumberId: "PN_MOVE",
+        businessAccountId: "WABA_MOVE",
+        accessToken: "the-meta-token",
+      },
+    );
+    await db.insert(schema.whatsappConversations).values({
+      id: "conv_move",
+      organizationId: ORG_A,
+      connectionId: created.id,
     });
+
+    const moved = await CommunicationsService.updateWhatsappConnection(
+      ORG_A,
+      USER_OWNER_A,
+      {
+        connectionId: created.id,
+        provider: "twilio",
+        displayPhoneNumber: "+94770000030",
+        externalAccountId: "ACmovedtolocalnumber000000000000000",
+        accessToken: "the-twilio-token",
+      },
+    );
+
+    // Same row, so everything that hangs off its id is still there.
+    expect(moved).toMatchObject({
+      id: created.id,
+      provider: "twilio",
+      displayPhoneNumber: "+94770000030",
+    });
+    const conversations = await db
+      .select()
+      .from(schema.whatsappConversations)
+      .where(eq(schema.whatsappConversations.connectionId, created.id));
+    expect(conversations).toHaveLength(1);
+
+    const row = await storedRow(created.id);
+    await expect(resolveCredential(row, "AUTH_TOKEN")).resolves.toBe(
+      "the-twilio-token",
+    );
+    // The Meta token is gone rather than left behind for nothing to read.
+    await expect(resolveCredential(row, "ACCESS_TOKEN")).rejects.toThrow();
+  });
+
+  it("refuses a provider change with no token for the new provider", async () => {
+    const created = await CommunicationsService.createWhatsappConnection(
+      ORG_A,
+      USER_OWNER_A,
+      {
+        provider: "meta_cloud",
+        displayPhoneNumber: "+94110000031",
+        phoneNumberId: "PN_MOVE_2",
+        businessAccountId: "WABA_MOVE_2",
+        accessToken: "still-the-meta-token",
+      },
+    );
+    await expect(
+      CommunicationsService.updateWhatsappConnection(ORG_A, USER_OWNER_A, {
+        connectionId: created.id,
+        provider: "twilio",
+      }),
+    ).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
   });
 });

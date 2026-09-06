@@ -997,22 +997,42 @@ async function updateWhatsappConnection(
   );
   if (!current) throw new AppError("NOT_FOUND", "Connection not found.");
 
-  const { connectionId, accessToken, ...rest } = input;
+  const { connectionId, accessToken, provider, ...rest } = input;
   // The form renders every field on every update, so an untouched box arrives
   // as an empty string. Blank means "keep what is stored" — the same rule the
   // token follows — otherwise saving a new token would wipe the number.
   const changes = withoutBlanks(rest);
+  const nextProvider = provider ?? current.provider;
+  const providerChanged = nextProvider !== current.provider;
+  if (providerChanged && !accessToken) {
+    throw new AppError(
+      "VALIDATION_ERROR",
+      "Changing the provider needs that provider's token, or the connection saves and then cannot send.",
+    );
+  }
+  if (
+    nextProvider === "meta_cloud" &&
+    !(changes.phoneNumberId ?? current.phoneNumberId)
+  ) {
+    throw new AppError(
+      "VALIDATION_ERROR",
+      "A Meta connection needs its phone number ID from WhatsApp Manager, or it cannot receive messages.",
+    );
+  }
+  const secret = accessToken
+    ? { [credentialKeyFor(nextProvider)]: accessToken }
+    : {};
   const updated = await CommunicationsRepository.updateWhatsappConnection(
     organizationId,
     connectionId,
     {
       ...changes,
-      credentials: await mergeCredentials(
-        current.credentials,
-        accessToken
-          ? { [credentialKeyFor(current.provider)]: accessToken }
-          : {},
-      ),
+      ...(provider ? { provider } : {}),
+      // A provider change replaces the secret rather than merging: the old
+      // provider's token is dead weight and nothing should read it again.
+      credentials: providerChanged
+        ? await encryptCredentials(secret)
+        : await mergeCredentials(current.credentials, secret),
     },
   );
   if (!updated) throw new AppError("NOT_FOUND", "Connection not found.");

@@ -16,6 +16,10 @@ export const createWhatsappConnectionSchema = z.object({
 
 export const updateWhatsappConnectionSchema = z.object({
   connectionId: z.string().min(1),
+  // A business can move from one provider to another — Meta to Twilio, or a
+  // test number to a real one — without losing the conversations, templates
+  // and campaigns that hang off this connection's id.
+  provider: z.enum(["meta_cloud", "twilio", "custom"]).optional(),
   displayPhoneNumber: z.string().trim().max(40).optional(),
   phoneNumberId: z.string().trim().max(200).optional(),
   businessAccountId: z.string().trim().max(200).optional(),
