@@ -14,6 +14,9 @@ import {
   Download,
   CheckCircle2,
   MessageSquarePlus,
+  Settings2,
+  ArrowLeft,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { AssistantConfigSection } from "./whatsapp/AssistantConfigSection";
@@ -72,6 +75,20 @@ const whatsappSections = [
   "Order Requests",
   "Reports",
   "Settings",
+] as const;
+
+const whatsappSettingsGroups = [
+  { label: "Messaging", sections: ["Templates", "Campaigns"] },
+  {
+    label: "Intelligence",
+    sections: [
+      "Automation",
+      "AI Config",
+      "Instant Answers",
+      "Questions & Blog",
+    ],
+  },
+  { label: "Workspace", sections: ["Reports", "Settings"] },
 ] as const;
 
 function formatWhatsappTime(value?: string | null) {
@@ -179,6 +196,8 @@ function isConversationStatusFilter(
 
 export function WhatsappWorkspace() {
   const client = useQueryClient();
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [mobileConversationOpen, setMobileConversationOpen] = useState(false);
   const [form, setForm] = useState<
     | "connection"
     | "connection-update"
@@ -423,10 +442,21 @@ export function WhatsappWorkspace() {
   const latestMessageId = query.data?.messages.at(-1)?.id;
   useEffect(() => {
     if (activeSection !== "Inbox") return;
+    const transcript = transcriptEndRef.current?.parentElement;
+    const scrollToLatest = () => {
+      if (transcript) transcript.scrollTop = transcript.scrollHeight;
+    };
     const frame = requestAnimationFrame(() => {
-      transcriptEndRef.current?.scrollIntoView({ block: "end" });
+      scrollToLatest();
     });
-    return () => cancelAnimationFrame(frame);
+    // The shell and responsive header can settle after the query renders.
+    // Keep the newest message visible when the available chat height changes.
+    const observer = new ResizeObserver(scrollToLatest);
+    if (transcript) observer.observe(transcript);
+    return () => {
+      cancelAnimationFrame(frame);
+      observer.disconnect();
+    };
   }, [activeSection, latestMessageId, selectedConversationId]);
   if (query.isLoading) return <Loading />;
   if (query.isError) return <ErrorBox error={query.error} />;
@@ -484,865 +514,989 @@ export function WhatsappWorkspace() {
       contact?.whatsappPhone,
     ].some((value) => value?.toLowerCase().includes(term));
   });
+  const isSettings = !["Inbox", "Contacts", "Order Requests"].includes(
+    activeSection,
+  );
   return (
-    <Workspace
-      title="WhatsApp"
-      subtitle="Shared inbox, campaigns, templates, automations, and order requests."
-      compact={activeSection === "Inbox"}
-      actions={
-        <>
-          <button
-            className="btn btn-outline btn-sm"
-            onClick={() => {
-              setActiveSection("Settings");
-              setForm("connection");
-            }}
-          >
-            <Cable className="size-4" /> Connection
-          </button>
-          <button
-            className="btn btn-primary btn-sm"
-            onClick={() => {
-              setActiveSection("Templates");
-              setForm("template");
-            }}
-          >
-            <Plus className="size-4" /> Template
-          </button>
-        </>
-      }
-    >
-      <nav className="flex gap-1 overflow-x-auto border-b border-base-300">
-        {whatsappSections.map((section) => (
+    <div className="wa-workspace">
+      <nav aria-label="WhatsApp workspace" className="wa-navigation">
+        {(["Inbox", "Contacts", "Order Requests"] as const).map((section) => (
           <button
             key={section}
+            aria-current={activeSection === section ? "page" : undefined}
             className={`shrink-0 border-b-2 px-3 py-2 text-sm transition-colors ${activeSection === section ? "border-primary font-semibold text-base-content" : "border-transparent text-base-content/60 hover:text-base-content"}`}
             onClick={() => {
               setActiveSection(section);
               setForm(null);
             }}
           >
-            {section}
+            {section === "Order Requests" ? "Orders" : section}
           </button>
         ))}
+        <button
+          className={`btn btn-sm ml-auto ${isSettings ? "wa-settings-active" : "btn-ghost"}`}
+          aria-current={isSettings ? "page" : undefined}
+          onClick={() => {
+            setActiveSection("Automation");
+            setForm(null);
+          }}
+        >
+          <Settings2 className="size-4" /> Settings
+        </button>
       </nav>
-      {form === "connection" ? (
-        <SimpleForm
-          stacked
-          meta={CONNECTION_FIELD_META}
-          fields={[
-            "displayPhoneNumber",
-            "accessToken",
-            "externalAccountId",
-            "phoneNumberId",
-            "businessAccountId",
-            "credentialReference",
-          ]}
-          select={{
-            name: "provider",
-            options: ["meta_cloud", "twilio", "custom"],
-          }}
-          onSubmit={(values) => {
-            const parsed = createWhatsappConnectionSchema.safeParse(values);
-            if (parsed.success) connection.mutate(parsed.data);
-          }}
-        />
-      ) : null}
-      {form === "connection-update" ? (
-        <SimpleForm
-          stacked
-          meta={CONNECTION_FIELD_META}
-          fields={[
-            "connectionId",
-            "accessToken",
-            "displayPhoneNumber",
-            "externalAccountId",
-            "phoneNumberId",
-            "businessAccountId",
-          ]}
-          locked={["connectionId"]}
-          defaults={{
-            connectionId: data.connections[0]?.id,
-            displayPhoneNumber:
-              data.connections[0]?.displayPhoneNumber ?? undefined,
-            externalAccountId:
-              data.connections[0]?.externalAccountId ?? undefined,
-            phoneNumberId: data.connections[0]?.phoneNumberId ?? undefined,
-            businessAccountId:
-              data.connections[0]?.businessAccountId ?? undefined,
-          }}
-          onSubmit={(values) => {
-            const parsed = updateWhatsappConnectionSchema.safeParse(values);
-            if (parsed.success) connectionUpdate.mutate(parsed.data);
-          }}
-        />
-      ) : null}
-      {form === "template" ? (
-        <SimpleForm
-          fields={["name", "body", "connectionId", "externalTemplateId"]}
-          onSubmit={(values) =>
-            template.mutate({
-              name: values.name,
-              body: values.body,
-              languageCode: "en",
-              category: "marketing",
-              connectionId: values.connectionId || undefined,
-              externalTemplateId: values.externalTemplateId || undefined,
-              status: values.externalTemplateId ? "approved" : "draft",
-            })
-          }
-        />
-      ) : null}
-      {form === "campaign" ? (
-        <SimpleForm
-          fields={["name", "connectionId", "templateId"]}
-          onSubmit={(values) =>
-            campaign.mutate({
-              name: values.name,
-              connectionId: values.connectionId,
-              templateId: values.templateId,
-            })
-          }
-        />
-      ) : null}
-      {form === "automation" ? (
-        <SimpleForm
-          fields={["name", "matchValue", "responseTemplateId"]}
-          onSubmit={(values) =>
-            automation.mutate({
-              name: values.name,
-              matchValue: values.matchValue,
-              responseTemplateId: values.responseTemplateId,
-              triggerType: "keyword",
-            })
-          }
-        />
-      ) : null}
-      {form === "order" ? (
-        <SimpleForm
-          fields={["summary", "amount", "conversationId"]}
-          onSubmit={(values) =>
-            order.mutate({
-              summary: values.summary,
-              amountCents: Math.round(Number(values.amount || 0) * 100),
-              conversationId: values.conversationId || undefined,
-            })
-          }
-        />
-      ) : null}
-      {form === "contact" ? (
-        <SimpleForm
-          fields={["firstName", "lastName", "email", "phone", "whatsappPhone"]}
-          onSubmit={(values) =>
-            createContact.mutate({
-              firstName: values.firstName,
-              lastName: values.lastName || undefined,
-              email: values.email || undefined,
-              phone: values.phone || undefined,
-              whatsappPhone: values.whatsappPhone || undefined,
-            })
-          }
-        />
-      ) : null}
-      {activeSection === "Reports" ? (
-        <Metrics
-          items={[
-            ["Connections", data.connections.length],
-            [
-              "Open conversations",
-              data.conversations.filter((item) => item.status === "open")
-                .length,
-            ],
-            ["Templates", data.templates.length],
-            ["Campaigns", data.campaigns.length],
-            ["Automations", data.automations.length],
-            ["Order requests", data.orders.length],
-            ["Inbound messages", messageCount("inbound")],
-            ["Outbound messages", messageCount("outbound")],
-            ["Failed messages", messageCount(undefined, "failed")],
-          ]}
-        />
-      ) : null}
-      {activeSection === "Inbox" ? (
-        <section className="flex h-[calc(100dvh-112px)] min-h-[520px] flex-col overflow-hidden rounded-xl border border-base-300 bg-base-100">
-          {data.conversations.length ? (
-            <div className="grid min-h-0 flex-1 lg:grid-cols-[256px_minmax(0,1fr)_250px]">
-              <aside className="min-h-0 border-b border-base-300 lg:border-r lg:border-b-0">
-                <div className="space-y-2 border-b border-base-300 p-2.5">
-                  <div className="flex gap-1.5">
-                    <label className="input input-bordered input-sm flex min-w-0 flex-1 items-center gap-2">
-                      <Search className="size-4 opacity-50" />
-                      <input
-                        aria-label="Search conversations"
-                        className="min-w-0 grow"
-                        placeholder="Search conversations…"
-                        value={conversationSearch}
-                        onChange={(event) =>
-                          setConversationSearch(event.target.value)
-                        }
-                      />
-                    </label>
-                    <button
-                      aria-label="Add a WhatsApp contact"
-                      className="btn btn-outline btn-square btn-sm"
-                      title="Add a contact"
-                      onClick={() => {
-                        setActiveSection("Contacts");
-                        setForm("contact");
-                      }}
-                    >
-                      <MessageSquarePlus className="size-4" />
-                    </button>
-                  </div>
-                  <select
-                    aria-label="Filter conversations"
-                    className="select select-bordered select-sm w-full"
-                    value={conversationStatusFilter}
-                    onChange={(event) => {
-                      const next = event.currentTarget.value;
-                      if (isConversationStatusFilter(next)) {
-                        setConversationStatusFilter(next);
-                      }
+      <div className={isSettings ? "wa-settings-layout" : "wa-content"}>
+        {isSettings ? (
+          <aside className="wa-settings-nav" aria-label="WhatsApp settings">
+            <button
+              className="btn btn-ghost btn-sm mb-5 justify-start"
+              onClick={() => {
+                setActiveSection("Inbox");
+                setForm(null);
+              }}
+            >
+              <ArrowLeft className="size-4" /> Back to inbox
+            </button>
+            {whatsappSettingsGroups.map((group) => (
+              <div key={group.label} className="mb-6">
+                <p className="mb-2 px-3 text-[10px] font-medium uppercase tracking-widest text-base-content/50">
+                  {group.label}
+                </p>
+                {group.sections.map((section) => (
+                  <button
+                    key={section}
+                    aria-current={
+                      activeSection === section ? "page" : undefined
+                    }
+                    className={`wa-settings-link ${activeSection === section ? "wa-settings-active" : ""}`}
+                    onClick={() => {
+                      setActiveSection(section);
+                      setForm(null);
                     }}
                   >
-                    <option value="all">All</option>
-                    <option value="open">Open</option>
-                    <option value="pending">Pending</option>
-                    <option value="closed">Solved</option>
-                  </select>
-                </div>
-                <div className="h-[calc(100%-90px)] overflow-y-auto">
-                  {visibleConversations.map((conversation) => {
-                    const contact = data.contacts.find(
-                      (candidate) => candidate.id === conversation.contactId,
-                    );
-                    const name =
-                      [contact?.firstName, contact?.lastName]
-                        .filter(Boolean)
-                        .join(" ") ||
-                      conversation.externalConversationId ||
-                      "WhatsApp contact";
-                    const lastMessage = data.messages
-                      .filter(
-                        (message) => message.conversationId === conversation.id,
-                      )
-                      .at(-1);
-                    return (
-                      <button
-                        key={conversation.id}
-                        className={`flex w-full gap-3 border-b border-base-200 p-3 text-left transition-colors hover:bg-base-200/60 ${selectedConversation?.id === conversation.id ? "bg-primary/10" : ""}`}
-                        onClick={() =>
-                          setSelectedConversationId(conversation.id)
-                        }
-                      >
-                        <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 font-semibold text-primary">
-                          {name.charAt(0).toUpperCase()}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center justify-between gap-2">
-                            <p className="truncate text-sm font-semibold">
-                              {name}
-                            </p>
-                            <span className="text-[10px] text-base-content/50">
-                              {formatWhatsappTime(conversation.lastMessageAt)}
-                            </span>
-                          </div>
-                          <p className="truncate text-xs text-base-content/60">
-                            {lastMessage?.body || "No messages yet"}
-                          </p>
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              </aside>
-
-              <div className="flex min-h-0 min-w-0 flex-col">
-                <header className="flex min-h-14 flex-wrap items-center gap-2 border-b border-base-300 px-3 py-2">
-                  {selectedConversation ? (
-                    <select
-                      aria-label="Assign conversation"
-                      className="select select-bordered select-sm w-36"
-                      value={selectedConversation.assignedMemberId ?? ""}
-                      disabled={updateConversation.isPending}
-                      onChange={(event) =>
-                        updateConversation.mutate({
-                          conversationId: selectedConversation.id,
-                          assignedMemberId: event.currentTarget.value || null,
-                        })
-                      }
-                    >
-                      <option value="">Bot / automation</option>
-                      {data.members.map((member) => (
-                        <option key={member.id} value={member.id}>
-                          {member.name || member.email}
-                        </option>
-                      ))}
-                    </select>
-                  ) : null}
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate font-semibold">
-                      {[selectedContact?.firstName, selectedContact?.lastName]
-                        .filter(Boolean)
-                        .join(" ") ||
-                        selectedConversation?.externalConversationId ||
-                        "Conversation"}
-                    </p>
-                    <p className="text-xs text-base-content/55">
-                      {selectedConversation?.externalConversationId}
-                    </p>
-                  </div>
-                  {selectedConversation ? (
-                    <>
-                      <span className="badge badge-info badge-sm capitalize">
-                        {selectedConversation.status === "closed"
-                          ? "Solved"
-                          : selectedConversation.status}
-                      </span>
-                      <button
-                        className="btn btn-outline btn-sm"
-                        disabled={updateConversation.isPending}
-                        onClick={() => {
-                          updateConversation.mutate({
-                            conversationId: selectedConversation.id,
-                            status:
-                              selectedConversation.status === "closed"
-                                ? "open"
-                                : "closed",
-                          });
+                    {section === "Settings"
+                      ? "Connection"
+                      : section === "AI Config"
+                        ? "AI configuration"
+                        : section}
+                  </button>
+                ))}
+              </div>
+            ))}
+          </aside>
+        ) : null}
+        <div
+          className={isSettings ? "wa-settings-content" : "wa-section-content"}
+        >
+          {form === "connection" ? (
+            <SimpleForm
+              stacked
+              meta={CONNECTION_FIELD_META}
+              fields={[
+                "displayPhoneNumber",
+                "accessToken",
+                "externalAccountId",
+                "phoneNumberId",
+                "businessAccountId",
+                "credentialReference",
+              ]}
+              select={{
+                name: "provider",
+                options: ["meta_cloud", "twilio", "custom"],
+              }}
+              onSubmit={(values) => {
+                const parsed = createWhatsappConnectionSchema.safeParse(values);
+                if (parsed.success) connection.mutate(parsed.data);
+              }}
+            />
+          ) : null}
+          {form === "connection-update" ? (
+            <SimpleForm
+              stacked
+              meta={CONNECTION_FIELD_META}
+              fields={[
+                "connectionId",
+                "accessToken",
+                "displayPhoneNumber",
+                "externalAccountId",
+                "phoneNumberId",
+                "businessAccountId",
+              ]}
+              locked={["connectionId"]}
+              defaults={{
+                connectionId: data.connections[0]?.id,
+                displayPhoneNumber:
+                  data.connections[0]?.displayPhoneNumber ?? undefined,
+                externalAccountId:
+                  data.connections[0]?.externalAccountId ?? undefined,
+                phoneNumberId: data.connections[0]?.phoneNumberId ?? undefined,
+                businessAccountId:
+                  data.connections[0]?.businessAccountId ?? undefined,
+              }}
+              onSubmit={(values) => {
+                const parsed = updateWhatsappConnectionSchema.safeParse(values);
+                if (parsed.success) connectionUpdate.mutate(parsed.data);
+              }}
+            />
+          ) : null}
+          {form === "template" ? (
+            <SimpleForm
+              fields={["name", "body", "connectionId", "externalTemplateId"]}
+              onSubmit={(values) =>
+                template.mutate({
+                  name: values.name,
+                  body: values.body,
+                  languageCode: "en",
+                  category: "marketing",
+                  connectionId: values.connectionId || undefined,
+                  externalTemplateId: values.externalTemplateId || undefined,
+                  status: values.externalTemplateId ? "approved" : "draft",
+                })
+              }
+            />
+          ) : null}
+          {form === "campaign" ? (
+            <SimpleForm
+              fields={["name", "connectionId", "templateId"]}
+              onSubmit={(values) =>
+                campaign.mutate({
+                  name: values.name,
+                  connectionId: values.connectionId,
+                  templateId: values.templateId,
+                })
+              }
+            />
+          ) : null}
+          {form === "automation" ? (
+            <SimpleForm
+              fields={["name", "matchValue", "responseTemplateId"]}
+              onSubmit={(values) =>
+                automation.mutate({
+                  name: values.name,
+                  matchValue: values.matchValue,
+                  responseTemplateId: values.responseTemplateId,
+                  triggerType: "keyword",
+                })
+              }
+            />
+          ) : null}
+          {form === "order" ? (
+            <SimpleForm
+              fields={["summary", "amount", "conversationId"]}
+              onSubmit={(values) =>
+                order.mutate({
+                  summary: values.summary,
+                  amountCents: Math.round(Number(values.amount || 0) * 100),
+                  conversationId: values.conversationId || undefined,
+                })
+              }
+            />
+          ) : null}
+          {form === "contact" ? (
+            <SimpleForm
+              fields={[
+                "firstName",
+                "lastName",
+                "email",
+                "phone",
+                "whatsappPhone",
+              ]}
+              onSubmit={(values) =>
+                createContact.mutate({
+                  firstName: values.firstName,
+                  lastName: values.lastName || undefined,
+                  email: values.email || undefined,
+                  phone: values.phone || undefined,
+                  whatsappPhone: values.whatsappPhone || undefined,
+                })
+              }
+            />
+          ) : null}
+          {activeSection === "Reports" ? (
+            <Metrics
+              items={[
+                ["Connections", data.connections.length],
+                [
+                  "Open conversations",
+                  data.conversations.filter((item) => item.status === "open")
+                    .length,
+                ],
+                ["Templates", data.templates.length],
+                ["Campaigns", data.campaigns.length],
+                ["Automations", data.automations.length],
+                ["Order requests", data.orders.length],
+                ["Inbound messages", messageCount("inbound")],
+                ["Outbound messages", messageCount("outbound")],
+                ["Failed messages", messageCount(undefined, "failed")],
+              ]}
+            />
+          ) : null}
+          {activeSection === "Inbox" ? (
+            <section className="wa-inbox">
+              {data.conversations.length ? (
+                <div
+                  className={`wa-inbox-grid ${mobileConversationOpen ? "wa-mobile-chat" : ""}`}
+                >
+                  <aside className="wa-conversation-list">
+                    <div className="space-y-2 border-b border-base-300 p-2.5">
+                      <div className="flex gap-1.5">
+                        <label className="input input-bordered input-sm flex min-w-0 flex-1 items-center gap-2">
+                          <Search className="size-4 opacity-50" />
+                          <input
+                            aria-label="Search conversations"
+                            className="min-w-0 grow"
+                            placeholder="Search conversations…"
+                            value={conversationSearch}
+                            onChange={(event) =>
+                              setConversationSearch(event.target.value)
+                            }
+                          />
+                        </label>
+                        <button
+                          aria-label="Add a WhatsApp contact"
+                          className="btn btn-outline btn-square btn-sm"
+                          title="Add a contact"
+                          onClick={() => {
+                            setActiveSection("Contacts");
+                            setForm("contact");
+                          }}
+                        >
+                          <MessageSquarePlus className="size-4" />
+                        </button>
+                      </div>
+                      <select
+                        aria-label="Filter conversations"
+                        className="select select-bordered select-sm w-full"
+                        value={conversationStatusFilter}
+                        onChange={(event) => {
+                          const next = event.currentTarget.value;
+                          if (isConversationStatusFilter(next)) {
+                            setConversationStatusFilter(next);
+                          }
                         }}
                       >
-                        <CheckCircle2 className="size-4" />
-                        {selectedConversation.status === "closed"
-                          ? "Reopen"
-                          : "Mark as solved"}
-                      </button>
-                      <span
-                        className="badge badge-ghost badge-sm font-mono text-[10px]"
-                        title="Time since last message"
-                      >
-                        {formatConversationAge(
-                          selectedConversation.lastMessageAt,
-                        )}
-                      </span>
-                    </>
-                  ) : null}
-                </header>
-                <div className="min-h-0 flex-1 space-y-3 overflow-y-auto bg-base-200/25 p-4">
-                  {selectedMessages.map((message) => (
-                    <div
-                      key={message.id}
-                      className={`flex ${message.direction === "outbound" ? "justify-end" : "justify-start"}`}
-                    >
-                      <div
-                        className={`max-w-[78%] rounded-2xl px-4 py-2 text-sm shadow-sm ${message.direction === "outbound" ? "rounded-br-md bg-primary text-primary-content" : "rounded-bl-md border border-base-300 bg-base-100"}`}
-                      >
-                        <p className="whitespace-pre-wrap">{message.body}</p>
-                        <p
-                          className={`mt-1 text-right text-[10px] ${message.direction === "outbound" ? "text-primary-content/70" : "text-base-content/45"}`}
-                        >
-                          {formatWhatsappTime(
-                            message.sentAt || message.createdAt,
-                          )}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                  {!selectedMessages.length ? (
-                    <Empty text="No messages in this conversation yet." />
-                  ) : null}
-                  <div ref={transcriptEndRef} aria-hidden="true" />
-                </div>
-                {selectedConversation ? (
-                  <div className="shrink-0 border-t border-base-300 p-3">
-                    <SimpleForm
-                      fields={["body"]}
-                      submitLabel="Send"
-                      isSubmitting={reply.isPending}
-                      resetOnSubmit
-                      onSubmit={(values) =>
-                        reply.mutate({
-                          conversationId: selectedConversation.id,
-                          body: values.body,
-                        })
-                      }
-                    />
-                  </div>
-                ) : null}
-              </div>
-
-              <aside className="min-h-0 overflow-y-auto border-t border-base-300 p-3 lg:border-t-0 lg:border-l">
-                <div className="mb-3 border-b border-base-300 pb-3 text-center">
-                  <div className="mx-auto mb-2 flex size-12 items-center justify-center rounded-full bg-base-200">
-                    <UserRound className="size-5" />
-                  </div>
-                  <p className="font-semibold">
-                    {[selectedContact?.firstName, selectedContact?.lastName]
-                      .filter(Boolean)
-                      .join(" ") || "WhatsApp contact"}
-                  </p>
-                  <p className="text-xs text-base-content/55">
-                    {selectedConversation?.externalConversationId}
-                  </p>
-                </div>
-                {selectedConversation ? (
-                  <div className="space-y-4">
-                    <label className="form-control gap-1">
-                      <span className="text-xs font-medium">CRM contact</span>
-                      <select
-                        className="select select-bordered select-sm w-full"
-                        value={selectedConversation.contactId ?? ""}
-                        disabled={updateConversation.isPending}
-                        onChange={(event) =>
-                          updateConversation.mutate({
-                            conversationId: selectedConversation.id,
-                            contactId: event.currentTarget.value || null,
-                          })
-                        }
-                      >
-                        <option value="">Not linked</option>
-                        {data.contacts.map((contact) => (
-                          <option key={contact.id} value={contact.id}>
-                            {[contact.firstName, contact.lastName]
-                              .filter(Boolean)
-                              .join(" ") ||
-                              contact.whatsappPhone ||
-                              contact.phone}
-                          </option>
-                        ))}
+                        <option value="all">All</option>
+                        <option value="open">Open</option>
+                        <option value="pending">Pending</option>
+                        <option value="closed">Solved</option>
                       </select>
-                    </label>
-                    {!selectedContact ? (
-                      <div className="space-y-2 rounded-lg border border-primary/25 bg-primary/5 p-2.5">
-                        <p className="text-xs font-medium">
-                          Create contact from this chat
-                        </p>
-                        <p className="text-[11px] text-base-content/55">
-                          {selectedConversation.externalConversationId}
-                        </p>
-                        <input
-                          aria-label="New contact name"
-                          className="input input-bordered input-sm w-full"
-                          placeholder="Contact name"
-                          value={newContactName}
+                    </div>
+                    <div className="min-h-0 flex-1 overflow-y-auto p-2">
+                      {visibleConversations.map((conversation) => {
+                        const contact = data.contacts.find(
+                          (candidate) =>
+                            candidate.id === conversation.contactId,
+                        );
+                        const name =
+                          [contact?.firstName, contact?.lastName]
+                            .filter(Boolean)
+                            .join(" ") ||
+                          conversation.externalConversationId ||
+                          "WhatsApp contact";
+                        const lastMessage = data.messages
+                          .filter(
+                            (message) =>
+                              message.conversationId === conversation.id,
+                          )
+                          .at(-1);
+                        return (
+                          <button
+                            key={conversation.id}
+                            className={`wa-conversation-item ${selectedConversation?.id === conversation.id ? "wa-selected" : ""}`}
+                            onClick={() => {
+                              setSelectedConversationId(conversation.id);
+                              setMobileConversationOpen(true);
+                            }}
+                          >
+                            <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 font-semibold text-primary">
+                              {contact ? (
+                                name.charAt(0).toUpperCase()
+                              ) : (
+                                <UserRound className="size-4" />
+                              )}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center justify-between gap-2">
+                                <p className="truncate text-sm font-semibold">
+                                  {name}
+                                </p>
+                                <span className="shrink-0 whitespace-nowrap text-[10px] text-base-content/50">
+                                  {formatWhatsappTime(
+                                    conversation.lastMessageAt,
+                                  )}
+                                </span>
+                              </div>
+                              <p className="truncate text-xs text-base-content/60">
+                                {lastMessage?.body || "No messages yet"}
+                              </p>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </aside>
+
+                  <div className="wa-chat">
+                    <header className="wa-chat-header">
+                      <button
+                        className="btn btn-ghost btn-square btn-sm wa-mobile-back"
+                        aria-label="Back to conversations"
+                        onClick={() => setMobileConversationOpen(false)}
+                      >
+                        <ArrowLeft className="size-4" />
+                      </button>
+                      {selectedConversation ? (
+                        <select
+                          aria-label="Assign conversation"
+                          className="select select-bordered select-sm wa-assignment"
+                          value={selectedConversation.assignedMemberId ?? ""}
+                          disabled={updateConversation.isPending}
                           onChange={(event) =>
-                            setNewContactName(event.target.value)
-                          }
-                        />
-                        <button
-                          className="btn btn-primary btn-sm w-full"
-                          disabled={
-                            !newContactName.trim() ||
-                            !selectedConversation.externalConversationId ||
-                            createAndLinkContact.isPending
-                          }
-                          onClick={() =>
-                            createAndLinkContact.mutate({
+                            updateConversation.mutate({
                               conversationId: selectedConversation.id,
-                              displayName: newContactName,
-                              whatsappPhone:
-                                selectedConversation.externalConversationId!,
+                              assignedMemberId:
+                                event.currentTarget.value || null,
                             })
                           }
                         >
-                          {createAndLinkContact.isPending
-                            ? "Creating…"
-                            : "Create & link"}
-                        </button>
+                          <option value="">Bot</option>
+                          {data.members.map((member) => (
+                            <option key={member.id} value={member.id}>
+                              {member.name || member.email}
+                            </option>
+                          ))}
+                        </select>
+                      ) : null}
+                      <div className="wa-chat-identity">
+                        <p className="truncate font-semibold">
+                          {[
+                            selectedContact?.firstName,
+                            selectedContact?.lastName,
+                          ]
+                            .filter(Boolean)
+                            .join(" ") ||
+                            selectedConversation?.externalConversationId ||
+                            "Conversation"}
+                        </p>
+                        <p className="text-xs text-base-content/55">
+                          {selectedContact
+                            ? selectedConversation?.externalConversationId
+                            : "WhatsApp"}
+                        </p>
+                      </div>
+                      {selectedConversation ? (
+                        <>
+                          <span className="wa-status badge badge-sm capitalize">
+                            {selectedConversation.status === "closed"
+                              ? "Solved"
+                              : selectedConversation.status}
+                          </span>
+                          <button
+                            className="btn btn-outline btn-sm"
+                            disabled={updateConversation.isPending}
+                            onClick={() => {
+                              updateConversation.mutate({
+                                conversationId: selectedConversation.id,
+                                status:
+                                  selectedConversation.status === "closed"
+                                    ? "open"
+                                    : "closed",
+                              });
+                            }}
+                          >
+                            <CheckCircle2 className="size-4" />
+                            {selectedConversation.status === "closed"
+                              ? "Reopen"
+                              : "Resolve"}
+                          </button>
+                          <span
+                            className="badge badge-ghost badge-sm font-mono text-[10px]"
+                            title="Time since last message"
+                          >
+                            {formatConversationAge(
+                              selectedConversation.lastMessageAt,
+                            )}
+                          </span>
+                          <button
+                            className="btn btn-outline btn-square btn-sm"
+                            aria-label="Contact details"
+                            aria-expanded={detailsOpen}
+                            aria-controls="wa-contact-details"
+                            onClick={() => setDetailsOpen(!detailsOpen)}
+                          >
+                            <UserRound className="size-4" />
+                          </button>
+                        </>
+                      ) : null}
+                    </header>
+                    <div className="wa-transcript" aria-label="Messages">
+                      {selectedMessages.map((message) => (
+                        <div
+                          key={message.id}
+                          className={`flex ${message.direction === "outbound" ? "justify-end" : "justify-start"}`}
+                        >
+                          <div
+                            className={`wa-bubble ${message.direction === "outbound" ? "wa-outbound" : "wa-inbound"}`}
+                          >
+                            <p className="whitespace-pre-wrap">
+                              {message.body}
+                            </p>
+                            <p className="mt-1 text-right text-[10px] opacity-60">
+                              {formatWhatsappTime(
+                                message.sentAt || message.createdAt,
+                              )}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                      {!selectedMessages.length ? (
+                        <Empty text="No messages in this conversation yet." />
+                      ) : null}
+                      <div ref={transcriptEndRef} aria-hidden="true" />
+                    </div>
+                    {selectedConversation ? (
+                      <div className="wa-composer">
+                        <SimpleForm
+                          fields={["body"]}
+                          submitLabel="Send"
+                          isSubmitting={reply.isPending}
+                          resetOnSubmit
+                          onSubmit={(values) =>
+                            reply.mutate({
+                              conversationId: selectedConversation.id,
+                              body: values.body,
+                            })
+                          }
+                        />
                       </div>
                     ) : null}
-                    <div className="rounded-lg bg-base-200/60 p-3 text-xs text-base-content/65">
-                      Messages: {selectedMessages.length}
-                      <br />
-                      Status: {selectedConversation.status}
-                    </div>
-                    {selectedContact ? (
-                      <>
-                        <div className="space-y-2 border-t border-base-300 pt-4">
-                          <ContactToggle
-                            label="Marketing opt-in"
-                            checked={selectedProfile?.marketingOptIn ?? false}
-                            disabled={updateContactProfile.isPending}
-                            onChange={(marketingOptIn) =>
-                              updateContactProfile.mutate({
-                                contactId: selectedContact.id,
-                                marketingOptIn,
-                              })
-                            }
-                          />
-                          <ContactToggle
-                            label="Utility opt-in"
-                            checked={selectedProfile?.utilityOptIn ?? false}
-                            disabled={updateContactProfile.isPending}
-                            onChange={(utilityOptIn) =>
-                              updateContactProfile.mutate({
-                                contactId: selectedContact.id,
-                                utilityOptIn,
-                              })
-                            }
-                          />
-                          <ContactToggle
-                            label="Use WhatsApp name"
-                            checked={selectedProfile?.useWhatsappName ?? true}
-                            disabled={updateContactProfile.isPending}
-                            onChange={(useWhatsappName) =>
-                              updateContactProfile.mutate({
-                                contactId: selectedContact.id,
-                                useWhatsappName,
-                              })
-                            }
-                          />
+                  </div>
+
+                  {detailsOpen ? (
+                    <aside
+                      id="wa-contact-details"
+                      aria-label="Contact details"
+                      className="wa-contact-details"
+                    >
+                      <button
+                        className="btn btn-ghost btn-square btn-sm float-right"
+                        aria-label="Close contact details"
+                        onClick={() => setDetailsOpen(false)}
+                      >
+                        <X className="size-4" />
+                      </button>
+                      <div className="mb-3 border-b border-base-300 pb-3 text-center">
+                        <div className="mx-auto mb-2 flex size-12 items-center justify-center rounded-full bg-base-200">
+                          <UserRound className="size-5" />
                         </div>
-                        <div className="space-y-2 border-t border-base-300 pt-4">
-                          <p className="text-xs font-semibold">Tags</p>
-                          <div className="flex flex-wrap gap-1">
-                            {selectedTags.map((tag) => (
-                              <span
-                                key={tag.id}
-                                className="badge badge-ghost badge-sm"
-                              >
-                                {tag.name}
-                              </span>
-                            ))}
-                          </div>
-                          <div className="flex gap-1">
-                            <input
-                              aria-label="New contact tag"
-                              className="input input-bordered input-sm min-w-0 flex-1"
-                              placeholder="Add tag"
-                              value={tagName}
+                        <p className="font-semibold">
+                          {[
+                            selectedContact?.firstName,
+                            selectedContact?.lastName,
+                          ]
+                            .filter(Boolean)
+                            .join(" ") || "WhatsApp contact"}
+                        </p>
+                        <p className="text-xs text-base-content/55">
+                          {selectedConversation?.externalConversationId}
+                        </p>
+                      </div>
+                      {selectedConversation ? (
+                        <div className="space-y-4">
+                          <label className="form-control gap-1">
+                            <span className="text-xs font-medium">
+                              CRM contact
+                            </span>
+                            <select
+                              className="select select-bordered select-sm w-full"
+                              value={selectedConversation.contactId ?? ""}
+                              disabled={updateConversation.isPending}
                               onChange={(event) =>
-                                setTagName(event.target.value)
-                              }
-                            />
-                            <button
-                              className="btn btn-outline btn-sm"
-                              disabled={
-                                !tagName.trim() || addContactTag.isPending
-                              }
-                              onClick={() =>
-                                addContactTag.mutate({
-                                  contactId: selectedContact.id,
-                                  name: tagName,
+                                updateConversation.mutate({
+                                  conversationId: selectedConversation.id,
+                                  contactId: event.currentTarget.value || null,
                                 })
                               }
                             >
-                              <Plus className="size-3" />
+                              <option value="">Not linked</option>
+                              {data.contacts.map((contact) => (
+                                <option key={contact.id} value={contact.id}>
+                                  {[contact.firstName, contact.lastName]
+                                    .filter(Boolean)
+                                    .join(" ") ||
+                                    contact.whatsappPhone ||
+                                    contact.phone}
+                                </option>
+                              ))}
+                            </select>
+                          </label>
+                          {!selectedContact ? (
+                            <div className="space-y-2 rounded-lg border border-primary/25 bg-primary/5 p-2.5">
+                              <p className="text-xs font-medium">
+                                Create contact from this chat
+                              </p>
+                              <p className="text-[11px] text-base-content/55">
+                                {selectedConversation.externalConversationId}
+                              </p>
+                              <input
+                                aria-label="New contact name"
+                                className="input input-bordered input-sm w-full"
+                                placeholder="Contact name"
+                                value={newContactName}
+                                onChange={(event) =>
+                                  setNewContactName(event.target.value)
+                                }
+                              />
+                              <button
+                                className="btn btn-primary btn-sm w-full"
+                                disabled={
+                                  !newContactName.trim() ||
+                                  !selectedConversation.externalConversationId ||
+                                  createAndLinkContact.isPending
+                                }
+                                onClick={() =>
+                                  createAndLinkContact.mutate({
+                                    conversationId: selectedConversation.id,
+                                    displayName: newContactName,
+                                    whatsappPhone:
+                                      selectedConversation.externalConversationId!,
+                                  })
+                                }
+                              >
+                                {createAndLinkContact.isPending
+                                  ? "Creating…"
+                                  : "Create & link"}
+                              </button>
+                            </div>
+                          ) : null}
+                          <div className="rounded-lg bg-base-200/60 p-3 text-xs text-base-content/65">
+                            Messages: {selectedMessages.length}
+                            <br />
+                            Status: {selectedConversation.status}
+                          </div>
+                          {selectedContact ? (
+                            <>
+                              <div className="space-y-2 border-t border-base-300 pt-4">
+                                <ContactToggle
+                                  label="Marketing opt-in"
+                                  checked={
+                                    selectedProfile?.marketingOptIn ?? false
+                                  }
+                                  disabled={updateContactProfile.isPending}
+                                  onChange={(marketingOptIn) =>
+                                    updateContactProfile.mutate({
+                                      contactId: selectedContact.id,
+                                      marketingOptIn,
+                                    })
+                                  }
+                                />
+                                <ContactToggle
+                                  label="Utility opt-in"
+                                  checked={
+                                    selectedProfile?.utilityOptIn ?? false
+                                  }
+                                  disabled={updateContactProfile.isPending}
+                                  onChange={(utilityOptIn) =>
+                                    updateContactProfile.mutate({
+                                      contactId: selectedContact.id,
+                                      utilityOptIn,
+                                    })
+                                  }
+                                />
+                                <ContactToggle
+                                  label="Use WhatsApp name"
+                                  checked={
+                                    selectedProfile?.useWhatsappName ?? true
+                                  }
+                                  disabled={updateContactProfile.isPending}
+                                  onChange={(useWhatsappName) =>
+                                    updateContactProfile.mutate({
+                                      contactId: selectedContact.id,
+                                      useWhatsappName,
+                                    })
+                                  }
+                                />
+                              </div>
+                              <div className="space-y-2 border-t border-base-300 pt-4">
+                                <p className="text-xs font-semibold">Tags</p>
+                                <div className="flex flex-wrap gap-1">
+                                  {selectedTags.map((tag) => (
+                                    <span
+                                      key={tag.id}
+                                      className="badge badge-ghost badge-sm"
+                                    >
+                                      {tag.name}
+                                    </span>
+                                  ))}
+                                </div>
+                                <div className="flex gap-1">
+                                  <input
+                                    aria-label="New contact tag"
+                                    className="input input-bordered input-sm min-w-0 flex-1"
+                                    placeholder="Add tag"
+                                    value={tagName}
+                                    onChange={(event) =>
+                                      setTagName(event.target.value)
+                                    }
+                                  />
+                                  <button
+                                    className="btn btn-outline btn-sm"
+                                    disabled={
+                                      !tagName.trim() || addContactTag.isPending
+                                    }
+                                    onClick={() =>
+                                      addContactTag.mutate({
+                                        contactId: selectedContact.id,
+                                        name: tagName,
+                                      })
+                                    }
+                                  >
+                                    <Plus className="size-3" />
+                                  </button>
+                                </div>
+                              </div>
+                              <div className="space-y-2 border-t border-base-300 pt-4">
+                                <p className="text-xs font-semibold">
+                                  Custom parameters
+                                </p>
+                                {selectedAttributes.map((attribute) => (
+                                  <p
+                                    key={attribute.id}
+                                    className="text-xs text-base-content/65"
+                                  >
+                                    <span className="font-medium text-base-content">
+                                      {attribute.key}:
+                                    </span>{" "}
+                                    {attribute.value}
+                                  </p>
+                                ))}
+                                <div className="grid grid-cols-2 gap-1">
+                                  <input
+                                    aria-label="Parameter key"
+                                    className="input input-bordered input-sm min-w-0"
+                                    placeholder="Key"
+                                    value={attributeKey}
+                                    onChange={(event) =>
+                                      setAttributeKey(event.target.value)
+                                    }
+                                  />
+                                  <input
+                                    aria-label="Parameter value"
+                                    className="input input-bordered input-sm min-w-0"
+                                    placeholder="Value"
+                                    value={attributeValue}
+                                    onChange={(event) =>
+                                      setAttributeValue(event.target.value)
+                                    }
+                                  />
+                                </div>
+                                <button
+                                  className="btn btn-outline btn-sm w-full"
+                                  disabled={
+                                    !attributeKey.trim() ||
+                                    !attributeValue.trim() ||
+                                    saveContactAttribute.isPending
+                                  }
+                                  onClick={() =>
+                                    saveContactAttribute.mutate({
+                                      contactId: selectedContact.id,
+                                      key: attributeKey,
+                                      value: attributeValue,
+                                    })
+                                  }
+                                >
+                                  Save parameter
+                                </button>
+                              </div>
+                            </>
+                          ) : null}
+                          <div className="space-y-2 border-t border-base-300 pt-4">
+                            <p className="text-xs font-semibold">
+                              Internal notes
+                            </p>
+                            <div className="max-h-28 space-y-2 overflow-y-auto">
+                              {selectedNotes.map((note) => (
+                                <div
+                                  key={note.id}
+                                  className="rounded-lg bg-base-200/60 p-2 text-xs"
+                                >
+                                  <p>{note.body}</p>
+                                  <p className="mt-1 text-[10px] text-base-content/45">
+                                    {formatWhatsappTime(note.createdAt)}
+                                  </p>
+                                </div>
+                              ))}
+                            </div>
+                            <textarea
+                              aria-label="Internal note"
+                              className="textarea textarea-bordered textarea-sm w-full"
+                              placeholder="Only your team can see notes…"
+                              value={internalNote}
+                              onChange={(event) =>
+                                setInternalNote(event.target.value)
+                              }
+                            />
+                            <button
+                              className="btn btn-outline btn-sm w-full"
+                              disabled={
+                                !internalNote.trim() ||
+                                addInternalNote.isPending
+                              }
+                              onClick={() =>
+                                addInternalNote.mutate({
+                                  conversationId: selectedConversation.id,
+                                  body: internalNote,
+                                })
+                              }
+                            >
+                              Add note
                             </button>
                           </div>
                         </div>
-                        <div className="space-y-2 border-t border-base-300 pt-4">
-                          <p className="text-xs font-semibold">
-                            Custom parameters
-                          </p>
-                          {selectedAttributes.map((attribute) => (
-                            <p
-                              key={attribute.id}
-                              className="text-xs text-base-content/65"
-                            >
-                              <span className="font-medium text-base-content">
-                                {attribute.key}:
-                              </span>{" "}
-                              {attribute.value}
-                            </p>
-                          ))}
-                          <div className="grid grid-cols-2 gap-1">
-                            <input
-                              aria-label="Parameter key"
-                              className="input input-bordered input-sm min-w-0"
-                              placeholder="Key"
-                              value={attributeKey}
-                              onChange={(event) =>
-                                setAttributeKey(event.target.value)
-                              }
-                            />
-                            <input
-                              aria-label="Parameter value"
-                              className="input input-bordered input-sm min-w-0"
-                              placeholder="Value"
-                              value={attributeValue}
-                              onChange={(event) =>
-                                setAttributeValue(event.target.value)
-                              }
-                            />
-                          </div>
-                          <button
-                            className="btn btn-outline btn-sm w-full"
-                            disabled={
-                              !attributeKey.trim() ||
-                              !attributeValue.trim() ||
-                              saveContactAttribute.isPending
-                            }
-                            onClick={() =>
-                              saveContactAttribute.mutate({
-                                contactId: selectedContact.id,
-                                key: attributeKey,
-                                value: attributeValue,
-                              })
-                            }
-                          >
-                            Save parameter
-                          </button>
-                        </div>
-                      </>
-                    ) : null}
-                    <div className="space-y-2 border-t border-base-300 pt-4">
-                      <p className="text-xs font-semibold">Internal notes</p>
-                      <div className="max-h-28 space-y-2 overflow-y-auto">
-                        {selectedNotes.map((note) => (
-                          <div
-                            key={note.id}
-                            className="rounded-lg bg-base-200/60 p-2 text-xs"
-                          >
-                            <p>{note.body}</p>
-                            <p className="mt-1 text-[10px] text-base-content/45">
-                              {formatWhatsappTime(note.createdAt)}
-                            </p>
-                          </div>
-                        ))}
-                      </div>
-                      <textarea
-                        aria-label="Internal note"
-                        className="textarea textarea-bordered textarea-sm w-full"
-                        placeholder="Only your team can see notes…"
-                        value={internalNote}
-                        onChange={(event) =>
-                          setInternalNote(event.target.value)
-                        }
-                      />
-                      <button
-                        className="btn btn-outline btn-sm w-full"
-                        disabled={
-                          !internalNote.trim() || addInternalNote.isPending
-                        }
-                        onClick={() =>
-                          addInternalNote.mutate({
-                            conversationId: selectedConversation.id,
-                            body: internalNote,
-                          })
-                        }
-                      >
-                        Add note
-                      </button>
-                    </div>
-                  </div>
-                ) : null}
-              </aside>
-            </div>
-          ) : (
-            <div className="p-10">
-              <Empty text="No conversations yet. Send a WhatsApp message to your connected number and it will appear here." />
-            </div>
-          )}
-        </section>
-      ) : null}
-      {activeSection === "Contacts" ? (
-        <Panel title="Contacts" icon={UserRound}>
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-base-300 p-3">
-            <p className="text-sm text-base-content/60">
-              {data.contacts.length} contact
-              {data.contacts.length === 1 ? "" : "s"}
-            </p>
-            <div className="flex gap-2">
-              <button
-                className="btn btn-outline btn-sm"
-                disabled={!data.contacts.length}
-                onClick={() => exportWhatsappContacts(data)}
-              >
-                <Download className="size-4" /> Export
-              </button>
-              <button
-                className="btn btn-primary btn-sm"
-                onClick={() => setForm("contact")}
-              >
-                <Plus className="size-4" /> Add contact
-              </button>
-            </div>
-          </div>
-          {data.contacts.length ? (
-            <div className="overflow-x-auto">
-              <table className="table table-sm">
-                <thead>
-                  <tr>
-                    <th>Name</th>
-                    <th>Phone</th>
-                    <th>Tags</th>
-                    <th>Marketing</th>
-                    <th>Utility</th>
-                    <th>Added</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.contacts.map((contactRow) => {
-                    const profile = data.contactProfiles.find(
-                      (item) => item.contactId === contactRow.id,
-                    );
-                    const tagIds = new Set(
-                      data.contactTagAssignments
-                        .filter((item) => item.contactId === contactRow.id)
-                        .map((item) => item.tagId),
-                    );
-                    return (
-                      <tr key={contactRow.id}>
-                        <td className="font-medium">
-                          {[contactRow.firstName, contactRow.lastName]
-                            .filter(Boolean)
-                            .join(" ") || "WhatsApp contact"}
-                        </td>
-                        <td>
-                          {contactRow.whatsappPhone || contactRow.phone || "—"}
-                        </td>
-                        <td>
-                          <div className="flex flex-wrap gap-1">
-                            {data.tags
-                              .filter((tag) => tagIds.has(tag.id))
-                              .map((tag) => (
-                                <span
-                                  key={tag.id}
-                                  className="badge badge-ghost badge-sm"
-                                >
-                                  {tag.name}
-                                </span>
-                              ))}
-                          </div>
-                        </td>
-                        <td>{profile?.marketingOptIn ? "Opted in" : "No"}</td>
-                        <td>{profile?.utilityOptIn ? "Opted in" : "No"}</td>
-                        <td>
-                          {new Date(contactRow.createdAt).toLocaleDateString()}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <Empty text="Contacts linked from WhatsApp conversations will appear here." />
-          )}
-        </Panel>
-      ) : null}
-      {activeSection === "Templates" ? (
-        <Panel title="Templates" icon={FileText}>
-          {data.templates.length ? (
-            data.templates.map((item) => (
-              <Row
-                key={item.id}
-                title={item.name}
-                detail={`${item.languageCode} · ${item.status}`}
-              />
-            ))
-          ) : (
-            <Empty text="No message templates yet." />
-          )}
-        </Panel>
-      ) : null}
-      {activeSection === "Campaigns" ? (
-        <Panel title="Campaigns" icon={MessageCircleMore}>
-          <div className="border-b border-base-300 p-3">
-            <button
-              className="btn btn-primary btn-sm"
-              onClick={() => setForm("campaign")}
-            >
-              <Plus className="size-4" /> Campaign
-            </button>
-          </div>
-          {data.campaigns.length ? (
-            data.campaigns.map((item) => (
-              <div key={item.id} className="flex items-center gap-2 pr-4">
-                <div className="min-w-0 flex-1">
-                  <Row title={item.name} detail={item.status} />
+                      ) : null}
+                    </aside>
+                  ) : null}
                 </div>
-                {item.status === "draft" || item.status === "scheduled" ? (
+              ) : (
+                <div className="p-10">
+                  <Empty text="No conversations yet. Send a WhatsApp message to your connected number and it will appear here." />
+                </div>
+              )}
+            </section>
+          ) : null}
+          {activeSection === "Contacts" ? (
+            <Panel title="Contacts" icon={UserRound}>
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-base-300 p-3">
+                <p className="text-sm text-base-content/60">
+                  {data.contacts.length} contact
+                  {data.contacts.length === 1 ? "" : "s"}
+                </p>
+                <div className="flex gap-2">
                   <button
-                    className="btn btn-primary btn-xs"
-                    onClick={() => launchCampaign.mutate(item.id)}
+                    className="btn btn-outline btn-sm"
+                    disabled={!data.contacts.length}
+                    onClick={() => exportWhatsappContacts(data)}
                   >
-                    Launch
+                    <Download className="size-4" /> Export
                   </button>
-                ) : null}
+                  <button
+                    className="btn btn-primary btn-sm"
+                    onClick={() => setForm("contact")}
+                  >
+                    <Plus className="size-4" /> Add contact
+                  </button>
+                </div>
               </div>
-            ))
-          ) : (
-            <Empty text="No campaigns yet." />
-          )}
-        </Panel>
-      ) : null}
-      {activeSection === "Automation" ? (
-        <Panel title="Automations" icon={Bot}>
-          <div className="border-b border-base-300 p-3">
-            <button
-              className="btn btn-primary btn-sm"
-              onClick={() => setForm("automation")}
-            >
-              <Plus className="size-4" /> Automation
-            </button>
-          </div>
-          {data.automations.length ? (
-            data.automations.map((item) => (
-              <Row
-                key={item.id}
-                title={item.name}
-                detail={`${item.triggerType} · ${item.status}`}
-              />
-            ))
-          ) : (
-            <Empty text="No automations yet." />
-          )}
-        </Panel>
-      ) : null}
-      {activeSection === "Order Requests" ? (
-        <Panel title="Order requests" icon={FileText}>
-          <div className="border-b border-base-300 p-3">
-            <button
-              className="btn btn-primary btn-sm"
-              onClick={() => setForm("order")}
-            >
-              <Plus className="size-4" /> Order request
-            </button>
-          </div>
-          {data.orders.length ? (
-            data.orders.map((item) => (
-              <OrderRequestRow
-                key={item.id}
-                id={item.id}
-                summary={item.summary}
-                detail={`${item.status} · $${(item.amountCents / 100).toFixed(2)}`}
-                convertedOrderId={item.externalOrderId}
-              />
-            ))
-          ) : (
-            <Empty text="No order requests yet." />
-          )}
-        </Panel>
-      ) : null}
-      {activeSection === "AI Config" ? <AssistantConfigSection /> : null}
-      {activeSection === "Instant Answers" ? <InstantAnswersSection /> : null}
-      {activeSection === "Questions & Blog" ? <AskedQuestionsSection /> : null}
-      {activeSection === "Settings" ? (
-        <Panel title="WhatsApp connection" icon={Cable}>
-          <div className="flex flex-wrap items-center justify-between gap-3 p-4">
-            <div>
-              <p className="font-medium">
-                {data.connections[0]?.displayPhoneNumber ||
-                  "No WhatsApp number connected"}
-              </p>
-              <p className="text-sm text-base-content/55">
-                {data.connections[0]?.status || "Not configured"}
-              </p>
-            </div>
-            {data.connections.length ? (
-              <button
-                className="btn btn-outline btn-sm"
-                onClick={() => setForm("connection-update")}
-              >
-                Update connection
-              </button>
-            ) : null}
-          </div>
-        </Panel>
-      ) : null}
-    </Workspace>
+              {data.contacts.length ? (
+                <div className="overflow-x-auto">
+                  <table className="table table-sm">
+                    <thead>
+                      <tr>
+                        <th>Name</th>
+                        <th>Phone</th>
+                        <th>Tags</th>
+                        <th>Marketing</th>
+                        <th>Utility</th>
+                        <th>Added</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {data.contacts.map((contactRow) => {
+                        const profile = data.contactProfiles.find(
+                          (item) => item.contactId === contactRow.id,
+                        );
+                        const tagIds = new Set(
+                          data.contactTagAssignments
+                            .filter((item) => item.contactId === contactRow.id)
+                            .map((item) => item.tagId),
+                        );
+                        return (
+                          <tr key={contactRow.id}>
+                            <td className="font-medium">
+                              {[contactRow.firstName, contactRow.lastName]
+                                .filter(Boolean)
+                                .join(" ") || "WhatsApp contact"}
+                            </td>
+                            <td>
+                              {contactRow.whatsappPhone ||
+                                contactRow.phone ||
+                                "—"}
+                            </td>
+                            <td>
+                              <div className="flex flex-wrap gap-1">
+                                {data.tags
+                                  .filter((tag) => tagIds.has(tag.id))
+                                  .map((tag) => (
+                                    <span
+                                      key={tag.id}
+                                      className="badge badge-ghost badge-sm"
+                                    >
+                                      {tag.name}
+                                    </span>
+                                  ))}
+                              </div>
+                            </td>
+                            <td>
+                              {profile?.marketingOptIn ? "Opted in" : "No"}
+                            </td>
+                            <td>{profile?.utilityOptIn ? "Opted in" : "No"}</td>
+                            <td>
+                              {new Date(
+                                contactRow.createdAt,
+                              ).toLocaleDateString()}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <Empty text="Contacts linked from WhatsApp conversations will appear here." />
+              )}
+            </Panel>
+          ) : null}
+          {activeSection === "Templates" ? (
+            <Panel title="Templates" icon={FileText}>
+              <div className="border-b border-base-300 p-3">
+                <button
+                  className="btn btn-primary btn-sm"
+                  onClick={() => setForm("template")}
+                >
+                  <Plus className="size-4" /> Template
+                </button>
+              </div>
+              {data.templates.length ? (
+                data.templates.map((item) => (
+                  <Row
+                    key={item.id}
+                    title={item.name}
+                    detail={`${item.languageCode} · ${item.status}`}
+                  />
+                ))
+              ) : (
+                <Empty text="No message templates yet." />
+              )}
+            </Panel>
+          ) : null}
+          {activeSection === "Campaigns" ? (
+            <Panel title="Campaigns" icon={MessageCircleMore}>
+              <div className="border-b border-base-300 p-3">
+                <button
+                  className="btn btn-primary btn-sm"
+                  onClick={() => setForm("campaign")}
+                >
+                  <Plus className="size-4" /> Campaign
+                </button>
+              </div>
+              {data.campaigns.length ? (
+                data.campaigns.map((item) => (
+                  <div key={item.id} className="flex items-center gap-2 pr-4">
+                    <div className="min-w-0 flex-1">
+                      <Row title={item.name} detail={item.status} />
+                    </div>
+                    {item.status === "draft" || item.status === "scheduled" ? (
+                      <button
+                        className="btn btn-primary btn-xs"
+                        onClick={() => launchCampaign.mutate(item.id)}
+                      >
+                        Launch
+                      </button>
+                    ) : null}
+                  </div>
+                ))
+              ) : (
+                <Empty text="No campaigns yet." />
+              )}
+            </Panel>
+          ) : null}
+          {activeSection === "Automation" ? (
+            <Panel title="Automations" icon={Bot}>
+              <div className="border-b border-base-300 p-3">
+                <button
+                  className="btn btn-primary btn-sm"
+                  onClick={() => setForm("automation")}
+                >
+                  <Plus className="size-4" /> Automation
+                </button>
+              </div>
+              {data.automations.length ? (
+                data.automations.map((item) => (
+                  <Row
+                    key={item.id}
+                    title={item.name}
+                    detail={`${item.triggerType} · ${item.status}`}
+                  />
+                ))
+              ) : (
+                <Empty text="No automations yet." />
+              )}
+            </Panel>
+          ) : null}
+          {activeSection === "Order Requests" ? (
+            <Panel title="Order requests" icon={FileText}>
+              <div className="border-b border-base-300 p-3">
+                <button
+                  className="btn btn-primary btn-sm"
+                  onClick={() => setForm("order")}
+                >
+                  <Plus className="size-4" /> Order request
+                </button>
+              </div>
+              {data.orders.length ? (
+                data.orders.map((item) => (
+                  <OrderRequestRow
+                    key={item.id}
+                    id={item.id}
+                    summary={item.summary}
+                    detail={`${item.status} · $${(item.amountCents / 100).toFixed(2)}`}
+                    convertedOrderId={item.externalOrderId}
+                  />
+                ))
+              ) : (
+                <Empty text="No order requests yet." />
+              )}
+            </Panel>
+          ) : null}
+          {activeSection === "AI Config" ? <AssistantConfigSection /> : null}
+          {activeSection === "Instant Answers" ? (
+            <InstantAnswersSection />
+          ) : null}
+          {activeSection === "Questions & Blog" ? (
+            <AskedQuestionsSection />
+          ) : null}
+          {activeSection === "Settings" ? (
+            <Panel title="WhatsApp connection" icon={Cable}>
+              <div className="flex flex-wrap items-center justify-between gap-3 p-4">
+                <div>
+                  <p className="font-medium">
+                    {data.connections[0]?.displayPhoneNumber ||
+                      "No WhatsApp number connected"}
+                  </p>
+                  <p className="text-sm text-base-content/55">
+                    {data.connections[0]?.status || "Not configured"}
+                  </p>
+                </div>
+                {data.connections.length ? (
+                  <button
+                    className="btn btn-outline btn-sm"
+                    onClick={() => setForm("connection-update")}
+                  >
+                    Update connection
+                  </button>
+                ) : (
+                  <button
+                    className="btn btn-primary btn-sm"
+                    onClick={() => setForm("connection")}
+                  >
+                    <Plus className="size-4" /> Connect number
+                  </button>
+                )}
+              </div>
+            </Panel>
+          ) : null}
+        </div>
+      </div>
+    </div>
   );
 }
 

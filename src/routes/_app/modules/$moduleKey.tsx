@@ -71,12 +71,26 @@ function BusinessModulePage() {
   });
 
   return (
-    <div className="h-full overflow-auto bg-base-100 px-4 py-6 pb-24 md:px-6 md:py-7 md:pb-8">
-      <div className="mx-auto w-full max-w-[1500px] space-y-4">
-        <Link to="/modules" className="btn btn-ghost btn-sm -ml-2">
-          <ArrowLeft className="size-4" />
-          Business
-        </Link>
+    <div
+      className={
+        moduleKey === "whatsapp"
+          ? "h-full min-h-0 overflow-hidden bg-base-100 p-3 md:p-5"
+          : "h-full overflow-auto bg-base-100 px-4 py-6 pb-24 md:px-6 md:py-7 md:pb-8"
+      }
+    >
+      <div
+        className={
+          moduleKey === "whatsapp"
+            ? "mx-auto h-full min-h-0 w-full max-w-[1600px]"
+            : "mx-auto w-full max-w-[1500px] space-y-4"
+        }
+      >
+        {moduleKey !== "whatsapp" ? (
+          <Link to="/modules" className="btn btn-ghost btn-sm -ml-2">
+            <ArrowLeft className="size-4" />
+            Business
+          </Link>
+        ) : null}
 
         {accessQuery.isLoading ? (
           <div className="flex justify-center py-16">

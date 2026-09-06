@@ -73,6 +73,30 @@ timestamp, event, and delivery headers.
 
 ## Migration handoff ledger
 
+### 2026-09-06: approved WhatsApp presentation refresh
+
+WhatsApp now uses Inbox, Contacts and Orders as its primary navigation, with
+Templates, Campaigns, Automation, AI configuration, Instant Answers, Questions
+& Blog, Reports and Connection grouped in a separate Settings panel. Redundant
+page titles and the Business back-link are removed only on the WhatsApp route.
+The global sidebar and other modules are unchanged.
+
+The inbox uses pale translucent outgoing bubbles, an aligned identity and
+assignment header, and an on-demand contact-details panel. All contact linking,
+creation, consent, tags, attributes and notes remain available there. On small
+screens the conversation list and chat have an explicit back transition. The
+composer stays within the available height and leaves room for the existing
+voice launcher. A transcript resize observer keeps the latest message visible
+when the surrounding shell changes height; normal transcript scrolling remains
+available.
+
+No server functions, provider credentials, webhooks, message persistence,
+polling interval, send mutation, automation logic or scheduler were changed.
+Validation: TypeScript, targeted lint, production build, 11 WhatsApp provider
+tests, and isolated Playwright checks with synthetic data for desktop/mobile
+layout, newest-message scrolling, contact panel and settings navigation. Local
+test fixtures do not send messages or change production records.
+
 This section is written across sessions and across agents. Read it before
 starting work so nothing here is rebuilt or reverted by accident.
 
