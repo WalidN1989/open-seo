@@ -18,11 +18,28 @@ export function getDatabaseProvider(): DatabaseProvider {
   );
 }
 
-export function getPostgresConnectionString() {
+function hyperdriveConnectionString() {
   const hyperdrive = Reflect.get(env, "HYPERDRIVE") as
     | { connectionString?: string }
     | undefined;
-  const hyperdriveUrl = hyperdrive?.connectionString?.trim();
+  return hyperdrive?.connectionString?.trim() || null;
+}
+
+/**
+ * How many connections one request's client may open.
+ *
+ * Behind Hyperdrive the edge already pools the origin connections, so a
+ * second pool here only adds stale-connection risk — one is right. Connecting
+ * straight to Postgres, as a Node self-host does, this client is the only
+ * pool there is, and a workspace read fires a dozen queries at once: held to
+ * one connection they queue up, each paying its own network round trip.
+ */
+export function getPostgresPoolSize(): number {
+  return hyperdriveConnectionString() ? 1 : 8;
+}
+
+export function getPostgresConnectionString() {
+  const hyperdriveUrl = hyperdriveConnectionString();
   if (hyperdriveUrl) {
     return hyperdriveUrl;
   }

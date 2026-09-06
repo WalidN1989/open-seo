@@ -5,6 +5,7 @@ import postgres from "postgres";
 import {
   getDatabaseProvider,
   getPostgresConnectionString,
+  getPostgresPoolSize,
 } from "@/db/provider";
 import { withQueryRetries } from "./retry";
 import * as schema from "./schema";
@@ -53,9 +54,11 @@ export const pgDb = new Proxy(
  * Wrap every entrypoint that touches the DB: the `fetch` handler, the
  * `scheduled` cron, and each WorkflowEntrypoint `run`.
  *
- * Per Hyperdrive's guidance we use a single connection (`max: 1` — Hyperdrive
- * pools the origin connections at the edge, so a client-side pool only adds
- * stale-connection risk) and do NOT call `sql.end()`: the Workers↔Hyperdrive
+ * Behind Hyperdrive we use a single connection, per its guidance — it pools
+ * the origin connections at the edge, so a client-side pool only adds
+ * stale-connection risk. Connecting directly to Postgres there is no such
+ * pool, so `getPostgresPoolSize` allows several and the queries a page fires
+ * at once actually overlap. Either way we do NOT call `sql.end()`: the
  * socket is torn down automatically when the invocation ends, and the pooled
  * origin connection stays warm for reuse. Not ending it also means a streamed
  * response can keep querying after the handler returns.
@@ -73,7 +76,7 @@ export async function withPgClient<T>(fn: () => Promise<T>): Promise<T> {
   }
   const sql = withQueryRetries(
     postgres(getPostgresConnectionString(), {
-      max: 1,
+      max: getPostgresPoolSize(),
       fetch_types: false,
       // Bound connect stalls (seconds) so the per-query retry in
       // withQueryRetries gets its turn within the request's lifetime instead
