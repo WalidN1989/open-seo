@@ -125,9 +125,9 @@ describe("formatCatalogueMatches", () => {
     expect(text).toContain(
       "Testing Wacom — LKR 250 — out of stock — offer a pre-order",
     );
-    expect(text).toContain(
-      "Untracked — LKR 10 — availability: ask the team to confirm — link: none",
-    );
+    // A service says nothing about stock, and nothing about a link it lacks.
+    expect(text).toContain("- Untracked — LKR 10 (SKU U1)");
+    expect(text).not.toContain("ask the team to confirm");
   });
 
   it("tells the model to offer a pre-order when nothing matches", () => {
