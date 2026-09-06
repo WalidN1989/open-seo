@@ -107,6 +107,14 @@ async function ingestReceived(
   message: AgentmailMessage,
   thread: AgentmailThread | undefined,
 ) {
+  // The webhook is scoped to this inbox; a delivery for another inbox is a
+  // misconfiguration upstream and must not land in this business's mail.
+  if (
+    account.inboxId &&
+    message.inbox_id.toLowerCase() !== account.inboxId.toLowerCase()
+  ) {
+    return null;
+  }
   if (addressOf(message.from) === account.address.toLowerCase()) return null;
   if (await Repo.findMessageByExternalId(account.id, message.message_id))
     return null;
