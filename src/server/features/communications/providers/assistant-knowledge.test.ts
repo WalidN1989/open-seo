@@ -66,6 +66,9 @@ describe("buildBusinessContext", () => {
     const context = buildBusinessContext({
       settings: {
         businessFacts: "We build websites.",
+        contactEmail: "sales@example.com",
+        contactPhone: "+61 400 000 000",
+        address: "2/84 Estramina Street, Oxley QLD 4075",
         timezone: "Australia/Brisbane",
         businessHoursStart: "09:00",
         businessHoursEnd: "17:00",
@@ -79,6 +82,10 @@ describe("buildBusinessContext", () => {
       now: new Date("2026-09-05T02:00:00Z"),
     });
     expect(context).toContain("We build websites.");
+    expect(context).toContain("Contact details (give these to a customer");
+    expect(context).toContain("Address: 2/84 Estramina Street, Oxley QLD 4075");
+    expect(context).toContain("Email: sales@example.com");
+    expect(context).toContain("Phone: +61 400 000 000");
     expect(context).toContain("- SEO Setup: A$199");
     expect(context).toContain("09:00–17:00 (Australia/Brisbane)");
     expect(context).toContain("It is now Saturday 12:00 local time.");

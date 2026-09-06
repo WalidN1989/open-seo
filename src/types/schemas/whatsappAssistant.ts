@@ -32,6 +32,20 @@ export const updateAssistantSettingsSchema = z.object({
   timezone: optionalText(80),
   businessHoursStart: clockTime,
   businessHoursEnd: clockTime,
+  contactEmail: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .max(320)
+    .refine(
+      (value) => value === "" || /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(value),
+      "Use a valid email address",
+    )
+    .transform((value) => (value === "" ? null : value))
+    .nullable()
+    .optional(),
+  contactPhone: optionalText(60),
+  address: optionalText(500),
   escalationKeywords: optionalText(2000),
   handoffMessage: optionalText(1000),
   persona: optionalText(6000),

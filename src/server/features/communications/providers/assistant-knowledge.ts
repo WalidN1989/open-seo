@@ -7,6 +7,9 @@
 export type PriceToken = { name: string; price: string };
 
 type AssistantSettingsLike = {
+  contactEmail?: string | null;
+  contactPhone?: string | null;
+  address?: string | null;
   bookingLink?: string | null;
   timezone?: string | null;
   businessHoursStart?: string | null;
@@ -126,6 +129,20 @@ export function buildBusinessContext(input: {
   const parts: string[] = [];
   if (settings.businessFacts?.trim()) {
     parts.push(`## About the business\n${settings.businessFacts.trim()}`);
+  }
+  const contact = [
+    settings.address?.trim() ? `Address: ${settings.address.trim()}` : "",
+    settings.contactEmail?.trim()
+      ? `Email: ${settings.contactEmail.trim()}`
+      : "",
+    settings.contactPhone?.trim()
+      ? `Phone: ${settings.contactPhone.trim()}`
+      : "",
+  ].filter(Boolean);
+  if (contact.length) {
+    parts.push(
+      `## Contact details (give these to a customer who asks for them)\n${contact.join("\n")}`,
+    );
   }
   if (input.prices.length) {
     parts.push(

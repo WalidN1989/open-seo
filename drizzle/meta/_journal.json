@@ -470,6 +470,13 @@
       "when": 1788631422513,
       "tag": "0066_old_vector",
       "breakpoints": true
+    },
+    {
+      "idx": 67,
+      "version": "6",
+      "when": 1788694054428,
+      "tag": "0067_perfect_mole_man",
+      "breakpoints": true
     }
   ]
 }

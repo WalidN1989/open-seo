@@ -1298,6 +1298,12 @@ export const whatsappAssistantSettings = pgTable(
     timezone: text("timezone"),
     businessHoursStart: text("business_hours_start"),
     businessHoursEnd: text("business_hours_end"),
+    // Details a customer asks for by name. Kept as their own columns, not
+    // buried in business_facts, so the operator can correct one without
+    // rewriting prose and the assistant always has them to hand.
+    contactEmail: text("contact_email"),
+    contactPhone: text("contact_phone"),
+    address: text("address"),
     escalationKeywords: text("escalation_keywords"),
     handoffMessage: text("handoff_message"),
     persona: text("persona"),

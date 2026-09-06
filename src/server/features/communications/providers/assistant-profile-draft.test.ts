@@ -118,6 +118,43 @@ describe("settings the draft proposes alongside the prose", () => {
     expect(draft.handoffMessage).toContain("24 hours");
   });
 
+  it("copies contact details out into their own fields", async () => {
+    const draft = await draftAssistantProfile({
+      businessName: "Example",
+      domain: "example.com",
+      source: { kind: "context", markdown: "notes" },
+      apiKey: "k",
+      fetcher: reply({
+        ...base,
+        contact_email: "  Hello@Example.COM ",
+        contact_phone: "+94 76 652 3362",
+        address: "12 Galle Road\nColombo 03",
+      }),
+    });
+    expect(draft.contactEmail).toBe("hello@example.com");
+    expect(draft.contactPhone).toBe("+94 76 652 3362");
+    // A multi-line address becomes the single line a message can carry.
+    expect(draft.address).toBe("12 Galle Road, Colombo 03");
+  });
+
+  it("drops contact details the source did not really have", async () => {
+    const draft = await draftAssistantProfile({
+      businessName: "Example",
+      domain: null,
+      source: { kind: "context", markdown: "notes" },
+      apiKey: "k",
+      fetcher: reply({
+        ...base,
+        contact_email: "not an address",
+        contact_phone: "call us",
+        address: "n/a",
+      }),
+    });
+    expect(draft.contactEmail).toBeNull();
+    expect(draft.contactPhone).toBeNull();
+    expect(draft.address).toBeNull();
+  });
+
   it("drops a timezone the runtime cannot use and half a pair of hours", async () => {
     const draft = await draftAssistantProfile({
       businessName: "Example",

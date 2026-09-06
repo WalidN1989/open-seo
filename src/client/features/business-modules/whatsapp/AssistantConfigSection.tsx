@@ -1,6 +1,5 @@
 import { useState } from "react";
-import { Link } from "@tanstack/react-router";
-import { Bot, Globe, Sparkles } from "lucide-react";
+import { Globe, Sparkles } from "lucide-react";
 import {
   draftWhatsappAssistantProfile,
   updateWhatsappAssistantSettings,
@@ -9,6 +8,7 @@ import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { getStandardErrorMessage } from "@/client/lib/error-messages";
 import { ASSISTANT_MODELS } from "@/types/schemas/whatsappAssistant";
+import { AssistantStatusBanner } from "./AssistantStatusBanner";
 import { PriceTokenList } from "./PriceTokenList";
 import {
   type AssistantConfig,
@@ -72,6 +72,9 @@ function ConfigForm({ config }: { config: AssistantConfig }) {
     timezone: settings.timezone ?? "",
     businessHoursStart: settings.businessHoursStart ?? "",
     businessHoursEnd: settings.businessHoursEnd ?? "",
+    contactEmail: settings.contactEmail ?? "",
+    contactPhone: settings.contactPhone ?? "",
+    address: settings.address ?? "",
     escalationKeywords: settings.escalationKeywords ?? "",
     handoffMessage: settings.handoffMessage ?? "",
     persona: settings.persona ?? "",
@@ -118,6 +121,9 @@ function ConfigForm({ config }: { config: AssistantConfig }) {
           result.businessHoursStart ?? current.businessHoursStart,
         businessHoursEnd: result.businessHoursEnd ?? current.businessHoursEnd,
         handoffMessage: result.handoffMessage ?? current.handoffMessage,
+        contactEmail: result.contactEmail ?? current.contactEmail,
+        contactPhone: result.contactPhone ?? current.contactPhone,
+        address: result.address ?? current.address,
       }));
       toast.success(
         result.source === "context"
@@ -139,36 +145,7 @@ function ConfigForm({ config }: { config: AssistantConfig }) {
         save.mutate(form);
       }}
     >
-      <section
-        className={`rounded-xl border p-4 ${ai.connected ? "border-success/40 bg-success/5" : "border-warning/50 bg-warning/10"}`}
-      >
-        <div className="flex items-start gap-3">
-          <Bot className="mt-0.5 size-5 shrink-0" />
-          <div className="text-sm">
-            {ai.connected ? (
-              <p>
-                <span className="font-medium">Claude is connected</span> for
-                this business
-                {ai.keySource === "integration"
-                  ? " with its own API key."
-                  : ai.keySource === "platform"
-                    ? " using the platform key."
-                    : ", but no API key resolves. Re-enter the key under Integrations."}
-              </p>
-            ) : (
-              <p>
-                <span className="font-medium">Claude is not connected.</span>{" "}
-                Instant answers and escalation still work; AI replies start once
-                you connect Claude Haiku under{" "}
-                <Link to="/modules/integrations" className="link link-primary">
-                  Integrations
-                </Link>
-                .
-              </p>
-            )}
-          </div>
-        </div>
-      </section>
+      <AssistantStatusBanner ai={ai} />
 
       <label className="flex cursor-pointer items-center justify-between gap-4 rounded-xl border border-base-300 p-4">
         <span>
@@ -268,7 +245,38 @@ function ConfigForm({ config }: { config: AssistantConfig }) {
             }
           />
         </Field>
+        <Field
+          label="Contact email"
+          hint="Given to a customer who asks how to reach the business."
+        >
+          <input
+            type="email"
+            className={input}
+            placeholder="sales@example.com"
+            value={form.contactEmail}
+            onChange={(event) => set("contactEmail", event.currentTarget.value)}
+          />
+        </Field>
+        <Field label="Contact phone">
+          <input
+            className={input}
+            placeholder="+61 400 000 000"
+            value={form.contactPhone}
+            onChange={(event) => set("contactPhone", event.currentTarget.value)}
+          />
+        </Field>
       </div>
+      <Field
+        label="Address"
+        hint="Where the business trades. The assistant gives this out when someone asks where you are."
+      >
+        <input
+          className={input}
+          placeholder="2/84 Estramina Street, Oxley QLD 4075, Australia"
+          value={form.address}
+          onChange={(event) => set("address", event.currentTarget.value)}
+        />
+      </Field>
 
       <Field
         label="Escalation keywords"
