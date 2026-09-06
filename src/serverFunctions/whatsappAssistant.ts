@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { WhatsappAssistantService } from "@/server/features/communications/services/WhatsappAssistantService";
+import { WhatsappAssistantProfileService } from "@/server/features/communications/services/WhatsappAssistantProfileService";
 import { requireAuthenticatedContext } from "@/serverFunctions/middleware";
 import {
   createInstantAnswerSchema,
@@ -80,5 +81,14 @@ export const deleteWhatsappAskedQuestion = createServerFn({ method: "POST" })
       context.organizationId,
       context.userId,
       data.id,
+    ),
+  );
+
+export const draftWhatsappAssistantProfile = createServerFn({ method: "POST" })
+  .middleware(requireAuthenticatedContext)
+  .handler(({ context }) =>
+    WhatsappAssistantProfileService.draftProfile(
+      context.organizationId,
+      context.userId,
     ),
   );

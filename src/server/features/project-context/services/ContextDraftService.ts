@@ -32,7 +32,7 @@ const firecrawlScrapeSchema = z.object({
     .optional(),
 });
 
-async function firecrawlConnection(organizationId: string) {
+export async function firecrawlConnection(organizationId: string) {
   const connection = await CommunicationsRepository.getIntegrationByProvider(
     organizationId,
     "firecrawl",
@@ -70,7 +70,7 @@ async function readWithFirecrawl(
  * tenant is paying it for — but it bills per scrape, so the built-in reader
  * stays the default for everyone who has not connected one.
  */
-async function readProjectSite(organizationId: string, domain: string) {
+export async function readProjectSite(organizationId: string, domain: string) {
   const scraped = await readWithFirecrawl(organizationId, domain).catch(
     // A provider outage or an exhausted quota should degrade to the free
     // reader, not fail the button.

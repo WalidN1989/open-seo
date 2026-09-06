@@ -298,6 +298,16 @@ async function currencyFor(organizationId: string) {
   return settings?.currency ?? "AUD";
 }
 
+/** The project an organisation belongs to: what to call it and where it lives. */
+async function projectForOrganization(organizationId: string) {
+  const [row] = await db
+    .select({ id: projects.id, name: projects.name, domain: projects.domain })
+    .from(projects)
+    .where(eq(projects.organizationId, organizationId))
+    .limit(1);
+  return row ?? null;
+}
+
 /** The project this organization belongs to, for its context markdown. */
 async function projectIdForOrganization(organizationId: string) {
   const [row] = await db
@@ -362,6 +372,7 @@ export const WhatsappAssistantRepository = {
   searchPricedProducts,
   currencyFor,
   projectIdForOrganization,
+  projectForOrganization,
   getConversationStatus,
   latestInboundExternalId,
 };

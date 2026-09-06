@@ -70,6 +70,7 @@ async function callAnthropic(
   apiKey: string,
   userMessage: string,
   fetcher: typeof fetch,
+  systemPrompt: string = SYSTEM_PROMPT,
 ) {
   const response = await fetcher("https://api.anthropic.com/v1/messages", {
     method: "POST",
@@ -81,7 +82,7 @@ async function callAnthropic(
     body: JSON.stringify({
       model: DEFAULT_MODEL,
       max_tokens: 1200,
-      system: SYSTEM_PROMPT,
+      system: systemPrompt,
       messages: [{ role: "user", content: userMessage }],
     }),
     signal: AbortSignal.timeout(60_000),
@@ -102,6 +103,7 @@ async function callOpenRouter(
   model: string,
   userMessage: string,
   fetcher: typeof fetch,
+  systemPrompt: string = SYSTEM_PROMPT,
 ) {
   const response = await fetcher(
     "https://openrouter.ai/api/v1/chat/completions",
@@ -115,7 +117,7 @@ async function callOpenRouter(
         model,
         max_tokens: 1200,
         messages: [
-          { role: "system", content: SYSTEM_PROMPT },
+          { role: "system", content: systemPrompt },
           { role: "user", content: userMessage },
         ],
       }),
@@ -157,4 +159,47 @@ export async function draftSectionsFromPages(input: {
       })();
 
   return draftSchema.parse(extractJson(reply));
+}
+
+/**
+ * One completion against whichever model the deployment has: the caller's
+ * own Anthropic key first, then the platform's, then OpenRouter. Returns the
+ * JSON object found in the reply; the caller validates its shape.
+ */
+export async function completeWithConfiguredModel(input: {
+  systemPrompt: string;
+  userMessage: string;
+  apiKey?: string | null;
+  fetcher?: typeof fetch;
+}): Promise<unknown> {
+  const fetcher = input.fetcher ?? fetch;
+  const anthropicKey =
+    input.apiKey ?? (await getOptionalEnvValue("ANTHROPIC_API_KEY"));
+  if (anthropicKey) {
+    return extractJson(
+      await callAnthropic(
+        anthropicKey,
+        input.userMessage,
+        fetcher,
+        input.systemPrompt,
+      ),
+    );
+  }
+  const openRouterKey = await getOptionalEnvValue("OPENROUTER_API_KEY");
+  if (!openRouterKey) {
+    throw new Error(
+      "No AI model is configured. Set ANTHROPIC_API_KEY or OPENROUTER_API_KEY.",
+    );
+  }
+  const model =
+    (await getOptionalEnvValue("OPENROUTER_MODEL")) || "minimax/minimax-m3";
+  return extractJson(
+    await callOpenRouter(
+      openRouterKey,
+      model,
+      input.userMessage,
+      fetcher,
+      input.systemPrompt,
+    ),
+  );
 }

@@ -1,7 +1,13 @@
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { Bot, Sparkles } from "lucide-react";
-import { updateWhatsappAssistantSettings } from "@/serverFunctions/whatsappAssistant";
+import { Bot, Globe, Sparkles } from "lucide-react";
+import {
+  draftWhatsappAssistantProfile,
+  updateWhatsappAssistantSettings,
+} from "@/serverFunctions/whatsappAssistant";
+import { useMutation } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { getStandardErrorMessage } from "@/client/lib/error-messages";
 import { ASSISTANT_MODELS } from "@/types/schemas/whatsappAssistant";
 import {
   type AssistantConfig,
@@ -76,6 +82,45 @@ function ConfigForm({ config }: { config: AssistantConfig }) {
   );
   const set = <K extends keyof typeof form>(key: K, value: (typeof form)[K]) =>
     setForm((current) => ({ ...current, [key]: value }));
+  const draft = useMutation({
+    mutationFn: () => draftWhatsappAssistantProfile(),
+    onSuccess: (result) => {
+      if (result.status === "no_domain") {
+        toast.error(
+          "Set this project's domain first, or fill its Context tab.",
+        );
+        return;
+      }
+      if (result.status === "unreadable") {
+        toast.error(
+          result.firecrawlConnected
+            ? `Nothing readable came back from ${result.domain}.`
+            : `Could not read ${result.domain}. Connect Firecrawl under Integrations for a full read.`,
+        );
+        return;
+      }
+      if (
+        (form.persona.trim() || form.businessFacts.trim()) &&
+        !window.confirm(
+          "Replace the current persona and business facts with the draft? Nothing is saved until you press Save config.",
+        )
+      ) {
+        return;
+      }
+      setForm((current) => ({
+        ...current,
+        persona: result.persona,
+        businessFacts: result.businessFacts,
+      }));
+      toast.success(
+        result.source === "context"
+          ? "Drafted from this project's Context tab — review, then save."
+          : `Drafted from ${result.pagesRead} page${result.pagesRead === 1 ? "" : "s"} of the website — review, then save.`,
+      );
+    },
+    onError: (error: unknown) => toast.error(getStandardErrorMessage(error)),
+  });
+  const empty = !form.persona.trim() && !form.businessFacts.trim();
   const input = "input input-bordered input-sm w-full";
   const textarea = "textarea textarea-bordered w-full text-sm leading-relaxed";
 
@@ -261,6 +306,33 @@ function ConfigForm({ config }: { config: AssistantConfig }) {
             Commerce module and they appear here.
           </p>
         )}
+      </section>
+
+      <section
+        className={`flex flex-wrap items-center justify-between gap-3 rounded-xl border p-4 ${empty ? "border-primary/40 bg-primary/5" : "border-base-300"}`}
+      >
+        <div className="flex items-start gap-3 text-sm">
+          <Globe className="mt-0.5 size-4 shrink-0" />
+          <p>
+            {empty ? (
+              <>
+                <span className="font-medium">Nothing here yet.</span> Draft the
+                persona and business facts from what this business has already
+                published, then review and save.
+              </>
+            ) : (
+              "Re-draft both boxes from the Context tab or the website. You review before anything is saved."
+            )}
+          </p>
+        </div>
+        <button
+          type="button"
+          className="btn btn-outline btn-sm"
+          disabled={draft.isPending}
+          onClick={() => draft.mutate()}
+        >
+          {draft.isPending ? "Reading…" : "Draft from my site"}
+        </button>
       </section>
 
       <Field
