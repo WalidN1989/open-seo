@@ -1483,14 +1483,13 @@ export function WhatsappWorkspace() {
                   >
                     Update connection
                   </button>
-                ) : (
-                  <button
-                    className="btn btn-primary btn-sm"
-                    onClick={() => setForm("connection")}
-                  >
-                    <Plus className="size-4" /> Connect number
-                  </button>
-                )}
+                ) : null}
+                <button
+                  className="btn btn-primary btn-sm"
+                  onClick={() => setForm("connection")}
+                >
+                  <Plus className="size-4" /> Connect number
+                </button>
               </div>
             </Panel>
           ) : null}
