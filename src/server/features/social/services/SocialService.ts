@@ -9,6 +9,7 @@ import type {
   setSocialConversationStatusSchema,
 } from "@/types/schemas/social";
 import {
+  fetchParticipantName,
   MetaMessagingError,
   sendSocialMessage,
 } from "../providers/meta-messaging";
@@ -60,6 +61,54 @@ function providerFailure(error: unknown): never {
   throw error;
 }
 
+/** At most this many profile lookups per load, so a bad token cannot stall it. */
+const NAME_REPAIR_LIMIT = 5;
+
+/**
+ * A name is normally resolved the moment a message arrives, but a token that
+ * was missing the profile scope at the time leaves the row showing a bare id
+ * for ever. Repair a few on load instead of waiting for the person to write
+ * again. Costs nothing when every conversation already has a name.
+ */
+async function repairMissingNames(
+  accounts: SocialAccountRow[],
+  conversations: SocialConversationRow[],
+) {
+  const missing = conversations
+    .filter((row) => !row.participantName)
+    .slice(0, NAME_REPAIR_LIMIT);
+  if (!missing.length) return conversations;
+  const byId = new Map(accounts.map((account) => [account.id, account]));
+  const repaired = new Map<string, string>();
+  await Promise.all(
+    missing.map(async (conversation) => {
+      const account = byId.get(conversation.accountId);
+      if (!account) return;
+      const { PAGE_ACCESS_TOKEN: token } = await decryptCredentials(
+        account.credentials,
+      );
+      if (!token) return;
+      const name = await fetchParticipantName({
+        participantId: conversation.participantId,
+        token,
+        platform: account.platform === "instagram" ? "instagram" : "messenger",
+      }).catch(() => null);
+      if (!name) return;
+      await Repo.setParticipantName(
+        account.organizationId,
+        conversation.id,
+        name,
+      );
+      repaired.set(conversation.id, name);
+    }),
+  );
+  if (!repaired.size) return conversations;
+  return conversations.map((row) => {
+    const name = repaired.get(row.id);
+    return name ? { ...row, participantName: name } : row;
+  });
+}
+
 async function workspace(organizationId: string, userId: string) {
   await BusinessModuleService.requireAccess(organizationId, userId, MODULE);
   const [accounts, conversations, drafts] = await Promise.all([
@@ -69,7 +118,7 @@ async function workspace(organizationId: string, userId: string) {
   ]);
   return {
     accounts: accounts.map((account) => publicAccount(account)),
-    conversations,
+    conversations: await repairMissingNames(accounts, conversations),
     drafts,
   };
 }

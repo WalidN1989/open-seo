@@ -249,3 +249,27 @@ describe("replying", () => {
     });
   });
 });
+
+describe("repairing a name that could not be resolved on arrival", () => {
+  it("fills in a bare id on load and keeps it", async () => {
+    const before = await SocialService.workspace(ORG_A, USER_OWNER_A);
+    const conversationId = before.conversations[0].id;
+    // A token without the profile scope leaves the row nameless, so the
+    // inbox shows the raw participant id until something repairs it.
+    await db
+      .update(schema.socialConversations)
+      .set({ participantName: null })
+      .where(eq(schema.socialConversations.id, conversationId));
+
+    const repaired = await SocialService.workspace(ORG_A, USER_OWNER_A);
+    expect(repaired.conversations[0]).toMatchObject({
+      id: conversationId,
+      participantName: "reader_99",
+    });
+    const [row] = await db
+      .select()
+      .from(schema.socialConversations)
+      .where(eq(schema.socialConversations.id, conversationId));
+    expect(row?.participantName).toBe("reader_99");
+  });
+});

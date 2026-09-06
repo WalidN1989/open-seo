@@ -177,10 +177,13 @@ export async function fetchParticipantName(input: {
   platform: SocialPlatform;
   fetcher?: typeof fetch;
 }): Promise<string | null> {
-  const field = input.platform === "instagram" ? "username" : "name";
+  // Instagram usually answers with a handle and Messenger with a display
+  // name, but an Instagram profile without a public handle still has a name,
+  // so ask for both and take whichever came back.
+  const fields = input.platform === "instagram" ? "username,name" : "name";
   const fetcher = input.fetcher ?? fetch;
   const response = await fetcher(
-    `${GRAPH_URL}/${encodeURIComponent(input.participantId)}?fields=${field}`,
+    `${GRAPH_URL}/${encodeURIComponent(input.participantId)}?fields=${fields}`,
     {
       headers: { authorization: `Bearer ${input.token}` },
       redirect: "manual",
@@ -189,5 +192,8 @@ export async function fetchParticipantName(input: {
   );
   if (!response.ok) return null;
   const parsed: unknown = await response.json().catch(() => null);
-  return isRecord(parsed) ? asString(parsed[field]) : null;
+  if (!isRecord(parsed)) return null;
+  return input.platform === "instagram"
+    ? (asString(parsed.username) ?? asString(parsed.name))
+    : asString(parsed.name);
 }

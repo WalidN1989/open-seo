@@ -192,6 +192,19 @@ describe("fetchParticipantName", () => {
     expect(urls[1]).toContain("fields=name");
   });
 
+  it("falls back to the display name when an Instagram profile has no handle", async () => {
+    const fetcher = (async () =>
+      Response.json({ name: "Jane Doe" })) as typeof fetch;
+    await expect(
+      fetchParticipantName({
+        participantId: "IGSID",
+        token: "t",
+        platform: "instagram",
+        fetcher,
+      }),
+    ).resolves.toBe("Jane Doe");
+  });
+
   it("returns nothing rather than failing when Meta refuses the profile", async () => {
     const fetcher = (async () =>
       new Response("no", { status: 403 })) as typeof fetch;

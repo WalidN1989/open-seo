@@ -207,6 +207,25 @@ async function upsertConversation(
   return row;
 }
 
+/** Fill in a name that was not resolvable when the message first arrived. */
+async function setParticipantName(
+  organizationId: string,
+  id: string,
+  participantName: string,
+) {
+  const [row] = await db
+    .update(socialConversations)
+    .set({ participantName, updatedAt: now() })
+    .where(
+      and(
+        eq(socialConversations.organizationId, organizationId),
+        eq(socialConversations.id, id),
+      ),
+    )
+    .returning();
+  return row ?? null;
+}
+
 async function setConversationStatus(
   organizationId: string,
   id: string,
@@ -368,6 +387,7 @@ export const SocialRepository = {
   listConversations,
   getConversation,
   upsertConversation,
+  setParticipantName,
   setConversationStatus,
   listMessages,
   findMessageByExternalId,
