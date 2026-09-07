@@ -47,17 +47,23 @@ export const LIVE_STATUSES: readonly OptimizationStatus[] = [
   "changes_requested",
 ] as const;
 
+// `projectId` travels in the payload on purpose: ensureUserMiddleware reads it
+// from there to resolve and authorize the project before the handler runs, so a
+// project-scoped function without it has no project context at all.
 export const listOpportunitiesSchema = z.object({
+  projectId: z.string().min(1),
   type: optimizationTypeSchema.optional(),
   status: optimizationStatusSchema.optional(),
   source: optimizationSourceSchema.optional(),
 });
 
 export const getOpportunitySchema = z.object({
+  projectId: z.string().min(1),
   opportunityId: z.string().min(1),
 });
 
 export const createOpportunitySchema = z.object({
+  projectId: z.string().min(1),
   type: optimizationTypeSchema,
   keyword: z.string().min(1).max(300),
   source: optimizationSourceSchema,
@@ -73,10 +79,12 @@ export const createOpportunitySchema = z.object({
 });
 
 export const decisionSchema = z.object({
+  projectId: z.string().min(1),
   opportunityId: z.string().min(1),
 });
 
 export const requestChangesSchema = z.object({
+  projectId: z.string().min(1),
   opportunityId: z.string().min(1),
   // A rejection the agent cannot read is a dead end, so the comment is required
   // rather than optional.

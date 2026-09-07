@@ -13,7 +13,9 @@ import type {
 } from "@/types/schemas/optimizations";
 import type { z } from "zod";
 
-export type OpportunityFilters = z.infer<typeof listOpportunitiesSchema>;
+type ListPayload = z.infer<typeof listOpportunitiesSchema>;
+/** The filters a caller chooses; the project comes from the page, not the user. */
+export type OpportunityFilters = Omit<ListPayload, "projectId">;
 
 export type OpportunitySummary = Awaited<
   ReturnType<typeof listOptimizationOpportunities>
@@ -81,7 +83,8 @@ export function useOpportunities(
 ) {
   return useQuery({
     queryKey: listKey(projectId, filters),
-    queryFn: () => listOptimizationOpportunities({ data: filters }),
+    queryFn: () =>
+      listOptimizationOpportunities({ data: { projectId, ...filters } }),
   });
 }
 
@@ -89,7 +92,9 @@ export function useOpportunity(projectId: string, opportunityId: string | null) 
   return useQuery({
     queryKey: ["optimization", projectId, opportunityId] as const,
     queryFn: () =>
-      getOptimizationOpportunity({ data: { opportunityId: opportunityId! } }),
+      getOptimizationOpportunity({
+        data: { projectId, opportunityId: opportunityId! },
+      }),
     enabled: Boolean(opportunityId),
   });
 }
@@ -112,19 +117,19 @@ function useDecision<TInput>(
 
 export function useSubmitForReview(projectId: string) {
   return useDecision(projectId, (opportunityId: string) =>
-    submitOptimizationForReview({ data: { opportunityId } }),
+    submitOptimizationForReview({ data: { projectId, opportunityId } }),
   );
 }
 
 export function useApprove(projectId: string) {
   return useDecision(projectId, (opportunityId: string) =>
-    approveOptimizationOpportunity({ data: { opportunityId } }),
+    approveOptimizationOpportunity({ data: { projectId, opportunityId } }),
   );
 }
 
 export function useReject(projectId: string) {
   return useDecision(projectId, (opportunityId: string) =>
-    rejectOptimizationOpportunity({ data: { opportunityId } }),
+    rejectOptimizationOpportunity({ data: { projectId, opportunityId } }),
   );
 }
 
@@ -132,6 +137,6 @@ export function useRequestChanges(projectId: string) {
   return useDecision(
     projectId,
     (input: { opportunityId: string; body: string }) =>
-      requestOptimizationChanges({ data: input }),
+      requestOptimizationChanges({ data: { projectId, ...input } }),
   );
 }
