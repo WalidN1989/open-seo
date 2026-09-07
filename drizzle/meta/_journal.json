@@ -484,6 +484,13 @@
       "when": 1788705650133,
       "tag": "0068_clean_toxin",
       "breakpoints": true
+    },
+    {
+      "idx": 69,
+      "version": "6",
+      "when": 1788812286475,
+      "tag": "0069_famous_the_hand",
+      "breakpoints": true
     }
   ]
 }
