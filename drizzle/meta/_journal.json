@@ -491,6 +491,13 @@
       "when": 1788812286475,
       "tag": "0069_famous_the_hand",
       "breakpoints": true
+    },
+    {
+      "idx": 70,
+      "version": "6",
+      "when": 1788816167951,
+      "tag": "0070_overrated_frank_castle",
+      "breakpoints": true
     }
   ]
 }

@@ -159,4 +159,7 @@ export const {
   commerceInventoryAuditItems,
   commerceOrders,
   commerceOrderLines,
+  invoiceSettings,
+  invoices,
+  invoiceLineItems,
 } = schema;

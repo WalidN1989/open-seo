@@ -16,6 +16,7 @@ import {
 } from "@/client/features/business-modules/CommunicationsWorkspace";
 import { EmailWorkspace } from "@/client/features/business-modules/email/EmailWorkspace";
 import { SocialWorkspace } from "@/client/features/business-modules/social/SocialWorkspace";
+import { InvoicingWorkspace } from "@/client/features/business-modules/invoicing/InvoicingWorkspace";
 
 export const Route = createFileRoute("/_app/modules/$moduleKey")({
   component: BusinessModulePage,
@@ -57,6 +58,12 @@ const capabilities: Record<BusinessModuleKey, readonly string[]> = {
     "Drafts for human approval, or autopilot replies",
     "The same assistant brain as WhatsApp and Email",
     "Per-account Meta credentials, scoped to one business",
+  ],
+  invoicing: [
+    "Issuer details, logo, and bank instructions",
+    "Invoices, proformas, and credit notes",
+    "Automatic numbering and totals",
+    "A print-ready document to send or save as PDF",
   ],
   integrations: [
     "Provider connections with secret references",
@@ -121,6 +128,7 @@ function BusinessModulePage() {
             {moduleKey === "voice" ? <VoiceWorkspace /> : null}
             {moduleKey === "email" ? <EmailWorkspace /> : null}
             {moduleKey === "social" ? <SocialWorkspace /> : null}
+            {moduleKey === "invoicing" ? <InvoicingWorkspace /> : null}
             {businessModuleKeySchema.options.includes(moduleKey) ? null : (
               <>
                 <div>

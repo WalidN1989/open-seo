@@ -1679,3 +1679,118 @@ export const socialMessages = sqliteTable(
     ),
   ],
 );
+
+// Invoicing. One issuer profile per organization, and the invoices it sends.
+//
+// Money is stored in minor units as integers: cents, not dollars. A float
+// would make 0.1 + 0.2 a support ticket, and an invoice that does not add up
+// is worse than no invoice.
+export const invoiceSettings = sqliteTable("invoice_settings", {
+  organizationId: text("organization_id")
+    .primaryKey()
+    .references(() => organization.id, { onDelete: "cascade" }),
+  /** The legal name that appears on the invoice, not the trading name. */
+  legalName: text("legal_name").notNull().default(""),
+  addressLines: text("address_lines").notNull().default(""),
+  email: text("email"),
+  phone: text("phone"),
+  website: text("website"),
+  /** ABN, VAT, or a Sri Lankan business registration number — whatever applies. */
+  taxIdLabel: text("tax_id_label"),
+  taxIdValue: text("tax_id_value"),
+  // Whether this issuer may charge tax at all. An entity that is not
+  // registered must not title a document "Tax Invoice" or add a tax line, so
+  // this drives the wording rather than only the arithmetic.
+  taxRegistered: integer("tax_registered", { mode: "boolean" })
+    .notNull()
+    .default(false),
+  taxLabel: text("tax_label"),
+  taxRatePercent: integer("tax_rate_percent").notNull().default(0),
+  taxNote: text("tax_note"),
+  defaultCurrency: text("default_currency").notNull().default("AUD"),
+  paymentTermsDays: integer("payment_terms_days").notNull().default(14),
+  paymentInstructions: text("payment_instructions"),
+  bankDetails: text("bank_details"),
+  footerNote: text("footer_note"),
+  /** Data URL or hosted URL; small marks only. */
+  logoUrl: text("logo_url"),
+  invoicePrefix: text("invoice_prefix").notNull().default("INV"),
+  nextInvoiceNumber: integer("next_invoice_number").notNull().default(1),
+  createdAt: createdAt(),
+  updatedAt: text("updated_at")
+    .notNull()
+    .default(sql`(current_timestamp)`),
+});
+
+export const invoices = sqliteTable(
+  "invoices",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    /** Human-facing reference, unique per organization once issued. */
+    number: text("number").notNull(),
+    status: text("status").notNull().default("draft"),
+    /** invoice | proforma | credit_note — drives the heading. */
+    documentType: text("document_type").notNull().default("invoice"),
+    clientName: text("client_name").notNull(),
+    clientAddressLines: text("client_address_lines"),
+    clientEmail: text("client_email"),
+    clientTaxIdLabel: text("client_tax_id_label"),
+    clientTaxIdValue: text("client_tax_id_value"),
+    currency: text("currency").notNull().default("AUD"),
+    issueDate: text("issue_date").notNull(),
+    dueDate: text("due_date").notNull(),
+    /** What the work covered, printed under the heading. */
+    servicePeriod: text("service_period"),
+    notes: text("notes"),
+    // Frozen at issue time so a later settings edit never rewrites history.
+    taxLabel: text("tax_label"),
+    taxRatePercent: integer("tax_rate_percent").notNull().default(0),
+    subtotalMinor: integer("subtotal_minor").notNull().default(0),
+    taxMinor: integer("tax_minor").notNull().default(0),
+    totalMinor: integer("total_minor").notNull().default(0),
+    issuerSnapshotJson: text("issuer_snapshot_json"),
+    sentAt: text("sent_at"),
+    paidAt: text("paid_at"),
+    createdAt: createdAt(),
+    updatedAt: text("updated_at")
+      .notNull()
+      .default(sql`(current_timestamp)`),
+  },
+  (table) => [
+    uniqueIndex("invoices_organization_number_idx").on(
+      table.organizationId,
+      table.number,
+    ),
+    index("invoices_organization_status_idx").on(
+      table.organizationId,
+      table.status,
+    ),
+  ],
+);
+
+export const invoiceLineItems = sqliteTable(
+  "invoice_line_items",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    invoiceId: text("invoice_id")
+      .notNull()
+      .references(() => invoices.id, { onDelete: "cascade" }),
+    position: integer("position").notNull().default(0),
+    description: text("description").notNull(),
+    detail: text("detail"),
+    /** Thousandths, so 1.5 hours is 1500 and stays exact. */
+    quantityMilli: integer("quantity_milli").notNull().default(1000),
+    unitPriceMinor: integer("unit_price_minor").notNull().default(0),
+    amountMinor: integer("amount_minor").notNull().default(0),
+    createdAt: createdAt(),
+  },
+  (table) => [
+    index("invoice_line_items_invoice_idx").on(table.invoiceId, table.position),
+  ],
+);

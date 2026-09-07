@@ -17,6 +17,7 @@ const ORGANIZATION_SCOPED_QUERY_ROOTS = [
   "email",
   "integrations",
   "social",
+  "invoicing",
   "voice",
   "whatsapp",
 ] as const;

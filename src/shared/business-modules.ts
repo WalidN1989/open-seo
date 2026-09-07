@@ -7,6 +7,7 @@ const businessModuleKeys = [
   "voice",
   "email",
   "social",
+  "invoicing",
   "integrations",
 ] as const;
 
@@ -43,6 +44,11 @@ export const businessModuleCatalog = [
     key: "social",
     label: "Social",
     description: "Instagram and Messenger conversations in one shared inbox.",
+  },
+  {
+    key: "invoicing",
+    label: "Invoicing",
+    description: "Issue invoices to clients and track what has been paid.",
   },
   {
     key: "integrations",
