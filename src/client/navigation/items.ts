@@ -2,6 +2,7 @@ import {
   Bookmark,
   Bot,
   ClipboardCheck,
+  FileText,
   Globe,
   LayoutDashboard,
   Link2,
@@ -57,6 +58,11 @@ const projectNavItems = [
     to: "/p/$projectId/audit" as const,
     label: "Site Audit",
     icon: ClipboardCheck,
+  },
+  {
+    to: "/p/$projectId/optimizations" as const,
+    label: "Content Optimization",
+    icon: FileText,
   },
   {
     to: "/p/$projectId/brand-lookup" as const,
@@ -119,6 +125,10 @@ export function getProjectNavGroups(projectId: string) {
         byPath("/p/$projectId/brand-lookup"),
         byPath("/p/$projectId/prompt-explorer"),
       ],
+    },
+    {
+      label: "Content",
+      items: [byPath("/p/$projectId/optimizations")],
     },
     {
       label: "My Site",
