@@ -10,6 +10,10 @@ import { ProjectRepository } from "@/server/features/projects/repositories/Proje
 import { createOrganizationForProject } from "@/server/auth/project-organization";
 import { normalizeBacklinksTarget } from "@/server/lib/dataforseoBacklinksTarget";
 import { AppError } from "@/server/lib/errors";
+import {
+  duplicateProjectMessage,
+  findDuplicateProject,
+} from "@/server/features/projects/services/duplicateProject";
 import { assertLanguageForLocation } from "@/server/lib/market";
 import { getLanguageCode } from "@/shared/keyword-locations";
 
@@ -168,6 +172,17 @@ export async function createProject(
   organizationId: string,
   input: CreateProjectInput,
 ) {
+  // Checked before insert rather than relying on a unique index: the pair is
+  // name + domain after normalisation, which no single column can express, and
+  // archived rows have to count too.
+  const existing = await ProjectRepository.listProjectIdentities(organizationId);
+  const duplicate = findDuplicateProject(existing, {
+    name: input.name,
+    domain: normalizeProjectDomain(input.domain) ?? null,
+  });
+  if (duplicate) {
+    throw new AppError("CONFLICT", duplicateProjectMessage(duplicate));
+  }
   try {
     const row = await ProjectRepository.createProject(
       organizationId,

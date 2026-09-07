@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   updateProjectMarket: vi.fn(),
   getProjectForOrganization: vi.fn(),
   listProjects: vi.fn(),
+  listProjectIdentities: vi.fn(),
   listArchivedProjects: vi.fn(),
   tryCreateDefaultProject: vi.fn(),
 }));
@@ -36,6 +37,9 @@ describe("project service", () => {
   beforeEach(() => {
     vi.resetModules();
     for (const mock of Object.values(mocks)) mock.mockReset();
+    // Creating a project reads the organization's existing ones to reject a
+    // duplicate; unless a test says otherwise, there are none.
+    mocks.listProjectIdentities.mockResolvedValue([]);
   });
 
   describe("listProjectsEnsuringOne", () => {

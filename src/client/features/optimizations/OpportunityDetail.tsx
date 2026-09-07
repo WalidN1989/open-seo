@@ -1,7 +1,6 @@
 import { useState } from "react";
 import {
   CMS_LABEL,
-  SOURCE_LABEL,
   STATUS_LABEL,
   STATUS_TONE,
   useApprove,
@@ -11,85 +10,20 @@ import {
   useSubmitForReview,
 } from "./optimizationsQuery";
 import type { OptimizationStatus } from "@/types/schemas/optimizations";
+import { BriefTab } from "./render/BriefTab";
+import { DraftTab } from "./render/DraftTab";
+import { WhyTab } from "./render/WhyTab";
 
 const TABS = ["Why", "Brief", "Draft", "Publish"] as const;
 type Tab = (typeof TABS)[number];
 
-function Empty({ children }: { children: string }) {
-  return <p className="py-8 text-center text-sm text-base-content/50">{children}</p>;
-}
-
-/** Renders whatever JSON the agent attached, without pretending to know its shape. */
-function JsonBlock({ value }: { value: unknown }) {
-  if (value === null || value === undefined) return null;
-  if (typeof value === "string") {
-    return <p className="whitespace-pre-wrap text-sm leading-relaxed">{value}</p>;
-  }
-  return (
-    <pre className="overflow-x-auto rounded-lg bg-base-200 p-3 text-xs">
-      {JSON.stringify(value, null, 2)}
-    </pre>
-  );
-}
-
-function WhyTab({ detail }: { detail: NonNullable<ReturnType<typeof useOpportunity>["data"]> }) {
-  const { opportunity } = detail;
-  const hasEvidence =
-    opportunity.gscSnapshot !== null || opportunity.serpSnapshot !== null;
-  return (
-    <div className="space-y-6">
-      <div className="grid gap-4 sm:grid-cols-3">
-        <div className="rounded-lg border border-base-300 p-3">
-          <p className="text-xs uppercase text-base-content/50">Why it surfaced</p>
-          <p className="mt-1 text-sm font-medium">
-            {SOURCE_LABEL[opportunity.source] ?? opportunity.source}
-          </p>
-        </div>
-        <div className="rounded-lg border border-base-300 p-3">
-          <p className="text-xs uppercase text-base-content/50">Opportunity score</p>
-          <p className="mt-1 text-sm font-medium">{opportunity.score}/100</p>
-        </div>
-        <div className="rounded-lg border border-base-300 p-3">
-          <p className="text-xs uppercase text-base-content/50">Recommended</p>
-          <p className="mt-1 text-sm font-medium">
-            {opportunity.recommendedAction === "create_new"
-              ? "Write a new page"
-              : "Improve the existing page"}
-          </p>
-        </div>
-      </div>
-
-      {opportunity.strengths ? (
-        <section>
-          <h3 className="text-sm font-semibold">What is already working</h3>
-          <p className="mt-1 whitespace-pre-wrap text-sm text-base-content/80">
-            {opportunity.strengths}
-          </p>
-        </section>
-      ) : null}
-      {opportunity.weaknesses ? (
-        <section>
-          <h3 className="text-sm font-semibold">What is holding it back</h3>
-          <p className="mt-1 whitespace-pre-wrap text-sm text-base-content/80">
-            {opportunity.weaknesses}
-          </p>
-        </section>
-      ) : null}
-
-      {hasEvidence ? (
-        <section className="space-y-3">
-          <h3 className="text-sm font-semibold">The data behind this</h3>
-          <JsonBlock value={opportunity.gscSnapshot} />
-          <JsonBlock value={opportunity.serpSnapshot} />
-        </section>
-      ) : (
-        // Nothing is invented to fill this space: an opportunity with no
-        // recorded evidence says so.
-        <Empty>No search data was recorded for this opportunity.</Empty>
-      )}
-    </div>
-  );
-}
+/** Plain words for the two enums a reviewer sees. */
+const SOURCE_TEXT: Record<string, string> = {
+  gsc_striking_distance: "Close to page one",
+  keyword_research: "Keyword research",
+  rank_drop: "Ranking dropped",
+  manual: "Added by hand",
+};
 
 export function OpportunityDetail({
   projectId,
@@ -164,27 +98,31 @@ export function OpportunityDetail({
         ))}
       </nav>
 
-      {tab === "Why" ? <WhyTab detail={query.data} /> : null}
-
-      {tab === "Brief" ? (
-        opportunity.brief ? (
-          <JsonBlock value={opportunity.brief} />
-        ) : (
-          <Empty>No brief yet. The agent writes this before drafting.</Empty>
-        )
+      {tab === "Why" ? (
+        <WhyTab
+          source={SOURCE_TEXT[opportunity.source] ?? opportunity.source}
+          score={opportunity.score}
+          recommendedAction={
+            opportunity.recommendedAction === "create_new"
+              ? "Write a new page"
+              : "Improve the existing page"
+          }
+          strengths={opportunity.strengths}
+          weaknesses={opportunity.weaknesses}
+          gscSnapshot={opportunity.gscSnapshot}
+          serpSnapshot={opportunity.serpSnapshot}
+        />
       ) : null}
 
+      {tab === "Brief" ? <BriefTab brief={opportunity.brief} /> : null}
+
       {tab === "Draft" ? (
-        opportunity.draft ? (
-          <div className="space-y-3">
-            <p className="text-xs text-base-content/50">
-              Version {opportunity.draftVersion}
-            </p>
-            <JsonBlock value={opportunity.draft} />
-          </div>
-        ) : (
-          <Empty>No draft yet.</Empty>
-        )
+        <DraftTab
+          draft={opportunity.draft}
+          draftVersion={opportunity.draftVersion}
+          revisions={query.data.revisions}
+          type={opportunity.type}
+        />
       ) : null}
 
       {tab === "Publish" ? (

@@ -1,0 +1,76 @@
+/*
+ * The rendered draft.
+ *
+ * A reviewer is judging whether this reads well, so the preview is typeset
+ * like a page rather than like data: real heading sizes, breathing room, and
+ * measured line length.
+ */
+.optimization-draft-body {
+  font-size: 0.95rem;
+  line-height: 1.7;
+  max-width: 68ch;
+}
+
+.optimization-draft-body > * + * {
+  margin-top: 1em;
+}
+
+.optimization-draft-body h1,
+.optimization-draft-body h2,
+.optimization-draft-body h3 {
+  font-weight: 600;
+  line-height: 1.3;
+  margin-top: 1.8em;
+}
+
+.optimization-draft-body h1 {
+  font-size: 1.5rem;
+}
+
+.optimization-draft-body h2 {
+  font-size: 1.2rem;
+}
+
+.optimization-draft-body h3 {
+  font-size: 1.05rem;
+}
+
+.optimization-draft-body ul,
+.optimization-draft-body ol {
+  padding-left: 1.4em;
+}
+
+.optimization-draft-body ul {
+  list-style: disc;
+}
+
+.optimization-draft-body ol {
+  list-style: decimal;
+}
+
+.optimization-draft-body li + li {
+  margin-top: 0.4em;
+}
+
+.optimization-draft-body a {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.optimization-draft-body blockquote {
+  border-left: 3px solid color-mix(in oklab, currentColor 20%, transparent);
+  padding-left: 1em;
+  font-style: italic;
+}
+
+.optimization-draft-body table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.optimization-draft-body th,
+.optimization-draft-body td {
+  border-bottom: 1px solid color-mix(in oklab, currentColor 12%, transparent);
+  padding: 0.5em 0.75em 0.5em 0;
+  text-align: left;
+}

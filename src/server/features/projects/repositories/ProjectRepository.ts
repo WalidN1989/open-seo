@@ -24,6 +24,24 @@ async function listProjects(organizationId: string) {
   });
 }
 
+/**
+ * Every project in the organization, archived ones included.
+ *
+ * Duplicate detection needs the archived rows: an archived project can be
+ * restored, so its name and domain are still claimed.
+ */
+async function listProjectIdentities(organizationId: string) {
+  return db
+    .select({
+      id: projects.id,
+      name: projects.name,
+      domain: projects.domain,
+      archivedAt: projects.archivedAt,
+    })
+    .from(projects)
+    .where(eq(projects.organizationId, organizationId));
+}
+
 async function countProjects(organizationId: string) {
   const [row] = await db
     .select({ value: count() })
@@ -306,6 +324,7 @@ async function archiveProject(projectId: string, organizationId: string) {
 
 export const ProjectRepository = {
   listProjects,
+  listProjectIdentities,
   listArchivedProjects,
   countProjects,
   getProjectForOrganization,
