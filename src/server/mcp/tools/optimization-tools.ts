@@ -8,6 +8,7 @@ import {
 } from "@/server/mcp/output-schemas";
 import { withMcpProjectAuth } from "@/server/mcp/project-auth";
 import { projectIdSchema } from "@/server/mcp/schemas";
+import type { McpModuleSurface } from "@/server/mcp/module-registry";
 import {
   optimizationSourceSchema,
   optimizationStatusSchema,
@@ -347,4 +348,39 @@ export const getOptimizationFeedbackTool = {
       });
     },
   ),
+};
+
+export const optimizationsSurface: McpModuleSurface = {
+  key: "optimizations",
+  scope: "project",
+  summary:
+    "Propose content opportunities, brief them, and draft them. Approving and publishing stay with a person.",
+  tools: [
+    listOptimizationOpportunitiesTool,
+    createOptimizationOpportunityTool,
+    attachOptimizationBriefTool,
+    attachOptimizationDraftTool,
+    appendOptimizationCommentTool,
+    getOptimizationFeedbackTool,
+  ],
+  withheld: [
+    {
+      action: "approve an opportunity",
+      because:
+        "Approval is a person deciding the work is right, and an agent approving its own draft is not a review.",
+    },
+    {
+      action: "publish to a CMS",
+      because: "Only an approved opportunity may be published, and only a person approves.",
+    },
+    {
+      action: "submit a draft for review",
+      because:
+        "Staff decide when a draft is fit for a client to see, so a weak one can be fixed first.",
+    },
+    {
+      action: "reject or delete an opportunity",
+      because: "Declining work is the client's call.",
+    },
+  ],
 };

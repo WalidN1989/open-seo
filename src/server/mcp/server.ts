@@ -41,14 +41,19 @@ import {
   updateProjectContextTool,
 } from "@/server/mcp/tools/project-context";
 import { listSavedKeywordsTool } from "@/server/mcp/tools/list-saved-keywords";
-import {
-  appendOptimizationCommentTool,
-  attachOptimizationBriefTool,
-  attachOptimizationDraftTool,
-  createOptimizationOpportunityTool,
-  getOptimizationFeedbackTool,
-  listOptimizationOpportunitiesTool,
-} from "@/server/mcp/tools/optimization-tools";
+import { optimizationsSurface } from "@/server/mcp/tools/optimization-tools";
+import { invoiceSurface } from "@/server/mcp/tools/invoice-tools";
+import type { McpModuleSurface } from "@/server/mcp/module-registry";
+
+/**
+ * Modules declare their MCP surface; the server registers whatever they
+ * declare. Adding a module means adding it here, not threading imports and
+ * register() calls through this file one tool at a time.
+ */
+const MODULE_SURFACES: readonly McpModuleSurface[] = [
+  optimizationsSurface,
+  invoiceSurface,
+];
 import {
   findSerpCompetitorsTool,
   getGoogleBusinessQuestionsTool,
@@ -166,14 +171,12 @@ export function createOpenSeoMcpServer(authProps: McpProps) {
   register(getProjectContextTool);
   register(updateProjectContextTool);
   register(listSavedKeywordsTool);
-  // Content Optimization: the agent proposes and drafts. Approving and
-  // publishing are browser actions, so no tool for either exists here.
-  register(listOptimizationOpportunitiesTool);
-  register(createOptimizationOpportunityTool);
-  register(attachOptimizationBriefTool);
-  register(attachOptimizationDraftTool);
-  register(appendOptimizationCommentTool);
-  register(getOptimizationFeedbackTool);
+  // Business and content modules register from their declared surfaces.
+  for (const surface of MODULE_SURFACES) {
+    for (const tool of surface.tools) {
+      register(tool as Parameters<typeof register>[0]);
+    }
+  }
   register(researchKeywordsTool);
   register(saveKeywordsTool);
   register(getDomainOverviewTool);

@@ -3,32 +3,31 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 /**
- * The safety argument for this module is that an agent *cannot* approve or
- * publish, because no such tool exists — not because a permission check says
+ * The safety argument for these modules is that an agent *cannot* take certain
+ * actions, because no such tool exists — not because a permission check says
  * no. A check can be misconfigured; an absent capability cannot.
  *
  * These assertions read the source rather than importing it, because importing
  * the tools pulls in the database provider and the worker runtime. The point
  * here is the shape of the surface, which the text answers directly.
  */
-const toolsSource = readFileSync(
-  join(process.cwd(), "src/server/mcp/tools/optimization-tools.ts"),
-  "utf8",
-);
-const serverSource = readFileSync(
-  join(process.cwd(), "src/server/mcp/server.ts"),
-  "utf8",
-);
+function source(file: string) {
+  return readFileSync(join(process.cwd(), "src/server/mcp", file), "utf8");
+}
 
-function declaredToolNames(source: string) {
-  return [...source.matchAll(/^\s*name: "([a-z_]+)",$/gm)].map(
+const optimizations = source("tools/optimization-tools.ts");
+const invoices = source("tools/invoice-tools.ts");
+const server = source("server.ts");
+
+function declaredToolNames(text: string) {
+  return [...text.matchAll(/^\s*name: "([a-z_]+)",$/gm)].map(
     (match) => match[1]!,
   );
 }
 
 describe("the optimization MCP surface", () => {
   it("exposes exactly the tools an agent needs to propose work", () => {
-    expect(declaredToolNames(toolsSource).toSorted()).toEqual([
+    expect(declaredToolNames(optimizations).toSorted()).toEqual([
       "append_optimization_comment",
       "attach_optimization_brief",
       "attach_optimization_draft",
@@ -39,31 +38,63 @@ describe("the optimization MCP surface", () => {
   });
 
   it("offers no way for an agent to approve, publish, or delete", () => {
-    for (const name of declaredToolNames(toolsSource)) {
+    for (const name of declaredToolNames(optimizations)) {
       expect(name).not.toMatch(/approve|publish|delete|reject/);
     }
   });
 
   it("never reaches the service methods that approve or publish", () => {
-    // approve() and beginPublish() take a user id or gate on it; a tool calling
-    // either would mean an agent could decide its own work is finished.
-    expect(toolsSource).not.toMatch(/OptimizationService\.approve/);
-    expect(toolsSource).not.toMatch(/OptimizationService\.beginPublish/);
-    expect(toolsSource).not.toMatch(/OptimizationService\.reject/);
-    expect(toolsSource).not.toMatch(/OptimizationService\.submitForReview/);
+    for (const method of ["approve", "beginPublish", "reject", "submitForReview"]) {
+      expect(optimizations).not.toContain(`OptimizationService.${method}`);
+    }
+  });
+});
+
+describe("the invoice MCP surface", () => {
+  it("reads invoices and writes only drafts", () => {
+    expect(declaredToolNames(invoices).toSorted()).toEqual([
+      "draft_invoice",
+      "get_invoice",
+      "list_invoices",
+    ]);
   });
 
-  it("registers every optimization tool it declares, and no others", () => {
-    const registered = [
-      ...serverSource.matchAll(/register\((\w*[Oo]ptimization\w*)\)/g),
+  it("offers no way to send an invoice, mark it paid, or void it", () => {
+    for (const name of declaredToolNames(invoices)) {
+      expect(name).not.toMatch(/paid|sent|send|void|delete|remove|settings/);
+    }
+  });
+
+  it("never reaches the service methods that move money or settings", () => {
+    // setStatus is how paid/sent/void happen; saveSettings holds the bank
+    // details. Neither belongs behind a tool.
+    for (const method of ["setStatus", "saveSettings", "remove"]) {
+      expect(invoices).not.toContain(`InvoiceService.${method}`);
+    }
+  });
+
+  it("does not hand an agent the bank details", () => {
+    // get_invoice strips them; nothing else reads them.
+    expect(invoices).toContain("bankDetails: _bank");
+  });
+});
+
+describe("the module registry", () => {
+  it("registers every surface it declares", () => {
+    const surfaces = [
+      ...server.matchAll(/^\s*(\w+Surface),$/gm),
     ].map((match) => match[1]!);
-    expect(registered.toSorted()).toEqual([
-      "appendOptimizationCommentTool",
-      "attachOptimizationBriefTool",
-      "attachOptimizationDraftTool",
-      "createOptimizationOpportunityTool",
-      "getOptimizationFeedbackTool",
-      "listOptimizationOpportunitiesTool",
+    expect(surfaces.toSorted()).toEqual([
+      "invoiceSurface",
+      "optimizationsSurface",
     ]);
+  });
+
+  it("makes each module state what it withholds and why", () => {
+    for (const text of [optimizations, invoices]) {
+      const withheld = text.slice(text.indexOf("withheld:"));
+      expect(withheld).toContain("action:");
+      expect(withheld).toContain("because:");
+    }
   });
 });
