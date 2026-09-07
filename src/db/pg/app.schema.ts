@@ -518,8 +518,11 @@ export const optimizationComments = pgTable(
     authorUserId: text("author_user_id").references(() => user.id, {
       onDelete: "set null",
     }),
-    /** agent | user */
+    /** agent | user | system */
     authorRole: text("author_role").notNull(),
+    // user is something a person or the assistant wrote; system is the thread
+    // recording that something happened, like a new draft arriving.
+    kind: text("kind").notNull().default("user"),
     body: text("body").notNull(),
     // client comments are the conversation the reviewer sees; internal ones are
     // working notes. An MCP-written comment defaults to internal, so the agent

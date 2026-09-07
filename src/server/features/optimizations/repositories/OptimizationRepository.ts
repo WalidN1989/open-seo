@@ -1,9 +1,10 @@
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { db } from "@/db";
 import {
   optimizationComments,
   optimizationOpportunities,
   optimizationRevisions,
+  user,
 } from "@/db/schema";
 import { LIVE_STATUSES } from "@/types/schemas/optimizations";
 
@@ -115,17 +116,33 @@ async function update(
   return row ?? null;
 }
 
+/**
+ * The thread, oldest first, with the writer's name resolved.
+ *
+ * A left join rather than a lookup per row: a comment whose author has since
+ * been removed from the organization still belongs in the thread.
+ */
 async function listComments(organizationId: string, opportunityId: string) {
   return db
-    .select()
+    .select({
+      id: optimizationComments.id,
+      authorUserId: optimizationComments.authorUserId,
+      authorRole: optimizationComments.authorRole,
+      authorName: user.name,
+      kind: optimizationComments.kind,
+      body: optimizationComments.body,
+      visibility: optimizationComments.visibility,
+      createdAt: optimizationComments.createdAt,
+    })
     .from(optimizationComments)
+    .leftJoin(user, eq(user.id, optimizationComments.authorUserId))
     .where(
       and(
         eq(optimizationComments.organizationId, organizationId),
         eq(optimizationComments.opportunityId, opportunityId),
       ),
     )
-    .orderBy(optimizationComments.createdAt);
+    .orderBy(asc(optimizationComments.createdAt));
 }
 
 async function insertComment(

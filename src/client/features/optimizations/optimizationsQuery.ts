@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  addOptimizationComment,
   approveOptimizationOpportunity,
   getOptimizationOpportunity,
   listOptimizationOpportunities,
@@ -130,6 +131,15 @@ export function useApprove(projectId: string) {
 export function useReject(projectId: string) {
   return useDecision(projectId, (opportunityId: string) =>
     rejectOptimizationOpportunity({ data: { projectId, opportunityId } }),
+  );
+}
+
+/** A note that leaves the status alone. */
+export function useAddComment(projectId: string) {
+  return useDecision(
+    projectId,
+    (input: { opportunityId: string; body: string }) =>
+      addOptimizationComment({ data: { projectId, ...input } }),
   );
 }
 

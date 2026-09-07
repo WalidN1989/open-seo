@@ -20,7 +20,11 @@ export const getOptimizationOpportunity = createServerFn({ method: "POST" })
   .middleware(requireProjectContext)
   .validator(getOpportunitySchema)
   .handler(({ data, context }) =>
-    OptimizationService.detail(context.organizationId, data.opportunityId),
+    OptimizationService.detail(
+      context.organizationId,
+      data.opportunityId,
+      context.userId,
+    ),
   );
 
 export const createOptimizationOpportunity = createServerFn({ method: "POST" })
@@ -66,6 +70,18 @@ export const requestOptimizationChanges = createServerFn({ method: "POST" })
   .validator(requestChangesSchema)
   .handler(({ data, context }) =>
     OptimizationService.requestChanges({
+      organizationId: context.organizationId,
+      userId: context.userId,
+      opportunityId: data.opportunityId,
+      body: data.body,
+    }),
+  );
+
+export const addOptimizationComment = createServerFn({ method: "POST" })
+  .middleware(requireProjectContext)
+  .validator(requestChangesSchema)
+  .handler(({ data, context }) =>
+    OptimizationService.addComment({
       organizationId: context.organizationId,
       userId: context.userId,
       opportunityId: data.opportunityId,

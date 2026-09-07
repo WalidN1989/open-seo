@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { ChevronLeft } from "lucide-react";
+import { useSession } from "@/lib/auth-client";
 import {
   CMS_LABEL,
   STATUS_LABEL,
   STATUS_TONE,
+  useAddComment,
   useApprove,
   useOpportunity,
   useReject,
@@ -14,8 +16,9 @@ import type { OptimizationStatus } from "@/types/schemas/optimizations";
 import { BriefTab } from "./render/BriefTab";
 import { DraftTab } from "./render/DraftTab";
 import { WhyTab } from "./render/WhyTab";
+import { CommentsTab } from "./render/CommentsTab";
 
-const TABS = ["Why", "Brief", "Draft", "Publish"] as const;
+const TABS = ["Why", "Brief", "Draft", "Publish", "Comments"] as const;
 type Tab = (typeof TABS)[number];
 
 /** Plain words for the two enums a reviewer sees. */
@@ -42,6 +45,11 @@ export function OpportunityDetail({
   const approve = useApprove(projectId);
   const reject = useReject(projectId);
   const requestChanges = useRequestChanges(projectId);
+  const addComment = useAddComment(projectId);
+  const { data: session } = useSession();
+  // Captured once per render rather than per row, so every relative time in
+  // the thread is measured from the same instant.
+  const now = Date.now();
 
   if (query.isPending) {
     return (
@@ -104,6 +112,11 @@ export function OpportunityDetail({
               onClick={() => setTab(item)}
             >
               {item}
+              {item === "Comments" && comments.length ? (
+                <span className="badge badge-ghost badge-sm ml-2">
+                  {comments.length}
+                </span>
+              ) : null}
             </button>
           ))}
         </nav>
@@ -135,6 +148,21 @@ export function OpportunityDetail({
             revisions={query.data.revisions}
             type={opportunity.type}
             path={opportunity.targetUrl ?? opportunity.proposedPath}
+          />
+        ) : null}
+
+        {tab === "Comments" ? (
+          <CommentsTab
+            comments={comments}
+            viewerId={session?.user?.id ?? null}
+            canComment={query.data.canComment}
+            now={now}
+            busy={addComment.isPending || requestChanges.isPending}
+            onComment={(body) => addComment.mutate({ opportunityId, body })}
+            onRequestChanges={(body) =>
+              requestChanges.mutate({ opportunityId, body })
+            }
+            error={addComment.error ?? requestChanges.error}
           />
         ) : null}
 

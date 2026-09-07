@@ -10,6 +10,16 @@ import type {
   OptimizationStatus,
 } from "@/types/schemas/optimizations";
 import { canTransition, PUBLISHABLE_FROM } from "../stateMachine";
+import { BusinessModuleRepository } from "@/server/features/business-modules/repositories/BusinessModuleRepository";
+import { isStaffRole, visibleComments } from "../commentVisibility";
+
+/** Statuses in which a reviewer may still say something useful. */
+const COMMENTABLE: readonly OptimizationStatus[] = [
+  "drafted",
+  "awaiting_approval",
+  "changes_requested",
+  "approved",
+];
 
 function assertTransition(
   row: OptimizationOpportunityRow,
@@ -99,23 +109,35 @@ async function list(
   return rows.map(publicOpportunity);
 }
 
-async function detail(organizationId: string, opportunityId: string) {
+async function detail(
+  organizationId: string,
+  opportunityId: string,
+  userId: string,
+) {
   const row = await requireOpportunity(organizationId, opportunityId);
-  const [comments, revisions] = await Promise.all([
+  const [comments, revisions, membership] = await Promise.all([
     Repo.listComments(organizationId, opportunityId),
     Repo.listRevisions(organizationId, opportunityId),
+    BusinessModuleRepository.findMembership(organizationId, userId),
   ]);
+  // Internal notes are working chatter between the agency and the assistant.
+  // A client sees the conversation they are part of and nothing else.
+  const staff = isStaffRole(membership?.role);
   return {
     opportunity: publicOpportunity(row),
-    // The client-facing thread. Internal working notes stay internal.
-    comments: comments
-      .filter((comment) => comment.visibility === "client")
-      .map((comment) => ({
-        id: comment.id,
-        authorRole: comment.authorRole,
-        body: comment.body,
-        createdAt: comment.createdAt,
-      })),
+    canComment: COMMENTABLE.includes(row.status as OptimizationStatus),
+    viewerIsStaff: staff,
+    comments: visibleComments(comments, staff).map((comment) => ({
+      id: comment.id,
+      authorRole: comment.authorRole,
+      // "You" is decided in the browser, where the viewer is known.
+      authorUserId: comment.authorUserId,
+      authorName: comment.authorName,
+      kind: comment.kind,
+      internal: comment.visibility !== "client",
+      body: comment.body,
+      createdAt: comment.createdAt,
+    })),
     revisions: revisions.map((revision) => ({
       version: revision.version,
       draft: parseJson(revision.draftJson),
@@ -230,6 +252,20 @@ async function attachDraft(
     draftVersion: version,
     status: "drafted",
   });
+  // A reviewer who asked for a change should see that it landed, without
+  // having to notice a version number quietly increment on another tab.
+  if (version > 1) {
+    await Repo.insertComment({
+      id: crypto.randomUUID(),
+      organizationId,
+      opportunityId,
+      authorUserId: null,
+      authorRole: "system",
+      kind: "system",
+      body: `Draft updated to version ${version}`,
+      visibility: "client",
+    });
+  }
   return publicOpportunity(updated ?? row);
 }
 
@@ -247,6 +283,7 @@ async function appendComment(input: {
     opportunityId: input.opportunityId,
     authorUserId: null,
     authorRole: "agent",
+    kind: "agent_note",
     body: input.body,
     visibility: input.visibility,
   });
@@ -316,7 +353,10 @@ async function requestChanges(input: {
   opportunityId: string;
   body: string;
 }) {
-  const row = await requireOpportunity(input.organizationId, input.opportunityId);
+  const row = await requireOpportunity(
+    input.organizationId,
+    input.opportunityId,
+  );
   assertTransition(row, "changes_requested");
   await Repo.insertComment({
     id: crypto.randomUUID(),
@@ -324,17 +364,52 @@ async function requestChanges(input: {
     opportunityId: input.opportunityId,
     authorUserId: input.userId,
     authorRole: "user",
+    kind: "user",
     body: input.body,
     // The whole point of this comment is that the agent and the client both
     // read it.
     visibility: "client",
   });
-  const updated = await Repo.update(
+  const updated = await Repo.update(input.organizationId, input.opportunityId, {
+    status: "changes_requested",
+  });
+  return publicOpportunity(updated ?? row);
+}
+
+/**
+ * A comment that changes nothing.
+ *
+ * Separate from requestChanges on purpose: a follow-up thought should not
+ * reopen an opportunity that is already being revised, or pull back one that
+ * has been approved.
+ */
+async function addComment(input: {
+  organizationId: string;
+  userId: string;
+  opportunityId: string;
+  body: string;
+}) {
+  const row = await requireOpportunity(
     input.organizationId,
     input.opportunityId,
-    { status: "changes_requested" },
   );
-  return publicOpportunity(updated ?? row);
+  if (!COMMENTABLE.includes(row.status as OptimizationStatus)) {
+    throw new AppError(
+      "VALIDATION_ERROR",
+      "This opportunity is closed, so there is nothing to comment on.",
+    );
+  }
+  await Repo.insertComment({
+    id: crypto.randomUUID(),
+    organizationId: input.organizationId,
+    opportunityId: input.opportunityId,
+    authorUserId: input.userId,
+    authorRole: "user",
+    kind: "user",
+    body: input.body,
+    visibility: "client",
+  });
+  return { ok: true as const };
 }
 
 async function reject(organizationId: string, opportunityId: string) {
@@ -378,6 +453,7 @@ export const OptimizationService = {
   create,
   attachBrief,
   attachDraft,
+  addComment,
   appendComment,
   feedback,
   submitForReview,

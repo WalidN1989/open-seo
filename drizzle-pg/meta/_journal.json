@@ -351,6 +351,13 @@
       "when": 1788816168472,
       "tag": "0049_jazzy_justice",
       "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1788818603481,
+      "tag": "0050_heavy_typhoid_mary",
+      "breakpoints": true
     }
   ]
 }

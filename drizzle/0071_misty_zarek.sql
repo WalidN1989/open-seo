@@ -1,0 +1,1 @@
+ALTER TABLE `optimization_comments` ADD `kind` text DEFAULT 'user' NOT NULL;
