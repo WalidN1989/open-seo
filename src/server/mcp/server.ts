@@ -42,6 +42,14 @@ import {
 } from "@/server/mcp/tools/project-context";
 import { listSavedKeywordsTool } from "@/server/mcp/tools/list-saved-keywords";
 import {
+  appendOptimizationCommentTool,
+  attachOptimizationBriefTool,
+  attachOptimizationDraftTool,
+  createOptimizationOpportunityTool,
+  getOptimizationFeedbackTool,
+  listOptimizationOpportunitiesTool,
+} from "@/server/mcp/tools/optimization-tools";
+import {
   findSerpCompetitorsTool,
   getGoogleBusinessQuestionsTool,
   getKeywordMetricsTool,
@@ -158,6 +166,14 @@ export function createOpenSeoMcpServer(authProps: McpProps) {
   register(getProjectContextTool);
   register(updateProjectContextTool);
   register(listSavedKeywordsTool);
+  // Content Optimization: the agent proposes and drafts. Approving and
+  // publishing are browser actions, so no tool for either exists here.
+  register(listOptimizationOpportunitiesTool);
+  register(createOptimizationOpportunityTool);
+  register(attachOptimizationBriefTool);
+  register(attachOptimizationDraftTool);
+  register(appendOptimizationCommentTool);
+  register(getOptimizationFeedbackTool);
   register(researchKeywordsTool);
   register(saveKeywordsTool);
   register(getDomainOverviewTool);

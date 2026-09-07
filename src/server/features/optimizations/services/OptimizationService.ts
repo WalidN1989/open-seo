@@ -91,7 +91,9 @@ export type PublicOpportunity = ReturnType<typeof publicOpportunity>;
 async function list(
   organizationId: string,
   projectId: string,
-  filters: z.infer<typeof listOpportunitiesSchema>,
+  // The project is already an argument; asking for it twice invites them to
+  // disagree.
+  filters: Omit<z.infer<typeof listOpportunitiesSchema>, "projectId">,
 ) {
   const rows = await Repo.listByProject(organizationId, projectId, filters);
   return rows.map(publicOpportunity);
@@ -177,6 +179,105 @@ async function create(
     ...evidence,
   });
   return publicOpportunity(row);
+}
+
+/**
+ * Attach the brief the agent wrote.
+ *
+ * Re-briefing something already briefed is allowed and is not a transition —
+ * an agent revising its own thinking should not be an error.
+ */
+async function attachBrief(
+  organizationId: string,
+  opportunityId: string,
+  brief: unknown,
+) {
+  const row = await requireOpportunity(organizationId, opportunityId);
+  if (row.status !== "briefed") assertTransition(row, "briefed");
+  const updated = await Repo.update(organizationId, opportunityId, {
+    briefJson: JSON.stringify(brief),
+    status: "briefed",
+  });
+  return publicOpportunity(updated ?? row);
+}
+
+/**
+ * Attach a draft and keep the previous one.
+ *
+ * Every draft is written to the revision history before it replaces the
+ * current one, so a reviewer can always see what changed after asking for
+ * changes. Landing on `drafted` deliberately does NOT show it to a client;
+ * staff still have to submit it.
+ */
+async function attachDraft(
+  organizationId: string,
+  opportunityId: string,
+  draft: unknown,
+) {
+  const row = await requireOpportunity(organizationId, opportunityId);
+  if (row.status !== "drafted") assertTransition(row, "drafted");
+  const version = row.draftVersion + 1;
+  const draftJson = JSON.stringify(draft);
+  await Repo.insertRevision({
+    id: crypto.randomUUID(),
+    organizationId,
+    opportunityId,
+    version,
+    draftJson,
+  });
+  const updated = await Repo.update(organizationId, opportunityId, {
+    draftJson,
+    draftVersion: version,
+    status: "drafted",
+  });
+  return publicOpportunity(updated ?? row);
+}
+
+/** A note from the agent. Internal unless it is explicitly for the client. */
+async function appendComment(input: {
+  organizationId: string;
+  opportunityId: string;
+  body: string;
+  visibility: "client" | "internal";
+}) {
+  await requireOpportunity(input.organizationId, input.opportunityId);
+  await Repo.insertComment({
+    id: crypto.randomUUID(),
+    organizationId: input.organizationId,
+    opportunityId: input.opportunityId,
+    authorUserId: null,
+    authorRole: "agent",
+    body: input.body,
+    visibility: input.visibility,
+  });
+  return { ok: true as const };
+}
+
+/**
+ * What the client asked to be changed, so the agent can act on it.
+ *
+ * Returns only opportunities waiting on a revision, each with the comments
+ * that explain what to fix.
+ */
+async function feedback(organizationId: string, projectId: string) {
+  const rows = await Repo.listByProject(organizationId, projectId, {
+    status: "changes_requested",
+  });
+  return Promise.all(
+    rows.map(async (row) => {
+      const comments = await Repo.listComments(organizationId, row.id);
+      return {
+        opportunity: publicOpportunity(row),
+        comments: comments
+          .filter((comment) => comment.visibility === "client")
+          .map((comment) => ({
+            authorRole: comment.authorRole,
+            body: comment.body,
+            createdAt: comment.createdAt,
+          })),
+      };
+    }),
+  );
 }
 
 /** Staff put a draft in front of the client. Requires `manage`. */
@@ -275,6 +376,10 @@ export const OptimizationService = {
   list,
   detail,
   create,
+  attachBrief,
+  attachDraft,
+  appendComment,
+  feedback,
   submitForReview,
   approve,
   requestChanges,

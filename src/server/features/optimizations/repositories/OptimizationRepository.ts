@@ -135,6 +135,16 @@ async function insertComment(
   return row!;
 }
 
+async function insertRevision(
+  values: typeof optimizationRevisions.$inferInsert,
+) {
+  const [row] = await db
+    .insert(optimizationRevisions)
+    .values(values)
+    .returning();
+  return row!;
+}
+
 async function listRevisions(organizationId: string, opportunityId: string) {
   return db
     .select()
@@ -157,4 +167,5 @@ export const OptimizationRepository = {
   listComments,
   insertComment,
   listRevisions,
+  insertRevision,
 };
