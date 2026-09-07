@@ -1,5 +1,16 @@
 # OpenSEO business module migration scope
 
+### 2026-09-08: Social workspace presentation
+
+Social now uses the available workspace height, a bounded conversation list,
+soft inbound/outbound bubbles, and a fixed reply composer. Settings uses the
+right-hand space for the connection form, with paired fields on desktop and
+stacking on narrow screens. The project picker grows to the available viewport
+height before its list scrolls; search and footer actions remain visible.
+Only frontend layout is changed: social provider calls, authorization, account
+credentials, sending, and WhatsApp are unchanged. TypeScript, targeted lint,
+and the production build passed before release.
+
 OpenSEO remains the sole SEO engine. No SEO research, audit, rank tracking,
 publishing, Search Console, Analytics, DataForSEO, or AI-search feature is to be
 copied from the legacy applications.

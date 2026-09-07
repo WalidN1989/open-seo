@@ -22,6 +22,31 @@ import type { ProjectSummary } from "./types";
 // Below this many projects the plain list is faster to scan than a search box.
 const SEARCH_THRESHOLD = 8;
 
+function matchesProject(project: ProjectSummary, query: string) {
+  return (
+    project.name.toLowerCase().includes(query) ||
+    project.domain?.toLowerCase().includes(query)
+  );
+}
+
+function useProjectPanelHeight(
+  open: boolean,
+  rootRef: React.RefObject<HTMLDivElement | null>,
+) {
+  const [height, setHeight] = React.useState(400);
+  React.useEffect(() => {
+    if (!open) return;
+    const resize = () => {
+      const bottom = rootRef.current?.getBoundingClientRect().bottom ?? 100;
+      setHeight(Math.max(120, window.innerHeight - bottom - 20));
+    };
+    resize();
+    window.addEventListener("resize", resize);
+    return () => window.removeEventListener("resize", resize);
+  }, [open, rootRef]);
+  return height;
+}
+
 export function ProjectSwitcher({
   activeProjectId,
   onCloseDrawer,
@@ -48,6 +73,7 @@ export function ProjectSwitcher({
   const triggerRef = React.useRef<HTMLButtonElement>(null);
   const searchInputRef = React.useRef<HTMLInputElement>(null);
   const listRef = React.useRef<HTMLUListElement>(null);
+  const panelHeight = useProjectPanelHeight(open, rootRef);
 
   const projectsQuery = useQuery({
     queryKey: ["projects"],
@@ -62,11 +88,7 @@ export function ProjectSwitcher({
   const showSearch = projects.length >= SEARCH_THRESHOLD;
   const normalizedQuery = query.trim().toLowerCase();
   const filteredProjects = normalizedQuery
-    ? projects.filter(
-        (project) =>
-          project.name.toLowerCase().includes(normalizedQuery) ||
-          project.domain?.toLowerCase().includes(normalizedQuery),
-      )
+    ? projects.filter((project) => matchesProject(project, normalizedQuery))
     : projects;
 
   const openPanel = () => {
@@ -297,9 +319,12 @@ export function ProjectSwitcher({
       </div>
 
       {open ? (
-        <div className="absolute left-0 right-0 top-full z-30 mt-1 overflow-hidden rounded-box border border-base-300 bg-base-100 shadow-lg">
+        <div
+          style={{ maxHeight: panelHeight }}
+          className="absolute left-0 right-0 top-full z-30 mt-1 flex flex-col overflow-hidden rounded-box border border-base-300 bg-base-100 shadow-lg"
+        >
           {showSearch ? (
-            <div className="border-b border-base-300 p-2">
+            <div className="shrink-0 border-b border-base-300 p-2">
               <label className="input input-sm w-full">
                 <Search className="size-3.5 shrink-0 text-base-content/40" />
                 <input
@@ -334,7 +359,7 @@ export function ProjectSwitcher({
               id="project-switcher-listbox"
               role="listbox"
               aria-label="Projects"
-              className="menu max-h-[min(60vh,21rem)] w-full flex-nowrap overflow-y-auto p-2"
+              className="menu min-h-0 w-full flex-nowrap overflow-y-auto p-2"
             >
               {filteredProjects.map((project, index) => {
                 const isActive = isActiveProject(project);

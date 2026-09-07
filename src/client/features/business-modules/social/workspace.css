@@ -1,0 +1,164 @@
+.social-workspace {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  height: 100%;
+  min-height: 0;
+}
+.social-workspace > div:first-child,
+.social-workspace > nav {
+  flex-shrink: 0;
+}
+.social-workspace h1 {
+  font-size: 24px;
+}
+.social-workspace > div:first-child p {
+  font-size: 13px;
+}
+.social-content {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding-bottom: 8px;
+}
+.social-content-inbox {
+  display: flex;
+}
+.social-inbox {
+  display: grid;
+  grid-template-columns: minmax(240px, 300px) minmax(0, 1fr);
+  width: 100%;
+  min-height: 0;
+  border: 1px solid var(--color-base-300);
+  border-radius: 18px;
+  overflow: hidden;
+}
+.social-conversations {
+  min-height: 0;
+  overflow: auto;
+  border-right: 1px solid var(--color-base-300);
+}
+.social-conversations button {
+  transition: background 150ms;
+}
+.social-conversations button.bg-base-200 {
+  background: color-mix(in srgb, #11a5b3 9%, var(--color-base-100));
+  box-shadow: inset 3px 0 #11a5b3;
+}
+.social-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 32px;
+  text-align: center;
+  background: radial-gradient(
+    ellipse at center,
+    color-mix(in srgb, #11a5b3 6%, var(--color-base-100)),
+    var(--color-base-100) 70%
+  );
+}
+.social-empty-icon {
+  display: grid;
+  place-items: center;
+  width: 76px;
+  height: 76px;
+  border-radius: 24px;
+  background: color-mix(in srgb, #11a5b3 10%, var(--color-base-100));
+  color: #078b99;
+}
+.social-thread {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+.social-thread > header,
+.social-thread > form {
+  flex-shrink: 0;
+  background: var(--color-base-100);
+}
+.social-thread textarea {
+  min-width: 0;
+  resize: vertical;
+  max-height: 140px;
+}
+.social-messages {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 24px;
+  background: color-mix(in srgb, #11a5b3 3%, var(--color-base-100));
+}
+.social-messages article {
+  width: fit-content;
+  max-width: 82%;
+  margin-bottom: 16px;
+  background: var(--color-base-100);
+  overflow-wrap: anywhere;
+  box-shadow: 0 2px 4px #00000004;
+}
+.social-messages article[data-direction="outbound"] {
+  margin-left: auto;
+  background: color-mix(in srgb, #35bdcc 12%, var(--color-base-100));
+  border-color: color-mix(in srgb, #35bdcc 25%, var(--color-base-300));
+}
+.social-messages article[data-direction="draft"] {
+  margin-left: auto;
+  background: color-mix(
+    in srgb,
+    var(--color-warning) 10%,
+    var(--color-base-100)
+  );
+}
+.social-settings {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
+  gap: 20px;
+  align-items: start;
+}
+.social-accounts {
+  display: grid;
+  gap: 16px;
+}
+.social-accounts > section {
+  background: var(--color-base-100);
+  border-radius: 16px;
+}
+.social-connect {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.social-connect > h3,
+.social-connect > p,
+.social-connect > div,
+.social-connect > label:last-of-type {
+  grid-column: 1 / -1;
+}
+.social-connect label {
+  min-width: 0;
+}
+@media (max-width: 1000px) {
+  .social-settings {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 700px) {
+  .social-inbox {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(100px, 25%) minmax(0, 1fr);
+  }
+  .social-conversations {
+    border-right: 0;
+    border-bottom: 1px solid var(--color-base-300);
+  }
+  .social-connect {
+    grid-template-columns: 1fr;
+  }
+  .social-messages {
+    padding: 12px;
+  }
+  .social-messages article {
+    max-width: 95%;
+  }
+}

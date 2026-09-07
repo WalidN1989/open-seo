@@ -84,19 +84,19 @@ function BusinessModulePage() {
   return (
     <div
       className={
-        moduleKey === "whatsapp"
+        moduleKey === "whatsapp" || moduleKey === "social"
           ? "h-full min-h-0 overflow-hidden bg-base-100 p-3 md:p-5"
           : "h-full overflow-auto bg-base-100 px-4 py-6 pb-24 md:px-6 md:py-7 md:pb-8"
       }
     >
       <div
         className={
-          moduleKey === "whatsapp"
+          moduleKey === "whatsapp" || moduleKey === "social"
             ? "mx-auto h-full min-h-0 w-full max-w-[1600px]"
             : "mx-auto w-full max-w-[1500px] space-y-4"
         }
       >
-        {moduleKey !== "whatsapp" ? (
+        {moduleKey !== "whatsapp" && moduleKey !== "social" ? (
           <Link to="/modules" className="btn btn-ghost btn-sm -ml-2">
             <ArrowLeft className="size-4" />
             Business

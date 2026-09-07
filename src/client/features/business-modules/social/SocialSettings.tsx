@@ -18,10 +18,12 @@ export function SocialSettings({ data }: { data: SocialWorkspaceData }) {
     (account) => account && account.status !== "disconnected",
   );
   return (
-    <div className="grid max-w-3xl gap-4">
-      {live.map((account) =>
-        account ? <AccountCard key={account.id} account={account} /> : null,
-      )}
+    <div className="social-settings">
+      <div className="social-accounts">
+        {live.map((account) =>
+          account ? <AccountCard key={account.id} account={account} /> : null,
+        )}
+      </div>
       <ConnectForm />
     </div>
   );
@@ -189,7 +191,7 @@ function ConnectForm() {
       : `${window.location.origin}/api/social/meta`;
   return (
     <form
-      className="grid gap-3 rounded-xl border border-primary/30 bg-primary/5 p-4"
+      className="social-connect grid gap-3 rounded-xl border border-primary/30 bg-primary/5 p-4"
       onSubmit={(event) => {
         event.preventDefault();
         connect.mutate(form);

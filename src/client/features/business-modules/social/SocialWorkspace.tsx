@@ -36,7 +36,7 @@ export function SocialWorkspace() {
     (account) => account?.status === "connected",
   );
   return (
-    <div className="space-y-4">
+    <div className="social-workspace">
       <div>
         <h1 className="text-3xl font-semibold tracking-tight">Social</h1>
         <p className="mt-1 text-base text-base-content/65">
@@ -66,34 +66,49 @@ export function SocialWorkspace() {
           </button>
         ))}
       </nav>
-      {section === "Settings" ? <SocialSettings data={data} /> : null}
-      {section === "Assistant" ? (
-        <AssistantConfigSection channel="email" />
-      ) : null}
-      {section === "Drafts" ? <DraftsList data={data} /> : null}
-      {section === "Inbox" ? (
-        !connected.length ? (
-          <p className="p-6 text-center text-sm text-base-content/60">
-            Connect an Instagram account or a Facebook Page under Settings to
-            start receiving messages here.
-          </p>
-        ) : (
-          <div className="grid gap-4 lg:grid-cols-[minmax(260px,1fr)_2fr]">
-            <ConversationList
-              data={data}
-              selected={selected}
-              onSelect={setSelected}
-            />
-            {selected ? (
-              <ThreadView conversationId={selected} />
-            ) : (
-              <p className="p-6 text-center text-sm text-base-content/60">
-                Pick a conversation to read it.
-              </p>
-            )}
-          </div>
-        )
-      ) : null}
+      <div
+        className={`social-content ${section === "Inbox" ? "social-content-inbox" : ""}`}
+      >
+        {section === "Settings" ? <SocialSettings data={data} /> : null}
+        {section === "Assistant" ? (
+          <AssistantConfigSection channel="email" />
+        ) : null}
+        {section === "Drafts" ? <DraftsList data={data} /> : null}
+        {section === "Inbox" ? (
+          !connected.length ? (
+            <p className="p-6 text-center text-sm text-base-content/60">
+              Connect an Instagram account or a Facebook Page under Settings to
+              start receiving messages here.
+            </p>
+          ) : (
+            <div className="social-inbox">
+              <ConversationList
+                data={data}
+                selected={selected}
+                onSelect={setSelected}
+              />
+              {selected ? (
+                <ThreadView conversationId={selected} />
+              ) : (
+                <div className="social-empty">
+                  <div className="social-empty-icon">
+                    <MessageCircle size={32} />
+                  </div>
+                  <h2 className="text-xl font-semibold">Your social inbox</h2>
+                  <p className="max-w-xs text-sm text-base-content/60">
+                    Select a conversation to reply to your Instagram and
+                    Messenger messages.
+                  </p>
+                  <div className="flex gap-3 text-base-content/45">
+                    <Instagram size={20} />
+                    <MessageCircle size={20} />
+                  </div>
+                </div>
+              )}
+            </div>
+          )
+        ) : null}
+      </div>
     </div>
   );
 }
@@ -125,7 +140,7 @@ function ConversationList({
     );
   }
   return (
-    <ul className="max-h-[70vh] overflow-auto rounded-xl border border-base-300">
+    <ul className="social-conversations">
       {data.conversations.map((conversation) => (
         <li key={conversation.id}>
           <button
@@ -181,7 +196,7 @@ function ThreadView({ conversationId }: { conversationId: string }) {
   }
   const { conversation, messages } = query.data;
   return (
-    <section className="flex max-h-[70vh] flex-col rounded-xl border border-base-300">
+    <section className="social-thread">
       <header className="flex flex-wrap items-center justify-between gap-2 border-b border-base-300 px-4 py-3">
         <h2 className="truncate font-semibold">
           {conversation.participantName ?? conversation.participantId}
@@ -195,10 +210,11 @@ function ThreadView({ conversationId }: { conversationId: string }) {
           {conversation.status === "solved" ? "Reopen" : "Mark as solved"}
         </button>
       </header>
-      <div className="flex-1 space-y-3 overflow-auto p-4">
+      <div className="social-messages">
         {messages.map((message) => (
           <article
             key={message.id}
+            data-direction={message.direction}
             className={`rounded-xl border p-3 text-sm ${message.direction === "inbound" ? "border-base-300" : message.direction === "draft" ? "border-warning/50 bg-warning/10" : "border-primary/30 bg-primary/5"}`}
           >
             <div className="mb-1 flex items-center justify-between gap-2 text-xs text-base-content/55">
@@ -275,7 +291,7 @@ function DraftsList({ data }: { data: SocialWorkspaceData }) {
     );
   }
   return (
-    <ul className="grid max-w-3xl gap-3">
+    <ul className="grid gap-3 xl:grid-cols-2">
       {data.drafts.map((draft) => (
         <li
           key={draft.id}
