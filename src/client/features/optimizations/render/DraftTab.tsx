@@ -11,6 +11,53 @@ import {
 /** Below this a page tends to read thin to both a reader and a search engine. */
 const THIN_CONTENT_WORDS = 700;
 
+/**
+ * Writers mark where an image goes with `![alt][IMAGE: brief]` or
+ * `![alt](IMAGE: brief)`. Neither is a real image, so markdown renders the
+ * whole thing as literal text in the middle of a paragraph. Split them out and
+ * show them as what they are: a note about a picture nobody has made yet.
+ */
+const IMAGE_PLACEHOLDER = /!\[([^\]]*)\](?:\[IMAGE:([^\]]*)\]|\(IMAGE:([^)]*)\))/gi;
+
+type Segment =
+  | { kind: "markdown"; text: string }
+  | { kind: "image"; alt: string; brief: string };
+
+function splitBody(body: string): Segment[] {
+  const segments: Segment[] = [];
+  let lastIndex = 0;
+  for (const match of body.matchAll(IMAGE_PLACEHOLDER)) {
+    const index = match.index ?? 0;
+    if (index > lastIndex) {
+      segments.push({ kind: "markdown", text: body.slice(lastIndex, index) });
+    }
+    segments.push({
+      kind: "image",
+      alt: (match[1] ?? "").trim(),
+      brief: (match[2] ?? match[3] ?? "").trim(),
+    });
+    lastIndex = index + match[0].length;
+  }
+  if (lastIndex < body.length) {
+    segments.push({ kind: "markdown", text: body.slice(lastIndex) });
+  }
+  return segments;
+}
+
+function ImageSlot({ alt, brief }: { alt: string; brief: string }) {
+  return (
+    <figure className="my-5 rounded-lg border border-dashed border-base-300 bg-base-200/40 p-4">
+      <figcaption className="text-xs uppercase tracking-wide text-base-content/50">
+        Image to add
+      </figcaption>
+      {alt ? <p className="mt-1 text-sm font-medium">{alt}</p> : null}
+      {brief ? (
+        <p className="mt-1 text-sm text-base-content/65">{brief}</p>
+      ) : null}
+    </figure>
+  );
+}
+
 type Revision = { version: number; draft: unknown; createdAt: string };
 
 function ImagePlan({ draft }: { draft: Json }) {
@@ -105,7 +152,19 @@ export function DraftTab({
         ) : null}
         {body ? (
           <div className="optimization-draft-body mt-5">
-            <Markdown remarkPlugins={[remarkGfm]}>{body}</Markdown>
+            {splitBody(body).map((segment, index) =>
+              segment.kind === "image" ? (
+                <ImageSlot
+                  key={index}
+                  alt={segment.alt}
+                  brief={segment.brief}
+                />
+              ) : (
+                <Markdown key={index} remarkPlugins={[remarkGfm]}>
+                  {segment.text}
+                </Markdown>
+              ),
+            )}
           </div>
         ) : (
           <p className="mt-5 text-sm text-base-content/50">
