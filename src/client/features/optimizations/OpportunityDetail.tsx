@@ -134,6 +134,7 @@ export function OpportunityDetail({
             draftVersion={opportunity.draftVersion}
             revisions={query.data.revisions}
             type={opportunity.type}
+            path={opportunity.targetUrl ?? opportunity.proposedPath}
           />
         ) : null}
 
