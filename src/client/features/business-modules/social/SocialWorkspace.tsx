@@ -32,6 +32,11 @@ export function SocialWorkspace() {
   }
   if (!query.data) return null;
   const data = query.data;
+  const activeConversation = data.conversations.some(
+    (item) => item.id === selected,
+  )
+    ? selected
+    : (data.conversations[0]?.id ?? null);
   const connected = data.accounts.filter(
     (account) => account?.status === "connected",
   );
@@ -55,7 +60,10 @@ export function SocialWorkspace() {
           <button
             key={item}
             className={`shrink-0 border-b-2 px-3 py-2 text-sm transition-colors ${section === item ? "border-primary font-semibold text-base-content" : "border-transparent text-base-content/60 hover:text-base-content"}`}
-            onClick={() => setSection(item)}
+            onClick={() => {
+              setSection(item);
+              if (item === "Inbox") setSelected(null);
+            }}
           >
             {item}
             {item === "Drafts" && data.drafts.length ? (
@@ -71,7 +79,9 @@ export function SocialWorkspace() {
       >
         {section === "Settings" ? <SocialSettings data={data} /> : null}
         {section === "Assistant" ? (
-          <AssistantConfigSection channel="email" />
+          <div className="social-assistant">
+            <AssistantConfigSection channel="email" />
+          </div>
         ) : null}
         {section === "Drafts" ? <DraftsList data={data} /> : null}
         {section === "Inbox" ? (
@@ -84,11 +94,14 @@ export function SocialWorkspace() {
             <div className="social-inbox">
               <ConversationList
                 data={data}
-                selected={selected}
+                selected={activeConversation}
                 onSelect={setSelected}
               />
-              {selected ? (
-                <ThreadView conversationId={selected} />
+              {activeConversation ? (
+                <ThreadView
+                  key={activeConversation}
+                  conversationId={activeConversation}
+                />
               ) : (
                 <div className="social-empty">
                   <div className="social-empty-icon">
