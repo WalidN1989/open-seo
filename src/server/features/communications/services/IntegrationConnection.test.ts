@@ -1,5 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+// The import graph reaches src/db/provider.ts, which imports the worker
+// runtime. Vitest cannot resolve that module, so this file used to pass only
+// when another test file happened to register the mock first in the same
+// worker — which made it fail or pass depending on test order. Mocking it here
+// makes the file self-contained.
+const mockEnv = vi.hoisted(
+  () => ({ DATABASE_PROVIDER: "d1" }) as { DATABASE_PROVIDER: string },
+);
+vi.mock("cloudflare:workers", () => ({ env: mockEnv }));
+
 const mocks = vi.hoisted(() => ({
   requireAccess: vi.fn(),
   createIntegration: vi.fn(),
