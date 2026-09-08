@@ -155,7 +155,9 @@ function accessNote(access: ClientAccess): string | null {
   if (access.kind === "verified" || access.kind === "just_verified") {
     return `This person has verified as a client: ${access.displayName}. Their account data is not available to you yet, so answer generally and offer to have the team follow up with specifics.`;
   }
-  return "This person has NOT verified which client they are. If they ask about their own account, site, rankings or results, do not discuss specifics — ask them to reply with the access code we sent them, and say it is an eight-character code like 72PB-6YMN.";
+  // Never give an example code. Any string that reads like one is a code
+  // somebody holds, and the assistant would be reading it out on request.
+  return "This person has NOT verified which client they are. If they ask about their own account, site, rankings or results, do not discuss specifics — ask them to reply with the access code we sent them, described only as eight characters in two groups of four. Never state, guess at, or give an example of a code.";
 }
 
 export async function replyToInbound(
@@ -207,7 +209,7 @@ export async function replyToInbound(
       connection,
       conversationId,
       message.sender,
-      `That code does not match any account. Please check it and try again — it is eight characters, like 72PB-6YMN. ${access.remaining} attempt${access.remaining === 1 ? "" : "s"} left.`,
+      `That code does not match any account. Please check it and try again — it is eight characters in two groups of four. ${access.remaining} attempt${access.remaining === 1 ? "" : "s"} left.`,
     );
     return true;
   }

@@ -6,15 +6,15 @@ import {
 
 describe("spotting a code someone sent", () => {
   it("reads a code sent on its own, however they space it", () => {
-    for (const text of ["72PB6YMN", "  72pb6ymn ", "72PB-6YMN", "72PB 6YMN"]) {
-      expect(findAccessCodeCandidate(text)).toBe("72PB6YMN");
+    for (const text of ["W4KD3TXR", "  w4kd3txr ", "W4KD-3TXR", "W4KD 3TXR"]) {
+      expect(findAccessCodeCandidate(text)).toBe("W4KD3TXR");
     }
   });
 
   it("reads a code inside a sentence when it is written in halves", () => {
-    expect(findAccessCodeCandidate("my code is 72PB-6YMN")).toBe("72PB6YMN");
-    expect(findAccessCodeCandidate("72PB-6YMN thanks")).toBe("72PB6YMN");
-    expect(findAccessCodeCandidate("Here you go: 72pb–6ymn")).toBe("72PB6YMN");
+    expect(findAccessCodeCandidate("my code is W4KD-3TXR")).toBe("W4KD3TXR");
+    expect(findAccessCodeCandidate("W4KD-3TXR thanks")).toBe("W4KD3TXR");
+    expect(findAccessCodeCandidate("Here you go: w4kd–3txr")).toBe("W4KD3TXR");
   });
 
   it("ignores an ordinary word that happens to fit the alphabet", () => {

@@ -15,7 +15,7 @@
 const ALPHABET = "23456789ABCDEFGHJKMNPQRSTVWXYZ";
 const CHAR = `[${ALPHABET}]`;
 
-/** `72PB-6YMN`, `72PB 6YMN` — the way a code is written down and read back. */
+/** `W4KD-3TXR`, `W4KD 3TXR` — the way a code is written down and read back. */
 const GROUPED = new RegExp(`\\b(${CHAR}{4})[-–—\\s](${CHAR}{4})\\b`, "i");
 
 /** The whole message is the code and nothing else. */
@@ -28,7 +28,7 @@ export function findAccessCodeCandidate(body: string): string | null {
   const bare = BARE.exec(text);
   if (bare) return bare[1]!.toUpperCase();
 
-  // "my code is 72PB-6YMN", "72PB-6YMN thanks" — the separator is what makes
+  // "my code is W4KD-3TXR", "W4KD-3TXR thanks" — the separator is what makes
   // this a deliberate code rather than a word that happens to fit.
   const grouped = GROUPED.exec(text);
   if (grouped) return `${grouped[1]!}${grouped[2]!}`.toUpperCase();
