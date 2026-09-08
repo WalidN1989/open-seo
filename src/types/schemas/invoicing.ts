@@ -60,6 +60,10 @@ export const saveInvoiceSchema = z.object({
 
 export const invoiceIdSchema = z.object({ invoiceId: z.string().min(1) });
 
+export const invoiceDocumentTokenSchema = z.object({
+  token: z.string().min(1).max(4000),
+});
+
 export const setInvoiceStatusSchema = z.object({
   invoiceId: z.string().min(1),
   status: invoiceStatusSchema,

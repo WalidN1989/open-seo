@@ -17,6 +17,7 @@ import { Route as AuthRouteImport } from './routes/_auth'
 import { Route as ProjectRouteRouteImport } from './routes/_project/route'
 import { Route as AppRouteRouteImport } from './routes/_app/route'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
+import { Route as InvoicesInvoiceIdRouteImport } from './routes/invoices/$invoiceId'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as AcceptInvitationInvitationIdRouteImport } from './routes/accept-invitation.$invitationId'
 import { Route as AuthenticatedSubscribeRouteImport } from './routes/_authenticated.subscribe'
@@ -117,6 +118,11 @@ const AppIndexRoute = AppIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AppRouteRoute,
+} as any)
+const InvoicesInvoiceIdRoute = InvoicesInvoiceIdRouteImport.update({
+  id: '/invoices/$invoiceId',
+  path: '/invoices/$invoiceId',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const ApiHealthRoute = ApiHealthRouteImport.update({
   id: '/api/health',
@@ -481,6 +487,7 @@ export interface FileRoutesByFullPath {
   '/subscribe': typeof AuthenticatedSubscribeRoute
   '/accept-invitation/$invitationId': typeof AcceptInvitationInvitationIdRoute
   '/api/health': typeof ApiHealthRoute
+  '/invoices/$invoiceId': typeof InvoicesInvoiceIdRoute
   '/p/$projectId': typeof ProjectPProjectIdRouteRouteWithChildren
   '/help/dataforseo-api-key': typeof AppHelpDataforseoApiKeyRoute
   '/help/openrouter-api-key': typeof AppHelpOpenrouterApiKeyRoute
@@ -550,6 +557,7 @@ export interface FileRoutesByTo {
   '/subscribe': typeof AuthenticatedSubscribeRoute
   '/accept-invitation/$invitationId': typeof AcceptInvitationInvitationIdRoute
   '/api/health': typeof ApiHealthRoute
+  '/invoices/$invoiceId': typeof InvoicesInvoiceIdRoute
   '/help/dataforseo-api-key': typeof AppHelpDataforseoApiKeyRoute
   '/help/openrouter-api-key': typeof AppHelpOpenrouterApiKeyRoute
   '/modules/$moduleKey': typeof AppModulesModuleKeyRoute
@@ -618,6 +626,7 @@ export interface FileRoutesById {
   '/_authenticated/subscribe': typeof AuthenticatedSubscribeRoute
   '/accept-invitation/$invitationId': typeof AcceptInvitationInvitationIdRoute
   '/api/health': typeof ApiHealthRoute
+  '/invoices/$invoiceId': typeof InvoicesInvoiceIdRoute
   '/_app/': typeof AppIndexRoute
   '/_project/p/$projectId': typeof ProjectPProjectIdRouteRouteWithChildren
   '/_app/help/dataforseo-api-key': typeof AppHelpDataforseoApiKeyRoute
@@ -691,6 +700,7 @@ export interface FileRouteTypes {
     | '/subscribe'
     | '/accept-invitation/$invitationId'
     | '/api/health'
+    | '/invoices/$invoiceId'
     | '/p/$projectId'
     | '/help/dataforseo-api-key'
     | '/help/openrouter-api-key'
@@ -760,6 +770,7 @@ export interface FileRouteTypes {
     | '/subscribe'
     | '/accept-invitation/$invitationId'
     | '/api/health'
+    | '/invoices/$invoiceId'
     | '/help/dataforseo-api-key'
     | '/help/openrouter-api-key'
     | '/modules/$moduleKey'
@@ -827,6 +838,7 @@ export interface FileRouteTypes {
     | '/_authenticated/subscribe'
     | '/accept-invitation/$invitationId'
     | '/api/health'
+    | '/invoices/$invoiceId'
     | '/_app/'
     | '/_project/p/$projectId'
     | '/_app/help/dataforseo-api-key'
@@ -892,6 +904,7 @@ export interface RootRouteChildren {
   Char91DotwellKnownChar93OpenaiAppsChallengeRoute: typeof Char91DotwellKnownChar93OpenaiAppsChallengeRoute
   AcceptInvitationInvitationIdRoute: typeof AcceptInvitationInvitationIdRoute
   ApiHealthRoute: typeof ApiHealthRoute
+  InvoicesInvoiceIdRoute: typeof InvoicesInvoiceIdRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiAutumnSplatRoute: typeof ApiAutumnSplatRoute
   ApiEmailAccountIdRoute: typeof ApiEmailAccountIdRoute
@@ -959,6 +972,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof AppIndexRouteImport
       parentRoute: typeof AppRouteRoute
+    }
+    '/invoices/$invoiceId': {
+      id: '/invoices/$invoiceId'
+      path: '/invoices/$invoiceId'
+      fullPath: '/invoices/$invoiceId'
+      preLoaderRoute: typeof InvoicesInvoiceIdRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/api/health': {
       id: '/api/health'
@@ -1670,6 +1690,7 @@ const rootRouteChildren: RootRouteChildren = {
     Char91DotwellKnownChar93OpenaiAppsChallengeRoute,
   AcceptInvitationInvitationIdRoute: AcceptInvitationInvitationIdRoute,
   ApiHealthRoute: ApiHealthRoute,
+  InvoicesInvoiceIdRoute: InvoicesInvoiceIdRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiAutumnSplatRoute: ApiAutumnSplatRoute,
   ApiEmailAccountIdRoute: ApiEmailAccountIdRoute,

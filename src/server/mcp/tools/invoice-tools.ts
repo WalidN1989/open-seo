@@ -125,11 +125,74 @@ export const getInvoiceTool = {
       // agent reading the record.
       const { bankDetails: _bank, paymentInstructions: _pay, ...issuer } =
         detail.issuer;
+      // Whole units alongside the stored minor units: an agent reading
+      // "totalMinor: 20000" has to know the convention, and one that does not
+      // will quote two hundred dollars as twenty thousand.
+      const lines = detail.lines.map((line) => ({
+        ...line,
+        quantity: line.quantityMilli / 1000,
+        unitPrice: line.unitPriceMinor / 100,
+        amount: line.amountMinor / 100,
+      }));
+      const invoice = {
+        ...detail.invoice,
+        heading: detail.heading,
+        subtotal: detail.invoice.subtotalMinor / 100,
+        tax: detail.invoice.taxMinor / 100,
+        total: detail.invoice.totalMinor / 100,
+        issuer,
+        // The link itself comes from get_invoice_document, so an ordinary read
+        // does not hand out a URL to a page carrying payment details.
+        documentAvailable: true,
+      };
       return mcpResponse({
-        text: `${detail.heading} ${detail.invoice.number} for ${detail.invoice.clientName} — ${formatMoney(detail.invoice.totalMinor, detail.invoice.currency)} ${detail.invoice.currency}, ${detail.invoice.status}.`,
+        text: `${detail.heading} ${detail.invoice.number} for ${detail.invoice.clientName} — ${formatMoney(detail.invoice.totalMinor, detail.invoice.currency)} ${detail.invoice.currency}, ${detail.invoice.status}. Call get_invoice_document for a shareable link.`,
+        structuredContent: { invoice, lines },
+      });
+    },
+  ),
+};
+
+const documentInput = {
+  organizationId: organizationIdSchema,
+  invoiceId: invoiceIdSchema,
+} as const;
+
+export const getInvoiceDocumentTool = {
+  name: "get_invoice_document",
+  config: {
+    title: "Get a shareable link to an invoice document",
+    description:
+      "Returns a signed, time-limited URL to the invoice exactly as its recipient sees it — the page a client opens and prints or saves as a PDF. The server does not render PDF binaries; the browser does. The link needs no login, expires, and carries the full document including payment details, so treat it as you would the invoice itself.",
+    inputSchema: documentInput,
+    outputSchema: {
+      number: z.string(),
+      url: z.string(),
+      expiresAt: z.string(),
+      format: z.string(),
+      ...optionalMetaOutputSchema,
+    },
+    annotations: {
+      readOnlyHint: true,
+      openWorldHint: false,
+      destructiveHint: false,
+    },
+  },
+  handler: withMcpOrganizationAuth(
+    async (args: z.infer<z.ZodObject<typeof documentInput>>, context) => {
+      const link = await InvoiceService.documentLink(
+        context.organizationId,
+        context.auth.userId,
+        args.invoiceId,
+      );
+      const url = `${context.baseUrl}${link.path}`;
+      return mcpResponse({
+        text: `${link.number}: ${url}\nValid until ${link.expiresAt}. Open it and print to PDF.`,
         structuredContent: {
-          invoice: { ...detail.invoice, issuer },
-          lines: detail.lines,
+          number: link.number,
+          url,
+          expiresAt: link.expiresAt,
+          format: "html",
         },
       });
     },
@@ -226,7 +289,12 @@ export const invoiceSurface: McpModuleSurface = {
   scope: "organization",
   summary:
     "Read invoices and prepare drafts. Sending, marking paid, voiding and the issuer profile stay with a person.",
-  tools: [listInvoicesTool, getInvoiceTool, draftInvoiceTool],
+  tools: [
+    listInvoicesTool,
+    getInvoiceTool,
+    getInvoiceDocumentTool,
+    draftInvoiceTool,
+  ],
   withheld: [
     {
       action: "mark an invoice paid",

@@ -55,12 +55,35 @@ shapes and the loop.
 | Tool | What it does |
 |---|---|
 | `list_invoices(organizationId?, status?)` | Invoices with status, client, dates, totals |
-| `get_invoice(invoiceId)` | One invoice with its lines. **Bank details are stripped.** |
+| `get_invoice(invoiceId)` | One invoice with its lines, totals and issuer. **Bank details and payment instructions are stripped.** |
+| `get_invoice_document(invoiceId)` | A signed, expiring URL to the document as its recipient sees it |
 | `draft_invoice(...)` | Create or revise a **draft**. Creating takes the next number in the sequence. |
 
 `draft_invoice` takes whole currency units — `unitPrice: 200` means two hundred
 dollars. Storage is in minor units; the conversion is the app's problem, not
-the agent's.
+the agent's. `get_invoice` returns both, so an agent never has to know the
+convention to quote a figure correctly.
+
+### About the document, and why it is not a PDF
+
+There is no PDF file. The app has never rendered one: the "Print / Save as PDF"
+button calls the browser's print dialog, and the browser makes the PDF. Nothing
+is generated or stored server-side, so there are no bytes to hand an agent.
+
+`get_invoice_document` returns a **signed, time-limited URL** to the invoice as
+its recipient sees it — the same document, at a page that needs no login,
+valid for seven days. Open it and print to PDF. `format` says `"html"` so an
+agent is not left guessing.
+
+The organization travels inside the signature rather than in the URL, so a link
+cannot be edited to address another workspace's invoice. Seven tests cover the
+round trip, both forgery attempts, and expiry.
+
+**One thing to be deliberate about:** that page is the client-facing document,
+so it carries the payment details that `get_invoice` strips. That is why
+minting a link is its own tool rather than a field on every read — an ordinary
+read reports `documentAvailable: true` and nothing more. Treat a minted link
+the way you would treat the invoice itself.
 
 **Withheld, and why:**
 

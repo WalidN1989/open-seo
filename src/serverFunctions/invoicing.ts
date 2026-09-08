@@ -1,7 +1,11 @@
 import { createServerFn } from "@tanstack/react-start";
 import { InvoiceService } from "@/server/features/invoicing/services/InvoiceService";
-import { requireAuthenticatedContext } from "@/serverFunctions/middleware";
 import {
+  requireAuthenticatedContext,
+  requireSignedDocumentToken,
+} from "@/serverFunctions/middleware";
+import {
+  invoiceDocumentTokenSchema,
   invoiceIdSchema,
   invoiceSettingsSchema,
   saveInvoiceSchema,
@@ -51,6 +55,30 @@ export const deleteInvoice = createServerFn({ method: "POST" })
   .validator(invoiceIdSchema)
   .handler(({ data, context }) =>
     InvoiceService.remove(
+      context.organizationId,
+      context.userId,
+      data.invoiceId,
+    ),
+  );
+
+/**
+ * Reads an invoice for a shared document link.
+ *
+ * Deliberately unauthenticated: the signed token IS the credential, and the
+ * workspace it grants comes from inside the signature rather than the URL.
+ */
+export const getInvoiceDocument = createServerFn({ method: "POST" })
+  .middleware(requireSignedDocumentToken)
+  .validator(invoiceDocumentTokenSchema)
+  .handler(({ context }) =>
+    InvoiceService.detailForClaims(context.organizationId, context.invoiceId),
+  );
+
+export const createInvoiceDocumentLink = createServerFn({ method: "POST" })
+  .middleware(requireAuthenticatedContext)
+  .validator(invoiceIdSchema)
+  .handler(({ data, context }) =>
+    InvoiceService.documentLink(
       context.organizationId,
       context.userId,
       data.invoiceId,

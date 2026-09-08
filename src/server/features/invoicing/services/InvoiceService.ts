@@ -6,6 +6,12 @@ import {
   type InvoiceRow,
   type InvoiceSettingsRow,
 } from "../repositories/InvoiceRepository";
+import { getRequiredEnvValue } from "@/server/lib/runtime-env";
+import {
+  documentPath,
+  DOCUMENT_LINK_TTL_MS,
+  signDocumentToken,
+} from "../documentLink";
 import {
   computeTotals,
   documentHeading,
@@ -231,6 +237,67 @@ async function save(
   return publicInvoice(invoice);
 }
 
+/**
+ * Mint a link to the document.
+ *
+ * Deliberately its own action rather than a field on every read: the page it
+ * opens is the client-facing invoice, payment instructions and all, so handing
+ * one out should be something a caller asks for.
+ */
+async function documentLink(
+  organizationId: string,
+  userId: string,
+  invoiceId: string,
+) {
+  await BusinessModuleService.requireAccess(organizationId, userId, MODULE);
+  const row = await Repo.getInvoice(organizationId, invoiceId);
+  if (!row) throw new AppError("NOT_FOUND", "Invoice not found.");
+  const secret = await getRequiredEnvValue("BETTER_AUTH_SECRET");
+  const expiresAt = Date.now() + DOCUMENT_LINK_TTL_MS;
+  const token = await signDocumentToken(
+    { invoiceId: row.id, organizationId, expiresAt },
+    secret,
+  );
+  return {
+    number: row.number,
+    path: documentPath(row.id, token),
+    expiresAt: new Date(expiresAt).toISOString(),
+  };
+}
+
+/**
+ * Read an invoice for a document link, with the token standing in for a
+ * session. The organization comes from inside the signature, never the URL.
+ */
+async function detailForClaims(organizationId: string, invoiceId: string) {
+  const claims = { organizationId, invoiceId };
+  const row = await Repo.getInvoice(claims.organizationId, claims.invoiceId);
+  if (!row) throw new AppError("NOT_FOUND", "Invoice not found.");
+  const [lines, settingsRow] = await Promise.all([
+    Repo.listLines(claims.organizationId, claims.invoiceId),
+    Repo.getSettings(claims.organizationId),
+  ]);
+  const issuer = row.issuerSnapshotJson
+    ? (JSON.parse(row.issuerSnapshotJson) as IssuerSnapshot)
+    : settingsOrDefaults(settingsRow);
+  return {
+    invoice: publicInvoice(row),
+    heading: documentHeading({
+      documentType: row.documentType,
+      taxRegistered: issuer.taxRegistered,
+    }),
+    issuer,
+    lines: lines.map((line) => ({
+      id: line.id,
+      description: line.description,
+      detail: line.detail,
+      quantityMilli: line.quantityMilli,
+      unitPriceMinor: line.unitPriceMinor,
+      amountMinor: line.amountMinor,
+    })),
+  };
+}
+
 async function setStatus(
   organizationId: string,
   userId: string,
@@ -286,6 +353,8 @@ export const InvoiceService = {
   workspace,
   saveSettings,
   detail,
+  documentLink,
+  detailForClaims,
   save,
   setStatus,
   remove,

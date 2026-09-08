@@ -55,6 +55,7 @@ describe("the invoice MCP surface", () => {
     expect(declaredToolNames(invoices).toSorted()).toEqual([
       "draft_invoice",
       "get_invoice",
+      "get_invoice_document",
       "list_invoices",
     ]);
   });
@@ -63,6 +64,17 @@ describe("the invoice MCP surface", () => {
     for (const name of declaredToolNames(invoices)) {
       expect(name).not.toMatch(/paid|sent|send|void|delete|remove|settings/);
     }
+  });
+
+  it("mints a document link only when asked, never on an ordinary read", () => {
+    // get_invoice reports that a document exists; it does not hand out the
+    // URL, because that page carries the payment details.
+    const read = invoices.slice(
+      invoices.indexOf("export const getInvoiceTool"),
+      invoices.indexOf("export const getInvoiceDocumentTool"),
+    );
+    expect(read).toContain("documentAvailable: true");
+    expect(read).not.toContain("documentLink");
   });
 
   it("never reaches the service methods that move money or settings", () => {
