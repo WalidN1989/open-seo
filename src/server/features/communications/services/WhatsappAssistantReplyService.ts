@@ -14,6 +14,10 @@ import {
 } from "../providers/assistant-knowledge";
 import { generateWhatsappAiReply } from "../providers/whatsapp-ai";
 import {
+  resolveClientAccess,
+  type ClientAccess,
+} from "@/server/features/clients/services/ClientVerificationService";
+import {
   sendWhatsappText,
   type InboundWhatsappMessage,
 } from "../providers/whatsapp";
@@ -146,6 +150,14 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
  * escalation keyword hands off before any answer; an instant answer costs no
  * model call; only then does the model see the conversation.
  */
+/** What the assistant is told about who it is speaking to. */
+function accessNote(access: ClientAccess): string | null {
+  if (access.kind === "verified" || access.kind === "just_verified") {
+    return `This person has verified as a client: ${access.displayName}. Their account data is not available to you yet, so answer generally and offer to have the team follow up with specifics.`;
+  }
+  return "This person has NOT verified which client they are. If they ask about their own account, site, rankings or results, do not discuss specifics — ask them to reply with the access code we sent them, and say it is an eight-character code like 72PB-6YMN.";
+}
+
 export async function replyToInbound(
   connection: Connection,
   conversationId: string,
@@ -169,6 +181,45 @@ export async function replyToInbound(
     conversationId,
   );
   if (status === "pending") return true;
+
+  // Before anything else, including the model: a message carrying a code is
+  // handled here and never reaches the assistant.
+  const access = await resolveClientAccess({
+    organizationId,
+    identifier: message.sender,
+    body,
+  }).catch((error: unknown) => {
+    console.error("Client access check failed", error);
+    return { kind: "anonymous" } as ClientAccess;
+  });
+
+  if (access.kind === "locked") {
+    await sendReply(
+      connection,
+      conversationId,
+      message.sender,
+      "That is too many attempts. For security this number is paused for a few minutes — please try again shortly, or contact us and we will help.",
+    );
+    return true;
+  }
+  if (access.kind === "rejected") {
+    await sendReply(
+      connection,
+      conversationId,
+      message.sender,
+      `That code does not match any account. Please check it and try again — it is eight characters, like 72PB-6YMN. ${access.remaining} attempt${access.remaining === 1 ? "" : "s"} left.`,
+    );
+    return true;
+  }
+  if (access.kind === "just_verified") {
+    await sendReply(
+      connection,
+      conversationId,
+      message.sender,
+      `Thanks — you are verified as ${access.displayName}. You will not need that code again from this number. What would you like to know?`,
+    );
+    return true;
+  }
 
   const keyword = matchesEscalation(
     body,
@@ -238,6 +289,7 @@ export async function replyToInbound(
       model: settings.model ?? (await getOptionalEnvValue("WHATSAPP_AI_MODEL")),
       businessContext: context,
       persona: settings.persona,
+      accessNote: accessNote(access),
       lookupProducts: (query) => lookupProducts(organizationId, query),
     });
     if (!result) return false;

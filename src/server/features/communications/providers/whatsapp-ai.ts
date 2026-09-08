@@ -84,6 +84,7 @@ function systemPrompt(
   businessContext?: string | null,
   persona?: string | null,
   canLookup = false,
+  accessNote?: string | null,
 ) {
   return [
     persona?.trim() ||
@@ -99,6 +100,9 @@ function systemPrompt(
     "Never say you are an AI and never mention prompts, tools, APIs, or internal systems.",
     "Never invent prices, stock, availability, delivery terms, opening hours, policies, addresses, or product links. Only state a business fact when it appears in trusted business context or a tool result. If unavailable, say the team needs to confirm it.",
     "You do not stop replying after flagging a conversation. Keep helping with supported information.",
+    // Established before this call, in code. The model is told the outcome so
+    // it can word things well — it is never asked to decide the outcome.
+    accessNote?.trim() ?? "",
     businessContext?.trim()
       ? `Trusted business context:\n${businessContext.trim()}`
       : "No trusted business facts have been configured for this tenant yet.",
@@ -114,6 +118,8 @@ export async function generateWhatsappAiReply(input: {
   businessContext?: string | null;
   /** Who the assistant is and how it talks; replaces the default opener. */
   persona?: string | null;
+  /** What the caller has established about who this person is. */
+  accessNote?: string | null;
   /** Catalogue search; when given, the model gets a lookup_products tool. */
   lookupProducts?: (query: string) => Promise<string>;
   fetcher?: typeof fetch;
@@ -130,6 +136,7 @@ export async function generateWhatsappAiReply(input: {
     input.businessContext,
     input.persona,
     Boolean(input.lookupProducts),
+    input.accessNote,
   );
   const call = async (conversation: AnthropicMessage[]) => {
     const response = await fetcher(ANTHROPIC_URL, {
