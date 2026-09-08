@@ -173,12 +173,18 @@ export function ClientAccountsWorkspace() {
               <select
                 className="select select-bordered"
                 value={pickedOrg}
-                onChange={(event) => setPickedOrg(event.target.value)}
+                onChange={(event) => {
+                  setPickedOrg(event.target.value);
+                  const chosen = (linkable.data ?? []).find(
+                    (org) => org.id === event.target.value,
+                  );
+                  if (chosen && !name.trim()) setName(chosen.name);
+                }}
               >
                 <option value="">Choose…</option>
-                {(linkable.data ?? []).map((id) => (
-                  <option key={id} value={id}>
-                    {id}
+                {(linkable.data ?? []).map((org) => (
+                  <option key={org.id} value={org.id}>
+                    {org.name}
                   </option>
                 ))}
               </select>

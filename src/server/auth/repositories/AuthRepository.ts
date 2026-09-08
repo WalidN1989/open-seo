@@ -48,6 +48,16 @@ async function listOrganizationIdsForUser(userId: string) {
   return rows.map((row) => row.organizationId);
 }
 
+/** The same memberships, with the names a person actually recognises. */
+async function listOrganizationsForUser(userId: string) {
+  return db
+    .select({ id: organization.id, name: organization.name })
+    .from(member)
+    .innerJoin(organization, eq(organization.id, member.organizationId))
+    .where(eq(member.userId, userId))
+    .orderBy(asc(organization.name));
+}
+
 async function getHostedUser(userId: string) {
   return db.query.user.findFirst({
     columns: {
@@ -63,5 +73,6 @@ export const AuthRepository = {
   upsertDelegatedOrganization,
   findFirstOrganizationIdForUser,
   listOrganizationIdsForUser,
+  listOrganizationsForUser,
   getHostedUser,
 } as const;

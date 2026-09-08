@@ -67,12 +67,14 @@ async function workspace(organizationId: string, userId: string) {
  */
 async function linkableOrganizations(organizationId: string, userId: string) {
   await BusinessModuleService.requireAccess(organizationId, userId, MODULE);
-  const [ids, existing] = await Promise.all([
-    AuthRepository.listOrganizationIdsForUser(userId),
+  const [organizations, existing] = await Promise.all([
+    AuthRepository.listOrganizationsForUser(userId),
     Repo.listAccounts(organizationId),
   ]);
   const taken = new Set(existing.map((row) => row.clientOrganizationId));
-  return ids.filter((id) => id !== organizationId && !taken.has(id));
+  return organizations.filter(
+    (org) => org.id !== organizationId && !taken.has(org.id),
+  );
 }
 
 /**
