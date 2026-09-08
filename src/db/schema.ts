@@ -1,6 +1,7 @@
 import { getDatabaseProvider } from "./provider";
 import * as sqliteApp from "./app.schema";
 import * as sqliteOptimizations from "./optimizations.schema";
+import * as sqliteClients from "./clients.schema";
 import * as sqliteProjectContext from "./project-context.schema";
 import * as sqliteAudit from "./audit.schema";
 import * as sqliteSam from "./sam.schema";
@@ -12,6 +13,7 @@ import * as sqliteTelemetry from "./telemetry.schema";
 import * as sqliteBusiness from "./business.schema";
 import * as pgApp from "./pg/app.schema";
 import * as pgOptimizations from "./pg/optimizations.schema";
+import * as pgClients from "./pg/clients.schema";
 import * as pgProjectContext from "./pg/project-context.schema";
 import * as pgAudit from "./pg/audit.schema";
 import * as pgSam from "./pg/sam.schema";
@@ -34,6 +36,7 @@ import * as pgBusiness from "./pg/business.schema";
 // parity test is its drift guard.
 type AppSchema = typeof sqliteApp &
   typeof sqliteOptimizations &
+  typeof sqliteClients &
   typeof sqliteProjectContext &
   typeof sqliteAudit &
   typeof sqliteSam &
@@ -49,6 +52,7 @@ const runtimeSchema =
     ? {
         ...pgApp,
         ...pgOptimizations,
+        ...pgClients,
         ...pgProjectContext,
         ...pgAudit,
         ...pgSam,
@@ -62,6 +66,7 @@ const runtimeSchema =
     : {
         ...sqliteApp,
         ...sqliteOptimizations,
+        ...sqliteClients,
         ...sqliteProjectContext,
         ...sqliteAudit,
         ...sqliteSam,
@@ -167,4 +172,7 @@ export const {
   invoiceSettings,
   invoices,
   invoiceLineItems,
+  clientAccounts,
+  clientContacts,
+  clientAccessEvents,
 } = schema;

@@ -9,6 +9,7 @@ import {
   MessagesSquare,
   PlugZap,
   ReceiptText,
+  ShieldCheck,
   Share2,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -37,6 +38,7 @@ const icons = {
   email: Mail,
   social: Share2,
   invoicing: ReceiptText,
+  clients: ShieldCheck,
   integrations: PlugZap,
 } satisfies Record<BusinessModuleKey, typeof Blocks>;
 

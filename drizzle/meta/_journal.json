@@ -505,6 +505,13 @@
       "when": 1788818602963,
       "tag": "0071_misty_zarek",
       "breakpoints": true
+    },
+    {
+      "idx": 72,
+      "version": "6",
+      "when": 1788900557900,
+      "tag": "0072_curvy_argent",
+      "breakpoints": true
     }
   ]
 }

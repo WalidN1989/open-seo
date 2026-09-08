@@ -7,6 +7,7 @@ import {
   MessagesSquare,
   PlugZap,
   ReceiptText,
+  ShieldCheck,
   Share2,
 } from "lucide-react";
 import { getBusinessModuleAccess } from "@/serverFunctions/business-modules";
@@ -36,6 +37,7 @@ const MODULE_ICONS = {
   email: Mail,
   social: Share2,
   invoicing: ReceiptText,
+  clients: ShieldCheck,
   integrations: PlugZap,
 } satisfies Record<Exclude<BusinessModuleKey, "leads">, typeof Blocks>;
 

@@ -17,6 +17,7 @@ import {
 import { EmailWorkspace } from "@/client/features/business-modules/email/EmailWorkspace";
 import { SocialWorkspace } from "@/client/features/business-modules/social/SocialWorkspace";
 import { InvoicingWorkspace } from "@/client/features/business-modules/invoicing/InvoicingWorkspace";
+import { ClientAccountsWorkspace } from "@/client/features/business-modules/clients/ClientAccountsWorkspace";
 
 export const Route = createFileRoute("/_app/modules/$moduleKey")({
   component: BusinessModulePage,
@@ -64,6 +65,12 @@ const capabilities: Record<BusinessModuleKey, readonly string[]> = {
     "Invoices, proformas, and credit notes",
     "Automatic numbering and totals",
     "A print-ready document to send or save as PDF",
+  ],
+  clients: [
+    "A register of which workspace each client's data lives in",
+    "One-time access codes you can reveal and rotate",
+    "Numbers that have verified, and a way to revoke one",
+    "An access log answering who saw what, and when",
   ],
   integrations: [
     "Provider connections with secret references",
@@ -129,6 +136,7 @@ function BusinessModulePage() {
             {moduleKey === "email" ? <EmailWorkspace /> : null}
             {moduleKey === "social" ? <SocialWorkspace /> : null}
             {moduleKey === "invoicing" ? <InvoicingWorkspace /> : null}
+            {moduleKey === "clients" ? <ClientAccountsWorkspace /> : null}
             {businessModuleKeySchema.options.includes(moduleKey) ? null : (
               <>
                 <div>
