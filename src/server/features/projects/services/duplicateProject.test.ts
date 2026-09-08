@@ -38,10 +38,10 @@ describe("normalisation", () => {
 
 describe("finding a duplicate", () => {
   it("catches the same project typed differently", () => {
-    const found = findDuplicateProject(
-      [project({})],
-      { name: "  springfield lakes ACCOUNTING ", domain: "https://www.slaccbook.com/" },
-    );
+    const found = findDuplicateProject([project({})], {
+      name: "  springfield lakes ACCOUNTING ",
+      domain: "https://www.slaccbook.com/",
+    });
     expect(found?.id).toBe("p1");
   });
 
@@ -81,7 +81,10 @@ describe("finding a duplicate", () => {
 
   it("does not fire on an empty name", () => {
     expect(
-      findDuplicateProject([project({})], { name: "   ", domain: "slaccbook.com" }),
+      findDuplicateProject([project({})], {
+        name: "   ",
+        domain: "slaccbook.com",
+      }),
     ).toBeNull();
   });
 });

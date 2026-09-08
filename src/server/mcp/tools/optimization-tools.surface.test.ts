@@ -44,7 +44,12 @@ describe("the optimization MCP surface", () => {
   });
 
   it("never reaches the service methods that approve or publish", () => {
-    for (const method of ["approve", "beginPublish", "reject", "submitForReview"]) {
+    for (const method of [
+      "approve",
+      "beginPublish",
+      "reject",
+      "submitForReview",
+    ]) {
       expect(optimizations).not.toContain(`OptimizationService.${method}`);
     }
   });
@@ -93,9 +98,9 @@ describe("the invoice MCP surface", () => {
 
 describe("the module registry", () => {
   it("registers every surface it declares", () => {
-    const surfaces = [
-      ...server.matchAll(/^\s*(\w+Surface),$/gm),
-    ].map((match) => match[1]!);
+    const surfaces = [...server.matchAll(/^\s*(\w+Surface),$/gm)].map(
+      (match) => match[1]!,
+    );
     expect(surfaces.toSorted()).toEqual([
       "invoiceSurface",
       "optimizationsSurface",

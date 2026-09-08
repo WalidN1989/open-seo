@@ -41,7 +41,10 @@ export function computeTotals(
   taxRatePercent: number,
 ): Totals {
   const lineAmountsMinor = lines.map(lineAmountMinor);
-  const subtotalMinor = lineAmountsMinor.reduce((sum, amount) => sum + amount, 0);
+  const subtotalMinor = lineAmountsMinor.reduce(
+    (sum, amount) => sum + amount,
+    0,
+  );
   const rate = Number.isFinite(taxRatePercent) ? taxRatePercent : 0;
   const taxMinor = rate > 0 ? roundHalfUp((subtotalMinor * rate) / 100) : 0;
   return {

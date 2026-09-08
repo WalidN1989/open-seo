@@ -58,9 +58,8 @@ export const requireSignedDocumentToken = [
       throw new AppError("NOT_FOUND", "That link is not valid.");
     }
     const { getRequiredEnvValue } = await import("@/server/lib/runtime-env");
-    const { verifyDocumentToken } = await import(
-      "@/server/features/invoicing/documentLink"
-    );
+    const { verifyDocumentToken } =
+      await import("@/server/features/invoicing/documentLink");
     const claims = await verifyDocumentToken(
       token,
       await getRequiredEnvValue("BETTER_AUTH_SECRET"),

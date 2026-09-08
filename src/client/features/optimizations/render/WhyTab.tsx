@@ -73,7 +73,9 @@ export function WhyTab({
       ) : null}
 
       <section>
-        <h3 className="text-sm font-semibold">How this search performs today</h3>
+        <h3 className="text-sm font-semibold">
+          How this search performs today
+        </h3>
         <p className="mt-0.5 text-xs text-base-content/50">
           {property ? `${property}` : "Google Search Console"}
           {dateRange ? ` · ${dateRange}` : ""}
@@ -97,7 +99,9 @@ export function WhyTab({
                     <td className="text-right">{row.impressions ?? "—"}</td>
                     <td className="text-right">{row.clicks ?? "—"}</td>
                     <td className="text-right">{formatCtr(row.ctr)}</td>
-                    <td className="text-right">{formatPosition(row.position)}</td>
+                    <td className="text-right">
+                      {formatPosition(row.position)}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -111,7 +115,9 @@ export function WhyTab({
       </section>
 
       <section>
-        <h3 className="text-sm font-semibold">Who ranks for this search today</h3>
+        <h3 className="text-sm font-semibold">
+          Who ranks for this search today
+        </h3>
         {serpDate ? (
           <p className="mt-0.5 text-xs text-base-content/50">
             Checked {serpDate}

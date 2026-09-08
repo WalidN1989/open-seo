@@ -52,7 +52,9 @@ async function getInvoice(organizationId: string, id: string) {
   const [row] = await db
     .select()
     .from(invoices)
-    .where(and(eq(invoices.organizationId, organizationId), eq(invoices.id, id)))
+    .where(
+      and(eq(invoices.organizationId, organizationId), eq(invoices.id, id)),
+    )
     .limit(1);
   return row ?? null;
 }
@@ -83,7 +85,9 @@ async function updateInvoice(
   const [row] = await db
     .update(invoices)
     .set({ ...patch, updatedAt: now() })
-    .where(and(eq(invoices.organizationId, organizationId), eq(invoices.id, id)))
+    .where(
+      and(eq(invoices.organizationId, organizationId), eq(invoices.id, id)),
+    )
     .returning();
   return row ?? null;
 }
@@ -108,7 +112,9 @@ async function replaceLines(
 async function deleteInvoice(organizationId: string, id: string) {
   await db
     .delete(invoices)
-    .where(and(eq(invoices.organizationId, organizationId), eq(invoices.id, id)));
+    .where(
+      and(eq(invoices.organizationId, organizationId), eq(invoices.id, id)),
+    );
 }
 
 export const InvoiceRepository = {

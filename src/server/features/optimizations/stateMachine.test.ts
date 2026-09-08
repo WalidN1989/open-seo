@@ -18,7 +18,9 @@ describe("the optimization state machine", () => {
   });
 
   it("cannot reach failed without having gone through publishing", () => {
-    const reachesFailed = ALL.filter((status) => canTransition(status, "failed"));
+    const reachesFailed = ALL.filter((status) =>
+      canTransition(status, "failed"),
+    );
     expect(reachesFailed).toEqual(["publishing"]);
   });
 
@@ -44,7 +46,9 @@ describe("the optimization state machine", () => {
   });
 
   it("only approves something a person was actually shown", () => {
-    const canApprove = ALL.filter((status) => canTransition(status, "approved"));
+    const canApprove = ALL.filter((status) =>
+      canTransition(status, "approved"),
+    );
     expect(canApprove).toEqual(["awaiting_approval"]);
   });
 

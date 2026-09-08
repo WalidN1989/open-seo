@@ -28,9 +28,9 @@ convenience.
 
 ## Scope decides how a call is authorized
 
-| Scope | Wrapper | The call names |
-|---|---|---|
-| `project` | `withMcpProjectAuth` | `projectId` |
+| Scope          | Wrapper                   | The call names                                           |
+| -------------- | ------------------------- | -------------------------------------------------------- |
+| `project`      | `withMcpProjectAuth`      | `projectId`                                              |
 | `organization` | `withMcpOrganizationAuth` | `organizationId`, optional when the account has only one |
 
 Both resolve membership per call from the caller's actual memberships. An API
@@ -52,12 +52,12 @@ shapes and the loop.
 
 ### Invoicing — organization-scoped
 
-| Tool | What it does |
-|---|---|
-| `list_invoices(organizationId?, status?)` | Invoices with status, client, dates, totals |
-| `get_invoice(invoiceId)` | One invoice with its lines, totals and issuer. **Bank details and payment instructions are stripped.** |
-| `get_invoice_document(invoiceId)` | A signed, expiring URL to the document as its recipient sees it |
-| `draft_invoice(...)` | Create or revise a **draft**. Creating takes the next number in the sequence. |
+| Tool                                      | What it does                                                                                           |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `list_invoices(organizationId?, status?)` | Invoices with status, client, dates, totals                                                            |
+| `get_invoice(invoiceId)`                  | One invoice with its lines, totals and issuer. **Bank details and payment instructions are stripped.** |
+| `get_invoice_document(invoiceId)`         | A signed, expiring URL to the document as its recipient sees it                                        |
+| `draft_invoice(...)`                      | Create or revise a **draft**. Creating takes the next number in the sequence.                          |
 
 `draft_invoice` takes whole currency units — `unitPrice: 200` means two hundred
 dollars. Storage is in minor units; the conversion is the app's problem, not

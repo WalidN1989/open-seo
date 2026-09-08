@@ -89,7 +89,10 @@ export function useOpportunities(
   });
 }
 
-export function useOpportunity(projectId: string, opportunityId: string | null) {
+export function useOpportunity(
+  projectId: string,
+  opportunityId: string | null,
+) {
   return useQuery({
     queryKey: ["optimization", projectId, opportunityId] as const,
     queryFn: () =>
@@ -110,8 +113,12 @@ function useDecision<TInput>(
     mutationFn: run,
     onSuccess: () =>
       Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["optimizations", projectId] }),
-        queryClient.invalidateQueries({ queryKey: ["optimization", projectId] }),
+        queryClient.invalidateQueries({
+          queryKey: ["optimizations", projectId],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["optimization", projectId],
+        }),
       ]),
   });
 }

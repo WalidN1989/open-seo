@@ -82,7 +82,9 @@ const createInput = {
   projectId: projectIdSchema,
   type: optimizationTypeSchema.describe("product, blog, or page."),
   keyword: z.string().min(1).max(300).describe("The target keyword."),
-  source: optimizationSourceSchema.describe("Where this opportunity came from."),
+  source: optimizationSourceSchema.describe(
+    "Where this opportunity came from.",
+  ),
   recommendedAction: recommendedActionSchema.describe(
     "optimize_existing to improve a live URL, create_new to write a new page.",
   ),
@@ -371,7 +373,8 @@ export const optimizationsSurface: McpModuleSurface = {
     },
     {
       action: "publish to a CMS",
-      because: "Only an approved opportunity may be published, and only a person approves.",
+      because:
+        "Only an approved opportunity may be published, and only a person approves.",
     },
     {
       action: "submit a draft for review",

@@ -43,9 +43,7 @@ describe("an invoice document link", () => {
   it("refuses a token whose payload was edited to another workspace", async () => {
     const token = await signDocumentToken(claims, SECRET);
     const [, signature] = token.split(".");
-    const forged = btoa(
-      JSON.stringify({ ...claims, organizationId: "org_b" }),
-    )
+    const forged = btoa(JSON.stringify({ ...claims, organizationId: "org_b" }))
       .replace(/\+/g, "-")
       .replace(/\//g, "_")
       .replace(/=+$/, "");

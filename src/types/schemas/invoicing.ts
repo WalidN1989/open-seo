@@ -39,7 +39,12 @@ export const invoiceLineSchema = z.object({
   description: z.string().min(1).max(300),
   detail: z.string().max(1000).nullish(),
   quantityMilli: z.number().int().min(-1_000_000).max(1_000_000).default(1000),
-  unitPriceMinor: z.number().int().min(-100_000_000).max(100_000_000).default(0),
+  unitPriceMinor: z
+    .number()
+    .int()
+    .min(-100_000_000)
+    .max(100_000_000)
+    .default(0),
 });
 
 export const saveInvoiceSchema = z.object({

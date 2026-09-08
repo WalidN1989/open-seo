@@ -10,12 +10,12 @@ import {
 
 describe("line amounts", () => {
   it("multiplies a whole quantity exactly", () => {
-    expect(lineAmountMinor({ quantityMilli: 1000, unitPriceMinor: 20000 })).toBe(
-      20000,
-    );
-    expect(lineAmountMinor({ quantityMilli: 3000, unitPriceMinor: 12550 })).toBe(
-      37650,
-    );
+    expect(
+      lineAmountMinor({ quantityMilli: 1000, unitPriceMinor: 20000 }),
+    ).toBe(20000);
+    expect(
+      lineAmountMinor({ quantityMilli: 3000, unitPriceMinor: 12550 }),
+    ).toBe(37650);
   });
 
   it("handles a fractional quantity without float drift", () => {
@@ -24,7 +24,9 @@ describe("line amounts", () => {
       12000,
     );
     // 0.1 + 0.2 territory: 3 x $0.10 must be 30c, not 30.000000000000004
-    expect(lineAmountMinor({ quantityMilli: 3000, unitPriceMinor: 10 })).toBe(30);
+    expect(lineAmountMinor({ quantityMilli: 3000, unitPriceMinor: 10 })).toBe(
+      30,
+    );
   });
 
   it("rounds a half cent up rather than to even", () => {
@@ -32,9 +34,9 @@ describe("line amounts", () => {
   });
 
   it("keeps a credit line negative", () => {
-    expect(lineAmountMinor({ quantityMilli: 1000, unitPriceMinor: -5000 })).toBe(
-      -5000,
-    );
+    expect(
+      lineAmountMinor({ quantityMilli: 1000, unitPriceMinor: -5000 }),
+    ).toBe(-5000);
   });
 });
 

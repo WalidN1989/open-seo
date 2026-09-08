@@ -17,7 +17,8 @@ const THIN_CONTENT_WORDS = 700;
  * whole thing as literal text in the middle of a paragraph. Split them out and
  * show them as what they are: a note about a picture nobody has made yet.
  */
-const IMAGE_PLACEHOLDER = /!\[([^\]]*)\](?:\[IMAGE:([^\]]*)\]|\(IMAGE:([^)]*)\))/gi;
+const IMAGE_PLACEHOLDER =
+  /!\[([^\]]*)\](?:\[IMAGE:([^\]]*)\]|\(IMAGE:([^)]*)\))/gi;
 
 type Segment =
   | { kind: "markdown"; text: string }

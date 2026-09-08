@@ -175,7 +175,8 @@ export async function createProject(
   // Checked before insert rather than relying on a unique index: the pair is
   // name + domain after normalisation, which no single column can express, and
   // archived rows have to count too.
-  const existing = await ProjectRepository.listProjectIdentities(organizationId);
+  const existing =
+    await ProjectRepository.listProjectIdentities(organizationId);
   const duplicate = findDuplicateProject(existing, {
     name: input.name,
     domain: normalizeProjectDomain(input.domain) ?? null,

@@ -87,7 +87,8 @@ export function InvoiceEditor({
 
   const total = lines.reduce(
     (sum, line) =>
-      sum + Math.round((toMilli(line.quantity) * toMinor(line.unitPrice)) / 1000),
+      sum +
+      Math.round((toMilli(line.quantity) * toMinor(line.unitPrice)) / 1000),
     0,
   );
 

@@ -100,8 +100,8 @@ export function InvoiceSettingsForm({
             <span className="mt-1 block text-sm text-base-content/65">
               Leave this off unless you are registered. Only a registered
               business may title a document &ldquo;Tax Invoice&rdquo; or add a
-              tax line — with it off, invoices are titled
-              &ldquo;Invoice&rdquo; and charge no tax.
+              tax line — with it off, invoices are titled &ldquo;Invoice&rdquo;
+              and charge no tax.
             </span>
           </span>
         </label>
@@ -149,7 +149,10 @@ export function InvoiceSettingsForm({
             maxLength={3}
             value={form.defaultCurrency}
             onChange={(event) =>
-              set("defaultCurrency", event.target.value.toUpperCase().slice(0, 3))
+              set(
+                "defaultCurrency",
+                event.target.value.toUpperCase().slice(0, 3),
+              )
             }
           />
         </label>
@@ -181,9 +184,7 @@ export function InvoiceSettingsForm({
           rows={5}
           value={form.bankDetails ?? ""}
           onChange={(event) => set("bankDetails", event.target.value)}
-          placeholder={
-            "Account name:\nBank:\nBranch:\nAccount number:\nSWIFT:"
-          }
+          placeholder={"Account name:\nBank:\nBranch:\nAccount number:\nSWIFT:"}
         />
       </label>
 

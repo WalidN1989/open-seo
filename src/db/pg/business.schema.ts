@@ -1615,9 +1615,7 @@ export const invoiceSettings = pgTable("invoice_settings", {
   // Whether this issuer may charge tax at all. An entity that is not
   // registered must not title a document "Tax Invoice" or add a tax line, so
   // this drives the wording rather than only the arithmetic.
-  taxRegistered: boolean("tax_registered")
-    .notNull()
-    .default(false),
+  taxRegistered: boolean("tax_registered").notNull().default(false),
   taxLabel: text("tax_label"),
   taxRatePercent: integer("tax_rate_percent").notNull().default(0),
   taxNote: text("tax_note"),

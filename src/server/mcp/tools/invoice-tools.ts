@@ -29,7 +29,11 @@ const invoiceIdSchema = z
   .describe("Invoice id, from list_invoices.");
 
 const lineSchema = z.object({
-  description: z.string().min(1).max(300).describe("What is being charged for."),
+  description: z
+    .string()
+    .min(1)
+    .max(300)
+    .describe("What is being charged for."),
   detail: z
     .string()
     .max(1000)
@@ -123,8 +127,11 @@ export const getInvoiceTool = {
       );
       // Payment instructions are for the client on the document, not for an
       // agent reading the record.
-      const { bankDetails: _bank, paymentInstructions: _pay, ...issuer } =
-        detail.issuer;
+      const {
+        bankDetails: _bank,
+        paymentInstructions: _pay,
+        ...issuer
+      } = detail.issuer;
       // Whole units alongside the stored minor units: an agent reading
       // "totalMinor: 20000" has to know the convention, and one that does not
       // will quote two hundred dollars as twenty thousand.
@@ -209,7 +216,11 @@ const draftInput = {
   clientName: z.string().min(1).max(200),
   clientAddressLines: z.string().max(600).optional(),
   clientEmail: z.string().max(200).optional(),
-  clientTaxIdLabel: z.string().max(60).optional().describe("ABN, VAT, and so on."),
+  clientTaxIdLabel: z
+    .string()
+    .max(60)
+    .optional()
+    .describe("ABN, VAT, and so on."),
   clientTaxIdValue: z.string().max(60).optional(),
   currency: z
     .string()

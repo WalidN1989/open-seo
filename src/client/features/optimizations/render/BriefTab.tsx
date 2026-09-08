@@ -1,9 +1,4 @@
-import {
-  readBriefLinks,
-  readStringList,
-  readText,
-  type Json,
-} from "./read";
+import { readBriefLinks, readStringList, readText, type Json } from "./read";
 
 function Chips({
   title,
@@ -52,8 +47,13 @@ export function BriefTab({ brief }: { brief: Json }) {
   const schema = readText(brief, "schemaNotes", "schema_notes", "schema");
 
   const empty =
-    !h1 && !angle && !outline.length && !include.length && !avoid.length &&
-    !links.length && !schema;
+    !h1 &&
+    !angle &&
+    !outline.length &&
+    !include.length &&
+    !avoid.length &&
+    !links.length &&
+    !schema;
 
   if (empty) {
     return (

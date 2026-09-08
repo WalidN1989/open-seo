@@ -165,7 +165,9 @@ export function InvoiceDocument({ detail }: { detail: InvoiceDetail }) {
       <footer className="invoice-footer">
         {/* An unregistered issuer says so plainly, so nobody tries to claim a
             tax credit that does not exist. */}
-        {!issuer.taxRegistered ? <div>{issuer.taxNote ?? "No GST has been charged."}</div> : null}
+        {!issuer.taxRegistered ? (
+          <div>{issuer.taxNote ?? "No GST has been charged."}</div>
+        ) : null}
         {issuer.footerNote ? <Lines value={issuer.footerNote} /> : null}
       </footer>
     </div>

@@ -133,11 +133,11 @@ enforced by test.
 
 Reuse the existing roles. No new role in v1.
 
-| | Read | Edit brief | Approve / reject | Publish |
-|---|---|---|---|---|
-| Project member (`view`) | ✓ | | | |
-| Project member (`manage`) | ✓ | ✓ | ✓ | ✓ |
-| Agent (API key via MCP) | ✓ | ✓ | **no tool exists** | **no tool exists** |
+|                           | Read | Edit brief | Approve / reject   | Publish            |
+| ------------------------- | ---- | ---------- | ------------------ | ------------------ |
+| Project member (`view`)   | ✓    |            |                    |                    |
+| Project member (`manage`) | ✓    | ✓          | ✓                  | ✓                  |
+| Agent (API key via MCP)   | ✓    | ✓          | **no tool exists** | **no tool exists** |
 
 The agent cannot approve because **the capability is absent, not because a check
 denies it**. That is the whole safety argument: approval and publishing are
@@ -165,8 +165,8 @@ tab primitives the Site Audit and Rank Tracking pages use. No new design system.
 
 **List** — filters for type, status, source. Each card: keyword, target URL or
 "new page", score, estimated impact drawn from the GSC snapshot, CMS badge.
-Empty state: *"No opportunities yet — run research or wait for the next
-scheduled scan."*
+Empty state: _"No opportunities yet — run research or wait for the next
+scheduled scan."_
 
 **Detail**, four tabs:
 
@@ -207,7 +207,7 @@ type PublishResult = { externalId: string; url: string | null };
 
 interface CmsAdapter {
   publish(input: {
-    target: unknown;         // validated per adapter
+    target: unknown; // validated per adapter
     payload: ApprovedPayload; // title, meta, body/fields — applied verbatim
     credentials: Record<string, string>;
   }): Promise<PublishResult>;
@@ -268,11 +268,11 @@ one whose domain does not resolve; keep the one connected to
 ## Phases
 
 1. Schema, list and detail UI, approval state machine, tests. Opportunities
-   created manually. No publishing. *Shippable: a review queue you can demo.*
-2. MCP ingest tools, so the brain fills the queue. *Shippable: the queue fills
-   itself.*
-3. WordPress adapter and publish, behind the state machine. *Shippable: end to
-   end on period.lk.*
+   created manually. No publishing. _Shippable: a review queue you can demo._
+2. MCP ingest tools, so the brain fills the queue. _Shippable: the queue fills
+   itself._
+3. WordPress adapter and publish, behind the state machine. _Shippable: end to
+   end on period.lk._
 4. Shopify product fields for BooXworm. Reconsider Lovable on the evidence.
 
 Each phase is useful alone. Do not start the next one until the previous one has

@@ -25,7 +25,8 @@ async function listByProject(
     eq(optimizationOpportunities.organizationId, organizationId),
     eq(optimizationOpportunities.projectId, projectId),
   ];
-  if (filters.type) conditions.push(eq(optimizationOpportunities.type, filters.type));
+  if (filters.type)
+    conditions.push(eq(optimizationOpportunities.type, filters.type));
   if (filters.status)
     conditions.push(eq(optimizationOpportunities.status, filters.status));
   if (filters.source)
@@ -145,10 +146,11 @@ async function listComments(organizationId: string, opportunityId: string) {
     .orderBy(asc(optimizationComments.createdAt));
 }
 
-async function insertComment(
-  values: typeof optimizationComments.$inferInsert,
-) {
-  const [row] = await db.insert(optimizationComments).values(values).returning();
+async function insertComment(values: typeof optimizationComments.$inferInsert) {
+  const [row] = await db
+    .insert(optimizationComments)
+    .values(values)
+    .returning();
   return row!;
 }
 

@@ -74,10 +74,7 @@ function InvoiceView({
             Edit
           </button>
         ) : null}
-        <button
-          className="btn btn-ghost btn-sm"
-          onClick={() => window.print()}
-        >
+        <button className="btn btn-ghost btn-sm" onClick={() => window.print()}>
           <Printer className="size-4" /> Print / Save as PDF
         </button>
         <div className="ml-auto flex gap-2">
@@ -85,9 +82,7 @@ function InvoiceView({
             <button
               className="btn btn-primary btn-sm"
               disabled={setStatus.isPending}
-              onClick={() =>
-                setStatus.mutate({ invoiceId, status: "sent" })
-              }
+              onClick={() => setStatus.mutate({ invoiceId, status: "sent" })}
             >
               Mark as sent
             </button>
