@@ -122,8 +122,20 @@ async function listEvents(organizationId: string, limit = 100) {
     .limit(limit);
 }
 
+/**
+ * The timestamp is written here rather than left to the column default.
+ *
+ * The two dialects disagree: SQLite's `current_timestamp` writes
+ * "2026-09-09 22:45:25" and Postgres writes an ISO string. They sort
+ * differently against each other, and the lockout compares this column with
+ * an ISO string — so on SQLite every failed attempt sorted below the window
+ * and the five-attempt lockout never fired at all.
+ */
 async function recordEvent(values: typeof clientAccessEvents.$inferInsert) {
-  const [row] = await db.insert(clientAccessEvents).values(values).returning();
+  const [row] = await db
+    .insert(clientAccessEvents)
+    .values({ createdAt: now(), ...values })
+    .returning();
   return row!;
 }
 

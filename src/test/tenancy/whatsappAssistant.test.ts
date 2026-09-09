@@ -16,6 +16,11 @@ import type * as AssistantRepoModule from "@/server/features/communications/repo
 import type * as RepositoryModule from "@/server/features/communications/repositories/CommunicationsRepository";
 import type * as DbSchema from "@/db/schema";
 import type * as WhatsappProvider from "@/server/features/communications/providers/whatsapp";
+import type * as VerificationModule from "@/server/features/clients/services/ClientVerificationService";
+import {
+  generateSalt,
+  hashAccessCode,
+} from "@/server/features/clients/accessCode";
 
 const mockEnv = vi.hoisted(
   () => ({ DATABASE_PROVIDER: "d1" }) as { DATABASE_PROVIDER: string },
@@ -67,6 +72,7 @@ let WhatsappAssistantService: typeof AssistantModule.WhatsappAssistantService;
 let replyToInbound: typeof ReplyModule.replyToInbound;
 let Repo: typeof AssistantRepoModule.WhatsappAssistantRepository;
 let CommunicationsRepository: typeof RepositoryModule.CommunicationsRepository;
+let resolveClientAccess: typeof VerificationModule.resolveClientAccess;
 let connection: NonNullable<
   Awaited<
     ReturnType<
@@ -110,6 +116,8 @@ beforeAll(async () => {
     await import("@/server/features/communications/repositories/CommunicationsRepository"));
   ({ replyToInbound } =
     await import("@/server/features/communications/services/WhatsappAssistantReplyService"));
+  ({ resolveClientAccess } =
+    await import("@/server/features/clients/services/ClientVerificationService"));
   ({ WhatsappAssistantRepository: Repo } =
     await import("@/server/features/communications/repositories/WhatsappAssistantRepository"));
   schema = await import("@/db/schema");
@@ -169,6 +177,107 @@ describe("escalation and human takeover", () => {
     const second = await inbound("hello?", "+61400000002");
     expect(second.handled).toBe(true);
     expect(sent.calls).toHaveLength(1);
+  });
+});
+
+/**
+ * The code a client is given. Made here rather than by the register, so the
+ * test can send the exact characters a person would type.
+ */
+const CLIENT_CODE = "K7MN4PQR";
+
+async function registerClient() {
+  const salt = generateSalt();
+  await db
+    .insert(schema.clientAccounts)
+    .values({
+      id: "client_beta",
+      organizationId: ORG_A,
+      clientOrganizationId: ORG_B,
+      displayName: "Beta",
+      status: "active",
+      codeHash: await hashAccessCode(CLIENT_CODE, salt),
+      codeSalt: salt,
+      codeHint: "K7••••••",
+      codeIssuedAt: new Date().toISOString(),
+    })
+    .onConflictDoNothing();
+}
+
+describe("a client proving who they are", () => {
+  it("verifies a code sent after the chat was handed to a person", async () => {
+    await registerClient();
+    const sender = "+61400000010";
+
+    // Escalate first: this is the case that used to fail silently.
+    const first = await inbound("can I speak to a human please", sender);
+    expect(sent.calls).toHaveLength(1);
+    const [escalated] = await db
+      .select({ status: schema.whatsappConversations.status })
+      .from(schema.whatsappConversations)
+      .where(eq(schema.whatsappConversations.id, first.conversationId));
+    expect(escalated?.status).toBe("pending");
+
+    const { handled } = await inbound("K7MN-4PQR", sender);
+    expect(handled).toBe(true);
+    expect(sent.calls).toHaveLength(2);
+    expect(sent.calls[1]?.body).toContain("Beta");
+
+    const contacts = await db
+      .select()
+      .from(schema.clientContacts)
+      .where(eq(schema.clientContacts.identifier, sender));
+    expect(contacts).toHaveLength(1);
+    expect(contacts[0]?.clientAccountId).toBe("client_beta");
+
+    // Verifying does not take the chat back off the person handling it.
+    const after = await inbound("so about my order", sender);
+    expect(after.handled).toBe(true);
+    expect(sent.calls).toHaveLength(2);
+  });
+
+  it("turns a wrong code away with the attempts left, and never reaches the model", async () => {
+    await registerClient();
+    const { handled } = await inbound("K7MN-4PQQ", "+61400000011");
+    expect(handled).toBe(true);
+    expect(sent.calls).toHaveLength(1);
+    expect(sent.calls[0]?.body).toContain("does not match");
+    expect(sent.calls[0]?.body).toContain("4 attempts left");
+  });
+
+  it("locks the number after five wrong codes", async () => {
+    await registerClient();
+    const sender = "+61400000014";
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      await inbound("K7MN-4PQQ", sender);
+    }
+    sent.calls.length = 0;
+    const { handled } = await inbound("K7MN-4PQQ", sender);
+    expect(handled).toBe(true);
+    expect(sent.calls[0]?.body).toContain("paused");
+  });
+
+  it("does not refuse or count an ordinary word that fits the alphabet", async () => {
+    await registerClient();
+    const { handled } = await inbound("FEEDBACK", "+61400000012");
+    // Nothing was refused and no attempt was spent: it is just a message.
+    expect(handled).toBe(false);
+    expect(sent.calls).toHaveLength(0);
+    const events = await db
+      .select()
+      .from(schema.clientAccessEvents)
+      .where(eq(schema.clientAccessEvents.identifier, "+61400000012"));
+    expect(events).toEqual([]);
+  });
+
+  it("will not verify a code against another agency's register", async () => {
+    await registerClient();
+    const access = await resolveClientAccess({
+      organizationId: ORG_B,
+      identifier: "+61400000013",
+      body: "K7MN-4PQR",
+    });
+    expect(access.kind).toBe("rejected");
   });
 });
 

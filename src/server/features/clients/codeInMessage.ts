@@ -5,11 +5,12 @@
  * attempts lock the number out — so mistaking an ordinary word for a code
  * would lock out the very client trying to talk to us.
  *
- * The alphabet excludes only the ambiguous characters, so
- * plenty of eight-letter English words are spellable in it ("BACKREST"). The
- * defence is not the character set but the shape: we only try when the message
- * looks like someone answering "what's your code?" — the code on its own, or
- * clearly set apart in four-and-four.
+ * The alphabet excludes only the ambiguous characters, so plenty of ordinary
+ * eight-letter words are spellable in it — "FEEDBACK" is a whole valid code.
+ * So shape alone is not enough either, and a candidate carries how sure we
+ * are: four-and-four is unmistakably someone typing a code, a bare word is
+ * only a guess. A guess that turns out to be right verifies them; a guess that
+ * is wrong is just a message, and costs nothing.
  */
 
 const ALPHABET = "23456789ABCDEFGHJKMNPQRSTVWXYZ";
@@ -21,17 +22,33 @@ const GROUPED = new RegExp(`\\b(${CHAR}{4})[-–—\\s](${CHAR}{4})\\b`, "i");
 /** The whole message is the code and nothing else. */
 const BARE = new RegExp(`^\\s*(${CHAR}{8})\\s*$`, "i");
 
-export function findAccessCodeCandidate(body: string): string | null {
+type AccessCodeCandidate = {
+  code: string;
+  /**
+   * Whether this is unambiguously someone sending a code. Only a deliberate
+   * attempt may be refused out loud or counted towards the lockout.
+   */
+  deliberate: boolean;
+};
+
+export function findAccessCodeCandidate(
+  body: string,
+): AccessCodeCandidate | null {
   const text = body.trim();
   if (!text) return null;
 
-  const bare = BARE.exec(text);
-  if (bare) return bare[1]!.toUpperCase();
-
   // "my code is W4KD-3TXR", "W4KD-3TXR thanks" — the separator is what makes
-  // this a deliberate code rather than a word that happens to fit.
+  // this a code rather than a word that happens to fit.
   const grouped = GROUPED.exec(text);
-  if (grouped) return `${grouped[1]!}${grouped[2]!}`.toUpperCase();
+  if (grouped) {
+    return {
+      code: `${grouped[1]!}${grouped[2]!}`.toUpperCase(),
+      deliberate: true,
+    };
+  }
+
+  const bare = BARE.exec(text);
+  if (bare) return { code: bare[1]!.toUpperCase(), deliberate: false };
 
   return null;
 }

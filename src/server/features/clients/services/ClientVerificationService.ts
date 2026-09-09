@@ -137,11 +137,17 @@ export async function resolveClientAccess(input: {
     };
   }
 
-  const code = findAccessCodeCandidate(input.body);
-  if (!code) return { kind: "anonymous" };
+  const candidate = findAccessCodeCandidate(input.body);
+  if (!candidate) return { kind: "anonymous" };
+  const { code, deliberate } = candidate;
 
+  // A word that merely fits the alphabet is never refused out loud and never
+  // counts against them: the `deliberate` guards below drop it back to
+  // anonymous. If it happens to be their code they are verified; if not, it
+  // was only ever a message. Someone writing four-and-four meant it.
   const since = new Date(Date.now() - LOCKOUT_MS).toISOString();
   if ((await recentFailures(input.identifier, since)) >= MAX_ATTEMPTS) {
+    if (!deliberate) return { kind: "anonymous" };
     await Repo.recordEvent({
       id: crypto.randomUUID(),
       organizationId: input.organizationId,
@@ -156,6 +162,7 @@ export async function resolveClientAccess(input: {
 
   const account = await matchCode(input.organizationId, code);
   if (!account) {
+    if (!deliberate) return { kind: "anonymous" };
     await Repo.recordEvent({
       id: crypto.randomUUID(),
       organizationId: input.organizationId,

@@ -7,18 +7,30 @@ import {
 describe("spotting a code someone sent", () => {
   it("reads a code sent on its own, however they space it", () => {
     for (const text of ["W4KD3TXR", "  w4kd3txr ", "W4KD-3TXR", "W4KD 3TXR"]) {
-      expect(findAccessCodeCandidate(text)).toBe("W4KD3TXR");
+      expect(findAccessCodeCandidate(text)?.code).toBe("W4KD3TXR");
     }
   });
 
   it("reads a code inside a sentence when it is written in halves", () => {
-    expect(findAccessCodeCandidate("my code is W4KD-3TXR")).toBe("W4KD3TXR");
-    expect(findAccessCodeCandidate("W4KD-3TXR thanks")).toBe("W4KD3TXR");
-    expect(findAccessCodeCandidate("Here you go: w4kd–3txr")).toBe("W4KD3TXR");
+    expect(findAccessCodeCandidate("my code is W4KD-3TXR")?.code).toBe(
+      "W4KD3TXR",
+    );
+    expect(findAccessCodeCandidate("W4KD-3TXR thanks")?.code).toBe("W4KD3TXR");
+    expect(findAccessCodeCandidate("Here you go: w4kd–3txr")?.code).toBe(
+      "W4KD3TXR",
+    );
   });
 
-  it("ignores an ordinary word that happens to fit the alphabet", () => {
-    // BACKREST is eight spellable characters. Treating it as a code would
+  it("treats four-and-four as deliberate and a bare word as a guess", () => {
+    // "FEEDBACK" is eight spellable characters — a whole valid code. It is
+    // still tried, because a right guess should verify them, but only the
+    // deliberate form may be refused out loud or counted towards a lockout.
+    expect(findAccessCodeCandidate("W4KD-3TXR")?.deliberate).toBe(true);
+    expect(findAccessCodeCandidate("FEEDBACK")?.deliberate).toBe(false);
+  });
+
+  it("ignores an ordinary word sitting inside a sentence", () => {
+    // BACKREST is eight spellable characters. Reading it out of prose would
     // burn an attempt and could lock out the person trying to talk to us.
     expect(
       findAccessCodeCandidate("the backrest on my chair broke yesterday"),

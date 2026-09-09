@@ -182,10 +182,14 @@ export async function replyToInbound(
     organizationId,
     conversationId,
   );
-  if (status === "pending") return true;
 
   // Before anything else, including the model: a message carrying a code is
   // handled here and never reaches the assistant.
+  //
+  // This runs even while a person is assigned. Confirming who someone is is
+  // not answering on the team's behalf, and a client who was escalated and
+  // then sent their code used to get silence while the code quietly did
+  // nothing.
   const access = await resolveClientAccess({
     organizationId,
     identifier: message.sender,
@@ -222,6 +226,9 @@ export async function replyToInbound(
     );
     return true;
   }
+
+  // A person is handling this thread, so the assistant stays out of it.
+  if (status === "pending") return true;
 
   const keyword = matchesEscalation(
     body,
