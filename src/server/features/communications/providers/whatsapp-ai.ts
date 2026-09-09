@@ -56,6 +56,38 @@ const tools = [
   },
 ] as const;
 
+/**
+ * The tool a verified client's questions are answered from.
+ *
+ * It takes a topic and nothing else. There is deliberately no field for whose
+ * data to read: the caller binds that to the account that verified, so the
+ * model cannot ask for someone else's even if a customer talks it into
+ * trying.
+ */
+function clientDataTool(
+  topics: readonly string[],
+  help: Record<string, string>,
+) {
+  return {
+    name: "lookup_client_data",
+    description:
+      "Look up this verified client's own SEO data. Call it before answering anything about their site, rankings, keywords, links or content, and answer only from what it returns.",
+    input_schema: {
+      type: "object",
+      properties: {
+        topic: {
+          type: "string",
+          enum: [...topics],
+          description: topics
+            .map((topic) => `${topic}: ${help[topic] ?? ""}`)
+            .join("; "),
+        },
+      },
+      required: ["topic"],
+    },
+  } as const;
+}
+
 const lookupTool = {
   name: "lookup_products",
   description:
@@ -80,12 +112,14 @@ function buildMessages(history: HistoryItem[]) {
   return messages;
 }
 
-function systemPrompt(
-  businessContext?: string | null,
-  persona?: string | null,
-  canLookup = false,
-  accessNote?: string | null,
-) {
+function systemPrompt(input: {
+  businessContext?: string | null;
+  persona?: string | null;
+  canLookup?: boolean;
+  canReadClientData?: boolean;
+  accessNote?: string | null;
+}) {
+  const { businessContext, persona, canLookup, accessNote } = input;
   return [
     persona?.trim() ||
       "You are a warm, concise customer-service representative speaking through WhatsApp.",
@@ -107,6 +141,9 @@ function systemPrompt(
     // the drafted default promises 24 hours — so the rule is against inventing
     // one, not against saying the one it was given.
     "Do not invent a callback time, deadline, price or commitment on the team's behalf. Only state one that is in your persona or the trusted business context.",
+    input.canReadClientData
+      ? "This client is verified, so their own SEO data is available to you through lookup_client_data. Use it before saying you cannot see something, and quote its numbers exactly. If it says nothing has been recorded, say that plainly and offer to have the team look, rather than guessing or flagging."
+      : "",
     // Established before this call, in code. The model is told the outcome so
     // it can word things well — it is never asked to decide the outcome.
     accessNote?.trim() ?? "",
@@ -129,6 +166,15 @@ export async function generateWhatsappAiReply(input: {
   accessNote?: string | null;
   /** Catalogue search; when given, the model gets a lookup_products tool. */
   lookupProducts?: (query: string) => Promise<string>;
+  /**
+   * A verified client's own data. `read` is already bound to that client, so
+   * the model picks a topic and can never pick a whose.
+   */
+  clientData?: {
+    topics: readonly string[];
+    help: Record<string, string>;
+    read: (topic: string) => Promise<string>;
+  };
   fetcher?: typeof fetch;
 }) {
   const apiKey =
@@ -138,13 +184,20 @@ export async function generateWhatsappAiReply(input: {
   if (!messages.length || messages.at(-1)?.role !== "user") return null;
   const model = input.model || DEFAULT_MODEL;
   const fetcher = input.fetcher ?? fetch;
-  const toolset = input.lookupProducts ? [...tools, lookupTool] : tools;
-  const system = systemPrompt(
-    input.businessContext,
-    input.persona,
-    Boolean(input.lookupProducts),
-    input.accessNote,
-  );
+  const toolset = [
+    ...tools,
+    ...(input.lookupProducts ? [lookupTool] : []),
+    ...(input.clientData
+      ? [clientDataTool(input.clientData.topics, input.clientData.help)]
+      : []),
+  ];
+  const system = systemPrompt({
+    businessContext: input.businessContext,
+    persona: input.persona,
+    canLookup: Boolean(input.lookupProducts),
+    canReadClientData: Boolean(input.clientData),
+    accessNote: input.accessNote,
+  });
   const call = async (conversation: AnthropicMessage[]) => {
     const response = await fetcher(ANTHROPIC_URL, {
       method: "POST",
@@ -193,19 +246,15 @@ export async function generateWhatsappAiReply(input: {
       }
     }
     const needsLookup = toolUses.some(
-      (block) => block.name === "lookup_products",
+      (block) =>
+        block.name === "lookup_products" || block.name === "lookup_client_data",
     );
     if (!toolUses.length || (reply && !needsLookup)) break;
     const results = await Promise.all(
       toolUses.map(async (block) => ({
         type: "tool_result" as const,
         tool_use_id: block.id,
-        content:
-          block.name === "lookup_products" && input.lookupProducts
-            ? await input.lookupProducts(
-                typeof block.input.query === "string" ? block.input.query : "",
-              )
-            : JSON.stringify({ recorded: true }),
+        content: await toolResult(block, input),
       })),
     );
     conversation = [
@@ -215,6 +264,26 @@ export async function generateWhatsappAiReply(input: {
     ];
   }
   return { reply, actions, model };
+}
+
+async function toolResult(
+  block: Extract<AnthropicBlock, { type: "tool_use" }>,
+  input: {
+    lookupProducts?: (query: string) => Promise<string>;
+    clientData?: { read: (topic: string) => Promise<string> };
+  },
+) {
+  if (block.name === "lookup_products" && input.lookupProducts) {
+    return input.lookupProducts(
+      typeof block.input.query === "string" ? block.input.query : "",
+    );
+  }
+  if (block.name === "lookup_client_data" && input.clientData) {
+    return input.clientData.read(
+      typeof block.input.topic === "string" ? block.input.topic : "",
+    );
+  }
+  return JSON.stringify({ recorded: true });
 }
 
 function textOf(content: AnthropicBlock[]) {

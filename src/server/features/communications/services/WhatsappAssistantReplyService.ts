@@ -17,6 +17,12 @@ import {
   resolveClientAccess,
   type ClientAccess,
 } from "@/server/features/clients/services/ClientVerificationService";
+import { readClientData } from "@/server/features/clients/services/ClientDataService";
+import {
+  CLIENT_DATA_TOPICS,
+  CLIENT_DATA_TOPIC_HELP,
+  isClientDataTopic,
+} from "@/server/features/clients/clientDataTopics";
 import {
   sendWhatsappText,
   type InboundWhatsappMessage,
@@ -153,11 +159,41 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 /** What the assistant is told about who it is speaking to. */
 function accessNote(access: ClientAccess): string | null {
   if (access.kind === "verified" || access.kind === "just_verified") {
-    return `This person has verified as a client: ${access.displayName}. Their account data is not available to you yet, so answer generally and offer to have the team follow up with specifics.`;
+    return `This person has verified as a client: ${access.displayName}.`;
   }
   // Never give an example code. Any string that reads like one is a code
   // somebody holds, and the assistant would be reading it out on request.
   return "This person has NOT verified which client they are. If they ask about their own account, site, rankings or results, do not discuss specifics — ask them to reply with the access code we sent them, described only as eight characters in two groups of four. Never state, guess at, or give an example of a code.";
+}
+
+/**
+ * The client's own data, bound to the account that verified.
+ *
+ * The organization id is closed over here, from the verification result, and
+ * is never a parameter the model can supply. An unverified person gets
+ * undefined, which means the tool is not offered at all — not offered and
+ * refused, but absent from the toolset.
+ */
+function clientDataFor(access: ClientAccess) {
+  if (access.kind !== "verified" && access.kind !== "just_verified") {
+    return undefined;
+  }
+  const clientOrganizationId = access.clientOrganizationId;
+  return {
+    topics: CLIENT_DATA_TOPICS,
+    help: CLIENT_DATA_TOPIC_HELP,
+    read: async (topic: string) => {
+      if (!isClientDataTopic(topic)) {
+        return "That is not something I can look up.";
+      }
+      try {
+        return await readClientData(clientOrganizationId, topic);
+      } catch (error) {
+        console.error("Client data lookup failed", error);
+        return "That could not be looked up just now.";
+      }
+    },
+  };
 }
 
 export async function replyToInbound(
@@ -300,6 +336,7 @@ export async function replyToInbound(
       persona: settings.persona,
       accessNote: accessNote(access),
       lookupProducts: (query) => lookupProducts(organizationId, query),
+      clientData: clientDataFor(access),
     });
     if (!result) return false;
     await applyActions(organizationId, conversationId, result.actions);

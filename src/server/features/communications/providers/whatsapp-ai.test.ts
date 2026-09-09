@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { generateWhatsappAiReply } from "./whatsapp-ai";
+import { isClientDataTopic } from "@/server/features/clients/clientDataTopics";
 
 describe("WhatsApp Claude assistant", () => {
   it("sends grounded tenant context and returns approved actions", async () => {
@@ -129,5 +130,115 @@ describe("WhatsApp Claude assistant", () => {
       fetcher,
     });
     expect(body).not.toContain("lookup_products");
+  });
+});
+
+type SentTool = {
+  name: string;
+  input_schema: {
+    properties: Record<string, { enum?: string[] }>;
+  };
+};
+
+function isSentTool(value: unknown): value is SentTool {
+  return typeof value === "object" && value !== null && "name" in value;
+}
+
+/** The tools actually put on the wire for one call. */
+function toolsIn(init?: RequestInit): SentTool[] {
+  const raw = typeof init?.body === "string" ? init.body : "{}";
+  const body: unknown = JSON.parse(raw);
+  if (typeof body !== "object" || body === null || !("tools" in body))
+    return [];
+  const { tools } = body;
+  return Array.isArray(tools) ? tools.filter(isSentTool) : [];
+}
+
+describe("a verified client's own data", () => {
+  const clientData = {
+    topics: ["overview", "rankings"] as const,
+    help: { overview: "their websites", rankings: "their positions" },
+    read: (topic: string) => Promise.resolve(`data for ${topic}`),
+  };
+
+  it("is not even offered as a tool to someone unverified", async () => {
+    let names: string[] = [];
+    const fetcher = (_input: RequestInfo | URL, init?: RequestInit) => {
+      names = toolsIn(init).map((tool) => tool.name);
+      return Promise.resolve(
+        Response.json({ content: [{ type: "text", text: "Hi there." }] }),
+      );
+    };
+    await generateWhatsappAiReply({
+      history: [{ direction: "inbound", body: "how are my rankings?" }],
+      apiKey: "k",
+      fetcher,
+    });
+    expect(names).not.toContain("lookup_client_data");
+  });
+
+  it("offers only the allowed topics, and no way to name whose data", async () => {
+    let tool: SentTool | undefined;
+    const fetcher = (_input: RequestInfo | URL, init?: RequestInit) => {
+      tool = toolsIn(init).find(
+        (candidate) => candidate.name === "lookup_client_data",
+      );
+      return Promise.resolve(
+        Response.json({ content: [{ type: "text", text: "Sure." }] }),
+      );
+    };
+    await generateWhatsappAiReply({
+      history: [{ direction: "inbound", body: "how are my rankings?" }],
+      apiKey: "k",
+      clientData,
+      fetcher,
+    });
+    const properties = tool?.input_schema.properties ?? {};
+    // A topic and nothing else. No organization, account, project or client id
+    // the model could fill in with somebody else's.
+    expect(Object.keys(properties)).toEqual(["topic"]);
+    expect(properties.topic?.enum).toEqual(["overview", "rankings"]);
+  });
+
+  it("answers from the lookup result rather than the model's own guess", async () => {
+    let round = 0;
+    const fetcher = (_input: RequestInfo | URL, init?: RequestInit) => {
+      round += 1;
+      if (round === 1) {
+        return Promise.resolve(
+          Response.json({
+            content: [
+              {
+                type: "tool_use",
+                id: "t1",
+                name: "lookup_client_data",
+                input: { topic: "rankings" },
+              },
+            ],
+          }),
+        );
+      }
+      const body = typeof init?.body === "string" ? init.body : "";
+      expect(body).toContain("data for rankings");
+      return Promise.resolve(
+        Response.json({
+          content: [{ type: "text", text: "You are third for that one." }],
+        }),
+      );
+    };
+    const result = await generateWhatsappAiReply({
+      history: [{ direction: "inbound", body: "where do I rank?" }],
+      apiKey: "k",
+      clientData,
+      fetcher,
+    });
+    expect(round).toBe(2);
+    expect(result?.reply).toBe("You are third for that one.");
+  });
+
+  it("refuses a topic that is not on the list", () => {
+    expect(isClientDataTopic("rankings")).toBe(true);
+    expect(isClientDataTopic("billing")).toBe(false);
+    expect(isClientDataTopic("../other-org")).toBe(false);
   });
 });
