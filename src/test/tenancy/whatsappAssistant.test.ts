@@ -281,6 +281,44 @@ describe("a client proving who they are", () => {
   });
 });
 
+describe("handing a flagged chat back to the assistant", () => {
+  it("goes quiet when flagged and answers again once handed back", async () => {
+    await WhatsappAssistantService.createInstantAnswer(ORG_A, USER_OWNER_A, {
+      question: "What are your opening hours?",
+      answer: "Monday to Friday, 9am to 6pm Brisbane time.",
+    });
+    const sender = "+61400000015";
+
+    const flagged = await inbound("put me through to a human", sender);
+    expect(sent.calls).toHaveLength(1);
+
+    // Flagged: even a question it knows the answer to gets nothing.
+    await inbound("what are your opening hours", sender);
+    expect(sent.calls).toHaveLength(1);
+
+    // What the "Hand back to assistant" button does.
+    await CommunicationsRepository.updateWhatsappConversation(ORG_A, {
+      conversationId: flagged.conversationId,
+      status: "open",
+    });
+
+    await inbound("what are your opening hours", sender);
+    expect(sent.calls).toHaveLength(2);
+    expect(sent.calls[1]?.body).toContain("9am to 6pm");
+  });
+
+  it("keeps a chat flagged when the customer writes again", async () => {
+    const sender = "+61400000016";
+    const flagged = await inbound("I need a human", sender);
+    await inbound("are you there?", sender);
+    const [conversation] = await db
+      .select({ status: schema.whatsappConversations.status })
+      .from(schema.whatsappConversations)
+      .where(eq(schema.whatsappConversations.id, flagged.conversationId));
+    expect(conversation?.status).toBe("pending");
+  });
+});
+
 describe("questions people ask", () => {
   it("counts a repeated question once per ask", async () => {
     await inbound("Do you do Google Maps?", "+61400000003");

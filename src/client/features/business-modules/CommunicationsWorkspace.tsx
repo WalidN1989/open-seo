@@ -187,6 +187,16 @@ function exportWhatsappContacts(data: {
   URL.revokeObjectURL(url);
 }
 
+/**
+ * What each status means to the person reading it. "Pending" said nothing
+ * about the thing that matters: the assistant has gone quiet.
+ */
+const CONVERSATION_STATUS_LABEL: Record<string, string> = {
+  open: "Open",
+  pending: "Waiting for a person",
+  closed: "Solved",
+};
+
 type ConversationStatusFilter =
   | "all"
   | (typeof whatsappConversationStatuses)[number];
@@ -741,6 +751,11 @@ export function WhatsappWorkspace() {
                   data.conversations.filter((item) => item.status === "open")
                     .length,
                 ],
+                [
+                  "Waiting for a person",
+                  data.conversations.filter((item) => item.status === "pending")
+                    .length,
+                ],
                 ["Templates", (ops?.templates ?? []).length],
                 ["Campaigns", (ops?.campaigns ?? []).length],
                 ["Automations", (ops?.automations ?? []).length],
@@ -879,7 +894,7 @@ export function WhatsappWorkspace() {
                             })
                           }
                         >
-                          <option value="">Bot</option>
+                          <option value="">Unassigned</option>
                           {data.members.map((member) => (
                             <option key={member.id} value={member.id}>
                               {member.name || member.email}
@@ -906,11 +921,44 @@ export function WhatsappWorkspace() {
                       </div>
                       {selectedConversation ? (
                         <>
-                          <span className="wa-status badge badge-sm capitalize">
-                            {selectedConversation.status === "closed"
-                              ? "Solved"
-                              : selectedConversation.status}
+                          <span
+                            className={`wa-status badge badge-sm ${
+                              selectedConversation.status === "pending"
+                                ? "badge-warning"
+                                : ""
+                            }`}
+                            title={
+                              selectedConversation.status === "pending"
+                                ? "The assistant has stepped back and is not replying. Hand it back to start it answering again."
+                                : undefined
+                            }
+                          >
+                            {CONVERSATION_STATUS_LABEL[
+                              selectedConversation.status
+                            ] ?? selectedConversation.status}
                           </span>
+                          {/*
+                            A flagged chat is waiting for a person, and the
+                            assistant stays silent until someone says
+                            otherwise. Without this there was nothing in the
+                            product that said otherwise, so a conversation
+                            nobody picked up went quiet for good.
+                          */}
+                          {selectedConversation.status === "pending" ? (
+                            <button
+                              className="btn btn-primary btn-sm"
+                              disabled={updateConversation.isPending}
+                              onClick={() => {
+                                updateConversation.mutate({
+                                  conversationId: selectedConversation.id,
+                                  status: "open",
+                                });
+                              }}
+                            >
+                              <Bot className="size-4" />
+                              Hand back to assistant
+                            </button>
+                          ) : null}
                           <button
                             className="btn btn-outline btn-sm"
                             disabled={updateConversation.isPending}
