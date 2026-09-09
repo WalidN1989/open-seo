@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import {
+  FileBarChart,
   Blocks,
   Bot,
   Mail,
@@ -37,6 +38,7 @@ const MODULE_ICONS = {
   email: Mail,
   social: Share2,
   invoicing: ReceiptText,
+  reports: FileBarChart,
   clients: ShieldCheck,
   integrations: PlugZap,
 } satisfies Record<Exclude<BusinessModuleKey, "leads">, typeof Blocks>;

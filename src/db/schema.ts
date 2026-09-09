@@ -172,6 +172,7 @@ export const {
   invoiceSettings,
   invoices,
   invoiceLineItems,
+  clientReports,
   clientAccounts,
   clientContacts,
   clientAccessEvents,

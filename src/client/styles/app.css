@@ -3,6 +3,7 @@
 @import "../features/business-modules/integrations/catalogue.css";
 @import "../features/business-modules/social/workspace.css";
 @import "../features/business-modules/invoicing/document.css";
+@import "../features/business-modules/reports/document.css";
 @import "../features/optimizations/draft-body.css";
 
 @theme {

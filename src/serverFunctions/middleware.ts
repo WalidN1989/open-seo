@@ -72,6 +72,31 @@ export const requireSignedDocumentToken = [
   }),
 ] as const;
 
+/** The same idea as the invoice link, for the report a client is handed. */
+export const requireSignedReportToken = [
+  createMiddleware({ type: "function" }).server(async ({ next, data }) => {
+    const token =
+      data && typeof data === "object" && "token" in data
+        ? (data as { token?: unknown }).token
+        : null;
+    if (typeof token !== "string" || !token) {
+      throw new AppError("NOT_FOUND", "That link is not valid.");
+    }
+    const { getRequiredEnvValue } = await import("@/server/lib/runtime-env");
+    const { verifyReportToken } =
+      await import("@/server/features/reports/reportLink");
+    const claims = await verifyReportToken(
+      token,
+      await getRequiredEnvValue("BETTER_AUTH_SECRET"),
+      Date.now(),
+    );
+    if (!claims) {
+      throw new AppError("NOT_FOUND", "That link has expired or is not valid.");
+    }
+    return next({ context: claims });
+  }),
+] as const;
+
 export const requireProjectContext = [
   createMiddleware({ type: "function" }).server(async ({ next, context }) => {
     const authenticatedContext = getAuthenticatedContext(context);

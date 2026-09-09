@@ -1794,3 +1794,33 @@ export const invoiceLineItems = sqliteTable(
     index("invoice_line_items_invoice_idx").on(table.invoiceId, table.position),
   ],
 );
+
+/**
+ * A handover report, stored as the snapshot it was when it was generated.
+ *
+ * The numbers are frozen on purpose. This is a document a client is given, and
+ * a document whose figures move after you hand it over is worse than no
+ * document — the conversation it starts is about the discrepancy, not the work.
+ */
+export const clientReports = sqliteTable(
+  "client_reports",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    /** The project this reports on. It lives in the client's own workspace. */
+    projectId: text("project_id").notNull(),
+    clientName: text("client_name").notNull(),
+    /** Everything the document renders, as it stood when generated. */
+    snapshotJson: text("snapshot_json").notNull(),
+    generatedByUserId: text("generated_by_user_id"),
+    createdAt: createdAt(),
+  },
+  (table) => [
+    index("client_reports_organization_created_idx").on(
+      table.organizationId,
+      table.createdAt,
+    ),
+  ],
+);

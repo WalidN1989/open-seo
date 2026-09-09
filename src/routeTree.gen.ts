@@ -17,6 +17,7 @@ import { Route as AuthRouteImport } from './routes/_auth'
 import { Route as ProjectRouteRouteImport } from './routes/_project/route'
 import { Route as AppRouteRouteImport } from './routes/_app/route'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
+import { Route as ReportsReportIdRouteImport } from './routes/reports/$reportId'
 import { Route as InvoicesInvoiceIdRouteImport } from './routes/invoices/$invoiceId'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as AcceptInvitationInvitationIdRouteImport } from './routes/accept-invitation.$invitationId'
@@ -118,6 +119,11 @@ const AppIndexRoute = AppIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AppRouteRoute,
+} as any)
+const ReportsReportIdRoute = ReportsReportIdRouteImport.update({
+  id: '/reports/$reportId',
+  path: '/reports/$reportId',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const InvoicesInvoiceIdRoute = InvoicesInvoiceIdRouteImport.update({
   id: '/invoices/$invoiceId',
@@ -488,6 +494,7 @@ export interface FileRoutesByFullPath {
   '/accept-invitation/$invitationId': typeof AcceptInvitationInvitationIdRoute
   '/api/health': typeof ApiHealthRoute
   '/invoices/$invoiceId': typeof InvoicesInvoiceIdRoute
+  '/reports/$reportId': typeof ReportsReportIdRoute
   '/p/$projectId': typeof ProjectPProjectIdRouteRouteWithChildren
   '/help/dataforseo-api-key': typeof AppHelpDataforseoApiKeyRoute
   '/help/openrouter-api-key': typeof AppHelpOpenrouterApiKeyRoute
@@ -558,6 +565,7 @@ export interface FileRoutesByTo {
   '/accept-invitation/$invitationId': typeof AcceptInvitationInvitationIdRoute
   '/api/health': typeof ApiHealthRoute
   '/invoices/$invoiceId': typeof InvoicesInvoiceIdRoute
+  '/reports/$reportId': typeof ReportsReportIdRoute
   '/help/dataforseo-api-key': typeof AppHelpDataforseoApiKeyRoute
   '/help/openrouter-api-key': typeof AppHelpOpenrouterApiKeyRoute
   '/modules/$moduleKey': typeof AppModulesModuleKeyRoute
@@ -627,6 +635,7 @@ export interface FileRoutesById {
   '/accept-invitation/$invitationId': typeof AcceptInvitationInvitationIdRoute
   '/api/health': typeof ApiHealthRoute
   '/invoices/$invoiceId': typeof InvoicesInvoiceIdRoute
+  '/reports/$reportId': typeof ReportsReportIdRoute
   '/_app/': typeof AppIndexRoute
   '/_project/p/$projectId': typeof ProjectPProjectIdRouteRouteWithChildren
   '/_app/help/dataforseo-api-key': typeof AppHelpDataforseoApiKeyRoute
@@ -701,6 +710,7 @@ export interface FileRouteTypes {
     | '/accept-invitation/$invitationId'
     | '/api/health'
     | '/invoices/$invoiceId'
+    | '/reports/$reportId'
     | '/p/$projectId'
     | '/help/dataforseo-api-key'
     | '/help/openrouter-api-key'
@@ -771,6 +781,7 @@ export interface FileRouteTypes {
     | '/accept-invitation/$invitationId'
     | '/api/health'
     | '/invoices/$invoiceId'
+    | '/reports/$reportId'
     | '/help/dataforseo-api-key'
     | '/help/openrouter-api-key'
     | '/modules/$moduleKey'
@@ -839,6 +850,7 @@ export interface FileRouteTypes {
     | '/accept-invitation/$invitationId'
     | '/api/health'
     | '/invoices/$invoiceId'
+    | '/reports/$reportId'
     | '/_app/'
     | '/_project/p/$projectId'
     | '/_app/help/dataforseo-api-key'
@@ -905,6 +917,7 @@ export interface RootRouteChildren {
   AcceptInvitationInvitationIdRoute: typeof AcceptInvitationInvitationIdRoute
   ApiHealthRoute: typeof ApiHealthRoute
   InvoicesInvoiceIdRoute: typeof InvoicesInvoiceIdRoute
+  ReportsReportIdRoute: typeof ReportsReportIdRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiAutumnSplatRoute: typeof ApiAutumnSplatRoute
   ApiEmailAccountIdRoute: typeof ApiEmailAccountIdRoute
@@ -972,6 +985,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof AppIndexRouteImport
       parentRoute: typeof AppRouteRoute
+    }
+    '/reports/$reportId': {
+      id: '/reports/$reportId'
+      path: '/reports/$reportId'
+      fullPath: '/reports/$reportId'
+      preLoaderRoute: typeof ReportsReportIdRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/invoices/$invoiceId': {
       id: '/invoices/$invoiceId'
@@ -1691,6 +1711,7 @@ const rootRouteChildren: RootRouteChildren = {
   AcceptInvitationInvitationIdRoute: AcceptInvitationInvitationIdRoute,
   ApiHealthRoute: ApiHealthRoute,
   InvoicesInvoiceIdRoute: InvoicesInvoiceIdRoute,
+  ReportsReportIdRoute: ReportsReportIdRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiAutumnSplatRoute: ApiAutumnSplatRoute,
   ApiEmailAccountIdRoute: ApiEmailAccountIdRoute,

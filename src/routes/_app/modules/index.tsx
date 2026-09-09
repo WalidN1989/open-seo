@@ -2,6 +2,7 @@ import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 import {
+  FileBarChart,
   Blocks,
   Bot,
   ContactRound,
@@ -38,6 +39,7 @@ const icons = {
   email: Mail,
   social: Share2,
   invoicing: ReceiptText,
+  reports: FileBarChart,
   clients: ShieldCheck,
   integrations: PlugZap,
 } satisfies Record<BusinessModuleKey, typeof Blocks>;

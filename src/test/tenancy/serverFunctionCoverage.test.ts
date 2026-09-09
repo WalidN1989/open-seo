@@ -66,9 +66,10 @@ describe("server function authorization coverage", () => {
         block.includes("requireAuthenticatedContext") ||
         block.includes("requireProjectContext") ||
         block.includes("requireSamAccess") ||
-        // A signed, expiring link standing in for a session, so a client can
-        // open the invoice they were sent without an account.
-        block.includes("requireSignedDocumentToken");
+        // Signed, expiring links standing in for a session, so a client can
+        // open the invoice or report they were sent without an account.
+        block.includes("requireSignedDocumentToken") ||
+        block.includes("requireSignedReportToken");
       expect(
         sanctioned,
         `an endpoint in ${file} uses an unrecognized middleware`,

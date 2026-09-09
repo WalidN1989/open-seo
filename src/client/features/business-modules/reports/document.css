@@ -1,0 +1,396 @@
+/*
+ * The printable handover report.
+ *
+ * Fixed light colours on purpose, the same reasoning as the invoice sheet:
+ * this is emailed and printed to PDF, so it must look the same on paper as on
+ * a dark screen and cannot use theme tokens.
+ */
+.report-document {
+  background: #ffffff;
+  color: #1a1a1a;
+  font-size: 13.5px;
+  line-height: 1.6;
+  padding: 0 0 48px;
+  max-width: 860px;
+  margin: 0 auto;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.report-cover {
+  background: #0f0f0f;
+  color: #ffffff;
+  padding: 44px 48px 40px;
+}
+
+.report-cover-brand {
+  margin-bottom: 34px;
+}
+
+.report-logo {
+  max-height: 52px;
+  max-width: 200px;
+  object-fit: contain;
+  /* The mark is black on white, so it needs a light plate on the dark cover. */
+  background: #ffffff;
+  border-radius: 8px;
+  padding: 6px 10px;
+}
+
+.report-wordmark {
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.report-eyebrow {
+  margin: 0;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #ea580c;
+  font-weight: 600;
+}
+
+.report-title {
+  margin: 8px 0 6px;
+  font-size: 34px;
+  line-height: 1.15;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.report-subtitle {
+  margin: 0;
+  font-size: 13px;
+  color: #a3a3a3;
+}
+
+.report-section {
+  padding: 34px 48px 0;
+}
+
+.report-section h2 {
+  margin: 0 0 8px;
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.report-section h2::after {
+  content: "";
+  display: block;
+  width: 34px;
+  height: 3px;
+  background: #ea580c;
+  border-radius: 2px;
+  margin-top: 8px;
+}
+
+.report-lede {
+  margin: 0 0 18px;
+  color: #4b5563;
+  max-width: 62ch;
+}
+
+.report-note {
+  margin: 14px 0 4px;
+  font-size: 12.5px;
+  color: #6b7280;
+  max-width: 62ch;
+}
+
+.report-checklist {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 28px;
+}
+
+.report-checklist li {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.report-check {
+  flex: none;
+  width: 19px;
+  height: 19px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 11px;
+  font-weight: 700;
+  margin-top: 2px;
+}
+
+.is-done .report-check {
+  background: #ea580c;
+  color: #ffffff;
+}
+
+.is-pending .report-check {
+  background: #f3f4f6;
+  color: #9ca3af;
+}
+
+.report-check-detail {
+  display: block;
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.report-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.report-stat {
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 16px 18px;
+}
+
+.report-stat-value {
+  font-size: 28px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+
+.report-stat-label {
+  font-size: 11.5px;
+  color: #6b7280;
+  margin-top: 4px;
+}
+
+.report-chart {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin: 18px 0 4px;
+}
+
+.report-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 16px;
+  font-size: 12.5px;
+}
+
+.report-table th {
+  text-align: left;
+  font-weight: 600;
+  color: #6b7280;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 0 10px 8px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.report-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.report-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.report-move {
+  font-size: 11.5px;
+  color: #9ca3af;
+}
+
+.report-move-up {
+  color: #15803d;
+  font-weight: 600;
+}
+
+.report-move-down {
+  color: #b91c1c;
+  font-weight: 600;
+}
+
+.report-move-new {
+  color: #6b7280;
+  font-style: italic;
+}
+
+.report-competitors,
+.report-services {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 28px;
+}
+
+.report-competitors li {
+  border-left: 3px solid #e5e7eb;
+  padding-left: 12px;
+}
+
+.report-competitors span {
+  display: block;
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.report-services li {
+  padding-left: 20px;
+  position: relative;
+}
+
+.report-services li::before {
+  content: "✓";
+  position: absolute;
+  left: 0;
+  color: #ea580c;
+  font-weight: 700;
+}
+
+.report-issues {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.report-issues li {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 8px 14px;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  text-transform: capitalize;
+}
+
+.report-issue-count {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.report-roadmap {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 14px;
+}
+
+.report-roadmap li {
+  display: grid;
+  grid-template-columns: 128px minmax(0, 1fr);
+  gap: 18px;
+  border-top: 1px solid #e5e7eb;
+  padding-top: 14px;
+}
+
+.report-phase {
+  font-size: 12px;
+  font-weight: 600;
+  color: #ea580c;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.report-roadmap p {
+  margin: 3px 0 0;
+  color: #4b5563;
+}
+
+.report-callout {
+  margin: 20px 0 0;
+  background: #fff7ed;
+  border-left: 3px solid #ea580c;
+  padding: 14px 18px;
+  border-radius: 0 8px 8px 0;
+  color: #7c2d12;
+  max-width: 68ch;
+}
+
+.report-footer {
+  margin-top: 40px;
+  padding: 22px 48px 0;
+  border-top: 1px solid #e5e7eb;
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.report-footer strong {
+  color: #1a1a1a;
+  display: block;
+}
+
+.report-footer-contact {
+  text-align: right;
+}
+
+@media (max-width: 720px) {
+  .report-cover,
+  .report-section,
+  .report-footer {
+    padding-left: 22px;
+    padding-right: 22px;
+  }
+
+  .report-stats,
+  .report-checklist,
+  .report-competitors,
+  .report-services {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .report-roadmap li {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 4px;
+  }
+
+  .report-footer {
+    flex-direction: column;
+  }
+
+  .report-footer-contact {
+    text-align: left;
+  }
+}
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+
+  .report-document,
+  .report-document * {
+    visibility: visible;
+  }
+
+  .report-document {
+    position: absolute;
+    inset: 0;
+    max-width: none;
+    border-radius: 0;
+  }
+
+  .report-section {
+    break-inside: avoid;
+  }
+
+  .report-section-break {
+    break-before: page;
+  }
+}
