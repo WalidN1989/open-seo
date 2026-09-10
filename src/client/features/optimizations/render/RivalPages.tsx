@@ -34,9 +34,11 @@ export function RivalPages({
         {dedicated.length === 1
           ? "One competitor answers this search with a page of its own."
           : `${dedicated.length} competitors answer this search with a page of their own.`}{" "}
-        {ours
-          ? "You answer it with your homepage, which is also trying to answer everything else."
-          : "You do not appear for it at all."}
+        {ours === null
+          ? "You do not appear for it at all."
+          : ours.kind === "article"
+            ? "You answer it with a blog post, which explains the thing rather than selling it."
+            : "You answer it with your homepage, which is also trying to answer everything else."}
       </p>
       <ol className="mt-3 space-y-1.5 text-sm">
         {dedicated.map((page) => (

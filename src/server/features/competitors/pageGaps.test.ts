@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  canonicalUrl,
   findPageGaps,
   isDedicatedPage,
+  pageKind,
   pagesByCompetitor,
   type PageObservation,
 } from "./pageGaps";
@@ -107,7 +109,7 @@ describe("finding the searches worth a page", () => {
       (row) => row.keyword === "colorbond fencing brisbane",
     );
     expect(gap?.dedicated).toHaveLength(2);
-    expect(gap?.ours?.dedicated).toBe(false);
+    expect(gap?.ours?.kind).toBe("homepage");
   });
 
   it("reports a gap when we do not appear at all", () => {
@@ -152,6 +154,105 @@ describe("finding the searches worth a page", () => {
     expect(twice[0]?.dedicated).toHaveLength(2);
     // The better of the rival's two pages is the one shown.
     expect(twice[0]?.dedicated[0]?.url).toContain("/decking/");
+  });
+});
+
+describe("what kind of page answered", () => {
+  it("separates an article from a page that sells", () => {
+    expect(pageKind("https://booxworm.lk/collections/comics-manga")).toBe(
+      "commercial",
+    );
+    expect(pageKind("https://booxworm.lk/products/atomic-habits")).toBe(
+      "commercial",
+    );
+    expect(pageKind("https://booxworm.lk/blogs/news/smiggle-sri-lanka")).toBe(
+      "article",
+    );
+    expect(pageKind("https://booxworm.lk/")).toBe("homepage");
+  });
+
+  it("treats an article as a gap, because it answers rather than sells", () => {
+    // Real case: BooXworm is #3 for "smiggle sri lanka" with a blog post while
+    // every rival ranks with a product or collection page.
+    const gaps = findPageGaps(
+      [
+        seen(
+          "smiggle sri lanka",
+          "kapruka.com",
+          1,
+          "https://kapruka.com/brands/smiggle",
+        ),
+        seen(
+          "smiggle sri lanka",
+          "pettahonline.lk",
+          2,
+          "https://pettahonline.lk/collections/smiggle",
+        ),
+        seen(
+          "smiggle sri lanka",
+          OURS,
+          3,
+          `https://${OURS}/blogs/news/smiggle-sri-lanka`,
+        ),
+      ],
+      { ownDomain: OURS },
+    );
+    expect(gaps[0]?.keyword).toBe("smiggle sri lanka");
+    expect(gaps[0]?.ours?.kind).toBe("article");
+  });
+
+  it("does not count a rival's article as a page built to sell", () => {
+    const gaps = findPageGaps(
+      [
+        seen(
+          "book shop colombo",
+          "rival.lk",
+          1,
+          "https://rival.lk/blog/best-book-shops",
+        ),
+        seen(
+          "book shop colombo",
+          "other.lk",
+          2,
+          "https://other.lk/collections/books",
+        ),
+        seen("book shop colombo", OURS, 9, `https://${OURS}/`),
+      ],
+      { ownDomain: OURS },
+    );
+    // One rival selling is a preference, not a market shape.
+    expect(gaps).toEqual([]);
+  });
+});
+
+describe("the same page however Google decorated it", () => {
+  it("merges a URL that differs only by a shopping tracking id", () => {
+    const [group] = pagesByCompetitor(
+      [
+        seen(
+          "manga sri lanka",
+          "jeyabookcentre.com",
+          1,
+          "https://jeyabookcentre.com/manga?srsltid=AAA",
+        ),
+        seen(
+          "manga books sri lanka",
+          "jeyabookcentre.com",
+          2,
+          "https://jeyabookcentre.com/manga?srsltid=BBB",
+        ),
+      ],
+      OURS,
+    );
+    expect(group?.pages).toHaveLength(1);
+    expect(group?.pages[0]?.url).toBe("https://jeyabookcentre.com/manga");
+    expect(group?.pages[0]?.keywords).toHaveLength(2);
+  });
+
+  it("keeps query parameters that are part of the page", () => {
+    expect(canonicalUrl("https://x.lk/search?q=manga&utm_source=g")).toBe(
+      "https://x.lk/search?q=manga",
+    );
   });
 });
 

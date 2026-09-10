@@ -43,7 +43,10 @@ export function PageGaps({ gaps }: { gaps: Overview["gaps"] }) {
             <span className="ml-auto text-sm">
               {gap.ours ? (
                 <>
-                  You rank <RankBadge rank={gap.ours.rank} /> with your homepage
+                  You rank <RankBadge rank={gap.ours.rank} /> with{" "}
+                  {gap.ours.kind === "article"
+                    ? "a blog post"
+                    : "your homepage"}
                 </>
               ) : (
                 <span className="text-base-content/55">You do not appear</span>

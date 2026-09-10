@@ -34,26 +34,70 @@ export type PageGap = {
   /** Rivals answering with a page built for this search. */
   dedicated: CompetitorPage[];
   /** Our own best result, when we appear at all. */
-  ours: { url: string; rank: number; dedicated: boolean } | null;
+  ours: { url: string; rank: number; kind: PageKind } | null;
 };
 
 /**
- * Whether a URL is a page built for one thing.
+ * What kind of page answered the search.
  *
- * The homepage is the "no" case, and so is a bare category index — those are
- * hubs, not answers. Anything with a path segment counts.
+ * Three kinds, not two. The distinction between an article and a page that
+ * sells is the one that real data forced: BooXworm ranks third for "smiggle
+ * sri lanka" with a blog post while every rival ranks with a product or
+ * collection page. By path alone that blog is "a page built for the search",
+ * which is technically true and commercially useless — somebody looking to buy
+ * a Smiggle bag has landed on an article about them.
  */
-export function isDedicatedPage(url: string | null): boolean {
-  if (!url) return false;
-  let path: string;
+export type PageKind = "homepage" | "article" | "commercial";
+
+const ARTICLE = /^\/(blogs?|news|articles?|posts?|stories)(\/|$)/i;
+
+function pathOf(url: string): string {
   try {
-    path = new URL(url).pathname;
+    return new URL(url).pathname;
   } catch {
     // A stored value that is not a full URL: treat the whole thing as a path.
-    path = url.startsWith("/") ? url : `/${url}`;
+    return url.startsWith("/") ? url : `/${url}`;
   }
-  const trimmed = path.replace(/\/+$/, "");
-  return trimmed !== "" && trimmed !== "/index.html" && trimmed !== "/home";
+}
+
+export function pageKind(url: string | null): PageKind {
+  if (!url) return "homepage";
+  const trimmed = pathOf(url).replace(/\/+$/, "");
+  if (trimmed === "" || trimmed === "/index.html" || trimmed === "/home") {
+    return "homepage";
+  }
+  return ARTICLE.test(trimmed) ? "article" : "commercial";
+}
+
+/** A page built to answer this search and to sell against it. */
+export function isDedicatedPage(url: string | null): boolean {
+  return pageKind(url) === "commercial";
+}
+
+/**
+ * The same page, however Google decorated the link.
+ *
+ * Shopping results come back with an `srsltid` that differs per query, so
+ * without this one collection page looks like a different page for every
+ * keyword it ranks for, and "their pages" fills with duplicates.
+ */
+const TRACKING = /^(srsltid|gclid|fbclid|msclkid|mc_cid|mc_eid|utm_[a-z_]+)$/i;
+
+export function canonicalUrl(url: string): string {
+  try {
+    const parsed = new URL(url);
+    // Collected before deleting: the params are live, and removing one while
+    // iterating skips the next.
+    const keys: string[] = [];
+    parsed.searchParams.forEach((_value, key) => keys.push(key));
+    for (const key of keys) {
+      if (TRACKING.test(key)) parsed.searchParams.delete(key);
+    }
+    parsed.hash = "";
+    return parsed.toString().replace(/\?$/, "");
+  } catch {
+    return url;
+  }
 }
 
 function best<T extends { rank: number }>(rows: T[]): T | null {
@@ -72,16 +116,17 @@ export function pagesByCompetitor(
   for (const row of observations) {
     if (!row.url) continue;
     if (!isCompetitorDomain(row.domain, ownDomain)) continue;
+    const url = canonicalUrl(row.url);
     const pages: Map<string, Tally> =
       byDomain.get(row.domain) ?? new Map<string, Tally>();
-    const existing = pages.get(row.url);
+    const existing = pages.get(url);
     if (existing) {
       existing.keywords.add(row.keyword);
       if (row.rank < existing.rank) existing.rank = row.rank;
     } else {
-      pages.set(row.url, {
+      pages.set(url, {
         domain: row.domain,
-        url: row.url,
+        url,
         title: row.title,
         rank: row.rank,
         dedicated: isDedicatedPage(row.url),
@@ -143,7 +188,7 @@ export function findPageGaps(
       if (!held || row.rank < held.rank) {
         dedicated.set(row.domain, {
           domain: row.domain,
-          url: row.url,
+          url: canonicalUrl(row.url),
           title: row.title,
           rank: row.rank,
           dedicated: true,
@@ -158,14 +203,16 @@ export function findPageGaps(
         )
       : [];
     const ourBest = best(mine);
-    // Already answering with a page of our own: not a gap.
-    if (ourBest?.url && isDedicatedPage(ourBest.url)) continue;
+    const ourKind = pageKind(ourBest?.url ?? null);
+    // Already selling from a page of our own: not a gap. An article is not
+    // that — it answers the question and then asks the reader to go looking.
+    if (ourBest?.url && ourKind === "commercial") continue;
 
     gaps.push({
       keyword,
       dedicated: [...dedicated.values()].toSorted((a, b) => a.rank - b.rank),
       ours: ourBest?.url
-        ? { url: ourBest.url, rank: ourBest.rank, dedicated: false }
+        ? { url: canonicalUrl(ourBest.url), rank: ourBest.rank, kind: ourKind }
         : null,
     });
   }
