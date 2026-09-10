@@ -542,6 +542,9 @@
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
     font-size: 10.5px;
+    /* The page supplies the bottom margin; this padding only pushed the last
+       line of the footer onto a page of its own. */
+    padding-bottom: 0;
   }
 
   .report-actions {
@@ -559,13 +562,20 @@
     padding-right: 26px;
   }
 
+  /*
+   * Sections must be allowed to split. Marking them atomic meant a section
+   * that did not fit was pushed whole to the next page, so a page ended
+   * two-fifths of the way down and looked truncated. What is kept together is
+   * the small stuff below — a table row, a roadmap step — where a break really
+   * does read as a mistake.
+   */
   .report-section {
     padding-top: 22px;
-    break-inside: avoid;
   }
 
-  .report-section-break {
-    break-before: page;
+  /* A heading stranded at the foot of a page with nothing under it. */
+  .report-section h2 {
+    break-after: avoid;
   }
 
   .report-title {
@@ -584,7 +594,31 @@
   .report-table tr,
   .report-roadmap li,
   .report-checklist li,
-  .report-services li {
+  .report-services li,
+  .report-stat,
+  .report-chart,
+  .report-access,
+  .report-callout {
+    break-inside: avoid;
+  }
+
+  /*
+   * Pulled tight and allowed to break. Held whole it did not fit in what was
+   * left of the last page and jumped to one of its own, which reads as a stray
+   * blank page at the end of a client's document.
+   */
+  .report-footer {
+    margin-top: 18px;
+    padding-top: 14px;
+  }
+
+  .report-footer-note {
+    margin-top: 8px;
+    padding-top: 8px;
+  }
+
+  /* The figures and the chart that explains them belong on one page. */
+  .report-stats {
     break-inside: avoid;
   }
 
