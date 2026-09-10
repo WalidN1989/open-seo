@@ -48,6 +48,14 @@ export type ReportSnapshot = {
     phone: string | null;
     website: string | null;
     addressLines: string | null;
+    /** "ABN", and whatever the business registered under it. */
+    taxIdLabel: string | null;
+    taxIdValue: string | null;
+    /**
+     * The number the assistant answers on. Shown so a client with a question
+     * has somewhere obvious to put it, since the report itself cannot answer.
+     */
+    whatsappNumber: string | null;
   };
   client: {
     name: string;

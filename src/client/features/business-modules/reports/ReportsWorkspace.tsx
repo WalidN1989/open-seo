@@ -44,7 +44,13 @@ export function ReportsWorkspace() {
   const generate = useMutation({
     mutationFn: () =>
       generateClientReport({
-        data: { projectId, clientName: clientName.trim() },
+        data: {
+          projectId,
+          clientName: clientName.trim(),
+          loginEmail: loginEmail.trim(),
+          googleBusinessProfile,
+          whatsappAssistant,
+        },
       }),
     onSuccess: async (result) => {
       setOpenId(result.id);

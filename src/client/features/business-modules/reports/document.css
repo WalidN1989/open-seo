@@ -340,7 +340,27 @@
   text-align: right;
 }
 
-@media (max-width: 720px) {
+.report-footer-registration {
+  margin-top: 4px;
+  font-size: 11px;
+  letter-spacing: 0.02em;
+}
+
+/* Deliberately quiet: one line, full width under the two columns. */
+.report-footer-note {
+  flex-basis: 100%;
+  margin: 14px 0 0;
+  padding-top: 12px;
+  border-top: 1px solid #f3f4f6;
+  font-size: 11.5px;
+  color: #6b7280;
+}
+
+.report-footer {
+  flex-wrap: wrap;
+}
+
+@media screen and (max-width: 720px) {
   .report-cover,
   .report-section,
   .report-footer {
@@ -369,33 +389,7 @@
   }
 }
 
-@media print {
-  body * {
-    visibility: hidden;
-  }
-
-  .report-document,
-  .report-document * {
-    visibility: visible;
-  }
-
-  .report-document {
-    position: absolute;
-    inset: 0;
-    max-width: none;
-    border-radius: 0;
-  }
-
-  .report-section {
-    break-inside: avoid;
-  }
-
-  .report-section-break {
-    break-before: page;
-  }
-}
-
-/* Services, now a two-column list with a tick and a plain-language line. */
+/* Services: a tick, a name, and a plain sentence under it. */
 .report-services {
   gap: 12px 28px;
 }
@@ -467,6 +461,12 @@
   word-break: break-word;
 }
 
+.report-link {
+  color: #c2410c;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
 .report-access-muted {
   font-weight: 400;
   color: #6b7280;
@@ -498,8 +498,83 @@
   color: #c2410c;
 }
 
+@page {
+  size: A4;
+  margin: 12mm 10mm;
+}
+
 @media print {
+  body * {
+    visibility: hidden;
+  }
+
+  .report-document,
+  .report-document * {
+    visibility: visible;
+  }
+
+  .report-document {
+    position: absolute;
+    inset: 0;
+    max-width: none;
+    border-radius: 0;
+    /*
+     * Without this the browser drops every background: the cover goes white
+     * with white text on it, the bars in the charts vanish, and the ticks lose
+     * their colour. The screen version and the PDF are meant to be the same
+     * document.
+     */
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    font-size: 10.5px;
+  }
+
   .report-actions {
     display: none !important;
+  }
+
+  /* Tighter margins on paper than on screen; the page supplies its own. */
+  .report-cover {
+    padding: 26px 26px 24px;
+  }
+
+  .report-section,
+  .report-footer {
+    padding-left: 26px;
+    padding-right: 26px;
+  }
+
+  .report-section {
+    padding-top: 22px;
+    break-inside: avoid;
+  }
+
+  .report-section-break {
+    break-before: page;
+  }
+
+  .report-title {
+    font-size: 26px;
+  }
+
+  .report-stat-value {
+    font-size: 20px;
+  }
+
+  /* A table that splits across a page break loses its header. */
+  .report-table thead {
+    display: table-header-group;
+  }
+
+  .report-table tr,
+  .report-roadmap li,
+  .report-checklist li,
+  .report-services li {
+    break-inside: avoid;
+  }
+
+  a {
+    color: #c2410c;
+    text-decoration: underline;
   }
 }

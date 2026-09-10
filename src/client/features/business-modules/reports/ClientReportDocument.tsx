@@ -17,6 +17,21 @@ function longDate(iso: string | null) {
   });
 }
 
+/**
+ * Meta hands back the WhatsApp number unspaced. Grouped is easier to read off
+ * a printed page; anything that is not a plain twelve-digit international
+ * number is left exactly as it was given.
+ */
+function readableNumber(number: string) {
+  const match = /^\+(\d{2})(\d{3})(\d{3})(\d{3})$/.exec(number.trim());
+  return match ? `+${match[1]} ${match[2]} ${match[3]} ${match[4]}` : number;
+}
+
+/** A bare domain in settings still has to be clickable in the document. */
+function websiteHref(website: string) {
+  return /^https?:\/\//i.test(website) ? website : `https://${website}`;
+}
+
 function Stat({ value, label }: { value: string | number; label: string }) {
   return (
     <div className="report-stat">
@@ -43,6 +58,44 @@ function Movement({
     >
       {up ? "▲" : "▼"} {Math.abs(change)}
     </span>
+  );
+}
+
+function ReportFooter({ agency }: { agency: ReportSnapshot["agency"] }) {
+  return (
+    <footer className="report-footer">
+      <div className="report-footer-identity">
+        <strong>{agency.name}</strong>
+        {agency.addressLines
+          ? agency.addressLines
+              .split("\n")
+              .filter((line) => line.trim())
+              .map((line) => <div key={line}>{line}</div>)
+          : null}
+        {agency.taxIdValue ? (
+          <div className="report-footer-registration">
+            {agency.taxIdLabel ?? "ABN"} {agency.taxIdValue}
+          </div>
+        ) : null}
+      </div>
+      <div className="report-footer-contact">
+        {agency.website ? (
+          <div>
+            <a className="report-link" href={websiteHref(agency.website)}>
+              {agency.website.replace(/^https?:\/\//, "")}
+            </a>
+          </div>
+        ) : null}
+        {agency.phone ? <div>{agency.phone}</div> : null}
+        {agency.email ? <div>{agency.email}</div> : null}
+      </div>
+      {agency.whatsappNumber ? (
+        <p className="report-footer-note">
+          Any concerns? Message us on WhatsApp,{" "}
+          {readableNumber(agency.whatsappNumber)}.
+        </p>
+      ) : null}
+    </footer>
   );
 }
 
@@ -320,7 +373,12 @@ export function ClientReportDocument({
           <div className="report-access">
             <div>
               <span className="report-access-label">Address</span>
-              <span className="report-access-value">{snapshot.access.url}</span>
+              <a
+                className="report-access-value report-link"
+                href={snapshot.access.url}
+              >
+                {snapshot.access.url}
+              </a>
             </div>
             {snapshot.access.loginEmail ? (
               <div>
@@ -333,29 +391,17 @@ export function ClientReportDocument({
             <div>
               <span className="report-access-label">Password</span>
               <span className="report-access-value report-access-muted">
-                Sent to you separately, never in this document
+                Sent to you separately, never in a document
+                {agency.phone ? (
+                  <> — call us on {agency.phone} if you need it again</>
+                ) : null}
               </span>
             </div>
           </div>
         </section>
       ) : null}
 
-      <footer className="report-footer">
-        <div>
-          <strong>{agency.name}</strong>
-          {agency.addressLines
-            ? agency.addressLines
-                .split("\n")
-                .filter((line) => line.trim())
-                .map((line) => <div key={line}>{line}</div>)
-            : null}
-        </div>
-        <div className="report-footer-contact">
-          {agency.email ? <div>{agency.email}</div> : null}
-          {agency.phone ? <div>{agency.phone}</div> : null}
-          {agency.website ? <div>{agency.website}</div> : null}
-        </div>
-      </footer>
+      <ReportFooter agency={agency} />
     </article>
   );
 }

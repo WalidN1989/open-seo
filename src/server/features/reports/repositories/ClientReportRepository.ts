@@ -1,6 +1,11 @@
 import { and, desc, eq, inArray, isNull } from "drizzle-orm";
 import { db } from "@/db";
-import { clientReports, organization, projects } from "@/db/schema";
+import {
+  clientReports,
+  organization,
+  projects,
+  whatsappConnections,
+} from "@/db/schema";
 
 function now() {
   return new Date().toISOString();
@@ -41,6 +46,21 @@ async function organizationName(organizationId: string) {
     .where(eq(organization.id, organizationId))
     .limit(1);
   return row?.name ?? null;
+}
+
+/** The number the assistant answers on, if this business has one connected. */
+async function whatsappNumber(organizationId: string) {
+  const [row] = await db
+    .select({ phone: whatsappConnections.displayPhoneNumber })
+    .from(whatsappConnections)
+    .where(
+      and(
+        eq(whatsappConnections.organizationId, organizationId),
+        eq(whatsappConnections.status, "connected"),
+      ),
+    )
+    .limit(1);
+  return row?.phone ?? null;
 }
 
 async function insert(values: typeof clientReports.$inferInsert) {
@@ -96,6 +116,7 @@ async function remove(organizationId: string, id: string) {
 export const ClientReportRepository = {
   reportableProjects,
   organizationName,
+  whatsappNumber,
   insert,
   list,
   get,

@@ -52,9 +52,10 @@ async function requireManage(organizationId: string, userId: string) {
 async function agencyFor(
   organizationId: string,
 ): Promise<ReportSnapshot["agency"]> {
-  const [settings, workspaceName] = await Promise.all([
+  const [settings, workspaceName, whatsappNumber] = await Promise.all([
     InvoiceRepository.getSettings(organizationId),
     Repo.organizationName(organizationId),
+    Repo.whatsappNumber(organizationId),
   ]);
   // The invoicing issuer is filled in when the first invoice goes out, which
   // may be after the first report. The workspace's own name is always there
@@ -66,6 +67,9 @@ async function agencyFor(
     phone: settings?.phone ?? null,
     website: settings?.website ?? null,
     addressLines: settings?.addressLines ?? null,
+    taxIdLabel: settings?.taxIdLabel ?? null,
+    taxIdValue: settings?.taxIdValue ?? null,
+    whatsappNumber,
   };
 }
 
