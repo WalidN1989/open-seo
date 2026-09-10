@@ -10,6 +10,7 @@ import {
   MessageSquare,
   Search,
   Sparkles,
+  Swords,
   TrendingUp,
 } from "lucide-react";
 import { linkOptions } from "@tanstack/react-router";
@@ -63,6 +64,11 @@ const projectNavItems = [
     to: "/p/$projectId/optimizations" as const,
     label: "Content Optimization",
     icon: FileText,
+  },
+  {
+    to: "/p/$projectId/competitors" as const,
+    label: "Competitors",
+    icon: Swords,
   },
   {
     to: "/p/$projectId/brand-lookup" as const,
@@ -122,6 +128,7 @@ export function getProjectNavGroups(projectId: string) {
         byPath("/p/$projectId/keywords"),
         byPath("/p/$projectId/domain"),
         byPath("/p/$projectId/backlinks"),
+        byPath("/p/$projectId/competitors"),
         byPath("/p/$projectId/brand-lookup"),
         byPath("/p/$projectId/prompt-explorer"),
       ],
