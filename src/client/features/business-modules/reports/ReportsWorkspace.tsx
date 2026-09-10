@@ -6,6 +6,7 @@ import {
   deleteClientReport,
   generateClientReport,
   getClientReport,
+  getReportBranding,
   listClientReports,
   listReportableProjects,
 } from "@/serverFunctions/reports";
@@ -27,6 +28,10 @@ export function ReportsWorkspace() {
   const projects = useQuery({
     queryKey: ["client-reports", "projects"],
     queryFn: () => listReportableProjects(),
+  });
+  const branding = useQuery({
+    queryKey: ["client-reports", "branding"],
+    queryFn: () => getReportBranding(),
   });
   const reports = useQuery({
     queryKey: ["client-reports"],
@@ -90,6 +95,35 @@ export function ReportsWorkspace() {
           what they read.
         </p>
       </div>
+
+      {branding.data ? (
+        <div
+          className={`rounded-xl border p-4 text-sm ${
+            branding.data.configured
+              ? "border-base-300"
+              : "border-warning/50 bg-warning/10"
+          }`}
+        >
+          <p>
+            This report will be branded as <strong>{branding.data.name}</strong>
+            .
+          </p>
+          {branding.data.configured ? null : (
+            <p className="mt-1 text-base-content/70">
+              That is the workspace name, because this workspace has no company
+              details saved. Reports take their letterhead from the workspace
+              you are in — if you are inside a client&rsquo;s workspace, switch
+              to your own before generating. Set the name, address and logo in
+              Business &rarr; Invoicing &rarr; Settings.
+            </p>
+          )}
+          {branding.data.configured && !branding.data.hasLogo ? (
+            <p className="mt-1 text-base-content/70">
+              No logo uploaded yet, so the report prints your name as text.
+            </p>
+          ) : null}
+        </div>
+      ) : null}
 
       <div className="space-y-3 rounded-xl border border-base-300 p-5">
         <div className="grid gap-3 md:grid-cols-2">

@@ -16,6 +16,12 @@ export const listReportableProjects = createServerFn({ method: "POST" })
     ClientReportService.projects(context.organizationId, context.userId),
   );
 
+export const getReportBranding = createServerFn({ method: "POST" })
+  .middleware(requireAuthenticatedContext)
+  .handler(({ context }) =>
+    ClientReportService.branding(context.organizationId, context.userId),
+  );
+
 export const listClientReports = createServerFn({ method: "POST" })
   .middleware(requireAuthenticatedContext)
   .handler(({ context }) =>

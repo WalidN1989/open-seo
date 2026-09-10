@@ -73,6 +73,28 @@ async function agencyFor(
   };
 }
 
+/**
+ * Whose name the report will carry, shown before anything is generated.
+ *
+ * Reports are branded by the workspace you are in, and every client project
+ * sits in its own workspace — so it is easy to be inside the client's
+ * workspace and produce a report branded as the client. That was silent until
+ * the document came out wrong, so the screen says it up front.
+ */
+async function branding(organizationId: string, userId: string) {
+  await BusinessModuleService.requireAccess(organizationId, userId, MODULE);
+  const [settings, workspaceName] = await Promise.all([
+    InvoiceRepository.getSettings(organizationId),
+    Repo.organizationName(organizationId),
+  ]);
+  return {
+    name: settings?.legalName?.trim() || workspaceName?.trim() || "Your agency",
+    configured: Boolean(settings?.legalName?.trim()),
+    hasLogo: Boolean(settings?.logoUrl),
+    workspaceName: workspaceName ?? null,
+  };
+}
+
 async function projects(organizationId: string, userId: string) {
   await BusinessModuleService.requireAccess(organizationId, userId, MODULE);
   const memberships = await AuthRepository.listOrganizationIdsForUser(userId);
@@ -361,6 +383,7 @@ async function documentLink(
 }
 
 export const ClientReportService = {
+  branding,
   projects,
   documentLink,
   generate,
