@@ -136,6 +136,8 @@ export function OpportunityDetail({
             weaknesses={opportunity.weaknesses}
             gscSnapshot={opportunity.gscSnapshot}
             serpSnapshot={opportunity.serpSnapshot}
+            projectId={projectId}
+            keyword={opportunity.keyword}
           />
         ) : null}
 

@@ -1,3 +1,4 @@
+import { RivalPages } from "./RivalPages";
 import {
   formatCtr,
   formatPosition,
@@ -38,6 +39,8 @@ export function WhyTab({
   weaknesses,
   gscSnapshot,
   serpSnapshot,
+  projectId,
+  keyword,
 }: {
   source: string;
   score: number;
@@ -46,6 +49,8 @@ export function WhyTab({
   weaknesses: string | null;
   gscSnapshot: Json;
   serpSnapshot: Json;
+  projectId: string;
+  keyword: string | null;
 }) {
   const rows = readGscRows(gscSnapshot);
   const results = readSerpResults(serpSnapshot);
@@ -161,6 +166,8 @@ export function WhyTab({
           <p className="mt-3 text-sm text-base-content/70">{serpNote}</p>
         ) : null}
       </section>
+
+      <RivalPages projectId={projectId} keyword={keyword} />
     </div>
   );
 }

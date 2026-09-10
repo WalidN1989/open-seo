@@ -16,3 +16,8 @@ export const untrackCompetitorSchema = z.object({
   projectId: z.string().min(1),
   domain: z.string().trim().min(1).max(255),
 });
+
+export const competitorEvidenceSchema = z.object({
+  projectId: z.string().min(1),
+  keyword: z.string().trim().min(1).max(255),
+});

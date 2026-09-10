@@ -67,6 +67,40 @@ async function overview(projectId: string) {
   };
 }
 
+/**
+ * What rivals have built for one search.
+ *
+ * Read live rather than frozen into the opportunity. An opportunity is often
+ * created before the SERPs that would explain it have been recorded — the first
+ * two on South Side Fencing were — and a snapshot taken then would stay empty
+ * for ever. This gets better as more searches are run, which is the point.
+ */
+async function evidenceFor(projectId: string, keyword: string) {
+  const term = keyword.trim().toLowerCase();
+  if (!term) return null;
+  const [project, observations] = await Promise.all([
+    ProjectRepository.getProjectById(projectId),
+    SerpObservationRepository.listForProject(projectId),
+  ]);
+  const forKeyword = observations.filter(
+    (row) => row.keyword.trim().toLowerCase() === term,
+  );
+  if (!forKeyword.length) return null;
+
+  const ownDomain = project?.domain ?? null;
+  // One rival with a page is a preference, so the gap rule wants two — but the
+  // detail page is showing evidence rather than deciding, and one rival having
+  // built a page is still worth seeing.
+  const [gap] = findPageGaps(forKeyword, { ownDomain, minRivals: 1 });
+  const pages = pagesByCompetitor(forKeyword, ownDomain);
+  return {
+    keyword: term,
+    dedicated: gap?.dedicated ?? [],
+    ours: gap?.ours ?? null,
+    rivalsSeen: pages.length,
+  };
+}
+
 async function track(
   projectId: string,
   input: { domain: string; name?: string | null; notes?: string | null },
@@ -107,4 +141,4 @@ async function untrack(projectId: string, domain: string) {
   );
 }
 
-export const CompetitorService = { overview, track, untrack };
+export const CompetitorService = { overview, evidenceFor, track, untrack };
