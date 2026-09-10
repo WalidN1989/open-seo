@@ -48,9 +48,17 @@ test for exactly that.
 | What happens next   | A fixed three-phase plan                                                                    |
 | What is included    | A fixed service list                                                                        |
 
-Everything is read from our own tables. Generating a report calls no vendor API
-and spends no credits, because a report that costs money to produce does not
-get produced.
+Everything except the Search Console section is read from our own tables.
+Generating a report spends no credits: Search Console is free to query, and
+generating is a deliberate one-off action by staff, so a live call is
+affordable here in a way it is not on a customer's chat message. If that call
+fails the section is left out rather than blocking the document.
+
+### The password is never in the report
+
+The document is a link anyone holding it can open, and it gets saved, forwarded
+and printed. The report carries the dashboard address and the login email; the
+password goes in a separate message the client can act on and delete.
 
 ### Two judgements worth keeping
 
@@ -72,6 +80,13 @@ back to the workspace's own name.
 
 Set the logo in **Business → Invoicing → Settings**. A dark cover sits behind
 it and the mark gets a white plate, so a black logo works.
+
+## Downloading it
+
+The **Download as PDF** button calls the browser's own print dialog. There is
+no PDF renderer in the bundle: the document was laid out for paper from the
+start, `@media print` hides everything around it, and the plan starts on its
+own page.
 
 ## Adding a section
 

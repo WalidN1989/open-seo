@@ -16,6 +16,9 @@ export function ReportsWorkspace() {
   const queryClient = useQueryClient();
   const [projectId, setProjectId] = useState("");
   const [clientName, setClientName] = useState("");
+  const [loginEmail, setLoginEmail] = useState("");
+  const [googleBusinessProfile, setGoogleBusinessProfile] = useState(false);
+  const [whatsappAssistant, setWhatsappAssistant] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
   const [share, setShare] = useState<{ url: string; expiresAt: string } | null>(
     null,
@@ -117,6 +120,47 @@ export function ReportsWorkspace() {
             />
           </label>
         </div>
+        <label className="form-control">
+          <span className="label-text">
+            The email they sign in with (optional)
+          </span>
+          <input
+            className="input input-bordered"
+            value={loginEmail}
+            onChange={(event) => setLoginEmail(event.target.value)}
+            placeholder="owner@theircompany.com.au"
+          />
+          <span className="label-text-alt mt-1 text-base-content/55">
+            Their password is never put in the report. Send it separately.
+          </span>
+        </label>
+
+        <fieldset className="flex flex-wrap gap-x-6 gap-y-2">
+          <legend className="label-text mb-1">
+            Also running for this client
+          </legend>
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              className="checkbox checkbox-sm"
+              checked={googleBusinessProfile}
+              onChange={(event) =>
+                setGoogleBusinessProfile(event.target.checked)
+              }
+            />
+            Google Business Profile and reviews
+          </label>
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              className="checkbox checkbox-sm"
+              checked={whatsappAssistant}
+              onChange={(event) => setWhatsappAssistant(event.target.checked)}
+            />
+            WhatsApp assistant and automation
+          </label>
+        </fieldset>
+
         {chosen ? (
           <p className="text-sm text-base-content/60">
             Reporting on {chosen.domain ?? chosen.name}.

@@ -20,6 +20,24 @@ export type ReportKeyword = {
   searchVolume: number | null;
 };
 
+export type SearchPerformance = {
+  clicks: number;
+  impressions: number;
+  /** A fraction, not a percentage. */
+  ctr: number;
+  averagePosition: number;
+  /** Daily, oldest first, for the trend chart. */
+  days: Array<{ date: string; clicks: number; impressions: number }>;
+  topQueries: Array<{
+    query: string;
+    clicks: number;
+    impressions: number;
+    position: number;
+  }>;
+  startDate: string;
+  endDate: string;
+};
+
 export type ReportSnapshot = {
   version: 1;
   generatedAt: string;
@@ -57,6 +75,12 @@ export type ReportSnapshot = {
   } | null;
   content: Array<{ label: string; count: number }>;
   lastCheckedAt: string | null;
+  /** Live from Search Console when connected, otherwise absent. */
+  searchPerformance: SearchPerformance | null;
+  /** Where the client signs in. Never a password — see the service. */
+  access: { url: string; loginEmail: string | null } | null;
+  /** Only the services actually set up for them are ticked. */
+  included: Array<{ label: string; detail: string; active: boolean }>;
 };
 
 /**
@@ -165,13 +189,59 @@ export const ROADMAP = [
   },
 ] as const;
 
-export const SERVICES = [
-  "Keyword research and mapping",
-  "Blog and landing page writing",
-  "Competitor analysis",
-  "Technical site audits and fixes",
-  "Link building and digital PR",
-  "Google Business Profile management",
-  "Search Console and Analytics reporting",
-  "Monthly reporting and review calls",
+/**
+ * What the engagement covers.
+ *
+ * Each line says what it is rather than naming it, because a client reading
+ * "digital PR" learns nothing. `active` is set by the service from what is
+ * actually connected, so a tick means it is running, not that it is on a price
+ * list.
+ */
+export const SERVICE_CATALOGUE = [
+  {
+    key: "keywords",
+    label: "Keyword research and mapping",
+    detail:
+      "Finding what your customers actually type, and which page answers it.",
+  },
+  {
+    key: "content",
+    label: "Blog and landing page writing",
+    detail:
+      "Written against those keywords, reviewed by us before anything is published.",
+  },
+  {
+    key: "competitors",
+    label: "Competitor analysis",
+    detail: "Who holds the positions we want, and where the gap is.",
+  },
+  {
+    key: "audit",
+    label: "Technical site audits and fixes",
+    detail: "Crawling the site for what stops Google reading it properly.",
+  },
+  {
+    key: "links",
+    label: "Link building and digital PR",
+    detail:
+      "Earning links from other sites, which is what moves competitive terms.",
+  },
+  {
+    key: "gbp",
+    label: "Google Business Profile",
+    detail:
+      "Your map listing kept current, with review collection so new customers see recent ones.",
+  },
+  {
+    key: "whatsapp",
+    label: "WhatsApp assistant and automation",
+    detail:
+      "Enquiries answered around the clock, and handed to your team when they need a person.",
+  },
+  {
+    key: "reporting",
+    label: "Search Console and Analytics reporting",
+    detail:
+      "Your own dashboard, plus a monthly review of what changed and why.",
+  },
 ] as const;

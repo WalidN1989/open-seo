@@ -7,7 +7,7 @@ import {
   getCached,
   setCached,
 } from "@/server/lib/r2-cache";
-import { KeywordResearchRepository } from "@/server/features/keywords/repositories/KeywordResearchRepository";
+import { upsertKeywordMetrics } from "@/server/features/keywords/repositories/keywordMetricsWrite";
 import type { KeywordResearchRow } from "@/types/keywords";
 import type { ResolvedResearchKeywordsInput } from "@/types/schemas/keywords";
 import { z } from "zod";
@@ -261,13 +261,23 @@ async function buildResearchCacheKey(
   });
 }
 
-function persistRows(
+/**
+ * Keep a research run's metrics.
+ *
+ * Awaited, not fired and forgotten. This used to be a floating promise, and on
+ * workerd the runtime is free to cancel pending I/O once the response is sent
+ * — so a search could return 150 keywords to the screen and persist none of
+ * them. Nothing surfaced, because the failure was a cancellation rather than
+ * an error, and the results looked fine until you came back the next day and
+ * the project had no keyword data at all.
+ */
+async function persistRows(
   input: ResolvedResearchKeywordsInput,
   rows: EnrichedKeyword[],
 ) {
-  void Promise.all(
-    rows.map((row) =>
-      KeywordResearchRepository.upsertKeywordMetric({
+  try {
+    await upsertKeywordMetrics(
+      rows.map((row) => ({
         projectId: input.projectId,
         keyword: row.keyword,
         locationCode: input.locationCode,
@@ -278,11 +288,13 @@ function persistRows(
         keywordDifficulty: row.keywordDifficulty,
         intent: row.intent,
         monthlySearchesJson: JSON.stringify(row.trend),
-      }),
-    ),
-  ).catch((error) => {
+      })),
+    );
+  } catch (error) {
+    // Losing the cache of a run the caller already has is not worth failing
+    // the request the caller is waiting on.
     console.error("keywords.research.persist-metrics failed:", error);
-  });
+  }
 }
 
 export async function research(
@@ -349,7 +361,7 @@ export async function research(
           );
 
   await setCached(cacheKey, result, CACHE_TTL.researchResult);
-  persistRows(effectiveInput, result.rows);
+  await persistRows(effectiveInput, result.rows);
 
   return result;
 }

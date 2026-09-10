@@ -1,5 +1,8 @@
 import { AppError } from "@/server/lib/errors";
-import { getRequiredEnvValue } from "@/server/lib/runtime-env";
+import {
+  getOptionalEnvValue,
+  getRequiredEnvValue,
+} from "@/server/lib/runtime-env";
 import { AuthRepository } from "@/server/auth/repositories/AuthRepository";
 import { BusinessModuleService } from "@/server/features/business-modules/services/BusinessModuleService";
 import { InvoiceRepository } from "@/server/features/invoicing/repositories/InvoiceRepository";
@@ -10,6 +13,8 @@ import {
   reportPath,
   signReportToken,
 } from "../reportLink";
+import { searchPerformanceFor } from "../searchPerformance";
+import { SERVICE_CATALOGUE } from "../reportSnapshot";
 import {
   bucketsFor,
   headlineFor,
@@ -120,10 +125,42 @@ function setupFor(input: {
   ];
 }
 
+/**
+ * What the client can sign in to, and where.
+ *
+ * The password is deliberately not here and must never be. This document is
+ * handed over as a link anyone holding it can open, and it is saved, forwarded
+ * and printed. A credential belongs in a separate message the client can act
+ * on and delete, not in a report that outlives it.
+ */
+function accessFor(
+  projectId: string,
+  appUrl: string,
+  loginEmail: string | null,
+) {
+  return {
+    url: `${appUrl.replace(/\/+$/, "")}/p/${projectId}`,
+    loginEmail,
+  };
+}
+
+/** A tick means it is actually running for them, not that it is on offer. */
+function includedFor(active: Record<string, boolean>) {
+  return SERVICE_CATALOGUE.map((service) => ({
+    label: service.label,
+    detail: service.detail,
+    active: active[service.key] ?? false,
+  }));
+}
+
 async function buildSnapshot(input: {
   organizationId: string;
   projectId: string;
   clientName: string;
+  appUrl: string;
+  loginEmail: string | null;
+  googleBusinessProfile: boolean;
+  whatsappAssistant: boolean;
 }): Promise<ReportSnapshot> {
   const project = await Data.project(input.projectId);
   if (!project)
@@ -148,6 +185,7 @@ async function buildSnapshot(input: {
     Data.contentCounts(input.projectId),
     Data.connections(input.projectId),
   ]);
+  const searchPerformance = await searchPerformanceFor(input.projectId);
 
   // A keyword with no position was checked and not found. Dropping it from the
   // ranked list keeps every average and bucket honest; counting it separately
@@ -185,13 +223,33 @@ async function buildSnapshot(input: {
       count: row.count,
     })),
     lastCheckedAt: rankings.checkedAt,
+    searchPerformance,
+    access: accessFor(input.projectId, input.appUrl, input.loginEmail),
+    included: includedFor({
+      keywords: savedKeywords > 0 || keywords.length > 0,
+      content: content.length > 0,
+      competitors: competitors.length > 0,
+      audit: Boolean(siteHealth),
+      links: Boolean(links),
+      reporting: Boolean(connections.searchConsole) || connections.analytics,
+      // Not project-scoped: these are set up for the business as a whole, so
+      // the person generating the report says whether they apply.
+      gbp: input.googleBusinessProfile,
+      whatsapp: input.whatsappAssistant,
+    }),
   };
 }
 
 async function generate(
   organizationId: string,
   userId: string,
-  input: { projectId: string; clientName: string },
+  input: {
+    projectId: string;
+    clientName: string;
+    loginEmail?: string;
+    googleBusinessProfile?: boolean;
+    whatsappAssistant?: boolean;
+  },
 ) {
   await requireManage(organizationId, userId);
   const memberships = await AuthRepository.listOrganizationIdsForUser(userId);
@@ -203,6 +261,10 @@ async function generate(
     organizationId,
     projectId: input.projectId,
     clientName: input.clientName.trim() || project.name,
+    appUrl: (await getOptionalEnvValue("BETTER_AUTH_URL")) ?? "",
+    loginEmail: input.loginEmail?.trim() || null,
+    googleBusinessProfile: input.googleBusinessProfile ?? false,
+    whatsappAssistant: input.whatsappAssistant ?? false,
   });
   const row = await Repo.insert({
     id: crypto.randomUUID(),

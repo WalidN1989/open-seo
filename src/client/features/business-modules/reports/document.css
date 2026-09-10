@@ -394,3 +394,112 @@
     break-before: page;
   }
 }
+
+/* Services, now a two-column list with a tick and a plain-language line. */
+.report-services {
+  gap: 12px 28px;
+}
+
+.report-services li {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding-left: 0;
+}
+
+.report-services li::before {
+  content: none;
+}
+
+.report-service-mark {
+  flex: none;
+  width: 19px;
+  height: 19px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 11px;
+  font-weight: 700;
+  margin-top: 2px;
+}
+
+.is-active .report-service-mark {
+  background: #ea580c;
+  color: #ffffff;
+}
+
+.is-planned .report-service-mark {
+  background: #f3f4f6;
+  color: #9ca3af;
+}
+
+.report-service-detail {
+  display: block;
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.report-access {
+  display: grid;
+  gap: 10px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 16px 18px;
+  max-width: 560px;
+}
+
+.report-access > div {
+  display: grid;
+  grid-template-columns: 118px minmax(0, 1fr);
+  gap: 12px;
+  align-items: baseline;
+}
+
+.report-access-label {
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #6b7280;
+}
+
+.report-access-value {
+  font-weight: 500;
+  word-break: break-word;
+}
+
+.report-access-muted {
+  font-weight: 400;
+  color: #6b7280;
+  font-style: italic;
+}
+
+/* The download control. Never on paper. */
+.report-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 16px 48px 0;
+}
+
+.report-download {
+  appearance: none;
+  border: 1px solid #d1d5db;
+  background: #ffffff;
+  color: #1a1a1a;
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.report-download:hover {
+  border-color: #ea580c;
+  color: #c2410c;
+}
+
+@media print {
+  .report-actions {
+    display: none !important;
+  }
+}
