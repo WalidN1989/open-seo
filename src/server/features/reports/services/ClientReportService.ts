@@ -5,7 +5,7 @@ import {
 } from "@/server/lib/runtime-env";
 import { AuthRepository } from "@/server/auth/repositories/AuthRepository";
 import { BusinessModuleService } from "@/server/features/business-modules/services/BusinessModuleService";
-import { InvoiceRepository } from "@/server/features/invoicing/repositories/InvoiceRepository";
+import { resolveLetterhead } from "../letterhead";
 import { ClientReportRepository as Repo } from "../repositories/ClientReportRepository";
 import { ReportDataRepository as Data } from "../repositories/ReportDataRepository";
 import {
@@ -51,12 +51,14 @@ async function requireManage(organizationId: string, userId: string) {
  */
 async function agencyFor(
   organizationId: string,
+  userId: string,
 ): Promise<ReportSnapshot["agency"]> {
-  const [settings, workspaceName, whatsappNumber] = await Promise.all([
-    InvoiceRepository.getSettings(organizationId),
+  const [letterhead, workspaceName, whatsappNumber] = await Promise.all([
+    resolveLetterhead(organizationId, userId),
     Repo.organizationName(organizationId),
     Repo.whatsappNumber(organizationId),
   ]);
+  const settings = letterhead.settings;
   // The invoicing issuer is filled in when the first invoice goes out, which
   // may be after the first report. The workspace's own name is always there
   // and is always better than a placeholder on a document a client reads.
@@ -83,15 +85,18 @@ async function agencyFor(
  */
 async function branding(organizationId: string, userId: string) {
   await BusinessModuleService.requireAccess(organizationId, userId, MODULE);
-  const [settings, workspaceName] = await Promise.all([
-    InvoiceRepository.getSettings(organizationId),
+  const [letterhead, workspaceName] = await Promise.all([
+    resolveLetterhead(organizationId, userId),
     Repo.organizationName(organizationId),
   ]);
+  const settings = letterhead.settings;
   return {
     name: settings?.legalName?.trim() || workspaceName?.trim() || "Your agency",
     configured: Boolean(settings?.legalName?.trim()),
     hasLogo: Boolean(settings?.logoUrl),
     workspaceName: workspaceName ?? null,
+    borrowedFrom: letterhead.borrowedFrom,
+    ambiguous: letterhead.ambiguous,
   };
 }
 
@@ -183,6 +188,7 @@ async function buildSnapshot(input: {
   organizationId: string;
   projectId: string;
   clientName: string;
+  userId: string;
   appUrl: string;
   loginEmail: string | null;
   googleBusinessProfile: boolean;
@@ -202,7 +208,7 @@ async function buildSnapshot(input: {
     content,
     connections,
   ] = await Promise.all([
-    agencyFor(input.organizationId),
+    agencyFor(input.organizationId, input.userId),
     Data.rankings(input.projectId),
     Data.savedKeywordCount(input.projectId),
     Data.links(input.projectId),
@@ -287,6 +293,7 @@ async function generate(
     organizationId,
     projectId: input.projectId,
     clientName: input.clientName.trim() || project.name,
+    userId,
     appUrl: (await getOptionalEnvValue("BETTER_AUTH_URL")) ?? "",
     loginEmail: input.loginEmail?.trim() || null,
     googleBusinessProfile: input.googleBusinessProfile ?? false,

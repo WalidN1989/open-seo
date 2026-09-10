@@ -513,9 +513,24 @@
     visibility: visible;
   }
 
+  html,
+  body {
+    height: auto;
+    overflow: visible;
+  }
+
   .report-document {
     position: absolute;
-    inset: 0;
+    /*
+     * Top, left and right — never bottom. `inset: 0` pins all four sides,
+     * which fixes the height to a single page, and everything past the first
+     * page is simply clipped away. That is why the download stopped
+     * mid-chart. With the bottom free the height is the content's own and it
+     * paginates.
+     */
+    top: 0;
+    left: 0;
+    right: 0;
     max-width: none;
     border-radius: 0;
     /*

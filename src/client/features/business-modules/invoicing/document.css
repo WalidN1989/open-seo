@@ -163,7 +163,11 @@
 
   .invoice-document {
     position: absolute;
-    inset: 0;
+    /* Not `inset: 0`: pinning the bottom fixes the height to one page and
+       clips a long line-item list. */
+    top: 0;
+    left: 0;
+    right: 0;
     margin: 0;
     max-width: none;
     border-radius: 0;

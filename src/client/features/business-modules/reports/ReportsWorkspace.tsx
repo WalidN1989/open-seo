@@ -108,13 +108,17 @@ export function ReportsWorkspace() {
             This report will be branded as <strong>{branding.data.name}</strong>
             .
           </p>
+          {branding.data.borrowedFrom ? (
+            <p className="mt-1 text-base-content/70">
+              Taken from your {branding.data.borrowedFrom} workspace, since this
+              one has no company details of its own.
+            </p>
+          ) : null}
           {branding.data.configured ? null : (
             <p className="mt-1 text-base-content/70">
-              That is the workspace name, because this workspace has no company
-              details saved. Reports take their letterhead from the workspace
-              you are in — if you are inside a client&rsquo;s workspace, switch
-              to your own before generating. Set the name, address and logo in
-              Business &rarr; Invoicing &rarr; Settings.
+              {branding.data.ambiguous
+                ? "That is the workspace name. More than one of your workspaces has company details saved, so none was chosen — switch to the one you want on the letterhead before generating."
+                : "That is the workspace name, because no workspace of yours has company details saved yet. Set the name, address and logo in Business \u2192 Invoicing \u2192 Settings."}
             </p>
           )}
           {branding.data.configured && !branding.data.hasLogo ? (
