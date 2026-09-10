@@ -437,6 +437,13 @@ export const serpObservations = pgTable(
     locationCode: integer("location_code").notNull(),
     domain: text("domain").notNull(),
     rank: integer("rank").notNull(),
+    /**
+     * The exact page that ranked. The difference between a rival ranking with
+     * "/" and one ranking with "/colorbond-fencing-brisbane/" is the whole of a
+     * content-gap analysis, and it is readable straight off the path.
+     */
+    url: text("url"),
+    title: text("title"),
     /** From the SERP payload, so a competitor's authority needs no extra call. */
     referringDomains: integer("referring_domains"),
     seenAt: text("seen_at").notNull().default(isoNow),

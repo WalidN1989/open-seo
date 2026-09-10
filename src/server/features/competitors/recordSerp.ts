@@ -17,6 +17,9 @@ export type ObservedDomain = {
   domain: string | null;
   rank: number | null;
   referringDomains: number | null;
+  /** The page that ranked; a homepage and a built page mean different things. */
+  url?: string | null;
+  title?: string | null;
 };
 
 /** Raw DataForSEO items, which most callers hold, narrowed to what we keep. */
@@ -27,6 +30,8 @@ export function fromLiveItems(items: SerpLiveItem[]): ObservedDomain[] {
       domain: item.domain ?? null,
       rank: item.rank_group ?? item.rank_absolute ?? null,
       referringDomains: item.backlinks_info?.referring_domains ?? null,
+      url: item.url ?? null,
+      title: item.title ?? null,
     }));
 }
 
@@ -48,6 +53,8 @@ export async function recordSerpObservations(input: {
                 domain: item.domain,
                 rank: item.rank,
                 referringDomains: item.referringDomains,
+                url: item.url ?? null,
+                title: item.title ?? null,
               },
             ]
           : [],

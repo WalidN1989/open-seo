@@ -4,6 +4,7 @@ import { ProjectContextRepository } from "@/server/features/project-context/repo
 import { ProjectRepository } from "@/server/features/projects/repositories/ProjectRepository";
 import { SerpObservationRepository } from "../repositories/SerpObservationRepository";
 import { rankCompetitors } from "../rankCompetitors";
+import { findPageGaps, pagesByCompetitor } from "../pageGaps";
 
 /**
  * A project's competitors, from two places that stay one list.
@@ -48,7 +49,11 @@ async function overview(projectId: string) {
   // evidence is attached to both lists rather than only the suggestions.
   const evidence = new Map(ranked.map((item) => [item.domain, item]));
 
+  const ownDomain = project?.domain ?? null;
   return {
+    /** Their pages, and the searches they built one for and we did not. */
+    pages: pagesByCompetitor(observations, ownDomain),
+    gaps: findPageGaps(observations, { ownDomain }),
     tracked: tracked.map((row) => ({
       id: row.id,
       domain: row.domain,

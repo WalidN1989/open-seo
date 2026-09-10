@@ -15,6 +15,8 @@ export type ObservedItem = {
   domain: string;
   rank: number;
   referringDomains: number | null;
+  url: string | null;
+  title: string | null;
 };
 
 async function record(input: {
@@ -50,6 +52,8 @@ async function record(input: {
       domain,
       rank: item.rank,
       referringDomains: item.referringDomains,
+      url: item.url,
+      title: item.title,
       seenAt,
     });
   }
@@ -68,6 +72,8 @@ async function record(input: {
       set: {
         rank: sql`excluded.rank`,
         referringDomains: sql`excluded.referring_domains`,
+        url: sql`excluded.url`,
+        title: sql`excluded.title`,
         seenAt,
       },
     });
@@ -80,6 +86,8 @@ async function listForProject(projectId: string) {
       domain: serpObservations.domain,
       rank: serpObservations.rank,
       referringDomains: serpObservations.referringDomains,
+      url: serpObservations.url,
+      title: serpObservations.title,
     })
     .from(serpObservations)
     .where(eq(serpObservations.projectId, projectId));

@@ -62,6 +62,12 @@ password goes in a separate message the client can act on and delete.
 
 ### Competitors come from search results already paid for
 
+The recorded row keeps the ranking **URL**, not just the domain, because the
+difference between a rival ranking with `/` and one ranking with
+`/colorbond-fencing-brisbane/` is the whole of a content-gap analysis. A search
+where two or more rivals answer with a built page and this site answers with its
+homepage is a page worth writing — see the Competitors module's Page gaps tab.
+
 Every `serp.live` call must sit beside `recordSerpObservations`, and
 `serpRecording.test.ts` fails the build if one does not. A live SERP is the
 most expensive call the product makes and the shortest-lived — read once for
