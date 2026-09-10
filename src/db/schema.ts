@@ -95,6 +95,7 @@ export const {
   organizationActivationState,
   projectActivationState,
   backlinkSnapshots,
+  serpObservations,
   optimizationOpportunities,
   optimizationRevisions,
   optimizationComments,

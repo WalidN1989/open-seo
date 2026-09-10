@@ -60,6 +60,19 @@ The document is a link anyone holding it can open, and it gets saved, forwarded
 and printed. The report carries the dashboard address and the login email; the
 password goes in a separate message the client can act on and delete.
 
+### Competitors come from search results already paid for
+
+Every SERP the app fetches is recorded — domain, position, referring domains —
+so "who am I competing with" is answered from work already done rather than a
+new purchase. A domain must appear for **at least two** of the project's
+keywords before it is named, and encyclopaedias, governments, job boards,
+directories and the project's own site are excluded, because those outrank a
+local trade for its own category words and would make the report read as
+automated nonsense.
+
+Anything written into project context wins: somebody chose those. The observed
+list is the fallback, and the report says which one it is showing.
+
 ### Two judgements worth keeping
 
 **There is no traffic forecast.** We have at most a couple of rank checks to

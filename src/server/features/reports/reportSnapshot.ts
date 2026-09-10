@@ -76,7 +76,16 @@ export type ReportSnapshot = {
   buckets: PositionBucket[];
   keywords: ReportKeyword[];
   movers: { up: ReportKeyword[]; down: ReportKeyword[] };
-  competitors: Array<{ domain: string; name: string | null }>;
+  competitors: Array<{
+    domain: string;
+    name: string | null;
+    /** Present when the domain was observed on the client's own SERPs. */
+    keywords?: number;
+    bestRank?: number;
+    examples?: string[];
+  }>;
+  /** True when the list came from search results rather than being typed in. */
+  competitorsFromSearch: boolean;
   siteHealth: {
     pagesCrawled: number;
     issues: Array<{ severity: string; count: number }>;

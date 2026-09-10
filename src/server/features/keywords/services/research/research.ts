@@ -334,6 +334,12 @@ export async function research(
     : null;
 
   if (cached && cached.rows.length > 0) {
+    // Persisted on the way out even when the answer came from cache. The
+    // second search for a term is the common one, and returning early here
+    // meant a project could show a full screen of keywords and have none of
+    // them recorded — which is exactly what happened. The write is one
+    // idempotent statement, so paying it on a repeat is cheap.
+    await persistRows(effectiveInput, cached.rows);
     return cached;
   }
 

@@ -106,10 +106,20 @@ async function projects(organizationId: string, userId: string) {
   return Repo.reportableProjects(memberships);
 }
 
+function keywordDetail(researched: number, saved: number) {
+  if (!researched && !saved) return "Not started yet";
+  if (saved && researched > saved) {
+    return `${researched} keywords researched, ${saved} shortlisted`;
+  }
+  if (saved) return `${saved} keywords researched and shortlisted`;
+  return `${researched} keywords researched`;
+}
+
 function setupFor(input: {
   searchConsole: string | null;
   analytics: boolean;
   savedKeywords: number;
+  researchedKeywords: number;
   trackedKeywords: number;
   hasAudit: boolean;
   competitors: number;
@@ -129,10 +139,8 @@ function setupFor(input: {
     },
     {
       label: "Keyword research",
-      done: input.savedKeywords > 0,
-      detail: input.savedKeywords
-        ? `${input.savedKeywords} keywords researched and saved`
-        : "Not started yet",
+      done: input.researchedKeywords > 0 || input.savedKeywords > 0,
+      detail: keywordDetail(input.researchedKeywords, input.savedKeywords),
     },
     {
       label: "Rank tracking",
@@ -202,18 +210,22 @@ async function buildSnapshot(input: {
     agency,
     rankings,
     savedKeywords,
+    researchedKeywords,
     links,
     siteHealth,
     competitors,
+    observed,
     content,
     connections,
   ] = await Promise.all([
     agencyFor(input.organizationId, input.userId),
     Data.rankings(input.projectId),
     Data.savedKeywordCount(input.projectId),
+    Data.researchedKeywordCount(input.projectId),
     Data.links(input.projectId),
     Data.siteHealth(input.projectId),
     Data.competitors(input.projectId),
+    Data.observedCompetitors(input.projectId, project.domain),
     Data.contentCounts(input.projectId),
     Data.connections(input.projectId),
   ]);
@@ -240,15 +252,27 @@ async function buildSnapshot(input: {
       searchConsole: connections.searchConsole,
       analytics: connections.analytics,
       savedKeywords,
+      researchedKeywords,
       trackedKeywords: keywords.length,
       hasAudit: Boolean(siteHealth),
-      competitors: competitors.length,
+      competitors: competitors.length || observed.length,
     }),
     headline: headlineFor(keywords, links, notRanking),
     buckets: bucketsFor(keywords),
     keywords: keywords.slice(0, 30),
     movers: moversFor(keywords),
-    competitors,
+    // Anything written down wins: somebody chose those. The observed list is
+    // the fallback, and the report says which it is looking at.
+    competitors: competitors.length
+      ? competitors
+      : observed.map((item) => ({
+          domain: item.domain,
+          name: null,
+          keywords: item.keywords,
+          bestRank: item.bestRank,
+          examples: item.examples,
+        })),
+    competitorsFromSearch: competitors.length === 0 && observed.length > 0,
     siteHealth,
     content: content.map((row) => ({
       label: CONTENT_LABEL[row.status] ?? row.status,
@@ -258,9 +282,9 @@ async function buildSnapshot(input: {
     searchPerformance,
     access: accessFor(input.projectId, input.appUrl, input.loginEmail),
     included: includedFor({
-      keywords: savedKeywords > 0 || keywords.length > 0,
+      keywords: savedKeywords > 0 || researchedKeywords > 0,
       content: content.length > 0,
-      competitors: competitors.length > 0,
+      competitors: competitors.length > 0 || observed.length > 0,
       audit: Boolean(siteHealth),
       links: Boolean(links),
       reporting: Boolean(connections.searchConsole) || connections.analytics,

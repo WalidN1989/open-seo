@@ -519,6 +519,13 @@
       "when": 1788985470353,
       "tag": "0073_polite_pixie",
       "breakpoints": true
+    },
+    {
+      "idx": 74,
+      "version": "6",
+      "when": 1789068983673,
+      "tag": "0074_shocking_blackheart",
+      "breakpoints": true
     }
   ]
 }

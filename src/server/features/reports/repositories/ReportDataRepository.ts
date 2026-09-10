@@ -1,5 +1,7 @@
 import { and, desc, eq } from "drizzle-orm";
 import { db } from "@/db";
+import { SerpObservationRepository } from "@/server/features/competitors/repositories/SerpObservationRepository";
+import { rankCompetitors } from "@/server/features/competitors/rankCompetitors";
 import {
   audits,
   auditIssues,
@@ -99,6 +101,21 @@ async function savedKeywordCount(projectId: string) {
   return rows.length;
 }
 
+/**
+ * Keywords researched for this project, saved or not.
+ *
+ * Saving is a deliberate shortlisting step, so counting only saved keywords
+ * reported "not started" for a project with a hundred and fifty researched.
+ * The research is the work; the shortlist is what came after it.
+ */
+async function researchedKeywordCount(projectId: string) {
+  const rows = await db
+    .select({ id: keywordMetrics.id })
+    .from(keywordMetrics)
+    .where(eq(keywordMetrics.projectId, projectId));
+  return rows.length;
+}
+
 async function researchedVolume(projectId: string) {
   const rows = await db
     .select({ searchVolume: keywordMetrics.searchVolume })
@@ -159,6 +176,28 @@ async function competitors(projectId: string) {
     .limit(8);
 }
 
+/**
+ * The competitors the project's own SERPs show, when none were written down.
+ *
+ * Costs nothing: it reads results already fetched and paid for by keyword
+ * research. A domain has to turn up for at least two of the project's keywords
+ * before it is called a competitor, so a single stray result does not end up in
+ * front of a client.
+ */
+async function observedCompetitors(
+  projectId: string,
+  ownDomain: string | null,
+) {
+  const observations =
+    await SerpObservationRepository.listForProject(projectId);
+  if (!observations.length) return [];
+  return rankCompetitors(observations, {
+    ownDomain,
+    minKeywords: 2,
+    limit: 6,
+  });
+}
+
 async function contentCounts(projectId: string) {
   const rows = await db
     .select({ status: optimizationOpportunities.status })
@@ -192,8 +231,10 @@ async function connections(projectId: string) {
 
 export const ReportDataRepository = {
   project,
+  observedCompetitors,
   rankings,
   savedKeywordCount,
+  researchedKeywordCount,
   researchedVolume,
   links,
   siteHealth,

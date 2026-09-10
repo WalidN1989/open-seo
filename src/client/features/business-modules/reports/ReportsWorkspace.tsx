@@ -20,6 +20,9 @@ export function ReportsWorkspace() {
   const [loginEmail, setLoginEmail] = useState("");
   const [googleBusinessProfile, setGoogleBusinessProfile] = useState(false);
   const [whatsappAssistant, setWhatsappAssistant] = useState(false);
+  // null means "nothing chosen yet", which falls through to the newest report.
+  // Opening the module and seeing a blank page below a list of documents made
+  // it look as though nothing had been generated.
   const [openId, setOpenId] = useState<string | null>(null);
   const [share, setShare] = useState<{ url: string; expiresAt: string } | null>(
     null,
@@ -37,10 +40,11 @@ export function ReportsWorkspace() {
     queryKey: ["client-reports"],
     queryFn: () => listClientReports(),
   });
+  const shownId = openId ?? reports.data?.[0]?.id ?? null;
   const open = useQuery({
-    queryKey: ["client-reports", openId],
-    queryFn: () => getClientReport({ data: { reportId: openId! } }),
-    enabled: Boolean(openId),
+    queryKey: ["client-reports", shownId],
+    queryFn: () => getClientReport({ data: { reportId: shownId! } }),
+    enabled: Boolean(shownId),
   });
 
   const refresh = () =>
@@ -252,10 +256,10 @@ export function ReportsWorkspace() {
                 <button
                   className="btn btn-ghost btn-xs"
                   onClick={() =>
-                    setOpenId(openId === report.id ? null : report.id)
+                    setOpenId(shownId === report.id ? "" : report.id)
                   }
                 >
-                  {openId === report.id ? "Hide" : "Preview"}
+                  {shownId === report.id ? "Hide" : "Preview"}
                 </button>
                 <button
                   className="btn btn-ghost btn-xs"
@@ -277,7 +281,7 @@ export function ReportsWorkspace() {
         </div>
       ) : null}
 
-      {openId && open.data ? (
+      {shownId && open.data ? (
         <div className="rounded-xl bg-base-200/40 p-4">
           <ClientReportDocument snapshot={open.data.snapshot} />
         </div>

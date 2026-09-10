@@ -282,14 +282,21 @@ export function ClientReportDocument({
         <section className="report-section">
           <h2>Who you are competing with</h2>
           <p className="report-lede">
-            These are the sites holding the positions we want. Our content and
-            link work is aimed at the gaps between their pages and yours.
+            {snapshot.competitorsFromSearch
+              ? "These came out of the searches your customers actually run — the sites we keep meeting on the results page. Our content and link work is aimed at the gaps between their pages and yours."
+              : "These are the sites holding the positions we want. Our content and link work is aimed at the gaps between their pages and yours."}
           </p>
           <ul className="report-competitors">
             {snapshot.competitors.map((competitor) => (
               <li key={competitor.domain}>
                 <strong>{competitor.name || competitor.domain}</strong>
                 {competitor.name ? <span>{competitor.domain}</span> : null}
+                {competitor.keywords ? (
+                  <span>
+                    Appears for {competitor.keywords} of your keywords, best
+                    position {competitor.bestRank}
+                  </span>
+                ) : null}
               </li>
             ))}
           </ul>

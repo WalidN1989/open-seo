@@ -426,3 +426,42 @@ export const backlinkSnapshots = sqliteTable(
     ),
   ],
 );
+
+/**
+ * Which domains held which positions, the last time we looked at a keyword.
+ *
+ * Every SERP the app fetches is already paid for, and until now it was read
+ * once and thrown away. Keeping the domains turns work already done into the
+ * answer to "who am I actually competing with", without a single extra call.
+ *
+ * One row per project, keyword and domain: a re-check of the same keyword
+ * updates the rank rather than piling up history. This is a picture of the
+ * present, not a time series.
+ */
+export const serpObservations = sqliteTable(
+  "serp_observations",
+  {
+    id: text("id").primaryKey(),
+    projectId: text("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    keyword: text("keyword").notNull(),
+    locationCode: integer("location_code").notNull(),
+    domain: text("domain").notNull(),
+    rank: integer("rank").notNull(),
+    /** From the SERP payload, so a competitor's authority needs no extra call. */
+    referringDomains: integer("referring_domains"),
+    seenAt: text("seen_at")
+      .notNull()
+      .default(sql`(current_timestamp)`),
+  },
+  (table) => [
+    uniqueIndex("serp_observations_unique_project_keyword_domain").on(
+      table.projectId,
+      table.keyword,
+      table.locationCode,
+      table.domain,
+    ),
+    index("serp_observations_project_idx").on(table.projectId, table.domain),
+  ],
+);

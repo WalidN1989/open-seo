@@ -372,6 +372,13 @@
       "when": 1788985470893,
       "tag": "0052_chief_doctor_doom",
       "breakpoints": true
+    },
+    {
+      "idx": 53,
+      "version": "7",
+      "when": 1789068984287,
+      "tag": "0053_curved_wildside",
+      "breakpoints": true
     }
   ]
 }
