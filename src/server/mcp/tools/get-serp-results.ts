@@ -5,6 +5,10 @@ import { buildProjectMeta } from "@/server/mcp/context";
 import { optionalMetaOutputSchema } from "@/server/mcp/output-schemas";
 import { withMcpProjectAuth } from "@/server/mcp/project-auth";
 import { resolveMarket } from "@/shared/keyword-locations";
+import {
+  fromLiveItems,
+  recordSerpObservations,
+} from "@/server/features/competitors/recordSerp";
 import { formatMcpTable, type McpTableColumn } from "@/server/mcp/table";
 import {
   languageCodeSchema,
@@ -97,9 +101,18 @@ export const getSerpResultsTool = {
     const results = await Promise.all(
       args.queries.map(async (q) => {
         try {
+          const market = resolveMarket(q, context.project);
           const items = await client.serp.live({
             keyword: q.keyword,
-            ...resolveMarket(q, context.project),
+            ...market,
+          });
+          // An agent's SERP costs the same as a person's; both should teach the
+          // project who it competes with.
+          await recordSerpObservations({
+            projectId: context.project.id,
+            keyword: q.keyword,
+            locationCode: market.locationCode,
+            items: fromLiveItems(items),
           });
           // Trim noise — return only essentials per item.
           const trimmed = items.slice(0, 20).map((item) => ({

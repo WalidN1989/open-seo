@@ -2,6 +2,10 @@ import { tool, type ToolSet } from "ai";
 import { z } from "zod";
 import { DomainService } from "@/server/features/domain/services/DomainService";
 import { BacklinksService } from "@/server/features/backlinks/services/BacklinksService";
+import {
+  fromLiveItems,
+  recordSerpObservations,
+} from "@/server/features/competitors/recordSerp";
 import { isLabsLocationCode, LOCATIONS } from "@/shared/keyword-locations";
 import type { ToolContext } from "@/server/features/onboarding/onboardingChatTools";
 
@@ -79,6 +83,12 @@ export function marketTools(ctx: ToolContext): ToolSet {
                 locationCode: project.locationCode,
                 languageCode: project.languageCode,
                 creditFeature: "onboarding",
+              });
+              await recordSerpObservations({
+                projectId: project.id,
+                keyword,
+                locationCode: project.locationCode,
+                items: fromLiveItems(items),
               });
               return {
                 keyword,

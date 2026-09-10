@@ -6,7 +6,7 @@ import { z } from "zod";
 import type { BillingCustomerContext } from "@/server/billing/subscription";
 import { createDataforseoClient } from "@/server/lib/dataforseo";
 import { normalizeKeyword } from "./helpers";
-import { SerpObservationRepository } from "@/server/features/competitors/repositories/SerpObservationRepository";
+import { recordSerpObservations } from "@/server/features/competitors/recordSerp";
 
 const SERP_CACHE_TTL_SECONDS = 12 * 60 * 60;
 
@@ -56,35 +56,6 @@ function mapOrganicSerpItems(items: SerpLiveItem[]): SerpResultItem[] {
     }));
 }
 
-/**
- * Keep the domains this SERP showed.
- *
- * The call is already paid for and the payload already carries who ranked and
- * with how many referring domains, so recording it turns an existing cost into
- * the project's competitor list. Never allowed to fail the search: the
- * customer asked for keywords, not for bookkeeping.
- */
-async function recordObservations(
-  input: { projectId: string; locationCode: number },
-  keyword: string,
-  items: SerpResultItem[],
-) {
-  try {
-    await SerpObservationRepository.record({
-      projectId: input.projectId,
-      keyword,
-      locationCode: input.locationCode,
-      items: items.map((item) => ({
-        domain: item.domain,
-        rank: item.rank,
-        referringDomains: item.referringDomains,
-      })),
-    });
-  } catch (error) {
-    console.error("keywords.serp.record-observations failed:", error);
-  }
-}
-
 async function getSerpLiveAnalysis(
   input: {
     projectId: string;
@@ -110,7 +81,12 @@ async function getSerpLiveAnalysis(
     // Recorded on a cache hit too. The same lesson as the keyword metrics:
     // returning early here means the second look at a keyword — the common
     // one — teaches the project nothing about who it competes with.
-    await recordObservations(input, keyword, cached.data.items);
+    await recordSerpObservations({
+      projectId: input.projectId,
+      keyword,
+      locationCode: input.locationCode,
+      items: cached.data.items,
+    });
     return cached.data;
   }
 
@@ -121,7 +97,12 @@ async function getSerpLiveAnalysis(
   });
 
   const items = mapOrganicSerpItems(liveItems);
-  await recordObservations(input, keyword, items);
+  await recordSerpObservations({
+    projectId: input.projectId,
+    keyword,
+    locationCode: input.locationCode,
+    items,
+  });
   const result: SerpAnalysisResult = { requestedKeyword: keyword, items };
   if (items.length === 0) {
     result.reason = "no_organic_results";

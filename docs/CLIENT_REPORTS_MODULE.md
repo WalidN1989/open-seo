@@ -62,6 +62,12 @@ password goes in a separate message the client can act on and delete.
 
 ### Competitors come from search results already paid for
 
+Every `serp.live` call must sit beside `recordSerpObservations`, and
+`serpRecording.test.ts` fails the build if one does not. A live SERP is the
+most expensive call the product makes and the shortest-lived — read once for
+one screen and thrown away. The habit was already broken once: the agent-facing
+tool spent credits for months and taught the project nothing.
+
 Every SERP the app fetches is recorded — domain, position, referring domains —
 so "who am I competing with" is answered from work already done rather than a
 new purchase. A domain must appear for **at least two** of the project's
