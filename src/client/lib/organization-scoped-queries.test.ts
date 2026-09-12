@@ -69,3 +69,52 @@ describe("discarding the previous client's cached answers", () => {
     ).toBeUndefined();
   });
 });
+
+import { readdirSync, readFileSync, statSync } from "node:fs";
+import { join } from "node:path";
+import { ORGANIZATION_SCOPED_QUERY_ROOTS } from "./organization-scoped-queries";
+
+function sourceFiles(dir: string): string[] {
+  return readdirSync(dir).flatMap((entry) => {
+    const path = join(dir, entry);
+    if (statSync(path).isDirectory()) return sourceFiles(path);
+    return /\.tsx?$/.test(path) && !path.endsWith(".test.ts") ? [path] : [];
+  });
+}
+
+/**
+ * Every business-module query root must be on the reset list.
+ *
+ * A module whose root is missing keeps the previous workspace's answer across
+ * a switch. When that answer is "nothing here", the module looks empty until
+ * something happens to invalidate it — which is how nine reports were
+ * invisible until a tenth was generated. Read from the source so the next
+ * module cannot forget.
+ */
+describe("every business module resets on a workspace switch", () => {
+  const dir = join(
+    process.cwd(),
+    "src",
+    "client",
+    "features",
+    "business-modules",
+  );
+  const roots = new Set<string>();
+  for (const file of sourceFiles(dir)) {
+    const source = readFileSync(file, "utf8");
+    for (const match of source.matchAll(/queryKey: \["([a-z-]+)"/g)) {
+      if (match[1]) roots.add(match[1]);
+    }
+  }
+
+  it("finds the roots the modules use", () => {
+    expect(roots.size).toBeGreaterThan(5);
+  });
+
+  it.each([...roots])("%s is on the reset list", (root) => {
+    expect(
+      (ORGANIZATION_SCOPED_QUERY_ROOTS as readonly string[]).includes(root),
+      `"${root}" is keyed by module, not project, and will keep the previous workspace's data across a switch`,
+    ).toBe(true);
+  });
+});

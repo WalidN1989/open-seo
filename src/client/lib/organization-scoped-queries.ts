@@ -18,10 +18,21 @@ const ORGANIZATION_SCOPED_QUERY_ROOTS = [
   "integrations",
   "social",
   "invoicing",
+  "invoice",
   "clients",
+  "client-accounts",
+  "client-reports",
   "voice",
   "whatsapp",
 ] as const;
+
+/**
+ * Exported for the guard in the test file, which reads every business-module
+ * query key out of the source and fails if one is not listed here. Three had
+ * been missed by hand — a module's cached "nothing here" was surviving a
+ * workspace switch and reading as the module being empty.
+ */
+export { ORGANIZATION_SCOPED_QUERY_ROOTS };
 
 /**
  * Discards the previous client's business-module data when the project
