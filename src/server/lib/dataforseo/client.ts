@@ -2,6 +2,7 @@ import {
   type CreditFeature,
   mapDataforseoPathToCreditFeature,
 } from "@/shared/billing-credit-features";
+import { recordResearchPurchase } from "./purchaseLedger";
 import {
   assertUsageCreditsAvailable,
   getOrCreateOrganizationCustomer,
@@ -45,6 +46,17 @@ export function loadDataforseoSections(): Promise<DataforseoSections> {
  * spend to its own feature). The extra field is ignored by the fetchers, which
  * read named fields rather than spreading the input.
  */
+/**
+ * Wrap one vendor endpoint so it is charged for, and recorded.
+ *
+ * The ledger write lives here rather than at the call sites because this is
+ * the one place every paid call must pass through. A module added next year
+ * gets it by existing, not by remembering.
+ *
+ * `endpoint` names the row. It is derived from the picker rather than passed
+ * at every call site, so it cannot drift out of step with the function it
+ * describes.
+ */
 function meter<I, T>(
   customer: BillingCustomerContext,
   pick: (
@@ -52,12 +64,44 @@ function meter<I, T>(
   ) => (input: I) => Promise<DataforseoApiResponse<T>>,
   defaultFeature?: CreditFeature,
 ): (input: I & { creditFeature?: CreditFeature }) => Promise<T> {
-  return (input) =>
-    meterDataforseoCall(
-      customer,
-      async () => pick(await loadDataforseoSections())(input),
-      input.creditFeature ?? defaultFeature,
-    );
+  const endpoint = endpointNameOf(pick);
+  return async (input) => {
+    const creditFeature = input.creditFeature ?? defaultFeature;
+    const note = (outcome: "ok" | "failed") =>
+      recordResearchPurchase({
+        customer,
+        endpoint,
+        creditFeature,
+        args: input,
+        outcome,
+      });
+    try {
+      const result = await meterDataforseoCall(
+        customer,
+        async () => pick(await loadDataforseoSections())(input),
+        creditFeature,
+      );
+      await note("ok");
+      return result;
+    } catch (error) {
+      // A failed call can still have been billed, so it is recorded too.
+      await note("failed");
+      throw error;
+    }
+  };
+}
+
+/**
+ * The vendor function a picker reaches for, e.g. "fetchLiveSerp".
+ *
+ * Read off the picker's source. Property access is not renamed by the bundler,
+ * and `endpointName.test.ts` checks every picker still yields a name, so a
+ * change to the build that broke this would fail the suite rather than quietly
+ * fill the ledger with "unknown".
+ */
+function endpointNameOf(pick: unknown): string {
+  const source = typeof pick === "function" ? pick.toString() : "";
+  return /\.\s*([A-Za-z0-9_$]+)/.exec(source)?.[1] ?? "unknown";
 }
 
 export function createDataforseoClient(customer: BillingCustomerContext) {

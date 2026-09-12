@@ -8,6 +8,7 @@ import * as sqliteApp from "./app.schema";
 import * as sqliteOptimizations from "./optimizations.schema";
 import * as sqliteClients from "./clients.schema";
 import * as sqliteSearchHistory from "./search-history.schema";
+import * as sqliteResearchPurchases from "./research-purchases.schema";
 import * as sqliteProjectContext from "./project-context.schema";
 import * as sqliteAudit from "./audit.schema";
 import * as sqliteSam from "./sam.schema";
@@ -21,6 +22,7 @@ import * as pgApp from "./pg/app.schema";
 import * as pgOptimizations from "./pg/optimizations.schema";
 import * as pgClients from "./pg/clients.schema";
 import * as pgSearchHistory from "./pg/search-history.schema";
+import * as pgResearchPurchases from "./pg/research-purchases.schema";
 import * as pgProjectContext from "./pg/project-context.schema";
 import * as pgAudit from "./pg/audit.schema";
 import * as pgSam from "./pg/sam.schema";
@@ -156,6 +158,7 @@ const sqliteAppTables = tablesFrom(
   sqliteOptimizations,
   sqliteClients,
   sqliteSearchHistory,
+  sqliteResearchPurchases,
   sqliteProjectContext,
   sqliteAudit,
   sqliteSam,
@@ -170,6 +173,7 @@ const pgAppTables = tablesFrom(
   pgOptimizations,
   pgClients,
   pgSearchHistory,
+  pgResearchPurchases,
   pgProjectContext,
   pgAudit,
   pgSam,

@@ -2,6 +2,7 @@ export * from "./app.schema";
 export * from "./optimizations.schema";
 export * from "./clients.schema";
 export * from "./search-history.schema";
+export * from "./research-purchases.schema";
 export * from "./project-context.schema";
 export * from "./audit.schema";
 export * from "./sam.schema";
