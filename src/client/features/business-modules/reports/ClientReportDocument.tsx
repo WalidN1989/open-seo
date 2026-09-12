@@ -321,8 +321,6 @@ export function ClientReportDocument({
         </section>
       ) : null}
 
-      <Conclusion text={snapshot.conclusion} />
-
       <section className="report-section report-section-break">
         <h2>What happens next</h2>
         <p className="report-lede">
@@ -409,6 +407,8 @@ export function ClientReportDocument({
           </div>
         </section>
       ) : null}
+
+      <Conclusion text={snapshot.conclusion} />
 
       <ReportFooter agency={agency} />
     </article>

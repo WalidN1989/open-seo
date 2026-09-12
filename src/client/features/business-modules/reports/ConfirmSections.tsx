@@ -187,10 +187,35 @@ function inline(text: string, keyPrefix: string) {
     );
 }
 
-export function PastedText({ text }: { text: string }) {
-  const blocks = text.split(/\n{2,}/).filter((block) => block.trim());
+/**
+ * Bullets typed inline — "you need to: - do this - do that" — become a list.
+ * Two or more " - " in one paragraph is a list somebody did not put on
+ * separate lines, not a paragraph with a lot of dashes in it.
+ */
+function splitInlineBullets(block: string): string[] {
+  const parts = block.split(/\s+-\s+/);
+  if (parts.length < 3) return [block];
+  const [head = "", ...items] = parts;
+  return [head, ...items.map((item) => `- ${item}`)];
+}
+
+export function PastedText({
+  text,
+  emphasis = false,
+}: {
+  text: string;
+  emphasis?: boolean;
+}) {
+  const blocks = text
+    .split(/\n{2,}/)
+    .filter((block) => block.trim())
+    .flatMap((block) =>
+      block.includes("\n") ? [block] : splitInlineBullets(block),
+    );
   return (
-    <div className="report-prose">
+    <div
+      className={emphasis ? "report-prose report-prose-strong" : "report-prose"}
+    >
       {blocks.map((block, blockIndex) => {
         const lines = block.split("\n");
         const isList = lines.every((line) => /^\s*[-•]\s+/.test(line));
@@ -219,9 +244,10 @@ export function PastedText({ text }: { text: string }) {
 export function Conclusion({ text }: { text: string | null }) {
   if (!text?.trim()) return null;
   return (
-    <section className="report-section">
+    <section className="report-section report-conclusion">
       <h2>Conclusion</h2>
-      <PastedText text={text} />
+      {/* Bold throughout: this is the part the client must not skim past. */}
+      <PastedText text={text} emphasis />
     </section>
   );
 }

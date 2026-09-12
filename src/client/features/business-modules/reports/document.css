@@ -739,3 +739,13 @@
 .report-prose li {
   margin-bottom: 4px;
 }
+
+/* The conclusion is the ask. It is set heavy so it cannot be skimmed past. */
+.report-prose-strong {
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+.report-conclusion {
+  padding-bottom: 8px;
+}
