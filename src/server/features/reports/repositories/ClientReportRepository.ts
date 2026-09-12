@@ -125,6 +125,21 @@ async function replace(
   return row;
 }
 
+async function latestForProject(organizationId: string, projectId: string) {
+  const [row] = await db
+    .select({ snapshotJson: clientReports.snapshotJson })
+    .from(clientReports)
+    .where(
+      and(
+        eq(clientReports.organizationId, organizationId),
+        eq(clientReports.projectId, projectId),
+      ),
+    )
+    .orderBy(desc(clientReports.createdAt))
+    .limit(1);
+  return row ?? null;
+}
+
 async function list(organizationId: string, limit = 50) {
   return db
     .select({
@@ -202,6 +217,7 @@ export const ClientReportRepository = {
   saveProfile,
   findInMonth,
   replace,
+  latestForProject,
   reportableProjects,
   organizationName,
   whatsappNumber,

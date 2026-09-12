@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Copy, FileBarChart, Trash2 } from "lucide-react";
+import { Copy, FileBarChart, Pencil, Trash2 } from "lucide-react";
 import {
   createClientReportLink,
   deleteClientReport,
@@ -269,6 +269,18 @@ export function ReportsWorkspace() {
                 {report.createdAt.slice(0, 10)}
               </span>
               <div className="ml-auto flex flex-wrap gap-2">
+                <button
+                  className="btn btn-ghost btn-xs"
+                  title="Fill the form with what this report was made from"
+                  onClick={() => {
+                    // Picking the project is what loads its remembered form;
+                    // when nothing was remembered, the report itself is read.
+                    setProjectId(report.projectId);
+                    window.scrollTo({ top: 0, behavior: "smooth" });
+                  }}
+                >
+                  <Pencil className="size-3.5" /> Edit
+                </button>
                 <button
                   className="btn btn-ghost btn-xs"
                   onClick={() =>

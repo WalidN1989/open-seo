@@ -161,3 +161,39 @@ export function includedFor(active: Record<string, boolean>) {
     active: active[service.key] ?? false,
   }));
 }
+
+/**
+ * The form, recovered from a report that was generated before the form was
+ * remembered.
+ *
+ * Reports made before profiles existed hold everything the form asked, just
+ * shaped for the page rather than for the inputs. Reading it back means an
+ * older client's form fills too, instead of being retyped once more to seed
+ * the memory. Missing pieces stay at their defaults.
+ */
+export function formFromSnapshot(snapshot: ReportSnapshot) {
+  const item = (label: string) =>
+    snapshot.setup.find((entry) => entry.label === label);
+  const done = (label: string) => item(label)?.done ?? false;
+  const included = (label: string) =>
+    snapshot.included.find((entry) => entry.label === label)?.active ?? false;
+  const facebook = item("Facebook");
+  const instagram = item("Instagram");
+  return {
+    clientName: snapshot.client.name,
+    loginEmail: snapshot.access?.loginEmail ?? "",
+    sitemap: done("XML sitemap"),
+    tagManager: done("Google Tag Manager"),
+    googleBusinessProfile: done("Google Business Profile"),
+    googleReviews: done("Google reviews"),
+    emailMarketing: done("Email marketing"),
+    whatsappAssistant: included("WhatsApp assistant and automation"),
+    facebookUrl: facebook?.url ?? "",
+    facebookManaged: facebook?.managed ?? false,
+    instagramUrl: instagram?.url ?? "",
+    instagramManaged: instagram?.managed ?? false,
+    googleReviewUrl: snapshot.googleReviewUrl ?? "",
+    recommendations: snapshot.recommendations ?? "",
+    conclusion: snapshot.conclusion ?? "",
+  };
+}

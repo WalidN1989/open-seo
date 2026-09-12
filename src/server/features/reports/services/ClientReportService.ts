@@ -10,6 +10,7 @@ import { BusinessModuleService } from "@/server/features/business-modules/servic
 import { resolveLetterhead } from "../letterhead";
 import {
   accessFor,
+  formFromSnapshot,
   includedFor,
   setupFor,
   type Declared,
@@ -307,9 +308,14 @@ async function profile(
 ) {
   await BusinessModuleService.requireAccess(organizationId, userId, MODULE);
   const json = await Repo.getProfile(organizationId, projectId);
-  if (!json) return null;
-  const parsed: unknown = JSON.parse(json);
-  return typeof parsed === "object" && parsed !== null ? parsed : null;
+  if (json) {
+    const parsed: unknown = JSON.parse(json);
+    return typeof parsed === "object" && parsed !== null ? parsed : null;
+  }
+  // Nothing remembered yet, but a report may already exist from before
+  // remembering was a thing. Its snapshot holds the same answers.
+  const latest = await Repo.latestForProject(organizationId, projectId);
+  return latest ? formFromSnapshot(parse(latest.snapshotJson)) : null;
 }
 
 async function list(organizationId: string, userId: string) {
