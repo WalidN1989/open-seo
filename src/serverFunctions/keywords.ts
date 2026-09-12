@@ -10,8 +10,10 @@ import {
   serpAnalysisSchema,
   updateSavedKeywordTagSchema,
   updateSavedKeywordTagsSchema,
+  researchedKeywordsSchema,
 } from "@/types/schemas/keywords";
 import { KeywordResearchService } from "@/server/features/keywords/services/KeywordResearchService";
+import { ResearchedKeywordsRepository } from "@/server/features/keywords/repositories/ResearchedKeywordsRepository";
 import { requireProjectContext } from "@/serverFunctions/middleware";
 import { resolveMarket } from "@/shared/keyword-locations";
 
@@ -133,3 +135,18 @@ export const getSerpAnalysis = createServerFn({ method: "POST" })
       context,
     ),
   );
+
+/** Every keyword researched for the project, saved or not. */
+export const getResearchedKeywords = createServerFn({ method: "POST" })
+  .middleware(requireProjectContext)
+  .validator(researchedKeywordsSchema)
+  .handler(({ context, data }) => {
+    const pageSize = data.pageSize ?? 50;
+    return ResearchedKeywordsRepository.list({
+      projectId: context.projectId,
+      search: data.search,
+      sort: data.sort,
+      limit: pageSize,
+      offset: (data.page ?? 0) * pageSize,
+    });
+  });

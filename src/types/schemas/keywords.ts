@@ -209,3 +209,11 @@ export const keywordsSearchSchema = z.object({
   include: z.string().optional(),
   exclude: z.string().optional(),
 });
+
+export const researchedKeywordsSchema = z.object({
+  projectId: z.string().min(1),
+  search: z.string().trim().max(160).optional(),
+  sort: z.enum(["volume", "difficulty", "keyword", "recent"]).optional(),
+  page: z.number().int().min(0).max(10_000).optional(),
+  pageSize: z.number().int().min(10).max(200).optional(),
+});

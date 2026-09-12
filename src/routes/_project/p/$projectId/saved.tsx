@@ -31,6 +31,7 @@ import {
 import { useSavedKeywordsExport } from "@/client/features/saved-keywords/useSavedKeywordsExport";
 import { useSavedKeywordsFilters } from "@/client/features/saved-keywords/useSavedKeywordsFilters";
 import { useTagManage } from "@/client/features/saved-keywords/useTagManage";
+import { ResearchedKeywordsView } from "@/client/features/keywords/researched/ResearchedKeywordsView";
 import { getStandardErrorMessage } from "@/client/lib/error-messages";
 import { captureClientEvent } from "@/client/lib/posthog";
 import {
@@ -50,6 +51,7 @@ const FILTER_DEBOUNCE_MS = 350;
 function SavedKeywordsPage() {
   const { projectId } = Route.useParams();
   const queryClient = useQueryClient();
+  const [view, setView] = useState<"saved" | "researched">("saved");
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
   const [showFilters, setShowFilters] = useState(false);
   const [page, setPage] = useState(1);
@@ -240,118 +242,146 @@ function SavedKeywordsPage() {
   return (
     <div className="overflow-auto px-4 py-4 pb-24 md:px-6 md:py-6 md:pb-8">
       <div className="mx-auto max-w-6xl space-y-4">
-        <SavedKeywordsHeader
-          totalCount={totalCount}
-          exporting={exporter.exporting}
-          metricsRefreshing={refreshMetricsMutation.isPending}
-          onExportCsv={() => void exporter.exportFilteredCsv()}
-          onExportSheets={() => void exporter.exportFilteredSheets()}
-          onRefreshMetrics={() => refreshMetricsMutation.mutate()}
-        />
-
-        <div className="overflow-hidden rounded-lg border border-base-300 bg-base-100">
-          <SavedKeywordsFilters
-            filtersForm={filters.filtersForm}
-            activeFilterCount={filters.activeFilterCount}
-            showFilters={showFilters}
-            onToggleFilters={() => setShowFilters((v) => !v)}
-            onResetAllFilters={handleClearAllFilters}
-            availableTags={availableTags}
-            selectedTagIds={selectedTagIds}
-            busyTagIds={tagManage.busyTagIds}
-            onToggleTagFilter={(tagId) => {
-              setSelectedTagIds((current) =>
-                current.includes(tagId)
-                  ? current.filter((id) => id !== tagId)
-                  : [...current, tagId],
-              );
-              setPage(1);
-            }}
-            onClearTagSelection={() => {
-              setSelectedTagIds([]);
-              setPage(1);
-            }}
-            onUpdateTag={(input) => void tagManage.updateTag(input)}
-            onDeleteTag={(tagId) => void handleDeleteTag(tagId)}
-          />
-
-          <div className="space-y-3 p-4">
-            {removeError ? (
-              <RemoveSavedKeywordsError message={removeError} />
-            ) : null}
-            <SavedKeywordsStatus
-              totalCount={totalCount}
-              isFetching={isFetching && !isLoading}
-            />
-            <SavedKeywordsTable
-              rows={savedKeywords}
-              rowSelection={rowSelection}
-              sorting={sorting}
-              isLoading={isLoading}
-              hasActiveFilters={hasActiveFilters}
-              onRowSelectionChange={setRowSelection}
-              onSortingChange={handleSortingChange}
-            />
-          </div>
-
-          <SavedKeywordsPagination
-            page={page}
-            pageSize={pageSize}
-            totalCount={totalCount}
-            isLoading={isFetching}
-            onPageChange={setPage}
-            onPageSizeChange={(nextPageSize) => {
-              setPageSize(nextPageSize);
-              setPage(1);
-            }}
-          />
+        {/*
+          Two lists, and the shortlist is only ever the smaller one. Everything
+          researched was already paid for and stored; it just had nowhere to be
+          seen.
+        */}
+        <div role="tablist" className="tabs tabs-bordered">
+          <button
+            role="tab"
+            className={`tab ${view === "saved" ? "tab-active" : ""}`}
+            onClick={() => setView("saved")}
+          >
+            Shortlist
+          </button>
+          <button
+            role="tab"
+            className={`tab ${view === "researched" ? "tab-active" : ""}`}
+            onClick={() => setView("researched")}
+          >
+            All researched
+          </button>
         </div>
 
-        <SavedKeywordsBulkActionBar
-          selectedCount={selectedCount}
-          exportingSelection={exporter.exportingSelection}
-          onCopy={() => {
-            void navigator.clipboard.writeText(
-              selectedRows.map((row) => row.keyword).join("\n"),
-            );
-            toast.success(
-              `${selectedCount} keyword${selectedCount !== 1 ? "s" : ""} copied`,
-            );
-          }}
-          onOpenTags={() => setShowTagModal(true)}
-          onExportCsv={() => exporter.exportSelectionCsv(selectedRows)}
-          onExportSheets={() =>
-            void exporter.exportSelectionSheets(selectedRows)
-          }
-          onDelete={() => setShowConfirm(true)}
-          onClear={() => setRowSelection({})}
-        />
+        {view === "researched" ? (
+          <ResearchedKeywordsView projectId={projectId} />
+        ) : (
+          <>
+            <SavedKeywordsHeader
+              totalCount={totalCount}
+              exporting={exporter.exporting}
+              metricsRefreshing={refreshMetricsMutation.isPending}
+              onExportCsv={() => void exporter.exportFilteredCsv()}
+              onExportSheets={() => void exporter.exportFilteredSheets()}
+              onRefreshMetrics={() => refreshMetricsMutation.mutate()}
+            />
 
-        {showConfirm ? (
-          <DeleteSavedKeywordsModal
-            selectedCount={selectedCount}
-            isPending={removeMutation.isPending}
-            onClose={() => setShowConfirm(false)}
-            onConfirm={() => removeMutation.mutate(selectedIds)}
-          />
-        ) : null}
+            <div className="overflow-hidden rounded-lg border border-base-300 bg-base-100">
+              <SavedKeywordsFilters
+                filtersForm={filters.filtersForm}
+                activeFilterCount={filters.activeFilterCount}
+                showFilters={showFilters}
+                onToggleFilters={() => setShowFilters((v) => !v)}
+                onResetAllFilters={handleClearAllFilters}
+                availableTags={availableTags}
+                selectedTagIds={selectedTagIds}
+                busyTagIds={tagManage.busyTagIds}
+                onToggleTagFilter={(tagId) => {
+                  setSelectedTagIds((current) =>
+                    current.includes(tagId)
+                      ? current.filter((id) => id !== tagId)
+                      : [...current, tagId],
+                  );
+                  setPage(1);
+                }}
+                onClearTagSelection={() => {
+                  setSelectedTagIds([]);
+                  setPage(1);
+                }}
+                onUpdateTag={(input) => void tagManage.updateTag(input)}
+                onDeleteTag={(tagId) => void handleDeleteTag(tagId)}
+              />
 
-        {showTagModal ? (
-          <SavedKeywordsBulkTagsModal
-            availableTags={availableTags}
-            selectedCount={selectedCount}
-            selectedRowTags={selectedRowTags}
-            isPending={tagMutation.isPending}
-            onClose={() => setShowTagModal(false)}
-            onApply={({ addTags, removeTagIds }) =>
-              tagMutation.mutate({
-                savedKeywordIds: selectedIds,
-                addTags,
-                removeTagIds,
-              })
-            }
-          />
-        ) : null}
+              <div className="space-y-3 p-4">
+                {removeError ? (
+                  <RemoveSavedKeywordsError message={removeError} />
+                ) : null}
+                <SavedKeywordsStatus
+                  totalCount={totalCount}
+                  isFetching={isFetching && !isLoading}
+                />
+                <SavedKeywordsTable
+                  rows={savedKeywords}
+                  rowSelection={rowSelection}
+                  sorting={sorting}
+                  isLoading={isLoading}
+                  hasActiveFilters={hasActiveFilters}
+                  onRowSelectionChange={setRowSelection}
+                  onSortingChange={handleSortingChange}
+                />
+              </div>
+
+              <SavedKeywordsPagination
+                page={page}
+                pageSize={pageSize}
+                totalCount={totalCount}
+                isLoading={isFetching}
+                onPageChange={setPage}
+                onPageSizeChange={(nextPageSize) => {
+                  setPageSize(nextPageSize);
+                  setPage(1);
+                }}
+              />
+            </div>
+
+            <SavedKeywordsBulkActionBar
+              selectedCount={selectedCount}
+              exportingSelection={exporter.exportingSelection}
+              onCopy={() => {
+                void navigator.clipboard.writeText(
+                  selectedRows.map((row) => row.keyword).join("\n"),
+                );
+                toast.success(
+                  `${selectedCount} keyword${selectedCount !== 1 ? "s" : ""} copied`,
+                );
+              }}
+              onOpenTags={() => setShowTagModal(true)}
+              onExportCsv={() => exporter.exportSelectionCsv(selectedRows)}
+              onExportSheets={() =>
+                void exporter.exportSelectionSheets(selectedRows)
+              }
+              onDelete={() => setShowConfirm(true)}
+              onClear={() => setRowSelection({})}
+            />
+
+            {showConfirm ? (
+              <DeleteSavedKeywordsModal
+                selectedCount={selectedCount}
+                isPending={removeMutation.isPending}
+                onClose={() => setShowConfirm(false)}
+                onConfirm={() => removeMutation.mutate(selectedIds)}
+              />
+            ) : null}
+
+            {showTagModal ? (
+              <SavedKeywordsBulkTagsModal
+                availableTags={availableTags}
+                selectedCount={selectedCount}
+                selectedRowTags={selectedRowTags}
+                isPending={tagMutation.isPending}
+                onClose={() => setShowTagModal(false)}
+                onApply={({ addTags, removeTagIds }) =>
+                  tagMutation.mutate({
+                    savedKeywordIds: selectedIds,
+                    addTags,
+                    removeTagIds,
+                  })
+                }
+              />
+            ) : null}
+          </>
+        )}
       </div>
     </div>
   );
