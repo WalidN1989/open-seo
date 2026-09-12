@@ -116,6 +116,26 @@ async function researchedKeywordCount(projectId: string) {
   return rows.length;
 }
 
+/**
+ * The best of what has been researched, for the client to confirm.
+ *
+ * Twenty is the most a person will read on a page and mark honestly. Sorted by
+ * volume, because that is the one figure a client can react to without being
+ * taught what difficulty means.
+ */
+async function topResearched(projectId: string) {
+  return db
+    .select({
+      keyword: keywordMetrics.keyword,
+      searchVolume: keywordMetrics.searchVolume,
+      difficulty: keywordMetrics.keywordDifficulty,
+    })
+    .from(keywordMetrics)
+    .where(eq(keywordMetrics.projectId, projectId))
+    .orderBy(desc(keywordMetrics.searchVolume))
+    .limit(20);
+}
+
 async function researchedVolume(projectId: string) {
   const rows = await db
     .select({ searchVolume: keywordMetrics.searchVolume })
@@ -235,6 +255,7 @@ export const ReportDataRepository = {
   rankings,
   savedKeywordCount,
   researchedKeywordCount,
+  topResearched,
   researchedVolume,
   links,
   siteHealth,

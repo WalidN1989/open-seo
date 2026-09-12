@@ -12,14 +12,18 @@ import {
 } from "@/serverFunctions/reports";
 import { getStandardErrorMessage } from "@/client/lib/error-messages";
 import { ClientReportDocument } from "./ClientReportDocument";
+import {
+  EMPTY_ENGAGEMENT,
+  EngagementForm,
+  type Engagement,
+} from "./EngagementForm";
 
 export function ReportsWorkspace() {
   const queryClient = useQueryClient();
   const [projectId, setProjectId] = useState("");
   const [clientName, setClientName] = useState("");
   const [loginEmail, setLoginEmail] = useState("");
-  const [googleBusinessProfile, setGoogleBusinessProfile] = useState(false);
-  const [whatsappAssistant, setWhatsappAssistant] = useState(false);
+  const [engagement, setEngagement] = useState<Engagement>(EMPTY_ENGAGEMENT);
   // null means "nothing chosen yet", which falls through to the newest report.
   // Opening the module and seeing a blank page below a list of documents made
   // it look as though nothing had been generated.
@@ -57,8 +61,11 @@ export function ReportsWorkspace() {
           projectId,
           clientName: clientName.trim(),
           loginEmail: loginEmail.trim(),
-          googleBusinessProfile,
-          whatsappAssistant,
+          ...engagement,
+          facebookUrl: engagement.facebookUrl.trim(),
+          instagramUrl: engagement.instagramUrl.trim(),
+          googleReviewUrl: engagement.googleReviewUrl.trim(),
+          recommendations: engagement.recommendations.trim(),
         },
       }),
     onSuccess: async (result) => {
@@ -183,31 +190,7 @@ export function ReportsWorkspace() {
           </span>
         </label>
 
-        <fieldset className="flex flex-wrap gap-x-6 gap-y-2">
-          <legend className="label-text mb-1">
-            Also running for this client
-          </legend>
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              className="checkbox checkbox-sm"
-              checked={googleBusinessProfile}
-              onChange={(event) =>
-                setGoogleBusinessProfile(event.target.checked)
-              }
-            />
-            Google Business Profile and reviews
-          </label>
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              className="checkbox checkbox-sm"
-              checked={whatsappAssistant}
-              onChange={(event) => setWhatsappAssistant(event.target.checked)}
-            />
-            WhatsApp assistant and automation
-          </label>
-        </fieldset>
+        <EngagementForm value={engagement} onChange={setEngagement} />
 
         {chosen ? (
           <p className="text-sm text-base-content/60">

@@ -10,7 +10,20 @@ export const generateClientReportSchema = z.object({
    * the database can tell us — the person generating the report says.
    */
   googleBusinessProfile: z.boolean().default(false),
+  googleReviews: z.boolean().default(false),
   whatsappAssistant: z.boolean().default(false),
+  sitemap: z.boolean().default(false),
+  tagManager: z.boolean().default(false),
+  emailMarketing: z.boolean().default(false),
+  /** Social profiles: the address, and whether we run it for them. */
+  facebookUrl: z.string().trim().max(300).default(""),
+  facebookManaged: z.boolean().default(false),
+  instagramUrl: z.string().trim().max(300).default(""),
+  instagramManaged: z.boolean().default(false),
+  /** Their Google review link, e.g. https://g.page/r/…/review. */
+  googleReviewUrl: z.string().trim().max(300).default(""),
+  /** Our own words. Kept short enough to fit a page. */
+  recommendations: z.string().trim().max(4000).default(""),
 });
 
 export const clientReportIdSchema = z.object({

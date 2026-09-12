@@ -63,7 +63,15 @@ export type ReportSnapshot = {
     domain: string | null;
     startedAt: string | null;
   };
-  setup: Array<{ label: string; done: boolean; detail: string }>;
+  setup: Array<{
+    label: string;
+    done: boolean;
+    detail: string;
+    /** A profile we can point at, e.g. their Facebook page. */
+    url?: string | null;
+    /** Whether we run it for them, when that is a question worth answering. */
+    managed?: boolean | null;
+  }>;
   headline: {
     trackedKeywords: number;
     topThree: number;
@@ -98,6 +106,23 @@ export type ReportSnapshot = {
   access: { url: string; loginEmail: string | null } | null;
   /** Only the services actually set up for them are ticked. */
   included: Array<{ label: string; detail: string; active: boolean }>;
+  /** What we think they should do, in our words. Free text, may be empty. */
+  recommendations: string | null;
+  /**
+   * Their Google review link, for the client to hand to customers. The
+   * report renders it as three share cards — WhatsApp, email, Facebook — so
+   * asking for a review is one tap rather than a copied address.
+   */
+  googleReviewUrl: string | null;
+  /**
+   * The best of what has been researched, for the client to confirm. Printed
+   * with a box beside each so it can be ticked on paper and sent back.
+   */
+  keywordsToConfirm: Array<{
+    keyword: string;
+    searchVolume: number | null;
+    difficulty: number | null;
+  }>;
 };
 
 /**

@@ -627,3 +627,96 @@
     text-decoration: underline;
   }
 }
+
+/* Free text from the agency, kept to readable paragraphs. */
+.report-prose {
+  max-width: 68ch;
+  color: #374151;
+}
+
+.report-prose p {
+  margin: 0 0 10px;
+}
+
+/*
+ * A box to tick on paper. An empty bordered square rather than a checkbox
+ * input: this is a printed document the client marks with a pen and sends
+ * back, and an input would print as whatever the browser felt like.
+ */
+.report-tick {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 1.5px solid #9ca3af;
+  border-radius: 3px;
+  vertical-align: middle;
+}
+
+.report-tick-head {
+  width: 28px;
+}
+
+.report-table-confirm td:first-child {
+  width: 28px;
+}
+
+.report-competitor-confirm {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  column-gap: 8px;
+  padding-left: 0;
+  border-left: none;
+}
+
+.report-competitor-confirm .report-tick {
+  margin-top: 3px;
+}
+
+.report-competitor-domain {
+  display: block;
+  font-size: 12px;
+  color: #6b7280;
+}
+
+@media print {
+  .report-tick {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}
+
+/* Three share cards, one row, compact. */
+.report-share {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.report-share-card {
+  display: block;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 12px 14px;
+  text-decoration: none;
+  color: #1a1a1a;
+}
+
+.report-share-card:hover {
+  border-color: #ea580c;
+}
+
+.report-share-card strong {
+  display: block;
+}
+
+.report-share-card span {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+@media screen and (max-width: 720px) {
+  .report-share {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

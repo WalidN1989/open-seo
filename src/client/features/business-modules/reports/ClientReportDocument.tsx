@@ -5,6 +5,12 @@ import {
   RankSpreadChart,
   SearchPerformanceChart,
 } from "./reportCharts";
+import {
+  CollectReviews,
+  CompetitorsToConfirm,
+  KeywordsToConfirm,
+  Recommendations,
+} from "./ConfirmSections";
 
 function longDate(iso: string | null) {
   if (!iso) return "—";
@@ -160,12 +166,26 @@ export function ClientReportDocument({
               </span>
               <span>
                 <strong>{item.label}</strong>
-                <span className="report-check-detail">{item.detail}</span>
+                <span className="report-check-detail">
+                  {item.url ? (
+                    <>
+                      <a className="report-link" href={item.url}>
+                        {item.url.replace(/^https?:\/\/(www\.)?/, "")}
+                      </a>
+                      {" · "}
+                    </>
+                  ) : null}
+                  {item.detail}
+                </span>
               </span>
             </li>
           ))}
         </ul>
       </section>
+
+      <Recommendations text={snapshot.recommendations} />
+
+      <CollectReviews url={snapshot.googleReviewUrl} />
 
       <section className="report-section">
         <h2>Where you stand today</h2>
@@ -278,30 +298,9 @@ export function ClientReportDocument({
         </section>
       ) : null}
 
-      {snapshot.competitors.length ? (
-        <section className="report-section">
-          <h2>Who you are competing with</h2>
-          <p className="report-lede">
-            {snapshot.competitorsFromSearch
-              ? "These came out of the searches your customers actually run — the sites we keep meeting on the results page. Our content and link work is aimed at the gaps between their pages and yours."
-              : "These are the sites holding the positions we want. Our content and link work is aimed at the gaps between their pages and yours."}
-          </p>
-          <ul className="report-competitors">
-            {snapshot.competitors.map((competitor) => (
-              <li key={competitor.domain}>
-                <strong>{competitor.name || competitor.domain}</strong>
-                {competitor.name ? <span>{competitor.domain}</span> : null}
-                {competitor.keywords ? (
-                  <span>
-                    Appears for {competitor.keywords} of your keywords, best
-                    position {competitor.bestRank}
-                  </span>
-                ) : null}
-              </li>
-            ))}
-          </ul>
-        </section>
-      ) : null}
+      <KeywordsToConfirm rows={snapshot.keywordsToConfirm} />
+
+      <CompetitorsToConfirm snapshot={snapshot} />
 
       {snapshot.siteHealth ? (
         <section className="report-section">

@@ -1,3 +1,5 @@
+import type { z } from "zod";
+import type { generateClientReportSchema } from "@/types/schemas/reports";
 import { AppError } from "@/server/lib/errors";
 import {
   getOptionalEnvValue,
@@ -6,6 +8,12 @@ import {
 import { AuthRepository } from "@/server/auth/repositories/AuthRepository";
 import { BusinessModuleService } from "@/server/features/business-modules/services/BusinessModuleService";
 import { resolveLetterhead } from "../letterhead";
+import {
+  accessFor,
+  includedFor,
+  setupFor,
+  type Declared,
+} from "../reportSetup";
 import { ClientReportRepository as Repo } from "../repositories/ClientReportRepository";
 import { ReportDataRepository as Data } from "../repositories/ReportDataRepository";
 import {
@@ -14,7 +22,6 @@ import {
   signReportToken,
 } from "../reportLink";
 import { searchPerformanceFor } from "../searchPerformance";
-import { SERVICE_CATALOGUE } from "../reportSnapshot";
 import {
   bucketsFor,
   headlineFor,
@@ -106,92 +113,6 @@ async function projects(organizationId: string, userId: string) {
   return Repo.reportableProjects(memberships);
 }
 
-function keywordDetail(researched: number, saved: number) {
-  if (!researched && !saved) return "Not started yet";
-  if (saved && researched > saved) {
-    return `${researched} keywords researched, ${saved} shortlisted`;
-  }
-  if (saved) return `${saved} keywords researched and shortlisted`;
-  return `${researched} keywords researched`;
-}
-
-function setupFor(input: {
-  searchConsole: string | null;
-  analytics: boolean;
-  savedKeywords: number;
-  researchedKeywords: number;
-  trackedKeywords: number;
-  hasAudit: boolean;
-  competitors: number;
-}): ReportSnapshot["setup"] {
-  return [
-    {
-      label: "Google Search Console",
-      done: Boolean(input.searchConsole),
-      detail: input.searchConsole
-        ? `Connected for ${input.searchConsole}`
-        : "Not connected yet",
-    },
-    {
-      label: "Google Analytics",
-      done: input.analytics,
-      detail: input.analytics ? "Connected" : "Not connected yet",
-    },
-    {
-      label: "Keyword research",
-      done: input.researchedKeywords > 0 || input.savedKeywords > 0,
-      detail: keywordDetail(input.researchedKeywords, input.savedKeywords),
-    },
-    {
-      label: "Rank tracking",
-      done: input.trackedKeywords > 0,
-      detail: input.trackedKeywords
-        ? `${input.trackedKeywords} keywords checked on a schedule`
-        : "Not started yet",
-    },
-    {
-      label: "Technical site audit",
-      done: input.hasAudit,
-      detail: input.hasAudit ? "Completed" : "Not run yet",
-    },
-    {
-      label: "Competitor analysis",
-      done: input.competitors > 0,
-      detail: input.competitors
-        ? `${input.competitors} competitors identified`
-        : "Not started yet",
-    },
-  ];
-}
-
-/**
- * What the client can sign in to, and where.
- *
- * The password is deliberately not here and must never be. This document is
- * handed over as a link anyone holding it can open, and it is saved, forwarded
- * and printed. A credential belongs in a separate message the client can act
- * on and delete, not in a report that outlives it.
- */
-function accessFor(
-  projectId: string,
-  appUrl: string,
-  loginEmail: string | null,
-) {
-  return {
-    url: `${appUrl.replace(/\/+$/, "")}/p/${projectId}`,
-    loginEmail,
-  };
-}
-
-/** A tick means it is actually running for them, not that it is on offer. */
-function includedFor(active: Record<string, boolean>) {
-  return SERVICE_CATALOGUE.map((service) => ({
-    label: service.label,
-    detail: service.detail,
-    active: active[service.key] ?? false,
-  }));
-}
-
 async function buildSnapshot(input: {
   organizationId: string;
   projectId: string;
@@ -201,6 +122,9 @@ async function buildSnapshot(input: {
   loginEmail: string | null;
   googleBusinessProfile: boolean;
   whatsappAssistant: boolean;
+  declared: Declared;
+  recommendations: string | null;
+  googleReviewUrl: string | null;
 }): Promise<ReportSnapshot> {
   const project = await Data.project(input.projectId);
   if (!project)
@@ -217,6 +141,7 @@ async function buildSnapshot(input: {
     observed,
     content,
     connections,
+    topResearched,
   ] = await Promise.all([
     agencyFor(input.organizationId, input.userId),
     Data.rankings(input.projectId),
@@ -228,6 +153,7 @@ async function buildSnapshot(input: {
     Data.observedCompetitors(input.projectId, project.domain),
     Data.contentCounts(input.projectId),
     Data.connections(input.projectId),
+    Data.topResearched(input.projectId),
   ]);
   const searchPerformance = await searchPerformanceFor(input.projectId);
 
@@ -256,6 +182,7 @@ async function buildSnapshot(input: {
       trackedKeywords: keywords.length,
       hasAudit: Boolean(siteHealth),
       competitors: competitors.length || observed.length,
+      declared: input.declared,
     }),
     headline: headlineFor(keywords, links, notRanking),
     buckets: bucketsFor(keywords),
@@ -293,19 +220,16 @@ async function buildSnapshot(input: {
       gbp: input.googleBusinessProfile,
       whatsapp: input.whatsappAssistant,
     }),
+    recommendations: input.recommendations,
+    googleReviewUrl: input.googleReviewUrl,
+    keywordsToConfirm: topResearched,
   };
 }
 
 async function generate(
   organizationId: string,
   userId: string,
-  input: {
-    projectId: string;
-    clientName: string;
-    loginEmail?: string;
-    googleBusinessProfile?: boolean;
-    whatsappAssistant?: boolean;
-  },
+  input: z.infer<typeof generateClientReportSchema>,
 ) {
   await requireManage(organizationId, userId);
   const memberships = await AuthRepository.listOrganizationIdsForUser(userId);
@@ -320,8 +244,21 @@ async function generate(
     userId,
     appUrl: (await getOptionalEnvValue("BETTER_AUTH_URL")) ?? "",
     loginEmail: input.loginEmail?.trim() || null,
-    googleBusinessProfile: input.googleBusinessProfile ?? false,
-    whatsappAssistant: input.whatsappAssistant ?? false,
+    googleBusinessProfile: input.googleBusinessProfile,
+    whatsappAssistant: input.whatsappAssistant,
+    declared: {
+      sitemap: input.sitemap,
+      tagManager: input.tagManager,
+      googleBusinessProfile: input.googleBusinessProfile,
+      googleReviews: input.googleReviews,
+      emailMarketing: input.emailMarketing,
+      facebookUrl: input.facebookUrl || null,
+      facebookManaged: input.facebookManaged,
+      instagramUrl: input.instagramUrl || null,
+      instagramManaged: input.instagramManaged,
+    },
+    recommendations: input.recommendations || null,
+    googleReviewUrl: input.googleReviewUrl || null,
   });
   const row = await Repo.insert({
     id: crypto.randomUUID(),
