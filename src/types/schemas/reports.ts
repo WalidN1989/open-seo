@@ -24,6 +24,11 @@ export const generateClientReportSchema = z.object({
   googleReviewUrl: z.string().trim().max(300).default(""),
   /** Our own words. Kept short enough to fit a page. */
   recommendations: z.string().trim().max(4000).default(""),
+  /**
+   * A closing summary for a client who has been with us a while — usually
+   * pasted from an agent's read of the account. Empty for a new client.
+   */
+  conclusion: z.string().trim().max(8000).default(""),
 });
 
 export const clientReportIdSchema = z.object({

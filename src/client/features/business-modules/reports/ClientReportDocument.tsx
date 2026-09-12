@@ -8,6 +8,7 @@ import {
 import {
   CollectReviews,
   CompetitorsToConfirm,
+  Conclusion,
   KeywordsToConfirm,
   Recommendations,
 } from "./ConfirmSections";
@@ -319,6 +320,8 @@ export function ClientReportDocument({
           </ul>
         </section>
       ) : null}
+
+      <Conclusion text={snapshot.conclusion} />
 
       <section className="report-section report-section-break">
         <h2>What happens next</h2>

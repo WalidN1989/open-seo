@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 /**
  * What is running for this client that the database cannot see.
  *
@@ -18,6 +19,7 @@ export type Engagement = {
   instagramManaged: boolean;
   googleReviewUrl: string;
   recommendations: string;
+  conclusion: string;
 };
 
 export const EMPTY_ENGAGEMENT: Engagement = {
@@ -33,6 +35,7 @@ export const EMPTY_ENGAGEMENT: Engagement = {
   instagramManaged: false,
   googleReviewUrl: "",
   recommendations: "",
+  conclusion: "",
 };
 
 type ToggleKey = {
@@ -109,6 +112,14 @@ export function EngagementForm({
 }) {
   const set = <K extends keyof Engagement>(key: K, next: Engagement[K]) =>
     onChange({ ...value, [key]: next });
+  // The tick opens the box; clearing the box on untick is what makes the
+  // tick mean something, since an empty conclusion is left off the report.
+  const [showConclusion, setShowConclusion] = useState(
+    Boolean(value.conclusion),
+  );
+  useEffect(() => {
+    if (value.conclusion) setShowConclusion(true);
+  }, [value.conclusion]);
 
   return (
     <div className="space-y-4">
@@ -164,6 +175,28 @@ export function EngagementForm({
           client can ask customers for reviews in one tap.
         </span>
       </label>
+
+      <div className="space-y-2">
+        <Toggle
+          checked={showConclusion}
+          onChange={(next) => {
+            setShowConclusion(next);
+            if (!next) set("conclusion", "");
+          }}
+        >
+          Include a conclusion (for a client who has been with us a while)
+        </Toggle>
+        {showConclusion ? (
+          <label className="form-control">
+            <textarea
+              className="textarea textarea-bordered min-h-40"
+              value={value.conclusion}
+              onChange={(event) => set("conclusion", event.target.value)}
+              placeholder="Paste the read on the account. **Bold** and lines starting with - are kept."
+            />
+          </label>
+        ) : null}
+      </div>
 
       <label className="form-control">
         <span className="label-text">Our recommendations (optional)</span>

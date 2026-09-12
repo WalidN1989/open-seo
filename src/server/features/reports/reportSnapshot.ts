@@ -114,6 +114,8 @@ export type ReportSnapshot = {
    * asking for a review is one tap rather than a copied address.
    */
   googleReviewUrl: string | null;
+  /** Closing summary, for an existing client. Supports **bold** and - bullets. */
+  conclusion: string | null;
   /**
    * The best of what has been researched, for the client to confirm. Printed
    * with a box beside each so it can be ticked on paper and sent back.

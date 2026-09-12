@@ -125,6 +125,7 @@ async function buildSnapshot(input: {
   declared: Declared;
   recommendations: string | null;
   googleReviewUrl: string | null;
+  conclusion: string | null;
 }): Promise<ReportSnapshot> {
   const project = await Data.project(input.projectId);
   if (!project)
@@ -222,6 +223,7 @@ async function buildSnapshot(input: {
     }),
     recommendations: input.recommendations,
     googleReviewUrl: input.googleReviewUrl,
+    conclusion: input.conclusion,
     keywordsToConfirm: topResearched,
   };
 }
@@ -269,6 +271,7 @@ async function generate(
     },
     recommendations: input.recommendations || null,
     googleReviewUrl: input.googleReviewUrl || null,
+    conclusion: input.conclusion || null,
   });
   // One report per project per month. Generating again inside the month
   // replaces it — the earlier one was a draft of this one, not a record worth

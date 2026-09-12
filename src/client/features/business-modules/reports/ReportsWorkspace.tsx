@@ -87,6 +87,7 @@ export function ReportsWorkspace() {
           instagramUrl: engagement.instagramUrl.trim(),
           googleReviewUrl: engagement.googleReviewUrl.trim(),
           recommendations: engagement.recommendations.trim(),
+          conclusion: engagement.conclusion.trim(),
         },
       }),
     onSuccess: async (result) => {

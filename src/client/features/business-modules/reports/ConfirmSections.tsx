@@ -10,15 +10,10 @@ import type { ReportSnapshot } from "@/server/features/reports/reportSnapshot";
 
 export function Recommendations({ text }: { text: string | null }) {
   if (!text?.trim()) return null;
-  const paragraphs = text.split(/\n{2,}/).filter((p) => p.trim());
   return (
     <section className="report-section">
       <h2>Our recommendations</h2>
-      <div className="report-prose">
-        {paragraphs.map((paragraph) => (
-          <p key={paragraph}>{paragraph}</p>
-        ))}
-      </div>
+      <PastedText text={text} />
     </section>
   );
 }
@@ -168,6 +163,65 @@ export function CollectReviews({ url }: { url: string | null }) {
         leaving stars — Google reads the words, and that is what makes you show
         up when someone searches for that service.
       </p>
+    </section>
+  );
+}
+
+/**
+ * Light formatting for pasted text.
+ *
+ * Just enough for what an agent's summary contains: blank lines make
+ * paragraphs, lines starting with "- " make a list, and **bold** is bold.
+ * Deliberately not a Markdown renderer — a client document is not the place
+ * to discover what a stray underscore does.
+ */
+function inline(text: string, keyPrefix: string) {
+  return text
+    .split(/(\*\*[^*]+\*\*)/g)
+    .map((part, index) =>
+      part.startsWith("**") && part.endsWith("**") ? (
+        <strong key={`${keyPrefix}-${index}`}>{part.slice(2, -2)}</strong>
+      ) : (
+        <span key={`${keyPrefix}-${index}`}>{part}</span>
+      ),
+    );
+}
+
+export function PastedText({ text }: { text: string }) {
+  const blocks = text.split(/\n{2,}/).filter((block) => block.trim());
+  return (
+    <div className="report-prose">
+      {blocks.map((block, blockIndex) => {
+        const lines = block.split("\n");
+        const isList = lines.every((line) => /^\s*[-•]\s+/.test(line));
+        if (isList) {
+          return (
+            <ul key={blockIndex}>
+              {lines.map((line, lineIndex) => (
+                <li key={lineIndex}>
+                  {inline(
+                    line.replace(/^\s*[-•]\s+/, ""),
+                    `${blockIndex}-${lineIndex}`,
+                  )}
+                </li>
+              ))}
+            </ul>
+          );
+        }
+        return (
+          <p key={blockIndex}>{inline(lines.join(" "), `${blockIndex}`)}</p>
+        );
+      })}
+    </div>
+  );
+}
+
+export function Conclusion({ text }: { text: string | null }) {
+  if (!text?.trim()) return null;
+  return (
+    <section className="report-section">
+      <h2>Conclusion</h2>
+      <PastedText text={text} />
     </section>
   );
 }

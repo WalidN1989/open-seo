@@ -730,3 +730,12 @@
     break-inside: avoid;
   }
 }
+
+.report-prose ul {
+  margin: 0 0 10px;
+  padding-left: 20px;
+}
+
+.report-prose li {
+  margin-bottom: 4px;
+}
