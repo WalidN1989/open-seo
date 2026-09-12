@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Copy, FileBarChart, Trash2 } from "lucide-react";
 import {
@@ -6,6 +6,7 @@ import {
   deleteClientReport,
   generateClientReport,
   getClientReport,
+  getClientReportProfile,
   getReportBranding,
   listClientReports,
   listReportableProjects,
@@ -24,6 +25,7 @@ export function ReportsWorkspace() {
   const [clientName, setClientName] = useState("");
   const [loginEmail, setLoginEmail] = useState("");
   const [engagement, setEngagement] = useState<Engagement>(EMPTY_ENGAGEMENT);
+  const [replaced, setReplaced] = useState(false);
   // null means "nothing chosen yet", which falls through to the newest report.
   // Opening the module and seeing a blank page below a list of documents made
   // it look as though nothing had been generated.
@@ -31,6 +33,25 @@ export function ReportsWorkspace() {
   const [share, setShare] = useState<{ url: string; expiresAt: string } | null>(
     null,
   );
+
+  // What was entered last time for this project. Loaded when a project is
+  // picked and poured into the form, so nothing is retyped report to report.
+  const savedProfile = useQuery({
+    queryKey: ["client-reports", "profile", projectId],
+    queryFn: () => getClientReportProfile({ data: { projectId } }),
+    enabled: Boolean(projectId),
+  });
+  useEffect(() => {
+    const profile = savedProfile.data;
+    if (!profile || typeof profile !== "object") return;
+    const saved = profile as Partial<Engagement> & {
+      clientName?: string;
+      loginEmail?: string;
+    };
+    if (saved.clientName) setClientName(saved.clientName);
+    if (saved.loginEmail) setLoginEmail(saved.loginEmail);
+    setEngagement({ ...EMPTY_ENGAGEMENT, ...saved });
+  }, [savedProfile.data]);
 
   const projects = useQuery({
     queryKey: ["client-reports", "projects"],
@@ -71,6 +92,7 @@ export function ReportsWorkspace() {
     onSuccess: async (result) => {
       setOpenId(result.id);
       setShare(null);
+      setReplaced(result.replaced);
       await refresh();
     },
   });
@@ -152,9 +174,13 @@ export function ReportsWorkspace() {
                 const picked = (projects.data ?? []).find(
                   (item) => item.id === event.target.value,
                 );
-                if (picked && !clientName.trim()) {
-                  setClientName(picked.organizationName || picked.name);
-                }
+                // A fresh pick starts from a blank form; the saved profile,
+                // if there is one, lands a moment later and fills it.
+                setClientName(
+                  picked ? picked.organizationName || picked.name : "",
+                );
+                setLoginEmail("");
+                setEngagement(EMPTY_ENGAGEMENT);
               }}
             >
               <option value="">Choose a project…</option>
@@ -205,6 +231,12 @@ export function ReportsWorkspace() {
           <FileBarChart className="size-4" />
           {generate.isPending ? "Building…" : "Generate report"}
         </button>
+        {replaced ? (
+          <p className="text-sm text-base-content/60">
+            Replaced this month&rsquo;s report for this client. A new month
+            starts a new one.
+          </p>
+        ) : null}
         {generate.isError ? (
           <p className="text-sm text-error">
             {getStandardErrorMessage(generate.error)}

@@ -1734,3 +1734,31 @@ export const clientReports = pgTable(
     ),
   ],
 );
+
+/**
+ * What was last said about a client when a report was generated.
+ *
+ * The form asks a dozen things the database cannot see — a Facebook page,
+ * whether email marketing runs, the review link — and asking them again every
+ * time meant they were retyped every time. One row per project, overwritten
+ * on each generation, read back to fill the form.
+ */
+export const clientReportProfiles = pgTable(
+  "client_report_profiles",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    projectId: text("project_id").notNull(),
+    /** The whole form as last submitted. */
+    profileJson: text("profile_json").notNull(),
+    updatedAt: text("updated_at").notNull().default(isoNow),
+  },
+  (table) => [
+    uniqueIndex("client_report_profiles_project_idx").on(
+      table.organizationId,
+      table.projectId,
+    ),
+  ],
+);

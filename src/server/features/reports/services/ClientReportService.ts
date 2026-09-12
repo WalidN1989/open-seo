@@ -237,6 +237,16 @@ async function generate(
   if (!project || !memberships.includes(project.organizationId)) {
     throw new AppError("FORBIDDEN");
   }
+  // Remembered before the report is built, so a generation that fails
+  // halfway still leaves the form filled next time. Everything except the
+  // project id goes in; the project is the key.
+  const { projectId: _projectId, ...remembered } = input;
+  await Repo.saveProfile({
+    organizationId,
+    projectId: input.projectId,
+    profileJson: JSON.stringify(remembered),
+  });
+
   const snapshot = await buildSnapshot({
     organizationId,
     projectId: input.projectId,
@@ -260,15 +270,43 @@ async function generate(
     recommendations: input.recommendations || null,
     googleReviewUrl: input.googleReviewUrl || null,
   });
-  const row = await Repo.insert({
-    id: crypto.randomUUID(),
+  // One report per project per month. Generating again inside the month
+  // replaces it — the earlier one was a draft of this one, not a record worth
+  // keeping — and a new month starts a new one, which is the cadence a client
+  // is actually sent.
+  const yearMonth = snapshot.generatedAt.slice(0, 7);
+  const existing = await Repo.findInMonth(
     organizationId,
-    projectId: input.projectId,
+    input.projectId,
+    yearMonth,
+  );
+  const values = {
     clientName: snapshot.client.name,
     snapshotJson: JSON.stringify(snapshot),
     generatedByUserId: userId,
-  });
-  return { id: row.id, snapshot };
+  };
+  const row = existing
+    ? await Repo.replace(organizationId, existing.id, values)
+    : await Repo.insert({
+        id: crypto.randomUUID(),
+        organizationId,
+        projectId: input.projectId,
+        ...values,
+      });
+  return { id: row.id, snapshot, replaced: Boolean(existing) };
+}
+
+/** What was last entered for this project, to fill the form with. */
+async function profile(
+  organizationId: string,
+  userId: string,
+  projectId: string,
+) {
+  await BusinessModuleService.requireAccess(organizationId, userId, MODULE);
+  const json = await Repo.getProfile(organizationId, projectId);
+  if (!json) return null;
+  const parsed: unknown = JSON.parse(json);
+  return typeof parsed === "object" && parsed !== null ? parsed : null;
 }
 
 async function list(organizationId: string, userId: string) {
@@ -352,6 +390,7 @@ async function documentLink(
 
 export const ClientReportService = {
   branding,
+  profile,
   projects,
   documentLink,
   generate,

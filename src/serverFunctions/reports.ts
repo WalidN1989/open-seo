@@ -5,6 +5,7 @@ import {
 } from "./middleware";
 import { ClientReportService } from "@/server/features/reports/services/ClientReportService";
 import {
+  clientReportProfileSchema,
   clientReportIdSchema,
   clientReportTokenSchema,
   generateClientReportSchema,
@@ -76,5 +77,17 @@ export const getClientReportDocument = createServerFn({ method: "POST" })
     ClientReportService.readForDocument(
       context.organizationId,
       context.reportId,
+    ),
+  );
+
+/** What was last entered for a project, so the form starts filled. */
+export const getClientReportProfile = createServerFn({ method: "POST" })
+  .middleware(requireAuthenticatedContext)
+  .validator(clientReportProfileSchema)
+  .handler(({ context, data }) =>
+    ClientReportService.profile(
+      context.organizationId,
+      context.userId,
+      data.projectId,
     ),
   );

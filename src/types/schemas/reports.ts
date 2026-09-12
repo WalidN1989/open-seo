@@ -33,3 +33,7 @@ export const clientReportIdSchema = z.object({
 export const clientReportTokenSchema = z.object({
   token: z.string().min(1),
 });
+
+export const clientReportProfileSchema = z.object({
+  projectId: z.string().min(1),
+});

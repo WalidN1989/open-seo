@@ -159,7 +159,7 @@ export function EngagementForm({
           onChange={(event) => set("googleReviewUrl", event.target.value)}
           placeholder="https://g.page/r/…/review"
         />
-        <span className="label-text-alt mt-1 text-base-content/55">
+        <span className="label-text-alt mt-1 block text-base-content/55">
           Adds a section with WhatsApp, email and Facebook share links, so the
           client can ask customers for reviews in one tap.
         </span>

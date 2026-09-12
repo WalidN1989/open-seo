@@ -1,6 +1,7 @@
-import { and, desc, eq, inArray, isNull } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, like } from "drizzle-orm";
 import { db } from "@/db";
 import {
+  clientReportProfiles,
   clientReports,
   organization,
   projects,
@@ -74,6 +75,56 @@ async function insert(values: typeof clientReports.$inferInsert) {
   return row;
 }
 
+/**
+ * This month's report for a project, if one exists.
+ *
+ * `createdAt` is ISO text, so the month is a prefix match on "YYYY-MM". A
+ * report regenerated within the month replaces this row rather than adding
+ * to the pile; a new month starts a new row.
+ */
+async function findInMonth(
+  organizationId: string,
+  projectId: string,
+  yearMonth: string,
+) {
+  const [row] = await db
+    .select({ id: clientReports.id })
+    .from(clientReports)
+    .where(
+      and(
+        eq(clientReports.organizationId, organizationId),
+        eq(clientReports.projectId, projectId),
+        like(clientReports.createdAt, `${yearMonth}-%`),
+      ),
+    )
+    .orderBy(desc(clientReports.createdAt))
+    .limit(1);
+  return row ?? null;
+}
+
+async function replace(
+  organizationId: string,
+  id: string,
+  values: {
+    clientName: string;
+    snapshotJson: string;
+    generatedByUserId: string;
+  },
+) {
+  const [row] = await db
+    .update(clientReports)
+    .set({ ...values, createdAt: now() })
+    .where(
+      and(
+        eq(clientReports.organizationId, organizationId),
+        eq(clientReports.id, id),
+      ),
+    )
+    .returning();
+  if (!row) throw new Error("The report could not be replaced.");
+  return row;
+}
+
 async function list(organizationId: string, limit = 50) {
   return db
     .select({
@@ -113,7 +164,44 @@ async function remove(organizationId: string, id: string) {
     );
 }
 
+/** The form as it was last submitted for this project, if ever. */
+async function getProfile(organizationId: string, projectId: string) {
+  const [row] = await db
+    .select({ profileJson: clientReportProfiles.profileJson })
+    .from(clientReportProfiles)
+    .where(
+      and(
+        eq(clientReportProfiles.organizationId, organizationId),
+        eq(clientReportProfiles.projectId, projectId),
+      ),
+    )
+    .limit(1);
+  return row?.profileJson ?? null;
+}
+
+async function saveProfile(input: {
+  organizationId: string;
+  projectId: string;
+  profileJson: string;
+}) {
+  const updatedAt = now();
+  await db
+    .insert(clientReportProfiles)
+    .values({ id: crypto.randomUUID(), ...input, updatedAt })
+    .onConflictDoUpdate({
+      target: [
+        clientReportProfiles.organizationId,
+        clientReportProfiles.projectId,
+      ],
+      set: { profileJson: input.profileJson, updatedAt },
+    });
+}
+
 export const ClientReportRepository = {
+  getProfile,
+  saveProfile,
+  findInMonth,
+  replace,
   reportableProjects,
   organizationName,
   whatsappNumber,
