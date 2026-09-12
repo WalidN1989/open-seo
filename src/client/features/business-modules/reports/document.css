@@ -90,14 +90,12 @@
 .report-lede {
   margin: 0 0 18px;
   color: #4b5563;
-  max-width: 62ch;
 }
 
 .report-note {
   margin: 14px 0 4px;
   font-size: 12.5px;
   color: #6b7280;
-  max-width: 62ch;
 }
 
 .report-checklist {
@@ -317,7 +315,6 @@
   padding: 14px 18px;
   border-radius: 0 8px 8px 0;
   color: #7c2d12;
-  max-width: 68ch;
 }
 
 .report-footer {
@@ -439,7 +436,6 @@
   border: 1px solid #e5e7eb;
   border-radius: 10px;
   padding: 16px 18px;
-  max-width: 560px;
 }
 
 .report-access > div {
@@ -630,7 +626,6 @@
 
 /* Free text from the agency, kept to readable paragraphs. */
 .report-prose {
-  max-width: 68ch;
   color: #374151;
 }
 
@@ -718,5 +713,20 @@
 @media screen and (max-width: 720px) {
   .report-share {
     grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* A long address wraps inside its line rather than overflowing or splitting. */
+.report-note .report-link,
+.report-access-value.report-link {
+  overflow-wrap: anywhere;
+  word-break: break-all;
+}
+
+@media print {
+  .report-note,
+  .report-prose p,
+  .report-share {
+    break-inside: avoid;
   }
 }
