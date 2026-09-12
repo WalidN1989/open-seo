@@ -42,6 +42,11 @@ function isSameSearch(
 export function usePromptExplorerSearchHistory(projectId: string) {
   return useTimestampedSearchHistory({
     storageKey: `prompt-explorer-search-history:${projectId}`,
+    sync: {
+      projectId,
+      module: "prompt_explorer",
+      itemKey: (item) => item.prompt,
+    },
     bodySchema: promptExplorerSearchBodySchema,
     isSame: isSameSearch,
   });

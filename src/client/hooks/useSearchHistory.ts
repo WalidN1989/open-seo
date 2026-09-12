@@ -28,6 +28,12 @@ export function useSearchHistory(projectId: string) {
       Omit<SearchHistoryItem, "timestamp">
     >({
       storageKey: `search-history:${projectId}`,
+      sync: {
+        projectId,
+        module: "keywords",
+        // The same keyword in a different market is a different search.
+        itemKey: (item) => `${item.keyword}|${item.locationCode}`,
+      },
       maxItems: MAX_HISTORY,
       parse: (raw) => {
         const parsed = searchHistoryCodec.safeParse(raw);

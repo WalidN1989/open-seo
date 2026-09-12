@@ -61,6 +61,11 @@ export function useDomainSearchHistory(projectId: string) {
   const { history, isLoaded, addItem, removeItem, clearItems } =
     useLocalHistoryStore<DomainSearchHistoryItem, AddDomainSearchInput>({
       storageKey: `domain-search-history:${projectId}`,
+      sync: {
+        projectId,
+        module: "domain",
+        itemKey: (item) => `${item.domain}|${item.scope}`,
+      },
       maxItems: MAX_HISTORY,
       parse: (raw) => {
         const parsed = domainSearchHistoryCodec.safeParse(raw);

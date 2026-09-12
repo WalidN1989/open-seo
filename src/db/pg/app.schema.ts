@@ -24,7 +24,7 @@ import { organization, user } from "./better-auth-schema";
 // Each backend is internally consistent, but a one-time D1→Postgres data
 // migration MUST rewrite legacy timestamp text into this ISO format (tracked as
 // the deferred timestamp backfill).
-const isoNow = sql`to_char(now() AT TIME ZONE 'utc', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')`;
+export const isoNow = sql`to_char(now() AT TIME ZONE 'utc', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')`;
 const timestampColumn = (name: string) => text(name);
 
 export const userOnboardingAnswers = pgTable(

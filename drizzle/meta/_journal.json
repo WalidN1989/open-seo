@@ -533,6 +533,13 @@
       "when": 1789073469385,
       "tag": "0075_lucky_dormammu",
       "breakpoints": true
+    },
+    {
+      "idx": 76,
+      "version": "6",
+      "when": 1789222862675,
+      "tag": "0076_light_hex",
+      "breakpoints": true
     }
   ]
 }

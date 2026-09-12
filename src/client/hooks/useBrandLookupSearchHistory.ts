@@ -20,6 +20,11 @@ export type BrandLookupSearchHistoryItem = BrandLookupSearchBody & {
 export function useBrandLookupSearchHistory(projectId: string) {
   return useTimestampedSearchHistory({
     storageKey: `brand-lookup-search-history:${projectId}`,
+    sync: {
+      projectId,
+      module: "brand_lookup",
+      itemKey: (item) => item.query,
+    },
     bodySchema: brandLookupSearchBodySchema,
     // Competitor set is part of the identity: a plain lookup must not replace
     // the saved (already paid for) Share-of-Voice comparison of the same brand.

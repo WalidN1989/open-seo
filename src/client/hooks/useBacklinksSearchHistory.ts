@@ -75,6 +75,11 @@ export function useBacklinksSearchHistory(projectId: string) {
     AddBacklinksSearchInput
   >({
     storageKey: `backlinks-search-history:${projectId}`,
+    sync: {
+      projectId,
+      module: "backlinks",
+      itemKey: (item) => `${item.target}|${item.scope}`,
+    },
     maxItems: MAX_HISTORY,
     parse: (raw) => {
       const parsed = backlinksSearchHistoryCodec.safeParse(raw);
