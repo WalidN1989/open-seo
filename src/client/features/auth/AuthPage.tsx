@@ -223,9 +223,13 @@ export function AuthPageShell({
  */
 function AuthShowcase() {
   return (
-    <div className="hidden lg:block">
+    <div className="hidden place-items-center lg:grid">
+      {/* Sized rather than full-bleed: the clip is portrait, so covering the
+          whole column cropped it to a strip and made the page feel like the
+          video was the product. Capped width keeps it a panel beside the
+          form. */}
       <video
-        className="h-full w-full rounded-2xl object-cover"
+        className="max-h-[min(80dvh,46rem)] w-full max-w-md rounded-2xl object-contain"
         src="/login-hero.mp4"
         poster="/login-hero-poster.jpg"
         autoPlay
