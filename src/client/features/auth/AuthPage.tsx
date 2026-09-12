@@ -221,17 +221,33 @@ export function AuthPageShell({
 }
 
 /**
- * Decoration, so it is hidden from assistive technology and skipped on small
- * screens entirely — no reason to spend a phone's data on a background.
+ * The clip beside the form.
+ *
+ * Muted by default and it starts that way on every visit: browsers refuse to
+ * autoplay with sound, and a login page that talks unprompted would be worse
+ * than one that plays nothing. The one control is a sound toggle. The
+ * `muted` attribute is the initial state; the property is what the toggle
+ * flips, and React keeps the two in step through the ref.
  */
 function AuthShowcase() {
+  const videoRef = React.useRef<HTMLVideoElement>(null);
+  const [muted, setMuted] = React.useState(true);
+
+  const toggleSound = () => {
+    const video = videoRef.current;
+    if (!video) return;
+    video.muted = !video.muted;
+    setMuted(video.muted);
+  };
+
   return (
-    <div className="hidden lg:block">
+    <div className="relative hidden lg:block">
       {/* Sized rather than full-bleed: the clip is portrait, so covering the
           whole column cropped it to a strip and made the page feel like the
           video was the product. Capped width keeps it a panel beside the
           form. */}
       <video
+        ref={videoRef}
         className="max-h-[min(78dvh,44rem)] w-[26rem] max-w-full rounded-2xl object-contain"
         src="/login-hero.mp4"
         poster="/login-hero-poster.jpg"
@@ -244,6 +260,54 @@ function AuthShowcase() {
         aria-hidden
         tabIndex={-1}
       />
+      <button
+        type="button"
+        onClick={toggleSound}
+        aria-pressed={!muted}
+        aria-label={muted ? "Turn sound on" : "Turn sound off"}
+        title={muted ? "Turn sound on" : "Turn sound off"}
+        className="absolute right-3 bottom-3 flex size-9 items-center justify-center rounded-full bg-black/55 text-white backdrop-blur-sm transition hover:bg-black/75 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
+      >
+        {muted ? <SoundOffIcon /> : <SoundOnIcon />}
+      </button>
     </div>
+  );
+}
+
+function SoundOffIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      className="size-4"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M11 5 6 9H2v6h4l5 4V5z" />
+      <path d="m23 9-6 6" />
+      <path d="m17 9 6 6" />
+    </svg>
+  );
+}
+
+function SoundOnIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      className="size-4"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M11 5 6 9H2v6h4l5 4V5z" />
+      <path d="M15.5 8.5a5 5 0 0 1 0 7" />
+      <path d="M19 5.5a9 9 0 0 1 0 13" />
+    </svg>
   );
 }
