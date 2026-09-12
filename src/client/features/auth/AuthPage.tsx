@@ -170,11 +170,14 @@ export function AuthPageShell({
     <AuthShowcaseContext.Provider value>
       <div
         data-theme="openseo-dark"
-        className="min-h-[100dvh] bg-base-200 text-base-content lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] lg:gap-6 lg:p-5"
+        // The form column is capped and the video column sizes to the video, and
+        // the pair is centred as one piece. Splitting the viewport in half left
+        // the clip stranded in the far corner of a wide screen.
+        className="min-h-[100dvh] bg-base-200 text-base-content lg:grid lg:grid-cols-[minmax(0,34rem)_auto] lg:items-center lg:justify-center lg:gap-10 lg:p-5"
       >
         {/* The form column is its own scroll container so a tall form stays
             reachable without the panel beside it scrolling away. */}
-        <div className="relative flex min-h-[100dvh] flex-col overflow-y-auto px-6 py-6 lg:min-h-0 lg:px-14 lg:py-10">
+        <div className="relative flex min-h-[100dvh] flex-col overflow-y-auto px-6 py-6 lg:min-h-0 lg:px-8 lg:py-10">
           <a
             href="/"
             className="auth-rise flex w-fit items-center gap-2.5 self-center"
@@ -223,13 +226,13 @@ export function AuthPageShell({
  */
 function AuthShowcase() {
   return (
-    <div className="hidden place-items-center lg:grid">
+    <div className="hidden lg:block">
       {/* Sized rather than full-bleed: the clip is portrait, so covering the
           whole column cropped it to a strip and made the page feel like the
           video was the product. Capped width keeps it a panel beside the
           form. */}
       <video
-        className="max-h-[min(80dvh,46rem)] w-full max-w-md rounded-2xl object-contain"
+        className="max-h-[min(78dvh,44rem)] w-[26rem] max-w-full rounded-2xl object-contain"
         src="/login-hero.mp4"
         poster="/login-hero-poster.jpg"
         autoPlay
