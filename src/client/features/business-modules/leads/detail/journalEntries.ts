@@ -78,22 +78,59 @@ export function buildJournal(detail: LeadDetail): JournalEntry[] {
   ].toSorted((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime());
 }
 
-/** Whether the automated WhatsApp and email reached this lead, and when. */
+export type OutreachResult = {
+  state: "sent" | "failed";
+  at: string;
+  detail: string | null;
+};
+
+function fromStatus(status: string | null, at: string): OutreachResult | null {
+  if (!status || status.startsWith("skipped")) return null;
+  return {
+    state: status.startsWith("sent") ? "sent" : "failed",
+    at,
+    detail: status,
+  };
+}
+
+/**
+ * Whether the automated WhatsApp and email reached this lead, and when. The
+ * journal entry is the record for calls since outreach was journalled; the
+ * call's own status covers the ones before.
+ */
 export function outreachState(detail: LeadDetail) {
-  const latest = (kind: "whatsapp" | "email") =>
-    detail.activities.find(
-      (activity) =>
-        activity.activityType === kind &&
-        !activity.createdByMemberId &&
-        (activity.outcome === "sent" || activity.outcome === "failed"),
-    ) ?? null;
-  const call = detail.calls[0] ?? null;
+  const latest = (kind: "whatsapp" | "email"): OutreachResult | null => {
+    const activity = detail.activities.find(
+      (entry) =>
+        entry.activityType === kind &&
+        !entry.createdByMemberId &&
+        (entry.outcome === "sent" || entry.outcome === "failed"),
+    );
+    const fromActivity = activity
+      ? {
+          state: activity.outcome as "sent" | "failed",
+          at: activity.occurredAt,
+          detail: activity.notes,
+        }
+      : null;
+    const fromCall =
+      detail.calls
+        .map((call) =>
+          fromStatus(
+            kind === "whatsapp" ? call.welcomeStatus : call.recapEmailStatus,
+            call.createdAt,
+          ),
+        )
+        .find(Boolean) ?? null;
+    if (!fromActivity) return fromCall;
+    if (!fromCall) return fromActivity;
+    return new Date(fromCall.at) > new Date(fromActivity.at)
+      ? fromCall
+      : fromActivity;
+  };
   return {
     whatsapp: latest("whatsapp"),
     email: latest("email"),
-    call,
-    lastInboundWhatsapp:
-      detail.whatsapp.find((message) => message.direction === "inbound") ??
-      null,
+    call: detail.calls[0] ?? null,
   };
 }

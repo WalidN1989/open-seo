@@ -156,6 +156,11 @@ async function listEmails(organizationId: string, address: string) {
     .limit(RECENT);
 }
 
+function callOutcome(status: string | null) {
+  if (!status || status.startsWith("skipped")) return undefined;
+  return status.startsWith("sent") ? ("sent" as const) : ("failed" as const);
+}
+
 /**
  * The latest automated WhatsApp and email result per lead, for the leads
  * table: "did it go out?" without opening each lead.
@@ -188,6 +193,23 @@ async function outreachByLead(organizationId: string) {
     const key = row.activityType as "whatsapp" | "email";
     entry[key] ??= row.outcome as "sent" | "failed";
     byLead.set(row.leadId, entry);
+  }
+  // Calls from before outreach was journalled only say so on the call.
+  const calls = await db
+    .select({
+      leadId: voicePhoneCalls.leadId,
+      welcomeStatus: voicePhoneCalls.welcomeStatus,
+      recapEmailStatus: voicePhoneCalls.recapEmailStatus,
+    })
+    .from(voicePhoneCalls)
+    .where(eq(voicePhoneCalls.organizationId, organizationId))
+    .orderBy(desc(voicePhoneCalls.createdAt));
+  for (const call of calls) {
+    if (!call.leadId) continue;
+    const entry = byLead.get(call.leadId) ?? {};
+    entry.whatsapp ??= callOutcome(call.welcomeStatus);
+    entry.email ??= callOutcome(call.recapEmailStatus);
+    byLead.set(call.leadId, entry);
   }
   return byLead;
 }

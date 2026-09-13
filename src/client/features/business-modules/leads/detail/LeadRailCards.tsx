@@ -7,33 +7,31 @@ import {
 } from "lucide-react";
 import { timeAgo } from "@/shared/leads-command";
 import { whenLabel } from "@/shared/lead-journal";
-import { outreachState } from "./journalEntries";
+import { outreachState, type OutreachResult } from "./journalEntries";
 import type { LeadDetail } from "./useLeadDetail";
-
-type Activity = LeadDetail["activities"][number] | null;
 
 function OutreachRow({
   icon,
   label,
-  activity,
+  result,
   never,
 }: {
   icon: React.ReactNode;
   label: string;
-  activity: Activity;
+  result: OutreachResult | null;
   never: string;
 }) {
-  const sent = activity?.outcome === "sent";
+  const sent = result?.state === "sent";
   return (
     <div className="flex items-start gap-2.5 py-2">
       <span className="mt-0.5 text-base-content/50">{icon}</span>
       <div className="min-w-0 flex-1">
         <div className="text-sm font-medium">{label}</div>
         <div className="text-xs text-base-content/55">
-          {activity ? whenLabel(activity.occurredAt) : never}
+          {result ? whenLabel(result.at) : never}
         </div>
       </div>
-      {activity ? (
+      {result ? (
         sent ? (
           <span className="flex items-center gap-1 rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700">
             <CheckCircle2 className="size-3" /> Sent
@@ -41,7 +39,7 @@ function OutreachRow({
         ) : (
           <span
             className="flex items-center gap-1 rounded bg-rose-100 px-1.5 py-0.5 text-[10px] font-bold text-rose-700"
-            title={activity.notes ?? undefined}
+            title={result.detail ?? undefined}
           >
             <XCircle className="size-3" /> Failed
           </span>
@@ -67,13 +65,13 @@ export function OutreachCard({ detail }: { detail: LeadDetail }) {
         <OutreachRow
           icon={<MessageCircle className="size-4" />}
           label="WhatsApp thank-you"
-          activity={state.whatsapp}
+          result={state.whatsapp}
           never="Not sent yet"
         />
         <OutreachRow
           icon={<Mail className="size-4" />}
           label="Recap email"
-          activity={state.email}
+          result={state.email}
           never="Not sent yet"
         />
         <div className="flex items-start gap-2.5 py-2">
