@@ -33,6 +33,25 @@ export function replySubject(subject: string | null | undefined) {
   return /^re:/i.test(base) ? base : `Re: ${base}`;
 }
 
+/**
+ * A Cc or Bcc list as it will be sent: trimmed, lower-cased, without
+ * repeats, without anyone already in `exclude` (the sender, the To).
+ */
+export function cleanRecipients(
+  list: readonly string[] | undefined,
+  exclude: readonly string[],
+): string[] {
+  const taken = new Set(exclude.map(bareAddress));
+  const out: string[] = [];
+  for (const raw of list ?? []) {
+    const address = bareAddress(raw);
+    if (!address || taken.has(address)) continue;
+    taken.add(address);
+    out.push(address);
+  }
+  return out;
+}
+
 /** "Jane <jane@x.com>" → "jane@x.com", lower-cased. */
 export function bareAddress(value: string) {
   const match = value.match(/<([^>]+)>/);

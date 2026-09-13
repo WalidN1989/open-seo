@@ -136,6 +136,7 @@ async function ingestReceived(
     direction: "inbound",
     fromAddress: message.from,
     toAddresses: message.to ?? [],
+    ccAddresses: message.cc ?? [],
     subject: message.subject ?? null,
     textBody: message.text ?? message.preview ?? null,
     htmlBody: message.html?.slice(0, 200_000) ?? null,

@@ -67,6 +67,7 @@ describe("mail bridge handler", () => {
       references: [],
       from: "Jane <jane@x.com>",
       to: ["sales@digitalurgency.com.au"],
+      cc: [],
       subject: "Re: Your report",
       text: "Thanks!",
       html: null,

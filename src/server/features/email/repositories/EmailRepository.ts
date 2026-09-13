@@ -235,6 +235,8 @@ async function insertMessage(values: {
   direction: "inbound" | "outbound" | "draft";
   fromAddress: string;
   toAddresses: string[];
+  ccAddresses?: string[];
+  bccAddresses?: string[];
   subject: string | null;
   textBody: string | null;
   htmlBody: string | null;
@@ -248,6 +250,8 @@ async function insertMessage(values: {
       id: crypto.randomUUID(),
       ...values,
       toAddresses: JSON.stringify(values.toAddresses),
+      ccAddresses: JSON.stringify(values.ccAddresses ?? []),
+      bccAddresses: JSON.stringify(values.bccAddresses ?? []),
     })
     .returning();
   return row;
@@ -275,11 +279,16 @@ async function updateMessage(
       EmailMessageRow,
       "externalMessageId" | "direction" | "status" | "textBody" | "occurredAt"
     >
-  >,
+  > & { ccAddresses?: string[]; bccAddresses?: string[] },
 ) {
+  const { ccAddresses, bccAddresses, ...rest } = values;
   const [row] = await db
     .update(emailMessages)
-    .set(values)
+    .set({
+      ...rest,
+      ...(ccAddresses ? { ccAddresses: JSON.stringify(ccAddresses) } : {}),
+      ...(bccAddresses ? { bccAddresses: JSON.stringify(bccAddresses) } : {}),
+    })
     .where(
       and(
         eq(emailMessages.organizationId, organizationId),

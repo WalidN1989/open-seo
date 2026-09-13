@@ -575,6 +575,13 @@
       "when": 1789284405108,
       "tag": "0081_conscious_doctor_doom",
       "breakpoints": true
+    },
+    {
+      "idx": 82,
+      "version": "6",
+      "when": 1789288281181,
+      "tag": "0082_high_eternity",
+      "breakpoints": true
     }
   ]
 }

@@ -7,6 +7,7 @@ import type {
 } from "@/types/schemas/email";
 import { EmailRepository as Repo } from "../repositories/EmailRepository";
 import { audit } from "./EmailAccountService";
+import { copiesFor } from "./EmailService";
 
 const MODULE = "email" as const;
 
@@ -47,11 +48,14 @@ async function saveReplyDraft(
       "Nothing to reply to on this thread yet.",
     );
   }
+  const copies = copiesFor(account.address, [last.fromAddress], input);
   const existing = await Repo.draftOnThread(organizationId, thread.id);
   const draft = existing
     ? await Repo.updateMessage(organizationId, existing.id, {
         textBody: input.text,
         occurredAt: new Date().toISOString(),
+        ccAddresses: copies.cc,
+        bccAddresses: copies.bcc,
       })
     : await Repo.insertMessage({
         organizationId,
@@ -61,6 +65,8 @@ async function saveReplyDraft(
         direction: "draft",
         fromAddress: account.address,
         toAddresses: [last.fromAddress],
+        ccAddresses: copies.cc,
+        bccAddresses: copies.bcc,
         subject: last.subject,
         textBody: input.text,
         htmlBody: null,
@@ -79,6 +85,7 @@ async function saveReplyDraft(
     threadId: thread.id,
     draftMessageId: draft.id,
     replaced: Boolean(existing),
+    ...copies,
   };
 }
 
@@ -89,6 +96,7 @@ async function saveComposeDraft(
   authoredBy: string,
 ) {
   const account = await requireAccount(organizationId, userId);
+  const copies = copiesFor(account.address, [input.to], input);
   const occurredAt = new Date().toISOString();
   // A thread of its own, keyed by a placeholder until it is sent; approving
   // the draft swaps in the provider's thread id so replies land on it.
@@ -110,6 +118,8 @@ async function saveComposeDraft(
     direction: "draft",
     fromAddress: account.address,
     toAddresses: [input.to],
+    ccAddresses: copies.cc,
+    bccAddresses: copies.bcc,
     subject: input.subject,
     textBody: input.text,
     htmlBody: null,
@@ -123,7 +133,12 @@ async function saveComposeDraft(
     to: input.to,
     authoredBy,
   });
-  return { threadId: thread.id, draftMessageId: draft.id, replaced: false };
+  return {
+    threadId: thread.id,
+    draftMessageId: draft.id,
+    replaced: false,
+    ...copies,
+  };
 }
 
 export const EmailDraftService = { saveReplyDraft, saveComposeDraft };

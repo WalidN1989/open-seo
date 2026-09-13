@@ -24,6 +24,8 @@ const draftOutput = {
   draftMessageId: z.string(),
   status: z.literal("draft"),
   replaced: z.boolean(),
+  cc: z.array(z.string()),
+  bcc: z.array(z.string()),
   preview: z.string(),
   ...optionalMetaOutputSchema,
 };
@@ -38,6 +40,16 @@ const replyInput = {
     .describe(
       "Plain text, complete: greeting, answer, sign-off with the business name. No markdown.",
     ),
+  cc: z
+    .array(z.string().email().max(320))
+    .max(10)
+    .optional()
+    .describe("Copied in. The sender and the To are dropped if repeated."),
+  bcc: z
+    .array(z.string().email().max(320))
+    .max(10)
+    .optional()
+    .describe("Blind copies; never shown to the other recipients."),
 } as const;
 
 export const draftReplyToEmailThreadTool = {
@@ -61,12 +73,12 @@ export const draftReplyToEmailThreadTool = {
     const saved = await EmailDraftService.saveReplyDraft(
       context.organizationId,
       context.auth.userId,
-      { threadId: args.threadId, text: args.text },
+      { threadId: args.threadId, text: args.text, cc: args.cc, bcc: args.bcc },
       AUTHOR,
     );
     const preview = args.text.slice(0, 160);
     return mcpResponse({
-      text: `Draft ${saved.replaced ? "replaced" : "saved"} on thread ${saved.threadId}. It is under Drafts in the app, not sent.`,
+      text: `Draft ${saved.replaced ? "replaced" : "saved"} on thread ${saved.threadId}${saved.cc.length ? `, cc ${saved.cc.join(", ")}` : ""}. It is under Drafts in the app, not sent.`,
       structuredContent: { ...saved, status: "draft" as const, preview },
     });
   }),
@@ -83,6 +95,16 @@ const composeInput = {
     .describe(
       "Plain text, complete: greeting, body, sign-off with the business name. No markdown.",
     ),
+  cc: z
+    .array(z.string().email().max(320))
+    .max(10)
+    .optional()
+    .describe("Copied in. The sender and the To are dropped if repeated."),
+  bcc: z
+    .array(z.string().email().max(320))
+    .max(10)
+    .optional()
+    .describe("Blind copies; never shown to the other recipients."),
 } as const;
 
 export const draftEmailTool = {
@@ -106,12 +128,18 @@ export const draftEmailTool = {
     const saved = await EmailDraftService.saveComposeDraft(
       context.organizationId,
       context.auth.userId,
-      { to: args.to, subject: args.subject, text: args.text },
+      {
+        to: args.to,
+        subject: args.subject,
+        text: args.text,
+        cc: args.cc,
+        bcc: args.bcc,
+      },
       AUTHOR,
     );
     const preview = args.text.slice(0, 160);
     return mcpResponse({
-      text: `Draft to ${args.to} saved as thread ${saved.threadId}. It is under Drafts in the app, not sent.`,
+      text: `Draft to ${args.to}${saved.cc.length ? `, cc ${saved.cc.join(", ")}` : ""} saved as thread ${saved.threadId}. It is under Drafts in the app, not sent.`,
       structuredContent: { ...saved, status: "draft" as const, preview },
     });
   }),

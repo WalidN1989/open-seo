@@ -8,6 +8,7 @@ import type {
   setEmailThreadStatusSchema,
 } from "@/types/schemas/email";
 import { outboundFor } from "../providers/outbound";
+import { cleanRecipients } from "../providers/threading";
 import {
   EmailRepository as Repo,
   type EmailAccountRow,
@@ -26,6 +27,17 @@ export function parseList(value: string): string[] {
   } catch {
     return [];
   }
+}
+
+/** Cc and Bcc cleaned against the sender and the To, so nobody gets it twice. */
+export function copiesFor(
+  own: string,
+  to: readonly string[],
+  input: { cc?: string[]; bcc?: string[] },
+) {
+  const cc = cleanRecipients(input.cc, [own, ...to]);
+  const bcc = cleanRecipients(input.bcc, [own, ...to, ...cc]);
+  return { cc, bcc };
 }
 
 export async function requireConnectedAccount(organizationId: string) {
@@ -53,6 +65,8 @@ async function workspace(organizationId: string, userId: string) {
     drafts: drafts.map((draft) => ({
       ...draft,
       toAddresses: parseList(draft.toAddresses),
+      ccAddresses: parseList(draft.ccAddresses),
+      bccAddresses: parseList(draft.bccAddresses),
     })),
   };
 }
@@ -75,6 +89,8 @@ async function threadDetail(
     messages: messages.map((message) => ({
       ...message,
       toAddresses: parseList(message.toAddresses),
+      ccAddresses: parseList(message.ccAddresses),
+      bccAddresses: parseList(message.bccAddresses),
     })),
   };
 }
@@ -105,6 +121,8 @@ export async function recordOutbound(
   sent: { message_id: string; thread_id: string },
   input: {
     to: string[];
+    cc?: string[];
+    bcc?: string[];
     subject: string | null;
     text: string;
     authoredBy: string | null;
@@ -119,6 +137,8 @@ export async function recordOutbound(
     direction: "outbound",
     fromAddress: account.address,
     toAddresses: input.to,
+    ccAddresses: input.cc ?? [],
+    bccAddresses: input.bcc ?? [],
     subject: input.subject,
     textBody: input.text,
     htmlBody: null,
@@ -159,11 +179,13 @@ async function sendReply(
       "Nothing to reply to in this thread yet.",
     );
   }
+  const copies = copiesFor(account.address, [last.fromAddress], input);
   const sent = await outbound
-    .reply({ thread: threadRow, last, text: input.text })
+    .reply({ thread: threadRow, last, text: input.text, ...copies })
     .catch(providerFailure);
   await recordOutbound(account, threadRow, sent, {
     to: [last.fromAddress],
+    ...copies,
     subject: last.subject,
     text: input.text,
     authoredBy: userId,
@@ -184,8 +206,14 @@ async function compose(
     "manage",
   );
   const { account, outbound } = await requireConnectedAccount(organizationId);
+  const copies = copiesFor(account.address, [input.to], input);
   const sent = await outbound
-    .compose({ to: input.to, subject: input.subject, text: input.text })
+    .compose({
+      to: input.to,
+      subject: input.subject,
+      text: input.text,
+      ...copies,
+    })
     .catch(providerFailure);
   const occurredAt = new Date().toISOString();
   const threadRow = await Repo.upsertThread(account, {
@@ -206,6 +234,8 @@ async function compose(
     direction: "outbound",
     fromAddress: account.address,
     toAddresses: [input.to],
+    ccAddresses: copies.cc,
+    bccAddresses: copies.bcc,
     subject: input.subject,
     textBody: input.text,
     htmlBody: null,
@@ -244,14 +274,24 @@ async function approveDraft(
   if (!last && !to) {
     throw new AppError("VALIDATION_ERROR", "The draft has no recipient.");
   }
+  // Copies as drafted, unless the person edited them before approving.
+  const copies = copiesFor(account.address, [last?.fromAddress ?? to ?? ""], {
+    cc: input.cc ?? parseList(draft.ccAddresses),
+    bcc: input.bcc ?? parseList(draft.bccAddresses),
+  });
   // A drafted reply answers the last inbound message; a drafted new email
   // starts the conversation, and the thread then takes the provider's id.
   const sent = last
     ? await outbound
-        .reply({ thread: threadRow, last, text })
+        .reply({ thread: threadRow, last, text, ...copies })
         .catch(providerFailure)
     : await outbound
-        .compose({ to: to ?? "", subject: draft.subject ?? "", text })
+        .compose({
+          to: to ?? "",
+          subject: draft.subject ?? "",
+          text,
+          ...copies,
+        })
         .catch(providerFailure);
   if (!last) await Repo.setThreadExternalId(threadRow.id, sent.thread_id);
   const occurredAt = new Date().toISOString();
@@ -261,6 +301,8 @@ async function approveDraft(
     status: "sent",
     textBody: text,
     occurredAt,
+    ccAddresses: copies.cc,
+    bccAddresses: copies.bcc,
   });
   await Repo.upsertThread(account, {
     externalThreadId: last ? threadRow.externalThreadId : sent.thread_id,

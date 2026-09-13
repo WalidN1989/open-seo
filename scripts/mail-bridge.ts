@@ -116,6 +116,7 @@ async function parseMessage(
     references,
     from: addresses(parsed.from)[0] ?? "",
     to: addresses(parsed.to),
+    cc: addresses(parsed.cc),
     subject: parsed.subject ?? null,
     text: parsed.text ?? null,
     html: typeof parsed.html === "string" ? parsed.html : null,
@@ -439,6 +440,8 @@ async function sendThroughResend(
     body: JSON.stringify({
       from,
       to: request.to,
+      cc: request.cc?.length ? request.cc : undefined,
+      bcc: request.bcc?.length ? request.bcc : undefined,
       reply_to: request.from.address,
       subject: request.subject,
       text: request.text,
@@ -476,6 +479,8 @@ async function send(request: BridgeSendRequest) {
       ? { name: request.from.name, address: request.from.address }
       : request.from.address,
     to: request.to,
+    cc: request.cc,
+    bcc: request.bcc,
     subject: request.subject,
     text: request.text,
     html: request.html,
@@ -504,7 +509,10 @@ async function send(request: BridgeSendRequest) {
   } else {
     try {
       await smtpTransport(request.credentials).sendMail({
-        envelope: { from: request.from.address, to: request.to },
+        envelope: {
+          from: request.from.address,
+          to: [...request.to, ...(request.cc ?? []), ...(request.bcc ?? [])],
+        },
         raw,
       });
     } catch (error) {

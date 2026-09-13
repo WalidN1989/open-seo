@@ -1543,6 +1543,9 @@ export const emailMessages = sqliteTable(
     direction: text("direction").notNull(),
     fromAddress: text("from_address").notNull(),
     toAddresses: text("to_addresses").notNull().default("[]"),
+    ccAddresses: text("cc_addresses").notNull().default("[]"),
+    // Only ever our own outbound; a received message never shows its Bcc.
+    bccAddresses: text("bcc_addresses").notNull().default("[]"),
     subject: text("subject"),
     textBody: text("text_body"),
     htmlBody: text("html_body"),

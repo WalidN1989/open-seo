@@ -72,6 +72,7 @@ export type BridgeInboundMessage = {
   references: string[];
   from: string;
   to: string[];
+  cc: string[];
   subject: string | null;
   text: string | null;
   html: string | null;
@@ -85,6 +86,8 @@ export type BridgeSendRequest = {
   resendApiKey?: string;
   from: { address: string; name?: string };
   to: string[];
+  cc?: string[];
+  bcc?: string[];
   subject: string;
   text: string;
   html?: string;

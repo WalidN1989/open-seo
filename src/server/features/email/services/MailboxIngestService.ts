@@ -126,6 +126,7 @@ async function ingestOne(
     direction: outbound ? "outbound" : "inbound",
     fromAddress: message.from,
     toAddresses: message.to,
+    ccAddresses: message.cc,
     subject: message.subject,
     textBody: message.text,
     htmlBody: message.html?.slice(0, 200_000) ?? null,

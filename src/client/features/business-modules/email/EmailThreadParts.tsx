@@ -73,6 +73,16 @@ export function MessageCard({
                 : ` · ${message.status}`}
           </span>
         </div>
+        {message.ccAddresses.length || message.bccAddresses.length ? (
+          <p className="mb-1 truncate text-xs text-base-content/55">
+            {message.ccAddresses.length
+              ? `Cc ${message.ccAddresses.join(", ")}`
+              : ""}
+            {message.bccAddresses.length
+              ? `${message.ccAddresses.length ? " · " : ""}Bcc ${message.bccAddresses.join(", ")}`
+              : ""}
+          </p>
+        ) : null}
         <p className="whitespace-pre-wrap leading-relaxed">
           {fresh || "(no text)"}
         </p>
@@ -99,6 +109,14 @@ export function MessageCard({
   );
 }
 
+/** "a@x.com, b@y.com" → ["a@x.com", "b@y.com"]. */
+function splitAddresses(value: string) {
+  return value
+    .split(/[,;\s]+/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
 export function Compose({
   onDone,
   from,
@@ -106,9 +124,17 @@ export function Compose({
   onDone: () => void;
   from: string;
 }) {
-  const [form, setForm] = useState({ to: "", subject: "", text: "" });
+  const [form, setForm] = useState({ to: "", cc: "", subject: "", text: "" });
   const send = useEmailMutation(
-    (input: typeof form) => composeEmail({ data: input }),
+    (input: typeof form) =>
+      composeEmail({
+        data: {
+          to: input.to,
+          subject: input.subject,
+          text: input.text,
+          cc: splitAddresses(input.cc),
+        },
+      }),
     "Email sent",
   );
   const field = "input input-bordered input-sm w-full";
@@ -138,6 +164,17 @@ export function Compose({
             value={form.to}
             onChange={(event) =>
               setForm({ ...form, to: event.currentTarget.value })
+            }
+          />
+        </label>
+        <label className="grid grid-cols-[4.5rem_minmax(0,1fr)] items-center gap-2 text-sm">
+          <span className="text-base-content/60">Cc</span>
+          <input
+            className={field}
+            placeholder="Optional, comma-separated"
+            value={form.cc}
+            onChange={(event) =>
+              setForm({ ...form, cc: event.currentTarget.value })
             }
           />
         </label>
@@ -186,8 +223,10 @@ export function Compose({
 
 export function DraftsList({ data }: { data: WorkspaceData }) {
   const [edits, setEdits] = useState<Record<string, string>>({});
+  // Copies as typed, per draft; parsed to a list when approving.
+  const [copies, setCopies] = useState<Record<string, string>>({});
   const approve = useEmailMutation(
-    (input: { messageId: string; text?: string }) =>
+    (input: { messageId: string; text?: string; cc?: string[] }) =>
       approveEmailDraft({ data: input }),
     "Draft sent",
   );
@@ -224,6 +263,25 @@ export function DraftsList({ data }: { data: WorkspaceData }) {
                 {formatEmailTime(draft.createdAt)}
               </span>
             </div>
+            <label className="grid grid-cols-[3rem_minmax(0,1fr)] items-center gap-2 text-sm">
+              <span className="text-base-content/60">Cc</span>
+              <input
+                className="input input-bordered input-sm w-full"
+                placeholder="Comma-separated, optional"
+                value={copies[draft.id] ?? draft.ccAddresses.join(", ")}
+                onChange={(event) =>
+                  setCopies({
+                    ...copies,
+                    [draft.id]: event.currentTarget.value,
+                  })
+                }
+              />
+            </label>
+            {draft.bccAddresses.length ? (
+              <p className="text-xs text-base-content/55">
+                Bcc {draft.bccAddresses.join(", ")}
+              </p>
+            ) : null}
             <textarea
               className="textarea textarea-bordered w-full text-sm"
               rows={8}
@@ -250,6 +308,10 @@ export function DraftsList({ data }: { data: WorkspaceData }) {
                     text:
                       edits[draft.id] !== undefined
                         ? edits[draft.id]
+                        : undefined,
+                    cc:
+                      copies[draft.id] !== undefined
+                        ? splitAddresses(copies[draft.id] ?? "")
                         : undefined,
                   })
                 }

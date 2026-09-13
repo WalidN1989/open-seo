@@ -134,6 +134,8 @@ export const getEmailThreadTool = {
           direction: z.string(),
           from: z.string(),
           to: z.array(z.string()),
+          cc: z.array(z.string()),
+          bcc: z.array(z.string()),
           subject: z.string().nullable(),
           text: z.string().nullable(),
           status: z.string(),
@@ -162,6 +164,8 @@ export const getEmailThreadTool = {
       direction: message.direction,
       from: message.fromAddress,
       to: message.toAddresses,
+      cc: message.ccAddresses,
+      bcc: message.bccAddresses,
       subject: message.subject,
       text: message.textBody,
       status: message.status,
@@ -182,7 +186,7 @@ export const getEmailThreadTool = {
         `Subject: ${thread.subject ?? "(no subject)"}`,
         ...messages.map(
           (message) =>
-            `\n[${message.direction}] ${message.from} → ${message.to.join(", ")} (${message.occurredAt.slice(0, 16)})\n${message.text ?? ""}`,
+            `\n[${message.direction}] ${message.from} → ${message.to.join(", ")}${message.cc.length ? ` cc ${message.cc.join(", ")}` : ""}${message.bcc.length ? ` bcc ${message.bcc.join(", ")}` : ""} (${message.occurredAt.slice(0, 16)})\n${message.text ?? ""}`,
         ),
       ].join("\n"),
       structuredContent: { thread, messages },
@@ -200,6 +204,16 @@ const replyInput = {
     .describe(
       "Plain text, complete: greeting, answer, sign-off with the business name. No markdown.",
     ),
+  cc: z
+    .array(z.string().email().max(320))
+    .max(10)
+    .optional()
+    .describe("Copied in. The sender and the To are dropped if repeated."),
+  bcc: z
+    .array(z.string().email().max(320))
+    .max(10)
+    .optional()
+    .describe("Blind copies; never shown to the other recipients."),
 } as const;
 
 export const replyToEmailThreadTool = {
@@ -223,7 +237,7 @@ export const replyToEmailThreadTool = {
     const sent = await EmailService.sendReply(
       context.organizationId,
       context.auth.userId,
-      { threadId: args.threadId, text: args.text },
+      { threadId: args.threadId, text: args.text, cc: args.cc, bcc: args.bcc },
     );
     return mcpResponse({
       text: `Reply sent (${sent.messageId}).`,
@@ -243,6 +257,16 @@ const composeInput = {
     .describe(
       "Plain text, complete: greeting, body, sign-off with the business name. No markdown.",
     ),
+  cc: z
+    .array(z.string().email().max(320))
+    .max(10)
+    .optional()
+    .describe("Copied in. The sender and the To are dropped if repeated."),
+  bcc: z
+    .array(z.string().email().max(320))
+    .max(10)
+    .optional()
+    .describe("Blind copies; never shown to the other recipients."),
 } as const;
 
 export const sendEmailTool = {
@@ -270,7 +294,13 @@ export const sendEmailTool = {
     const sent = await EmailService.compose(
       context.organizationId,
       context.auth.userId,
-      { to: args.to, subject: args.subject, text: args.text },
+      {
+        to: args.to,
+        subject: args.subject,
+        text: args.text,
+        cc: args.cc,
+        bcc: args.bcc,
+      },
     );
     return mcpResponse({
       text: `Sent to ${args.to} (${sent.messageId}).`,

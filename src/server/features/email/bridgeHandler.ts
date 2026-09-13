@@ -14,6 +14,7 @@ const inboundSchema = z.object({
   references: z.array(z.string()).max(200),
   from: z.string().min(1),
   to: z.array(z.string()).max(200),
+  cc: z.array(z.string()).max(200).default([]),
   subject: z.string().nullable(),
   text: z.string().nullable(),
   html: z.string().nullable(),

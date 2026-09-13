@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   bareAddress,
+  cleanRecipients,
   normalizeMessageId,
   referencedMessageIds,
   replySubject,
@@ -32,5 +33,23 @@ describe("email threading helpers", () => {
   it("reduces a display-name address to the bare address", () => {
     expect(bareAddress("Jane Doe <Jane@X.com>")).toBe("jane@x.com");
     expect(bareAddress("  jane@x.com ")).toBe("jane@x.com");
+  });
+});
+
+describe("cleanRecipients", () => {
+  it("drops repeats, the sender and the To, and lower-cases", () => {
+    expect(
+      cleanRecipients(
+        [
+          "Info <Info@southsidefencing.com.au>",
+          "info@southsidefencing.com.au",
+          "sales@digitalurgency.com.au",
+          "enas@slaccbook.com",
+          "other@x.com",
+        ],
+        ["sales@digitalurgency.com.au", "Enas <enas@slaccbook.com>"],
+      ),
+    ).toEqual(["info@southsidefencing.com.au", "other@x.com"]);
+    expect(cleanRecipients(undefined, [])).toEqual([]);
   });
 });

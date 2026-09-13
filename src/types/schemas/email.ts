@@ -46,12 +46,22 @@ export const connectAgentmailSchema = z.object({
 
 export const emailThreadIdSchema = z.object({ threadId: z.string().min(1) });
 
+/** Cc or Bcc as typed: each an address, at most ten. Cleaned server-side. */
+export const copyListSchema = z
+  .array(z.string().trim().toLowerCase().email().max(320))
+  .max(10)
+  .optional();
+
 export const sendEmailReplySchema = z.object({
+  cc: copyListSchema,
+  bcc: copyListSchema,
   threadId: z.string().min(1),
   text: z.string().trim().min(1).max(20_000),
 });
 
 export const composeEmailSchema = z.object({
+  cc: copyListSchema,
+  bcc: copyListSchema,
   to: z.string().trim().email().max(320),
   subject: z.string().trim().min(1).max(300),
   text: z.string().trim().min(1).max(20_000),
@@ -59,12 +69,16 @@ export const composeEmailSchema = z.object({
 
 /** A reply drafted for a person to approve; replaces the thread's draft. */
 export const draftEmailReplySchema = z.object({
+  cc: copyListSchema,
+  bcc: copyListSchema,
   threadId: z.string().min(1),
   text: z.string().trim().min(1).max(20_000),
 });
 
 /** A new message drafted for a person to approve, on a thread of its own. */
 export const draftEmailSchema = z.object({
+  cc: copyListSchema,
+  bcc: copyListSchema,
   to: z.string().trim().email().max(320),
   subject: z.string().trim().min(1).max(200),
   text: z.string().trim().min(1).max(20_000),
@@ -74,6 +88,9 @@ export const approveEmailDraftSchema = z.object({
   messageId: z.string().min(1),
   /** An edited body, when the person changed the assistant's draft. */
   text: z.string().trim().min(1).max(20_000).optional(),
+  /** Edited copies; omitted means "as drafted", an empty list means none. */
+  cc: copyListSchema,
+  bcc: copyListSchema,
 });
 
 export const emailMessageIdSchema = z.object({ messageId: z.string().min(1) });

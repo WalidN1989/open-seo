@@ -234,6 +234,7 @@ export function agentmailClient(apiKey: string, fetcher: typeof fetch = fetch) {
       input: {
         to: string[];
         cc?: string[];
+        bcc?: string[];
         subject?: string;
         text?: string;
         html?: string;
@@ -250,7 +251,13 @@ export function agentmailClient(apiKey: string, fetcher: typeof fetch = fetch) {
     replyToMessage: (
       inboxId: string,
       messageId: string,
-      input: { text?: string; html?: string; reply_all?: boolean },
+      input: {
+        text?: string;
+        html?: string;
+        reply_all?: boolean;
+        cc?: string[];
+        bcc?: string[];
+      },
     ) =>
       call<AgentmailSendResult>(
         apiKey,

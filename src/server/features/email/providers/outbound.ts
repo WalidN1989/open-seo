@@ -19,18 +19,24 @@ import {
 import { normalizeMessageId, replySubject } from "./threading";
 
 /** What every provider must be able to do, in the mirror's own terms. */
+export type Copies = { cc?: string[]; bcc?: string[] };
+
 export type Outbound = {
-  reply(input: {
-    thread: EmailThreadRow;
-    last: EmailMessageRow;
-    text: string;
-  }): Promise<{ message_id: string; thread_id: string }>;
-  compose(input: {
-    to: string;
-    subject: string;
-    text: string;
-    html?: string;
-  }): Promise<{ message_id: string; thread_id: string }>;
+  reply(
+    input: {
+      thread: EmailThreadRow;
+      last: EmailMessageRow;
+      text: string;
+    } & Copies,
+  ): Promise<{ message_id: string; thread_id: string }>;
+  compose(
+    input: {
+      to: string;
+      subject: string;
+      text: string;
+      html?: string;
+    } & Copies,
+  ): Promise<{ message_id: string; thread_id: string }>;
 };
 
 function agentmailOutbound(account: EmailAccountRow, apiKey: string): Outbound {
@@ -40,17 +46,21 @@ function agentmailOutbound(account: EmailAccountRow, apiKey: string): Outbound {
   }
   const client = agentmailClient(apiKey);
   return {
-    reply: ({ last, text }) => {
+    reply: ({ last, text, cc, bcc }) => {
       if (!last.externalMessageId) {
         throw new AppError(
           "VALIDATION_ERROR",
           "Nothing to reply to in this thread yet.",
         );
       }
-      return client.replyToMessage(inboxId, last.externalMessageId, { text });
+      return client.replyToMessage(inboxId, last.externalMessageId, {
+        text,
+        cc,
+        bcc,
+      });
     },
-    compose: ({ to, subject, text, html }) =>
-      client.sendMessage(inboxId, { to: [to], subject, text, html }),
+    compose: ({ to, subject, text, html, cc, bcc }) =>
+      client.sendMessage(inboxId, { to: [to], cc, bcc, subject, text, html }),
   };
 }
 
@@ -77,13 +87,15 @@ function mailboxOutbound(
   }
   const via = { transport, resendApiKey };
   return {
-    reply: async ({ thread, last, text }) => {
+    reply: async ({ thread, last, text, cc, bcc }) => {
       const lastId = normalizeMessageId(last.externalMessageId);
       const sent = await sendViaMailbox({
         ...via,
         credentials,
         from,
         to: [last.fromAddress],
+        cc,
+        bcc,
         subject: replySubject(last.subject),
         text,
         inReplyTo: lastId ?? undefined,
@@ -93,12 +105,14 @@ function mailboxOutbound(
       });
       return { message_id: sent.messageId, thread_id: thread.externalThreadId };
     },
-    compose: async ({ to, subject, text, html }) => {
+    compose: async ({ to, subject, text, html, cc, bcc }) => {
       const sent = await sendViaMailbox({
         ...via,
         credentials,
         from,
         to: [to],
+        cc,
+        bcc,
         subject,
         text,
         html,
