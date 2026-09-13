@@ -195,5 +195,8 @@ export function formFromSnapshot(snapshot: ReportSnapshot) {
     googleReviewUrl: snapshot.googleReviewUrl ?? "",
     recommendations: snapshot.recommendations ?? "",
     conclusion: snapshot.conclusion ?? "",
+    standingIntro: snapshot.standingIntro ?? "",
+    figureImage: snapshot.figure?.src ?? "",
+    figureCaption: snapshot.figure?.caption ?? "",
   };
 }

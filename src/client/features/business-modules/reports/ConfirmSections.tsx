@@ -251,3 +251,25 @@ export function Conclusion({ text }: { text: string | null }) {
     </section>
   );
 }
+
+/**
+ * A full-width picture with a short caption.
+ *
+ * Full width of the content column, never a half column with the other side
+ * empty: the point of the picture is that the client feels the gap at a
+ * glance, and a thumbnail beside a paragraph does not do that.
+ */
+export function ReportFigure({
+  src,
+  caption,
+}: {
+  src: string;
+  caption: string | null;
+}) {
+  return (
+    <figure className="report-figure">
+      <img src={src} alt={caption ?? ""} loading="lazy" />
+      {caption ? <figcaption>{caption}</figcaption> : null}
+    </figure>
+  );
+}

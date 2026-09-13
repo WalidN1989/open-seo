@@ -88,6 +88,8 @@ export function ReportsWorkspace() {
           googleReviewUrl: engagement.googleReviewUrl.trim(),
           recommendations: engagement.recommendations.trim(),
           conclusion: engagement.conclusion.trim(),
+          standingIntro: engagement.standingIntro.trim(),
+          figureCaption: engagement.figureCaption.trim(),
         },
       }),
     onSuccess: async (result) => {

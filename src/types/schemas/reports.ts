@@ -22,6 +22,15 @@ export const generateClientReportSchema = z.object({
   instagramManaged: z.boolean().default(false),
   /** Their Google review link, e.g. https://g.page/r/…/review. */
   googleReviewUrl: z.string().trim().max(300).default(""),
+  /**
+   * The picture that makes the gap felt — usually a screenshot of Google's
+   * local pack. A data URL, stored with the report so the share link and the
+   * remembered form both carry it. Two megabytes is plenty for a screenshot.
+   */
+  figureImage: z.string().max(2_800_000).default(""),
+  figureCaption: z.string().trim().max(400).default(""),
+  /** One or two sentences under "Where you stand", above the picture. */
+  standingIntro: z.string().trim().max(300).default(""),
   /** Our own words. Kept short enough to fit a page. */
   recommendations: z.string().trim().max(4000).default(""),
   /**

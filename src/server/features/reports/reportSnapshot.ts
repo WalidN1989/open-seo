@@ -116,6 +116,10 @@ export type ReportSnapshot = {
   googleReviewUrl: string | null;
   /** Closing summary, for an existing client. Supports **bold** and - bullets. */
   conclusion: string | null;
+  /** Short lead-in under "Where you stand", before the picture and the cards. */
+  standingIntro: string | null;
+  /** The picture under "Where you stand", full column width. */
+  figure: { src: string; caption: string | null } | null;
   /**
    * The best of what has been researched, for the client to confirm. Printed
    * with a box beside each so it can be ticked on paper and sent back.

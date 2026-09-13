@@ -20,6 +20,9 @@ export type Engagement = {
   googleReviewUrl: string;
   recommendations: string;
   conclusion: string;
+  standingIntro: string;
+  figureImage: string;
+  figureCaption: string;
 };
 
 export const EMPTY_ENGAGEMENT: Engagement = {
@@ -36,7 +39,13 @@ export const EMPTY_ENGAGEMENT: Engagement = {
   googleReviewUrl: "",
   recommendations: "",
   conclusion: "",
+  standingIntro: "",
+  figureImage: "",
+  figureCaption: "",
 };
+
+/** A screenshot, not a photo library: two megabytes is plenty. */
+const MAX_FIGURE_BYTES = 2_000_000;
 
 type ToggleKey = {
   [K in keyof Engagement]: Engagement[K] extends boolean ? K : never;
@@ -117,6 +126,7 @@ export function EngagementForm({
   const [showConclusion, setShowConclusion] = useState(
     Boolean(value.conclusion),
   );
+  const [figureError, setFigureError] = useState<string | null>(null);
   useEffect(() => {
     if (value.conclusion) setShowConclusion(true);
   }, [value.conclusion]);
@@ -175,6 +185,75 @@ export function EngagementForm({
           client can ask customers for reviews in one tap.
         </span>
       </label>
+
+      <fieldset className="space-y-2">
+        <legend className="label-text mb-1">
+          Where you stand — the picture that makes the gap felt
+        </legend>
+        <input
+          className="input input-bordered input-sm w-full"
+          value={value.standingIntro}
+          onChange={(event) => set("standingIntro", event.target.value)}
+          placeholder="One or two sentences, e.g. On Google you are visible in Springfield Lakes, but nearby firms own far more review trust."
+          aria-label="Where you stand, intro"
+        />
+        <div className="flex flex-wrap items-center gap-3">
+          <input
+            type="file"
+            accept="image/png,image/jpeg,image/webp"
+            className="file-input file-input-bordered file-input-sm"
+            aria-label="Screenshot"
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              if (!file) return;
+              if (file.size > MAX_FIGURE_BYTES) {
+                setFigureError("That image is over 2 MB. Crop or compress it.");
+                return;
+              }
+              const reader = new FileReader();
+              reader.addEventListener("load", () => {
+                // readAsDataURL always yields a string; anything else is a
+                // read that did not happen.
+                if (typeof reader.result !== "string") return;
+                setFigureError(null);
+                set("figureImage", reader.result);
+              });
+              reader.readAsDataURL(file);
+            }}
+          />
+          {value.figureImage ? (
+            <>
+              <img
+                src={value.figureImage}
+                alt=""
+                className="h-12 rounded border border-base-300 object-cover"
+              />
+              <button
+                type="button"
+                className="btn btn-ghost btn-xs"
+                onClick={() => set("figureImage", "")}
+              >
+                Remove
+              </button>
+            </>
+          ) : null}
+        </div>
+        {figureError ? (
+          <p className="text-sm text-error">{figureError}</p>
+        ) : null}
+        <input
+          className="input input-bordered input-sm w-full"
+          value={value.figureCaption}
+          onChange={(event) => set("figureCaption", event.target.value)}
+          placeholder="Caption, e.g. You: 5.0★ from 5 reviews. Deduct Tax: 4.9★ from 147. Same area, much bigger proof gap."
+          aria-label="Caption"
+        />
+        <p className="text-xs text-base-content/55">
+          Usually a screenshot of Google&rsquo;s local pack for their main
+          search. It prints full width under &ldquo;Where you stand&rdquo;,
+          before the numbers.
+        </p>
+      </fieldset>
 
       <div className="space-y-2">
         <Toggle
