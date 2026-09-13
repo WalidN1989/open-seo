@@ -214,8 +214,11 @@ export function DraftsList({ data }: { data: WorkspaceData }) {
           >
             <div className="flex items-center justify-between gap-2 text-sm">
               <span className="flex items-center gap-2 font-medium">
-                <Sparkles className="size-4" /> Reply to{" "}
+                <Sparkles className="size-4" />
                 {draft.subject || "(no subject)"}
+                <span className="font-normal text-base-content/55">
+                  to {draft.toAddresses.join(", ") || "?"}
+                </span>
               </span>
               <span className="text-xs text-base-content/55">
                 {formatEmailTime(draft.createdAt)}

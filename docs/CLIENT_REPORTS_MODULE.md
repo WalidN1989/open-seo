@@ -119,3 +119,15 @@ Add the query to `ReportDataRepository` (project-scoped, read-only), the shape
 to `ReportSnapshot`, and the rendering to `ClientReportDocument`. Bump nothing:
 `version` on the snapshot exists so an older stored report is refused rather
 than rendered half-empty, and refusing tells the user to generate it again.
+
+## Reading the "Where you stand" screenshot
+
+`src/server/features/reports/figureReader.ts` sends the uploaded local-pack
+image to Claude (`claude-sonnet-5`, `ANTHROPIC_API_KEY`) with the client's
+name and domain and gets back `standingIntro`, `figureCaption`, up to four
+`pitch` lines and a `seen` list of what it read. The form's "Draft from
+screenshot" button (server fn `readReportFigure`) fills the intro and
+caption, puts the pitch under recommendations only when that box is empty,
+and shows `seen` so the agency checks the numbers before generating. The
+prompt forbids invented facts; a client missing from the pack is reported
+as missing.

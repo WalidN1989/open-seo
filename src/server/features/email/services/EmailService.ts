@@ -50,7 +50,10 @@ async function workspace(organizationId: string, userId: string) {
       senders: parseList(thread.senders),
       recipients: parseList(thread.recipients),
     })),
-    drafts,
+    drafts: drafts.map((draft) => ({
+      ...draft,
+      toAddresses: parseList(draft.toAddresses),
+    })),
   };
 }
 
