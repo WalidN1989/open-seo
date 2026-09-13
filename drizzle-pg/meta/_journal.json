@@ -442,6 +442,13 @@
       "when": 1789294266683,
       "tag": "0062_open_terrax",
       "breakpoints": true
+    },
+    {
+      "idx": 63,
+      "version": "7",
+      "when": 1789321493054,
+      "tag": "0063_tense_black_widow",
+      "breakpoints": true
     }
   ]
 }

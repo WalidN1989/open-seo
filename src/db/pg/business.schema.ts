@@ -895,6 +895,58 @@ export const voiceConversationMessages = pgTable(
   ],
 );
 
+/**
+ * A phone call answered by a hosted voice agent (ElevenLabs), as its
+ * post-call webhook reported it. One row per provider conversation, so a
+ * retried delivery is recognised instead of creating a second lead.
+ */
+export const voicePhoneCalls = pgTable(
+  "voice_phone_calls",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    integrationId: text("integration_id").references(
+      () => integrationConnections.id,
+      { onDelete: "set null" },
+    ),
+    provider: text("provider").notNull(),
+    externalConversationId: text("external_conversation_id").notNull(),
+    externalAgentId: text("external_agent_id"),
+    agentName: text("agent_name"),
+    direction: text("direction"),
+    callerNumber: text("caller_number"),
+    calledNumber: text("called_number"),
+    startedAt: text("started_at"),
+    durationSeconds: integer("duration_seconds"),
+    summary: text("summary"),
+    callSuccessful: text("call_successful"),
+    // What the agent was configured to capture, as {field: value}.
+    capturedJson: text("captured_json").notNull().default("{}"),
+    transcriptJson: text("transcript_json").notNull().default("[]"),
+    contactId: text("contact_id").references(() => crmContacts.id, {
+      onDelete: "set null",
+    }),
+    leadId: text("lead_id").references(() => crmLeads.id, {
+      onDelete: "set null",
+    }),
+    // What happened to the WhatsApp welcome: sent, skipped:<why>, failed:<why>.
+    welcomeStatus: text("welcome_status"),
+    createdAt: createdAt(),
+  },
+  (table) => [
+    uniqueIndex("voice_phone_calls_org_conversation_idx").on(
+      table.organizationId,
+      table.externalConversationId,
+    ),
+    index("voice_phone_calls_org_started_idx").on(
+      table.organizationId,
+      table.startedAt,
+    ),
+  ],
+);
+
 export const webhookEndpoints = pgTable(
   "webhook_endpoints",
   {

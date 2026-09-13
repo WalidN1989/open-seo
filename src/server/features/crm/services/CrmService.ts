@@ -489,6 +489,7 @@ async function promoteInquiry(
 }
 
 export const CrmService = {
+  ensureStages,
   createActivity,
   createCompany,
   createContact,

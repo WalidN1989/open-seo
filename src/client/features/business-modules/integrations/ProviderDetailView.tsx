@@ -165,6 +165,29 @@ export function IntegrationProviderDetailView() {
             </div>
           ) : null}
 
+          {entry.key === "elevenlabs" && connection ? (
+            <div className="rounded-xl border border-base-300 p-4">
+              <h2 className="text-sm font-semibold">Webhook address</h2>
+              <p className="mt-1 text-xs text-base-content/60">
+                Paste this into ElevenLabs as the post-call webhook URL.
+              </p>
+              <code className="mt-2 block break-all rounded bg-base-200 px-2 py-1 text-xs">
+                {`${window.location.origin}/api/voice/elevenlabs/${connection.id}`}
+              </code>
+              <button
+                type="button"
+                className="btn btn-outline btn-xs mt-3 w-full"
+                onClick={() => {
+                  void navigator.clipboard.writeText(
+                    `${window.location.origin}/api/voice/elevenlabs/${connection.id}`,
+                  );
+                }}
+              >
+                Copy address
+              </button>
+            </div>
+          ) : null}
+
           {showsSync ? (
             <CatalogueSyncPanel
               connection={connection}

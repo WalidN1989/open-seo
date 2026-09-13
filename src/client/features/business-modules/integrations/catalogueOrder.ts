@@ -9,6 +9,7 @@ const BRAND_HUE: Record<string, number> = {
   zoho: 0,
   hubspot: 14,
   claude_haiku: 18,
+  elevenlabs: 1000,
   firecrawl: 20,
   hunter: 25,
   shopify: 80,

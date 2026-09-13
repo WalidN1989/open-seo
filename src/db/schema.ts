@@ -188,6 +188,7 @@ export const {
   clientReports,
   clientReportProfiles,
   clientReportLinks,
+  voicePhoneCalls,
   clientAccounts,
   clientContacts,
   clientAccessEvents,

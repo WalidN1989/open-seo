@@ -166,6 +166,12 @@ export async function testIntegrationConnection(
         providerKey: connection.providerKey,
         detail: "Anthropic secret is configured",
       };
+    case "elevenlabs":
+      await credentialValue(connection, "WEBHOOK_SECRET");
+      return {
+        providerKey: connection.providerKey,
+        detail: "Webhook secret is stored; calls arrive when ElevenLabs posts",
+      };
     case "make":
       await credentialValue(connection, "SIGNING_SECRET");
       return {

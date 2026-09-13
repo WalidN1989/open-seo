@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { AssistantConfigSection } from "./whatsapp/AssistantConfigSection";
+import { PhoneCallsSection } from "./voice/PhoneCallsSection";
 import {
   AskedQuestionsSection,
   InstantAnswersSection,
@@ -1789,9 +1790,10 @@ export function VoiceWorkspace() {
   return (
     <Workspace
       title="Voice Agent"
-      subtitle="Browser voice assistants now; telephony remains a separate provider capability."
+      subtitle="Phone calls answered by your hosted voice agent, plus browser voice assistants."
       actions={null}
     >
+      <PhoneCallsSection />
       {adding ? (
         <div className="rounded-box border border-base-300 bg-base-100 p-4">
           <div className="grid gap-3 md:grid-cols-[1fr_1fr_auto]">

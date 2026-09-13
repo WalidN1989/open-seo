@@ -51,6 +51,7 @@ import { Route as ProjectPProjectIdRouteRouteImport } from './routes/_project/p/
 import { Route as ProjectPProjectIdIndexRouteImport } from './routes/_project/p/$projectId/index'
 import { Route as AppModulesIntegrationsIndexRouteImport } from './routes/_app/modules/integrations/index'
 import { Route as AppModulesCrmIndexRouteImport } from './routes/_app/modules/crm/index'
+import { Route as ApiVoiceElevenlabsConnectionIdRouteImport } from './routes/api/voice/elevenlabs/$connectionId'
 import { Route as ApiGscOauthCallbackRouteImport } from './routes/api/gsc/oauth/callback'
 import { Route as ApiGa4OauthCallbackRouteImport } from './routes/api/ga4/oauth/callback'
 import { Route as ProjectPProjectIdSettingsRouteImport } from './routes/_project/p/$projectId/settings'
@@ -298,6 +299,12 @@ const AppModulesCrmIndexRoute = AppModulesCrmIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AppModulesCrmRoute,
 } as any)
+const ApiVoiceElevenlabsConnectionIdRoute =
+  ApiVoiceElevenlabsConnectionIdRouteImport.update({
+    id: '/api/voice/elevenlabs/$connectionId',
+    path: '/api/voice/elevenlabs/$connectionId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiGscOauthCallbackRoute = ApiGscOauthCallbackRouteImport.update({
   id: '/api/gsc/oauth/callback',
   path: '/api/gsc/oauth/callback',
@@ -548,6 +555,7 @@ export interface FileRoutesByFullPath {
   '/p/$projectId/settings': typeof ProjectPProjectIdSettingsRouteWithChildren
   '/api/ga4/oauth/callback': typeof ApiGa4OauthCallbackRoute
   '/api/gsc/oauth/callback': typeof ApiGscOauthCallbackRoute
+  '/api/voice/elevenlabs/$connectionId': typeof ApiVoiceElevenlabsConnectionIdRoute
   '/modules/crm/': typeof AppModulesCrmIndexRoute
   '/modules/integrations/': typeof AppModulesIntegrationsIndexRoute
   '/p/$projectId/': typeof ProjectPProjectIdIndexRoute
@@ -615,6 +623,7 @@ export interface FileRoutesByTo {
   '/p/$projectId/search-performance': typeof ProjectPProjectIdSearchPerformanceRoute
   '/api/ga4/oauth/callback': typeof ApiGa4OauthCallbackRoute
   '/api/gsc/oauth/callback': typeof ApiGscOauthCallbackRoute
+  '/api/voice/elevenlabs/$connectionId': typeof ApiVoiceElevenlabsConnectionIdRoute
   '/modules/crm': typeof AppModulesCrmIndexRoute
   '/modules/integrations': typeof AppModulesIntegrationsIndexRoute
   '/p/$projectId': typeof ProjectPProjectIdIndexRoute
@@ -694,6 +703,7 @@ export interface FileRoutesById {
   '/_project/p/$projectId/settings': typeof ProjectPProjectIdSettingsRouteWithChildren
   '/api/ga4/oauth/callback': typeof ApiGa4OauthCallbackRoute
   '/api/gsc/oauth/callback': typeof ApiGscOauthCallbackRoute
+  '/api/voice/elevenlabs/$connectionId': typeof ApiVoiceElevenlabsConnectionIdRoute
   '/_app/modules/crm/': typeof AppModulesCrmIndexRoute
   '/_app/modules/integrations/': typeof AppModulesIntegrationsIndexRoute
   '/_project/p/$projectId/': typeof ProjectPProjectIdIndexRoute
@@ -770,6 +780,7 @@ export interface FileRouteTypes {
     | '/p/$projectId/settings'
     | '/api/ga4/oauth/callback'
     | '/api/gsc/oauth/callback'
+    | '/api/voice/elevenlabs/$connectionId'
     | '/modules/crm/'
     | '/modules/integrations/'
     | '/p/$projectId/'
@@ -837,6 +848,7 @@ export interface FileRouteTypes {
     | '/p/$projectId/search-performance'
     | '/api/ga4/oauth/callback'
     | '/api/gsc/oauth/callback'
+    | '/api/voice/elevenlabs/$connectionId'
     | '/modules/crm'
     | '/modules/integrations'
     | '/p/$projectId'
@@ -915,6 +927,7 @@ export interface FileRouteTypes {
     | '/_project/p/$projectId/settings'
     | '/api/ga4/oauth/callback'
     | '/api/gsc/oauth/callback'
+    | '/api/voice/elevenlabs/$connectionId'
     | '/_app/modules/crm/'
     | '/_app/modules/integrations/'
     | '/_project/p/$projectId/'
@@ -952,6 +965,7 @@ export interface RootRouteChildren {
   ApiWhatsappMetaRoute: typeof ApiWhatsappMetaRoute
   ApiGa4OauthCallbackRoute: typeof ApiGa4OauthCallbackRoute
   ApiGscOauthCallbackRoute: typeof ApiGscOauthCallbackRoute
+  ApiVoiceElevenlabsConnectionIdRoute: typeof ApiVoiceElevenlabsConnectionIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -1249,6 +1263,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/modules/crm/'
       preLoaderRoute: typeof AppModulesCrmIndexRouteImport
       parentRoute: typeof AppModulesCrmRoute
+    }
+    '/api/voice/elevenlabs/$connectionId': {
+      id: '/api/voice/elevenlabs/$connectionId'
+      path: '/api/voice/elevenlabs/$connectionId'
+      fullPath: '/api/voice/elevenlabs/$connectionId'
+      preLoaderRoute: typeof ApiVoiceElevenlabsConnectionIdRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/api/gsc/oauth/callback': {
       id: '/api/gsc/oauth/callback'
@@ -1764,6 +1785,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiWhatsappMetaRoute: ApiWhatsappMetaRoute,
   ApiGa4OauthCallbackRoute: ApiGa4OauthCallbackRoute,
   ApiGscOauthCallbackRoute: ApiGscOauthCallbackRoute,
+  ApiVoiceElevenlabsConnectionIdRoute: ApiVoiceElevenlabsConnectionIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

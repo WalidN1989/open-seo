@@ -589,6 +589,13 @@
       "when": 1789294265972,
       "tag": "0083_left_ironclad",
       "breakpoints": true
+    },
+    {
+      "idx": 84,
+      "version": "6",
+      "when": 1789321492452,
+      "tag": "0084_minor_sleeper",
+      "breakpoints": true
     }
   ]
 }

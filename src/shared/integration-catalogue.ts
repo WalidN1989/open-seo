@@ -1,3 +1,4 @@
+/* oxlint-disable max-lines */
 /**
  * Presentation metadata for the Integrations marketplace, ported from the
  * legacy CRM so a merchant sees the same catalogue they were shown there.
@@ -320,6 +321,44 @@ export const integrationCatalogue: readonly IntegrationCatalogueEntry[] = [
     notes: [
       "Deployment alone does not enable it: a tenant needs a connected claude_haiku integration.",
       "Falls back to the platform ANTHROPIC_API_KEY when the connection sets no reference.",
+    ],
+  },
+  {
+    key: "elevenlabs",
+    name: "ElevenLabs",
+    tagline:
+      "Phone calls answered by your AI voice agent, straight into the CRM",
+    description:
+      "When a call to your ElevenLabs agent ends, the transcript, summary and everything the agent captured arrive here. The caller becomes a CRM contact with a lead, returning callers are matched by phone number, and first-time callers can get a WhatsApp welcome.",
+    category: "channels",
+    state: "connectable",
+    credentialFields: [
+      {
+        key: "WEBHOOK_SECRET",
+        label: "Webhook secret",
+        type: "secret",
+        required: true,
+        help: "Shown once when you create the post-call webhook in ElevenLabs (Settings → Webhooks).",
+      },
+      {
+        key: "WELCOME_TEMPLATE",
+        label: "WhatsApp welcome template (optional)",
+        type: "text",
+        required: false,
+        placeholder: "HX… Content SID, or a Meta template name",
+        help: "Sent once to first-time callers from your connected WhatsApp number. Must be an approved template: Twilio uses the Content SID, Meta the template name.",
+      },
+    ],
+    capabilities: [
+      "post-call transcripts",
+      "CRM contact and lead per caller",
+      "WhatsApp welcome",
+    ],
+    howToConnect: [
+      "Save this connection first with any value, then copy the webhook address shown on this page.",
+      "In ElevenLabs, open Settings → Webhooks, create a webhook with that address and HMAC authentication, and copy its secret.",
+      "Paste the secret here and save. In Settings → Post-call webhook, select it and tick Transcript.",
+      "Optionally add an approved WhatsApp template so first-time callers get a welcome.",
     ],
   },
   {
