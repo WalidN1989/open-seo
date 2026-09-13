@@ -64,11 +64,15 @@ function mailboxOutbound(
   transport: MailboxTransport,
 ): Outbound {
   const from = { address: account.address, name: account.displayName ?? "" };
-  const resendApiKey = getResendConfig()?.apiKey;
+  // The key travels whenever Resend could send for this domain, not only
+  // when Resend is the chosen transport: a host that let SMTP through at
+  // connect time can block it later (Railway does, intermittently), and the
+  // bridge then falls back rather than timing out on a real customer.
+  const resendApiKey = resendKeyFor(account.address);
   if (transport === "resend" && !resendApiKey) {
     throw new AppError(
       "VALIDATION_ERROR",
-      "This mailbox sends through Resend, but RESEND_API_KEY is no longer set.",
+      "This mailbox sends through Resend, but RESEND_API_KEY is no longer set for its domain.",
     );
   }
   const via = { transport, resendApiKey };
@@ -102,6 +106,18 @@ function mailboxOutbound(
       return { message_id: sent.messageId, thread_id: sent.messageId };
     },
   };
+}
+
+/** Resend's key, when Resend is verified for the domain of this address. */
+function resendKeyFor(address: string) {
+  const config = getResendConfig();
+  if (!config) return undefined;
+  const domain = address.split("@")[1]?.toLowerCase();
+  const verified = config.from
+    .replace(/^.*<|>$/g, "")
+    .split("@")[1]
+    ?.toLowerCase();
+  return domain && domain === verified ? config.apiKey : undefined;
 }
 
 /** The sender for this account, whichever provider it is on. */

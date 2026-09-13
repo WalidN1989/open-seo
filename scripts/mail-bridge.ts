@@ -357,9 +357,24 @@ function smtpTransport(credentials: MailboxCredentials) {
     secure,
     requireTLS: !secure,
     auth: { user: credentials.username, pass: credentials.password },
-    connectionTimeout: 20_000,
+    // A blocked port answers with silence; ten seconds is enough to know.
+    connectionTimeout: 10_000,
     socketTimeout: 60_000,
   });
+}
+
+/** Could not reach the server at all, as opposed to the server saying no. */
+function isConnectionFailure(error: unknown) {
+  const code =
+    error && typeof error === "object" && "code" in error
+      ? String(error.code)
+      : "";
+  const message = error instanceof Error ? error.message : String(error);
+  return (
+    /^(ETIMEDOUT|ECONNREFUSED|ECONNRESET|ENETUNREACH|EHOSTUNREACH|ESOCKET|ECONNECTION)$/.test(
+      code,
+    ) || /timeout|unreachable|ECONN/i.test(message)
+  );
 }
 
 /** imapflow and nodemailer both say "Command failed"; say what to check. */
@@ -470,7 +485,7 @@ async function send(request: BridgeSendRequest) {
   const message = composer.compile();
   const messageId = message.messageId();
   const raw = await message.build();
-  if (request.transport === "resend") {
+  const viaResend = () => {
     // Resend stamps its own Message-ID, so ours rides in References: every
     // mail client copies References into a reply, and the worker threads on
     // any id it recognises there.
@@ -478,16 +493,32 @@ async function send(request: BridgeSendRequest) {
       ...(request.references ?? []),
       messageId.replace(/^<|>$/g, ""),
     ];
-    await sendThroughResend(request, {
+    return sendThroughResend(request, {
       "Message-ID": messageId,
       References: references.map((id) => `<${id}>`).join(" "),
       ...(request.inReplyTo ? { "In-Reply-To": `<${request.inReplyTo}>` } : {}),
     });
+  };
+  if (request.transport === "resend") {
+    await viaResend();
   } else {
-    await smtpTransport(request.credentials).sendMail({
-      envelope: { from: request.from.address, to: request.to },
-      raw,
-    });
+    try {
+      await smtpTransport(request.credentials).sendMail({
+        envelope: { from: request.from.address, to: request.to },
+        raw,
+      });
+    } catch (error) {
+      // The port was open when the mailbox was connected and is not now.
+      // With a Resend key for this domain the message still goes; without
+      // one the caller hears exactly what SMTP said.
+      if (!request.resendApiKey || !isConnectionFailure(error)) {
+        throw describe("SMTP", error);
+      }
+      log(
+        `SMTP unreachable (${describe("SMTP", error).message}); sending through Resend instead`,
+      );
+      await viaResend();
+    }
   }
   await appendToSent(request.credentials, raw);
   return { messageId: messageId.replace(/^<|>$/g, "") };
