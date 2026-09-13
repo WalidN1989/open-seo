@@ -47,6 +47,13 @@ export const generateClientReportSchema = z.object({
   conclusion: z.string().trim().max(8000).default(""),
 });
 
+/** Read the "Where you stand" screenshot into an intro, caption and pitch. */
+export const readReportFigureSchema = z.object({
+  targetProjectId: z.string().min(1),
+  clientName: z.string().trim().min(1).max(120),
+  figureImage: z.string().min(1).max(2_800_000),
+});
+
 export const clientReportIdSchema = z.object({
   reportId: z.string().min(1),
 });

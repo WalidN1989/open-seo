@@ -10,6 +10,7 @@ import {
   getReportBranding,
   listClientReports,
   listReportableProjects,
+  readReportFigure,
   sendClientReport,
 } from "@/serverFunctions/reports";
 import { getStandardErrorMessage } from "@/client/lib/error-messages";
@@ -133,6 +134,29 @@ export function ReportsWorkspace() {
     },
   });
 
+  // Claude reads the uploaded local-pack screenshot and fills the intro and
+  // caption; pitch lines go under recommendations only when that box is
+  // empty, so nothing the agency wrote is overwritten.
+  const readFigure = useMutation({
+    mutationFn: () =>
+      readReportFigure({
+        data: {
+          targetProjectId: projectId,
+          clientName: clientName.trim() || "the client",
+          figureImage: engagement.figureImage,
+        },
+      }),
+    onSuccess: (reading) => {
+      setEngagement((current) => ({
+        ...current,
+        standingIntro: reading.standingIntro,
+        figureCaption: reading.figureCaption,
+        recommendations:
+          current.recommendations.trim() || reading.pitch.join("\n"),
+      }));
+    },
+  });
+
   const remove = useMutation({
     mutationFn: (reportId: string) =>
       deleteClientReport({ data: { reportId } }),
@@ -244,7 +268,18 @@ export function ReportsWorkspace() {
           </span>
         </label>
 
-        <EngagementForm value={engagement} onChange={setEngagement} />
+        <EngagementForm
+          value={engagement}
+          onChange={setEngagement}
+          figureReader={{
+            run: () => readFigure.mutate(),
+            pending: readFigure.isPending,
+            error: readFigure.isError
+              ? getStandardErrorMessage(readFigure.error)
+              : null,
+            seen: readFigure.data?.seen ?? [],
+          }}
+        />
 
         {chosen ? (
           <p className="text-sm text-base-content/60">

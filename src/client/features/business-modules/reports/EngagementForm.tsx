@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Sparkles } from "lucide-react";
 /**
  * What is running for this client that the database cannot see.
  *
@@ -112,12 +113,22 @@ function SocialRow({
   );
 }
 
+export type FigureReader = {
+  run: () => void;
+  pending: boolean;
+  error: string | null;
+  seen: string[];
+};
+
 export function EngagementForm({
   value,
   onChange,
+  figureReader,
 }: {
   value: Engagement;
   onChange: (next: Engagement) => void;
+  /** Reads the uploaded screenshot into the intro and caption; optional. */
+  figureReader?: FigureReader;
 }) {
   const set = <K extends keyof Engagement>(key: K, next: Engagement[K]) =>
     onChange({ ...value, [key]: next });
@@ -235,11 +246,32 @@ export function EngagementForm({
               >
                 Remove
               </button>
+              {figureReader ? (
+                <button
+                  type="button"
+                  className="btn btn-outline btn-xs"
+                  disabled={figureReader.pending}
+                  onClick={figureReader.run}
+                  title="Claude reads the screenshot and drafts the intro, caption and pitch lines from a sales angle. You can edit everything after."
+                >
+                  <Sparkles className="size-3.5" />
+                  {figureReader.pending ? "Reading…" : "Draft from screenshot"}
+                </button>
+              ) : null}
             </>
           ) : null}
         </div>
         {figureError ? (
           <p className="text-sm text-error">{figureError}</p>
+        ) : null}
+        {figureReader?.error ? (
+          <p className="text-sm text-error">{figureReader.error}</p>
+        ) : null}
+        {figureReader?.seen.length ? (
+          <p className="text-xs text-base-content/55">
+            Read from the picture: {figureReader.seen.join(" · ")}. Check these
+            before you generate.
+          </p>
         ) : null}
         <input
           className="input input-bordered input-sm w-full"

@@ -10,6 +10,7 @@ import {
   clientReportIdSchema,
   clientReportTokenSchema,
   generateClientReportSchema,
+  readReportFigureSchema,
 } from "@/types/schemas/reports";
 
 export const listReportableProjects = createServerFn({ method: "POST" })
@@ -94,6 +95,17 @@ export const getClientReportProfile = createServerFn({ method: "POST" })
   );
 
 /** Email the report link to the client, from the agency's name. */
+export const readReportFigure = createServerFn({ method: "POST" })
+  .middleware(requireAuthenticatedContext)
+  .validator(readReportFigureSchema)
+  .handler(({ context, data }) =>
+    ClientReportService.readFigure(
+      context.organizationId,
+      context.userId,
+      data,
+    ),
+  );
+
 export const sendClientReport = createServerFn({ method: "POST" })
   .middleware(requireAuthenticatedContext)
   .validator(sendClientReportSchema)

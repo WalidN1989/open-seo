@@ -9,6 +9,7 @@ import { AuthRepository } from "@/server/auth/repositories/AuthRepository";
 import { BusinessModuleService } from "@/server/features/business-modules/services/BusinessModuleService";
 import { resolveLetterhead } from "../letterhead";
 import { sendReportToClient } from "../reportEmail";
+import { readReportFigure } from "../figureReader";
 import {
   accessFor,
   formFromSnapshot,
@@ -407,6 +408,23 @@ async function documentLink(
 }
 
 export const ClientReportService = {
+  readFigure: async (
+    organizationId: string,
+    userId: string,
+    input: { targetProjectId: string; clientName: string; figureImage: string },
+  ) => {
+    await requireManage(organizationId, userId);
+    const memberships = await AuthRepository.listOrganizationIdsForUser(userId);
+    const project = (await Repo.reportableProjects(memberships)).find(
+      (row) => row.id === input.targetProjectId,
+    );
+    if (!project) throw new AppError("NOT_FOUND", "That project is not yours.");
+    return readReportFigure({
+      image: input.figureImage,
+      clientName: input.clientName,
+      domain: project.domain ?? null,
+    });
+  },
   sendToClient: (
     organizationId: string,
     userId: string,
