@@ -218,19 +218,31 @@ export function PastedText({
     >
       {blocks.map((block, blockIndex) => {
         const lines = block.split("\n");
-        const isList = lines.every((line) => /^\s*[-•]\s+/.test(line));
-        if (isList) {
+        const isBullet = (line: string) => /^\s*[-•]\s+/.test(line);
+        // A lead line followed by bullets ("**The gap:**" then "- …") is a
+        // heading and its list, not one run-on paragraph with dashes in it.
+        const lead =
+          lines.length > 1 &&
+          !isBullet(lines[0] ?? "") &&
+          lines.slice(1).every(isBullet)
+            ? lines[0]
+            : null;
+        const items = lead === null ? lines : lines.slice(1);
+        if (items.every(isBullet)) {
           return (
-            <ul key={blockIndex}>
-              {lines.map((line, lineIndex) => (
-                <li key={lineIndex}>
-                  {inline(
-                    line.replace(/^\s*[-•]\s+/, ""),
-                    `${blockIndex}-${lineIndex}`,
-                  )}
-                </li>
-              ))}
-            </ul>
+            <div key={blockIndex}>
+              {lead ? <p>{inline(lead, `${blockIndex}-lead`)}</p> : null}
+              <ul>
+                {items.map((line, lineIndex) => (
+                  <li key={lineIndex}>
+                    {inline(
+                      line.replace(/^\s*[-•]\s+/, ""),
+                      `${blockIndex}-${lineIndex}`,
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </div>
           );
         }
         return (

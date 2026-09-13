@@ -63,29 +63,32 @@ export function generalConclusion(
   const pending = snapshot.setup.filter((item) => !item.done);
   const months = monthsSince(snapshot.client.startedAt);
   const sp = snapshot.searchPerformance;
-  const lines: string[] = [];
-  lines.push(
-    `**Where this leaves ${snapshot.client.name}.** ${running.length} of ${snapshot.setup.length} parts of the setup are in place${months !== null && months > 0 ? ` after ${months} month${months === 1 ? "" : "s"} together` : ""}.`,
+  const blocks: string[] = [];
+  blocks.push(
+    `**Where you stand:** ${running.length} of ${snapshot.setup.length} parts of the setup are running${months !== null && months > 0 ? `, ${months} month${months === 1 ? "" : "s"} in` : ""}.`,
   );
+  const facts: string[] = [];
   if (sp) {
-    lines.push(
-      `In the ${sp.startDate} to ${sp.endDate} window Google showed the site ${sp.impressions.toLocaleString()} times and sent ${sp.clicks.toLocaleString()} visits, at an average position of ${sp.averagePosition.toFixed(1)}.`,
+    facts.push(
+      `- Google showed you ${sp.impressions.toLocaleString()} times and sent ${sp.clicks.toLocaleString()} visits (${sp.startDate} to ${sp.endDate}).`,
+      `- Average position ${sp.averagePosition.toFixed(1)}.`,
     );
   }
   if (snapshot.headline.trackedKeywords > 0) {
-    lines.push(
-      `Of the ${snapshot.headline.trackedKeywords} keywords we track, ${snapshot.headline.firstPage} are on page one and ${snapshot.headline.topThree} in the top three.`,
+    facts.push(
+      `- ${snapshot.headline.firstPage} of ${snapshot.headline.trackedKeywords} tracked keywords on page one, ${snapshot.headline.topThree} in the top three.`,
     );
   }
+  if (facts.length) blocks.push(`**This month:**\n${facts.join("\n")}`);
   if (pending.length) {
-    lines.push(
+    blocks.push(
       `**Still to do:**\n${pending.map((item) => `- ${item.label}: ${item.detail}`).join("\n")}`,
     );
   }
-  lines.push(
-    `Search visibility builds month on month: what is set up now keeps working for you next month and the one after. ${followUpSentence(followUp)}`,
+  blocks.push(
+    `**Next:** visibility builds month on month, so what is set up now keeps working. ${followUpSentence(followUp)}`,
   );
-  return lines.join("\n\n");
+  return blocks.join("\n\n");
 }
 
 /** Everything the model needs, as text; the pictures ride alongside. */
@@ -138,15 +141,21 @@ function digest(snapshot: ReportSnapshot) {
   return parts.filter(Boolean).join("\n\n");
 }
 
-const SYSTEM_PROMPT = `You write the closing section of an SEO agency's client report. The reader is the business owner. Australian English, second person ("you"), plain and direct, no exclamation marks, no hype, no markdown headings. **Bold** is allowed for a lead phrase; lines starting with "- " are allowed for a short list.
+const SYSTEM_PROMPT = `You write the closing section of an SEO agency's client report. The reader is a busy business owner who scans, not reads: short lines, one idea each, numbers up front. Australian English, second person ("you"), plain and direct, no exclamation marks, no hype, no markdown headings. **Bold** marks a lead phrase; lines starting with "- " are bullets.
 
-Your job is the honest sales case. From the data and pictures given, say what is thin, missing, wrong or behind — a profile with five reviews next to rivals with a hundred, a map where competitors sit above the client, a social link that points to the wrong network or looks unfinished, tracking or reviews not set up, competitors owning the searches that matter. Name each with its number or detail; never invent one. If something is genuinely good, say so in a line, then move on.
+Your job is the honest sales case, made short. From the data and pictures given, name what is thin, missing or behind, each with its number — never invent one. Make the client feel that competitors are taking searches they should own, and that the agency's named services fix it. Never mention money, prices, fees, budgets or payment in any form.
 
-Then make the ask. Name the specific services that close each gap, using the agency's own service names given to you (for a map or profile gap that is Local SEO and Google Business Profile optimisation, with map citations; for links it is link building; for content it is blog and landing page writing). Make the client feel that competitors are taking the searches they should own and that this is fixable with those services. Never mention money, prices, fees, budgets or payment in any form. End on the follow-up you are told about.
+Structure, exactly this and nothing more:
+**Where you stand:** one sentence, the single most important fact with its number.
+**The gap:** 3 to 5 bullets, each one sentence with one number or one concrete detail, most damaging first.
+**What closes it:** 2 to 4 bullets, each "**Service name:** what it fixes, in one sentence", using the agency's service names given to you (map or profile gap = Local SEO and Google Business Profile optimisation with map citations; authority gap = link building and digital PR; content gap = blog and landing page writing).
+**Next:** one sentence: the follow-up you are told about.
+
+Hard limits: 120 to 180 words in total. No sentence over 20 words. No paragraph, only the four bold lead lines and their bullets.
 
 Format, exactly:
 ===CONCLUSION===
-300 to 600 words, paragraphs separated by blank lines.
+the four blocks above, a blank line between blocks
 ===RED FLAGS===
 - one line per flag, up to 8, each a specific problem seen in the data or pictures, for the agency to double-check before sending
 ===END===`;
