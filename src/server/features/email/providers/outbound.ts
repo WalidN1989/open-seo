@@ -17,6 +17,7 @@ import {
   sendViaMailbox,
 } from "./mailbox";
 import { normalizeMessageId, replySubject } from "./threading";
+import { textToHtml } from "./textToHtml";
 
 /** What every provider must be able to do, in the mirror's own terms. */
 export type Copies = { cc?: string[]; bcc?: string[] };
@@ -55,12 +56,20 @@ function agentmailOutbound(account: EmailAccountRow, apiKey: string): Outbound {
       }
       return client.replyToMessage(inboxId, last.externalMessageId, {
         text,
+        html: textToHtml(text),
         cc,
         bcc,
       });
     },
     compose: ({ to, subject, text, html, cc, bcc }) =>
-      client.sendMessage(inboxId, { to: [to], cc, bcc, subject, text, html }),
+      client.sendMessage(inboxId, {
+        to: [to],
+        cc,
+        bcc,
+        subject,
+        text,
+        html: html ?? textToHtml(text),
+      }),
   };
 }
 
@@ -98,6 +107,7 @@ function mailboxOutbound(
         bcc,
         subject: replySubject(last.subject),
         text,
+        html: textToHtml(text),
         inReplyTo: lastId ?? undefined,
         references: [thread.externalThreadId, lastId].filter(
           (id): id is string => Boolean(id),
@@ -115,7 +125,7 @@ function mailboxOutbound(
         bcc,
         subject,
         text,
-        html,
+        html: html ?? textToHtml(text),
       });
       return { message_id: sent.messageId, thread_id: sent.messageId };
     },
