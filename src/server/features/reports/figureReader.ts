@@ -16,11 +16,25 @@ import { getOptionalEnvValue } from "@/server/lib/runtime-env";
 
 const MODEL = "claude-sonnet-5";
 
+// The form's own limits are applied by trimming, not by refusing: a reading
+// that runs a sentence long is still a reading.
+const clipped = (max: number) =>
+  z
+    .string()
+    .trim()
+    .transform((value) => value.slice(0, max));
+
 const readingSchema = z.object({
-  standingIntro: z.string().trim().max(300),
-  figureCaption: z.string().trim().max(400),
-  pitch: z.array(z.string().trim().min(1).max(240)).max(4),
-  seen: z.array(z.string().trim().min(1).max(160)).max(8),
+  standingIntro: clipped(300),
+  figureCaption: clipped(400),
+  pitch: z
+    .array(clipped(240))
+    .max(6)
+    .transform((list) => list.slice(0, 4)),
+  seen: z
+    .array(clipped(160))
+    .max(12)
+    .transform((list) => list.slice(0, 8)),
 });
 
 export type FigureReading = z.infer<typeof readingSchema>;
@@ -79,7 +93,9 @@ export async function readReportFigure(input: {
     },
     body: JSON.stringify({
       model: MODEL,
-      max_tokens: 900,
+      // Eight "seen" lines plus four pitch lines is more than 900 tokens; a
+      // cut-off answer has no closing brace and reads as no answer at all.
+      max_tokens: 2500,
       system: SYSTEM_PROMPT,
       messages: [
         {
@@ -102,8 +118,10 @@ export async function readReportFigure(input: {
       `The model could not read the screenshot (HTTP ${response.status}).`,
     );
   }
-  const payload: { content?: Array<{ type: string; text?: string }> } =
-    await response.json();
+  const payload: {
+    content?: Array<{ type: string; text?: string }>;
+    stop_reason?: string;
+  } = await response.json();
   const text = (payload.content ?? [])
     .filter((block) => block.type === "text")
     .map((block) => block.text ?? "")
@@ -111,15 +129,30 @@ export async function readReportFigure(input: {
   const start = text.indexOf("{");
   const end = text.lastIndexOf("}");
   if (start === -1 || end <= start) {
+    console.error("figure reader: no JSON in reply", {
+      stopReason: payload.stop_reason,
+      head: text.slice(0, 300),
+    });
     throw new AppError(
       "INTEGRATION_CHECK_FAILED",
-      "The model did not return a reading.",
+      payload.stop_reason === "max_tokens"
+        ? "The model's reading was cut off. Try again."
+        : "The model did not return a reading.",
     );
   }
-  const parsed = readingSchema.safeParse(
-    JSON.parse(text.slice(start, end + 1)),
-  );
+  let json: unknown;
+  try {
+    json = JSON.parse(text.slice(start, end + 1));
+  } catch {
+    console.error("figure reader: unreadable JSON", text.slice(start, 300));
+    throw new AppError(
+      "INTEGRATION_CHECK_FAILED",
+      "The model's reading could not be read. Try again.",
+    );
+  }
+  const parsed = readingSchema.safeParse(json);
   if (!parsed.success) {
+    console.error("figure reader: unexpected shape", parsed.error.issues);
     throw new AppError(
       "INTEGRATION_CHECK_FAILED",
       "The model's reading did not have the expected shape.",
