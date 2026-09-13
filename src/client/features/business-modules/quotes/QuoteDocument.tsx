@@ -1,19 +1,15 @@
 import { formatMoney } from "@/server/features/invoicing/invoiceTotals";
-import type { getInvoice } from "@/serverFunctions/invoicing";
-import { Lines, longDate, quantityLabel } from "./documentParts";
-
-type InvoiceDetail = Awaited<ReturnType<typeof getInvoice>>;
+import { Lines, longDate, quantityLabel } from "../invoicing/documentParts";
+import type { QuoteDetailData } from "./quotesQuery";
 
 /**
- * The printable document.
- *
- * Deliberately plain: black on white, one accent-free table, generous space.
- * Styling lives in inline styles rather than app theme tokens because this is
- * printed and emailed — it must look the same on a page as on a dark screen.
+ * The printable quote. Same page as the invoice — black on white, one table,
+ * print-safe styles — so a client who later receives the invoice sees the
+ * same business, laid out the same way.
  */
-export function InvoiceDocument({ detail }: { detail: InvoiceDetail }) {
-  const { invoice, issuer, lines, heading } = detail;
-  const money = (minor: number) => formatMoney(minor, invoice.currency);
+export function QuoteDocument({ detail }: { detail: QuoteDetailData }) {
+  const { quote, issuer, lines, heading } = detail;
+  const money = (minor: number) => formatMoney(minor, quote.currency);
 
   return (
     <div className="invoice-document" data-invoice-document>
@@ -21,12 +17,12 @@ export function InvoiceDocument({ detail }: { detail: InvoiceDetail }) {
         <div>
           <h1 className="invoice-heading">{heading}</h1>
           <dl className="invoice-meta">
-            <dt>Invoice number</dt>
-            <dd>{invoice.number}</dd>
-            <dt>Date of issue</dt>
-            <dd>{longDate(invoice.issueDate)}</dd>
-            <dt>Date due</dt>
-            <dd>{longDate(invoice.dueDate)}</dd>
+            <dt>Quote number</dt>
+            <dd>{quote.number}</dd>
+            <dt>Date</dt>
+            <dd>{longDate(quote.issueDate)}</dd>
+            <dt>Valid until</dt>
+            <dd>{longDate(quote.validUntil)}</dd>
             {issuer.taxIdValue ? (
               <>
                 <dt>{issuer.taxIdLabel ?? "Registration"}</dt>
@@ -50,25 +46,22 @@ export function InvoiceDocument({ detail }: { detail: InvoiceDetail }) {
           {issuer.phone ? <div>{issuer.phone}</div> : null}
         </div>
         <div>
-          <p className="invoice-party-label">Bill to</p>
-          <p className="invoice-party-name">{invoice.clientName}</p>
-          <Lines value={invoice.clientAddressLines} />
-          {invoice.clientTaxIdValue ? (
+          <p className="invoice-party-label">Prepared for</p>
+          <p className="invoice-party-name">{quote.clientName}</p>
+          <Lines value={quote.clientAddressLines} />
+          {quote.clientTaxIdValue ? (
             <div>
-              {invoice.clientTaxIdLabel ?? "ABN"} {invoice.clientTaxIdValue}
+              {quote.clientTaxIdLabel ?? "ABN"} {quote.clientTaxIdValue}
             </div>
           ) : null}
-          {invoice.clientEmail ? <div>{invoice.clientEmail}</div> : null}
+          {quote.clientEmail ? <div>{quote.clientEmail}</div> : null}
         </div>
       </section>
 
       <p className="invoice-amount-due">
-        {money(invoice.totalMinor)} {invoice.currency} due{" "}
-        {longDate(invoice.dueDate)}
+        {money(quote.totalMinor)} {quote.currency}
       </p>
-      {invoice.servicePeriod ? (
-        <p className="invoice-period">{invoice.servicePeriod}</p>
-      ) : null}
+      {quote.title ? <p className="invoice-period">{quote.title}</p> : null}
 
       <table className="invoice-table">
         <thead>
@@ -101,43 +94,44 @@ export function InvoiceDocument({ detail }: { detail: InvoiceDetail }) {
       <div className="invoice-totals">
         <div>
           <span>Subtotal</span>
-          <span>{money(invoice.subtotalMinor)}</span>
+          <span>{money(quote.subtotalMinor)}</span>
         </div>
-        {invoice.taxRatePercent > 0 ? (
+        {quote.taxRatePercent > 0 ? (
           <div>
             <span>
-              {invoice.taxLabel ?? "Tax"} ({invoice.taxRatePercent}%)
+              {quote.taxLabel ?? "Tax"} ({quote.taxRatePercent}%)
             </span>
-            <span>{money(invoice.taxMinor)}</span>
+            <span>{money(quote.taxMinor)}</span>
           </div>
         ) : null}
         <div className="invoice-total-row">
-          <span>Amount due</span>
+          <span>Total</span>
           <span>
-            {money(invoice.totalMinor)} {invoice.currency}
+            {money(quote.totalMinor)} {quote.currency}
           </span>
         </div>
       </div>
 
-      {issuer.bankDetails || issuer.paymentInstructions ? (
+      {quote.terms ? (
         <section className="invoice-payment">
-          <p className="invoice-party-label">How to pay</p>
-          <Lines value={issuer.paymentInstructions} />
-          <Lines value={issuer.bankDetails} />
+          <p className="invoice-party-label">Terms</p>
+          <Lines value={quote.terms} />
         </section>
       ) : null}
 
-      {invoice.notes ? (
+      {quote.notes ? (
         <section className="invoice-notes">
-          <Lines value={invoice.notes} />
+          <Lines value={quote.notes} />
         </section>
       ) : null}
 
       <footer className="invoice-footer">
-        {/* An unregistered issuer says so plainly, so nobody tries to claim a
-            tax credit that does not exist. */}
+        <div>
+          This quote is valid until {longDate(quote.validUntil)}. Prices may
+          change after that date.
+        </div>
         {!issuer.taxRegistered ? (
-          <div>{issuer.taxNote ?? "No GST has been charged."}</div>
+          <div>{issuer.taxNote ?? "No GST is included."}</div>
         ) : null}
         {issuer.footerNote ? <Lines value={issuer.footerNote} /> : null}
       </footer>

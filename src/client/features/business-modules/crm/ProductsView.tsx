@@ -57,6 +57,7 @@ export function CrmProductsView() {
       sku: string;
       salePriceMinor: number;
       category?: string;
+      itemType: "product" | "service";
       reorderThreshold: number;
     }) => createCommerceProduct({ data: { ...input, status: "active" } }),
     onSuccess: async () => {
@@ -133,6 +134,10 @@ export function CrmProductsView() {
               name: fieldValue(form, "name"),
               sku: fieldValue(form, "sku"),
               category: fieldValue(form, "category") || undefined,
+              itemType:
+                fieldValue(form, "itemType") === "service"
+                  ? "service"
+                  : "product",
               salePriceMinor: price,
               reorderThreshold: Number(fieldValue(form, "reorder")) || 0,
             });
@@ -150,6 +155,15 @@ export function CrmProductsView() {
             required
             className="input input-bordered input-sm flex-1"
           />
+          <select
+            name="itemType"
+            defaultValue="product"
+            aria-label="Type"
+            className="select select-bordered select-sm w-28"
+          >
+            <option value="product">Product</option>
+            <option value="service">Service</option>
+          </select>
           <input
             name="category"
             placeholder="category"
@@ -242,7 +256,14 @@ export function CrmProductsView() {
                     <Package className="size-4" />
                   </span>
                   <div className="min-w-0">
-                    <p className="truncate font-medium">{product.name}</p>
+                    <p className="flex items-center gap-2 truncate font-medium">
+                      {product.name}
+                      {product.itemType === "service" ? (
+                        <span className="badge badge-sm border-violet-200 bg-violet-50 text-violet-700">
+                          Service
+                        </span>
+                      ) : null}
+                    </p>
                     <p className="truncate text-xs text-base-content/50">
                       {product.sku}
                       {product.category ? ` · ${product.category}` : ""}

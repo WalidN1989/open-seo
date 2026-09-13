@@ -9,6 +9,10 @@ describe("quote status", () => {
     expect(canMoveQuote("draft", "accepted")).toBe(false);
     expect(canMoveQuote("sent", "accepted")).toBe(true);
     expect(canMoveQuote("sent", "draft")).toBe(true);
+    // Resending an expired quote as-is would expire it again at once; it has
+    // to go back to draft for a new date.
+    expect(canMoveQuote("expired", "sent")).toBe(false);
+    expect(canMoveQuote("expired", "draft")).toBe(true);
   });
 
   it("never reopens an answered quote", () => {

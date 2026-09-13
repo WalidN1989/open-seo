@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { ArrowLeft, Building2 } from "lucide-react";
+import { ArrowLeft, Building2, FileSignature } from "lucide-react";
 import { getStandardErrorMessage } from "@/client/lib/error-messages";
 import { useWorkspaceCurrency } from "@/client/hooks/useWorkspaceCurrency";
 import { TEMPERATURES } from "@/shared/lead-journal";
@@ -8,6 +8,7 @@ import { ActivityJournal } from "./ActivityJournal";
 import { FollowUpCard } from "./FollowUpCard";
 import { buildJournal } from "./journalEntries";
 import { CompanyCard, ContactCard, OutreachCard } from "./LeadRailCards";
+import { LeadQuotesCard } from "./LeadQuotesCard";
 import { LogActivityDialog } from "./LogActivityDialog";
 import { useLeadDetail, type LeadDetail } from "./useLeadDetail";
 
@@ -54,6 +55,7 @@ export function LeadDetailPage({ leadId }: { leadId: string }) {
             onSave={(changes) => update.mutate(changes)}
             onRemind={(input) => remind.mutate(input)}
           />
+          <LeadQuotesCard leadId={leadId} />
           <OutreachCard detail={detail} />
           <ContactCard detail={detail} />
           <CompanyCard detail={detail} />
@@ -112,8 +114,17 @@ function LeadHeader({
           );
         })}
       </div>
+      <Link
+        to="/modules/quotes/$quoteId"
+        params={{ quoteId: "new" }}
+        search={{ leadId: detail.lead.id }}
+        className="btn btn-primary btn-sm ml-auto"
+      >
+        <FileSignature className="size-4" />
+        Create Quotation
+      </Link>
       <select
-        className="select select-bordered select-sm ml-auto w-44"
+        className="select select-bordered select-sm w-44"
         value={detail.lead.stageId ?? ""}
         onChange={(event) => onStage(event.target.value)}
         aria-label="Pipeline stage"

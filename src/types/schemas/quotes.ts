@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const QUOTE_STATUSES = [
+const QUOTE_STATUSES = [
   "draft",
   "sent",
   "accepted",

@@ -19,6 +19,7 @@ import { Route as AppRouteRouteImport } from './routes/_app/route'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
 import { Route as ReportsReportIdRouteImport } from './routes/reports/$reportId'
 import { Route as RCodeRouteImport } from './routes/r/$code'
+import { Route as QuotesQuoteIdRouteImport } from './routes/quotes/$quoteId'
 import { Route as InvoicesInvoiceIdRouteImport } from './routes/invoices/$invoiceId'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as AcceptInvitationInvitationIdRouteImport } from './routes/accept-invitation.$invitationId'
@@ -65,6 +66,7 @@ import { Route as ProjectPProjectIdDomainRouteImport } from './routes/_project/p
 import { Route as ProjectPProjectIdBrandLookupRouteImport } from './routes/_project/p/$projectId/brand-lookup'
 import { Route as ProjectPProjectIdBacklinksRouteImport } from './routes/_project/p/$projectId/backlinks'
 import { Route as ProjectPProjectIdAuditRouteImport } from './routes/_project/p/$projectId/audit'
+import { Route as AppModulesQuotesQuoteIdRouteImport } from './routes/_app/modules/quotes.$quoteId'
 import { Route as AppModulesLeadsLeadIdRouteImport } from './routes/_app/modules/leads.$leadId'
 import { Route as AppModulesIntegrationsConnectionsRouteImport } from './routes/_app/modules/integrations/connections'
 import { Route as AppModulesIntegrationsProviderKeyRouteImport } from './routes/_app/modules/integrations.$providerKey'
@@ -132,6 +134,11 @@ const ReportsReportIdRoute = ReportsReportIdRouteImport.update({
 const RCodeRoute = RCodeRouteImport.update({
   id: '/r/$code',
   path: '/r/$code',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const QuotesQuoteIdRoute = QuotesQuoteIdRouteImport.update({
+  id: '/quotes/$quoteId',
+  path: '/quotes/$quoteId',
   getParentRoute: () => rootRouteImport,
 } as any)
 const InvoicesInvoiceIdRoute = InvoicesInvoiceIdRouteImport.update({
@@ -378,6 +385,11 @@ const ProjectPProjectIdAuditRoute = ProjectPProjectIdAuditRouteImport.update({
   path: '/audit',
   getParentRoute: () => ProjectPProjectIdRouteRoute,
 } as any)
+const AppModulesQuotesQuoteIdRoute = AppModulesQuotesQuoteIdRouteImport.update({
+  id: '/quotes/$quoteId',
+  path: '/quotes/$quoteId',
+  getParentRoute: () => AppModulesRouteRoute,
+} as any)
 const AppModulesLeadsLeadIdRoute = AppModulesLeadsLeadIdRouteImport.update({
   id: '/leads/$leadId',
   path: '/leads/$leadId',
@@ -520,6 +532,7 @@ export interface FileRoutesByFullPath {
   '/accept-invitation/$invitationId': typeof AcceptInvitationInvitationIdRoute
   '/api/health': typeof ApiHealthRoute
   '/invoices/$invoiceId': typeof InvoicesInvoiceIdRoute
+  '/quotes/$quoteId': typeof QuotesQuoteIdRoute
   '/r/$code': typeof RCodeRoute
   '/reports/$reportId': typeof ReportsReportIdRoute
   '/p/$projectId': typeof ProjectPProjectIdRouteRouteWithChildren
@@ -549,6 +562,7 @@ export interface FileRoutesByFullPath {
   '/modules/integrations/$providerKey': typeof AppModulesIntegrationsProviderKeyRoute
   '/modules/integrations/connections': typeof AppModulesIntegrationsConnectionsRoute
   '/modules/leads/$leadId': typeof AppModulesLeadsLeadIdRoute
+  '/modules/quotes/$quoteId': typeof AppModulesQuotesQuoteIdRoute
   '/p/$projectId/audit': typeof ProjectPProjectIdAuditRouteWithChildren
   '/p/$projectId/backlinks': typeof ProjectPProjectIdBacklinksRoute
   '/p/$projectId/brand-lookup': typeof ProjectPProjectIdBrandLookupRoute
@@ -595,6 +609,7 @@ export interface FileRoutesByTo {
   '/accept-invitation/$invitationId': typeof AcceptInvitationInvitationIdRoute
   '/api/health': typeof ApiHealthRoute
   '/invoices/$invoiceId': typeof InvoicesInvoiceIdRoute
+  '/quotes/$quoteId': typeof QuotesQuoteIdRoute
   '/r/$code': typeof RCodeRoute
   '/reports/$reportId': typeof ReportsReportIdRoute
   '/help/dataforseo-api-key': typeof AppHelpDataforseoApiKeyRoute
@@ -621,6 +636,7 @@ export interface FileRoutesByTo {
   '/modules/integrations/$providerKey': typeof AppModulesIntegrationsProviderKeyRoute
   '/modules/integrations/connections': typeof AppModulesIntegrationsConnectionsRoute
   '/modules/leads/$leadId': typeof AppModulesLeadsLeadIdRoute
+  '/modules/quotes/$quoteId': typeof AppModulesQuotesQuoteIdRoute
   '/p/$projectId/backlinks': typeof ProjectPProjectIdBacklinksRoute
   '/p/$projectId/brand-lookup': typeof ProjectPProjectIdBrandLookupRoute
   '/p/$projectId/domain': typeof ProjectPProjectIdDomainRoute
@@ -669,6 +685,7 @@ export interface FileRoutesById {
   '/accept-invitation/$invitationId': typeof AcceptInvitationInvitationIdRoute
   '/api/health': typeof ApiHealthRoute
   '/invoices/$invoiceId': typeof InvoicesInvoiceIdRoute
+  '/quotes/$quoteId': typeof QuotesQuoteIdRoute
   '/r/$code': typeof RCodeRoute
   '/reports/$reportId': typeof ReportsReportIdRoute
   '/_app/': typeof AppIndexRoute
@@ -699,6 +716,7 @@ export interface FileRoutesById {
   '/_app/modules/integrations/$providerKey': typeof AppModulesIntegrationsProviderKeyRoute
   '/_app/modules/integrations/connections': typeof AppModulesIntegrationsConnectionsRoute
   '/_app/modules/leads/$leadId': typeof AppModulesLeadsLeadIdRoute
+  '/_app/modules/quotes/$quoteId': typeof AppModulesQuotesQuoteIdRoute
   '/_project/p/$projectId/audit': typeof ProjectPProjectIdAuditRouteWithChildren
   '/_project/p/$projectId/backlinks': typeof ProjectPProjectIdBacklinksRoute
   '/_project/p/$projectId/brand-lookup': typeof ProjectPProjectIdBrandLookupRoute
@@ -748,6 +766,7 @@ export interface FileRouteTypes {
     | '/accept-invitation/$invitationId'
     | '/api/health'
     | '/invoices/$invoiceId'
+    | '/quotes/$quoteId'
     | '/r/$code'
     | '/reports/$reportId'
     | '/p/$projectId'
@@ -777,6 +796,7 @@ export interface FileRouteTypes {
     | '/modules/integrations/$providerKey'
     | '/modules/integrations/connections'
     | '/modules/leads/$leadId'
+    | '/modules/quotes/$quoteId'
     | '/p/$projectId/audit'
     | '/p/$projectId/backlinks'
     | '/p/$projectId/brand-lookup'
@@ -823,6 +843,7 @@ export interface FileRouteTypes {
     | '/accept-invitation/$invitationId'
     | '/api/health'
     | '/invoices/$invoiceId'
+    | '/quotes/$quoteId'
     | '/r/$code'
     | '/reports/$reportId'
     | '/help/dataforseo-api-key'
@@ -849,6 +870,7 @@ export interface FileRouteTypes {
     | '/modules/integrations/$providerKey'
     | '/modules/integrations/connections'
     | '/modules/leads/$leadId'
+    | '/modules/quotes/$quoteId'
     | '/p/$projectId/backlinks'
     | '/p/$projectId/brand-lookup'
     | '/p/$projectId/domain'
@@ -896,6 +918,7 @@ export interface FileRouteTypes {
     | '/accept-invitation/$invitationId'
     | '/api/health'
     | '/invoices/$invoiceId'
+    | '/quotes/$quoteId'
     | '/r/$code'
     | '/reports/$reportId'
     | '/_app/'
@@ -926,6 +949,7 @@ export interface FileRouteTypes {
     | '/_app/modules/integrations/$providerKey'
     | '/_app/modules/integrations/connections'
     | '/_app/modules/leads/$leadId'
+    | '/_app/modules/quotes/$quoteId'
     | '/_project/p/$projectId/audit'
     | '/_project/p/$projectId/backlinks'
     | '/_project/p/$projectId/brand-lookup'
@@ -967,6 +991,7 @@ export interface RootRouteChildren {
   AcceptInvitationInvitationIdRoute: typeof AcceptInvitationInvitationIdRoute
   ApiHealthRoute: typeof ApiHealthRoute
   InvoicesInvoiceIdRoute: typeof InvoicesInvoiceIdRoute
+  QuotesQuoteIdRoute: typeof QuotesQuoteIdRoute
   RCodeRoute: typeof RCodeRoute
   ReportsReportIdRoute: typeof ReportsReportIdRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
@@ -1050,6 +1075,13 @@ declare module '@tanstack/react-router' {
       path: '/r/$code'
       fullPath: '/r/$code'
       preLoaderRoute: typeof RCodeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/quotes/$quoteId': {
+      id: '/quotes/$quoteId'
+      path: '/quotes/$quoteId'
+      fullPath: '/quotes/$quoteId'
+      preLoaderRoute: typeof QuotesQuoteIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/invoices/$invoiceId': {
@@ -1374,6 +1406,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProjectPProjectIdAuditRouteImport
       parentRoute: typeof ProjectPProjectIdRouteRoute
     }
+    '/_app/modules/quotes/$quoteId': {
+      id: '/_app/modules/quotes/$quoteId'
+      path: '/quotes/$quoteId'
+      fullPath: '/modules/quotes/$quoteId'
+      preLoaderRoute: typeof AppModulesQuotesQuoteIdRouteImport
+      parentRoute: typeof AppModulesRouteRoute
+    }
     '/_app/modules/leads/$leadId': {
       id: '/_app/modules/leads/$leadId'
       path: '/leads/$leadId'
@@ -1600,6 +1639,7 @@ interface AppModulesRouteRouteChildren {
   AppModulesIntegrationsRoute: typeof AppModulesIntegrationsRouteWithChildren
   AppModulesIndexRoute: typeof AppModulesIndexRoute
   AppModulesLeadsLeadIdRoute: typeof AppModulesLeadsLeadIdRoute
+  AppModulesQuotesQuoteIdRoute: typeof AppModulesQuotesQuoteIdRoute
 }
 
 const AppModulesRouteRouteChildren: AppModulesRouteRouteChildren = {
@@ -1608,6 +1648,7 @@ const AppModulesRouteRouteChildren: AppModulesRouteRouteChildren = {
   AppModulesIntegrationsRoute: AppModulesIntegrationsRouteWithChildren,
   AppModulesIndexRoute: AppModulesIndexRoute,
   AppModulesLeadsLeadIdRoute: AppModulesLeadsLeadIdRoute,
+  AppModulesQuotesQuoteIdRoute: AppModulesQuotesQuoteIdRoute,
 }
 
 const AppModulesRouteRouteWithChildren = AppModulesRouteRoute._addFileChildren(
@@ -1796,6 +1837,7 @@ const rootRouteChildren: RootRouteChildren = {
   AcceptInvitationInvitationIdRoute: AcceptInvitationInvitationIdRoute,
   ApiHealthRoute: ApiHealthRoute,
   InvoicesInvoiceIdRoute: InvoicesInvoiceIdRoute,
+  QuotesQuoteIdRoute: QuotesQuoteIdRoute,
   RCodeRoute: RCodeRoute,
   ReportsReportIdRoute: ReportsReportIdRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,

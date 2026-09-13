@@ -3,8 +3,8 @@
  *
  * A draft is the only editable state. Once sent, the client's answer is what
  * moves it: accepted or declined, or expired when its valid-until date passes
- * without one. A sent quote can be pulled back to draft to fix a mistake; an
- * answered one cannot, because someone has already relied on it.
+ * without one. A sent or expired quote can be pulled back to draft to fix a
+ * mistake or a date; an answered one cannot, because someone relied on it.
  */
 import type { QuoteStatus } from "@/types/schemas/quotes";
 
@@ -13,7 +13,7 @@ const TRANSITIONS: Record<QuoteStatus, readonly QuoteStatus[]> = {
   sent: ["accepted", "declined", "expired", "draft"],
   accepted: [],
   declined: [],
-  expired: ["sent"],
+  expired: ["draft"],
 };
 
 export function canMoveQuote(from: QuoteStatus, to: QuoteStatus): boolean {

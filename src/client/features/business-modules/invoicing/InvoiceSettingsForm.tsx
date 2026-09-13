@@ -175,7 +175,38 @@ export function InvoiceSettingsForm({
             onChange={(event) => set("invoicePrefix", event.target.value)}
           />
         </label>
+        <label className="form-control">
+          <span className="label-text">Quote prefix</span>
+          <input
+            className="input input-bordered"
+            value={form.quotePrefix}
+            onChange={(event) => set("quotePrefix", event.target.value)}
+          />
+        </label>
+        <label className="form-control">
+          <span className="label-text">Quotes valid for (days)</span>
+          <input
+            type="number"
+            min={1}
+            className="input input-bordered"
+            value={form.quoteValidityDays}
+            onChange={(event) =>
+              set("quoteValidityDays", Number(event.target.value) || 30)
+            }
+          />
+        </label>
       </section>
+
+      <label className="form-control">
+        <span className="label-text">Quote terms</span>
+        <textarea
+          className="textarea textarea-bordered"
+          rows={3}
+          value={form.quoteTerms ?? ""}
+          onChange={(event) => set("quoteTerms", event.target.value)}
+          placeholder="50% deposit to start. Balance on completion. Prices include setup only."
+        />
+      </label>
 
       <label className="form-control">
         <span className="label-text">Bank details</span>
@@ -238,7 +269,15 @@ export function InvoiceSettingsForm({
         <button
           className="btn btn-primary"
           disabled={save.isPending}
-          onClick={() => save.mutate(form)}
+          onClick={() => {
+            // Numbering counters belong to the server; see the schema.
+            const {
+              nextInvoiceNumber: _invoiceCounter,
+              nextQuoteNumber: _quoteCounter,
+              ...fields
+            } = form;
+            save.mutate(fields);
+          }}
         >
           {save.isPending ? "Saving…" : "Save settings"}
         </button>

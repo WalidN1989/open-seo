@@ -31,7 +31,10 @@ export const invoiceSettingsSchema = z.object({
   footerNote: z.string().max(600).nullish(),
   logoUrl: z.string().max(400_000).nullish(),
   invoicePrefix: z.string().max(12).default("INV"),
-  nextInvoiceNumber: z.number().int().min(1).default(1),
+  // The counters are moved by the server as documents are numbered. A form
+  // that sends back the value it loaded would roll them back and repeat a
+  // number, so they are optional and settings saves leave them out.
+  nextInvoiceNumber: z.number().int().min(1).optional(),
   // Optional with no default: a settings form that does not show them must
   // not reset the quote sequence to 1 when it saves.
   quotePrefix: z.string().max(12).optional(),

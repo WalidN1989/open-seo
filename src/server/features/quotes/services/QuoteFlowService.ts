@@ -99,6 +99,12 @@ async function setStatus(
       `A ${current} quote cannot be marked ${input.status}.`,
     );
   }
+  if (input.status === "sent" && row.validUntil < todayIso()) {
+    throw new AppError(
+      "VALIDATION_ERROR",
+      "This quote's valid-until date has passed. Edit the date before sending it.",
+    );
+  }
   const stamp = new Date().toISOString();
   const updated = await Repo.updateQuote(organizationId, row.id, {
     status: input.status,

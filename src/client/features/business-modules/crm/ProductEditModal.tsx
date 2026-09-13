@@ -135,6 +135,7 @@ type ProductRow = {
   isbn: string | null;
   description: string | null;
   category: string | null;
+  itemType: "product" | "service";
   productUrl: string | null;
   salePriceMinor: number;
   costPriceMinor: number | null;
@@ -168,6 +169,7 @@ function DetailsTab({
           barcode: text("barcode") || undefined,
           isbn: text("isbn") || undefined,
           category: text("category") || undefined,
+          itemType: text("itemType") === "service" ? "service" : "product",
           description: text("description") || undefined,
           // An empty string clears the link; the schema accepts it explicitly
           // so "no page" is expressible rather than failing URL validation.
@@ -193,6 +195,16 @@ function DetailsTab({
             defaultValue={product.category ?? ""}
             className="input input-bordered input-sm w-full"
           />
+        </Field>
+        <Field label="Type" hint="Services have no stock and quote by the job">
+          <select
+            name="itemType"
+            defaultValue={product.itemType}
+            className="select select-bordered select-sm w-full"
+          >
+            <option value="product">Product</option>
+            <option value="service">Service</option>
+          </select>
         </Field>
       </div>
 

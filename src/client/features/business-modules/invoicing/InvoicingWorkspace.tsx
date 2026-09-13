@@ -5,6 +5,7 @@ import { getStandardErrorMessage } from "@/client/lib/error-messages";
 import { InvoiceDocument } from "./InvoiceDocument";
 import { InvoiceEditor } from "./InvoiceEditor";
 import { InvoiceSettingsForm } from "./InvoiceSettingsForm";
+import { QuotesSection } from "../quotes/QuotesSection";
 import {
   STATUS_LABEL,
   STATUS_TONE,
@@ -17,7 +18,7 @@ import {
 } from "./invoicingQuery";
 import { formatMoney } from "@/server/features/invoicing/invoiceTotals";
 
-const SECTIONS = ["Invoices", "Settings"] as const;
+const SECTIONS = ["Invoices", "Quotes", "Settings"] as const;
 
 function InvoiceRow({
   invoice,
@@ -154,7 +155,12 @@ function InvoiceView({
 }
 
 export function InvoicingWorkspace() {
-  const [section, setSection] = useState<(typeof SECTIONS)[number]>("Invoices");
+  // A link back from a quote lands on the Quotes tab.
+  const [section, setSection] = useState<(typeof SECTIONS)[number]>(() =>
+    typeof window !== "undefined" && window.location.hash === "#quotes"
+      ? "Quotes"
+      : "Invoices",
+  );
   const [selected, setSelected] = useState<string | null>(null);
   const [editing, setEditing] = useState<"new" | "existing" | null>(null);
   const query = useInvoicingWorkspace();
@@ -228,6 +234,8 @@ export function InvoicingWorkspace() {
 
       {section === "Settings" ? (
         <InvoiceSettingsForm settings={data.settings} />
+      ) : section === "Quotes" ? (
+        <QuotesSection />
       ) : (
         <div className="space-y-3">
           <button
