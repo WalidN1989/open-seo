@@ -5,7 +5,9 @@ import {
   MAIL_BRIDGE_SECRET_HEADER,
   type BridgeSendRequest,
   type BridgeSendResult,
+  type BridgeVerifyResult,
   type MailboxCredentials,
+  type MailboxTransport,
 } from "@/shared/mail-bridge";
 
 /**
@@ -40,10 +42,19 @@ export function mailboxCredentialsFrom(
   };
 }
 
+/** Stored beside the login: how this mailbox sends. Defaults to SMTP. */
+export function mailboxTransportFrom(
+  creds: Record<string, string | undefined>,
+): MailboxTransport {
+  return creds.SEND_VIA === "resend" ? "resend" : "smtp";
+}
+
 export function mailboxCredentialsToStored(
   creds: MailboxCredentials,
+  transport: MailboxTransport,
 ): Record<string, string> {
   return {
+    SEND_VIA: transport,
     USERNAME: creds.username,
     PASSWORD: creds.password,
     IMAP_HOST: creds.imapHost,
@@ -112,9 +123,26 @@ async function bridgeRequest<T>(
   return parse(payload);
 }
 
-/** Log in over IMAP and SMTP once, so a typo fails now and not on first send. */
+/**
+ * Log in over IMAP once, so a typo fails now and not on first send. SMTP is
+ * tried too; a host that blocks it is reported rather than fatal, because
+ * the caller may have another way out.
+ */
 export async function verifyMailbox(credentials: MailboxCredentials) {
-  return bridgeRequest("/verify", { credentials }, () => ({ ok: true }));
+  return bridgeRequest(
+    "/verify",
+    { credentials },
+    (payload): BridgeVerifyResult => ({
+      ok: true,
+      smtpProblem:
+        payload &&
+        typeof payload === "object" &&
+        "smtpProblem" in payload &&
+        typeof payload.smtpProblem === "string"
+          ? payload.smtpProblem
+          : null,
+    }),
+  );
 }
 
 export async function sendViaMailbox(

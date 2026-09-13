@@ -1,13 +1,21 @@
 import { AppError } from "@/server/lib/errors";
 import { decryptCredentials } from "@/server/lib/connection-secrets";
-import type { MailboxCredentials } from "@/shared/mail-bridge";
+import { getResendConfig } from "@/server/email/resend";
+import type {
+  MailboxCredentials,
+  MailboxTransport,
+} from "@/shared/mail-bridge";
 import type {
   EmailAccountRow,
   EmailMessageRow,
   EmailThreadRow,
 } from "../repositories/EmailRepository";
 import { agentmailClient } from "./agentmail";
-import { mailboxCredentialsFrom, sendViaMailbox } from "./mailbox";
+import {
+  mailboxCredentialsFrom,
+  mailboxTransportFrom,
+  sendViaMailbox,
+} from "./mailbox";
 import { normalizeMessageId, replySubject } from "./threading";
 
 /** What every provider must be able to do, in the mirror's own terms. */
@@ -53,12 +61,22 @@ function agentmailOutbound(account: EmailAccountRow, apiKey: string): Outbound {
 function mailboxOutbound(
   account: EmailAccountRow,
   credentials: MailboxCredentials,
+  transport: MailboxTransport,
 ): Outbound {
   const from = { address: account.address, name: account.displayName ?? "" };
+  const resendApiKey = getResendConfig()?.apiKey;
+  if (transport === "resend" && !resendApiKey) {
+    throw new AppError(
+      "VALIDATION_ERROR",
+      "This mailbox sends through Resend, but RESEND_API_KEY is no longer set.",
+    );
+  }
+  const via = { transport, resendApiKey };
   return {
     reply: async ({ thread, last, text }) => {
       const lastId = normalizeMessageId(last.externalMessageId);
       const sent = await sendViaMailbox({
+        ...via,
         credentials,
         from,
         to: [last.fromAddress],
@@ -73,6 +91,7 @@ function mailboxOutbound(
     },
     compose: async ({ to, subject, text, html }) => {
       const sent = await sendViaMailbox({
+        ...via,
         credentials,
         from,
         to: [to],
@@ -96,7 +115,7 @@ export async function outboundFor(account: EmailAccountRow): Promise<Outbound> {
         "The mailbox has no stored login. Reconnect it.",
       );
     }
-    return mailboxOutbound(account, credentials);
+    return mailboxOutbound(account, credentials, mailboxTransportFrom(creds));
   }
   if (!creds.API_KEY) {
     throw new AppError(

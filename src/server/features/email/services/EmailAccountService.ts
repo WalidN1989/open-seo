@@ -14,6 +14,7 @@ import {
   WEBHOOK_EVENT_TYPES,
   agentmailClient,
 } from "../providers/agentmail";
+import { getResendConfig } from "@/server/email/resend";
 import {
   mailboxCredentialsToStored,
   pokeBridgeReload,
@@ -280,7 +281,10 @@ async function connectMailbox(
     smtpHost: input.smtpHost,
     smtpPort: input.smtpPort,
   };
-  await verifyMailbox(credentials);
+  const verified = await verifyMailbox(credentials);
+  const transport = verified.smtpProblem
+    ? sendingFallbackFor(input.address, verified.smtpProblem)
+    : "smtp";
   const values = {
     displayName: input.displayName,
     address: input.address,
@@ -298,7 +302,7 @@ async function connectMailbox(
   if (!account) throw new AppError("NOT_FOUND", "No email account.");
   const connected = await Repo.updateAccount(account.id, {
     credentials: await encryptCredentials(
-      mailboxCredentialsToStored(credentials),
+      mailboxCredentialsToStored(credentials, transport),
     ),
     webhookId: null,
     // Start from now: the bridge reports where the inbox is on first sight.
@@ -311,9 +315,30 @@ async function connectMailbox(
     address: input.address,
     imapHost: input.imapHost,
     smtpHost: input.smtpHost,
+    transport,
   });
   await pokeBridgeReload();
   return publicAccount(connected);
+}
+
+/**
+ * The host may not let SMTP out at all (Railway blocks 25, 465 and 587).
+ * Reading still works over IMAP, and sending can go through Resend's HTTPS
+ * API from the same address, provided Resend has verified that domain —
+ * which is the case when the server's own sender is on it.
+ */
+function sendingFallbackFor(address: string, smtpProblem: string) {
+  const config = getResendConfig();
+  const domain = address.split("@")[1]?.toLowerCase();
+  const verifiedDomain = config?.from
+    .replace(/^.*<|>$/g, "")
+    .split("@")[1]
+    ?.toLowerCase();
+  if (config && domain && domain === verifiedDomain) return "resend" as const;
+  throw new AppError(
+    "INTEGRATION_CHECK_FAILED",
+    `The mailbox login is right, but this server cannot reach its SMTP port (${smtpProblem}). Sending would have to go through Resend, which is only set up for ${verifiedDomain ?? "no domain"}, not ${domain ?? "this one"}.`,
+  );
 }
 
 async function disconnect(organizationId: string, userId: string) {

@@ -23,6 +23,20 @@ export type MailboxCredentials = {
   smtpPort: number;
 };
 
+/**
+ * How mail leaves. "smtp" is the mailbox's own server. "resend" is for hosts
+ * that block outbound SMTP ports (Railway does): the message goes through
+ * Resend's HTTPS API from the same address, on a domain Resend has verified,
+ * with a copy placed in the mailbox's Sent folder over IMAP.
+ */
+export type MailboxTransport = "smtp" | "resend";
+
+export type BridgeVerifyResult = {
+  ok: true;
+  /** null when SMTP worked; otherwise why it did not. */
+  smtpProblem: string | null;
+};
+
 /** One mailbox the bridge should keep an IMAP connection open for. */
 export type BridgeAccount = {
   accountId: string;
@@ -48,6 +62,9 @@ export type BridgeInboundMessage = {
 
 export type BridgeSendRequest = {
   credentials: MailboxCredentials;
+  transport: MailboxTransport;
+  /** Needed when transport is "resend". */
+  resendApiKey?: string;
   from: { address: string; name?: string };
   to: string[];
   subject: string;

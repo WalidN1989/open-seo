@@ -30,6 +30,7 @@ import {
   type BridgeAccount,
   type BridgeInboundMessage,
   type BridgeSendRequest,
+  type BridgeVerifyResult,
   type MailboxCredentials,
 } from "../src/shared/mail-bridge";
 
@@ -306,7 +307,9 @@ function describe(step: "IMAP" | "SMTP", error: unknown): Error {
   return new Error(`${step}: ${text}`);
 }
 
-async function verify(credentials: MailboxCredentials) {
+async function verify(
+  credentials: MailboxCredentials,
+): Promise<BridgeVerifyResult> {
   const client = imapClient(credentials);
   try {
     await client.connect();
@@ -318,8 +321,50 @@ async function verify(credentials: MailboxCredentials) {
   }
   try {
     await smtpTransport(credentials).verify();
+    return { ok: true, smtpProblem: null };
   } catch (error) {
-    throw describe("SMTP", error);
+    // Reading works; the worker decides whether sending has another route.
+    return { ok: true, smtpProblem: describe("SMTP", error).message };
+  }
+}
+
+/**
+ * Resend's HTTPS API, for hosts that block SMTP. The same From address, the
+ * same threading headers, and Reply-To pinned to the mailbox so answers come
+ * back to the inbox IMAP is watching.
+ */
+async function sendThroughResend(
+  request: BridgeSendRequest,
+  headers: Record<string, string>,
+) {
+  if (!request.resendApiKey) {
+    throw new Error("Resend transport chosen but no API key was provided.");
+  }
+  const from = request.from.name
+    ? `${request.from.name.replaceAll('"', "")} <${request.from.address}>`
+    : request.from.address;
+  const response = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${request.resendApiKey}`,
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({
+      from,
+      to: request.to,
+      reply_to: request.from.address,
+      subject: request.subject,
+      text: request.text,
+      html: request.html,
+      headers,
+    }),
+    signal: AbortSignal.timeout(30_000),
+  });
+  if (!response.ok) {
+    const detail = await response.text().catch(() => "");
+    throw new Error(
+      `Resend refused the message (${response.status}): ${detail.slice(0, 300)}`,
+    );
   }
 }
 
@@ -358,10 +403,25 @@ async function send(request: BridgeSendRequest) {
   const message = composer.compile();
   const messageId = message.messageId();
   const raw = await message.build();
-  await smtpTransport(request.credentials).sendMail({
-    envelope: { from: request.from.address, to: request.to },
-    raw,
-  });
+  if (request.transport === "resend") {
+    // Resend stamps its own Message-ID, so ours rides in References: every
+    // mail client copies References into a reply, and the worker threads on
+    // any id it recognises there.
+    const references = [
+      ...(request.references ?? []),
+      messageId.replace(/^<|>$/g, ""),
+    ];
+    await sendThroughResend(request, {
+      "Message-ID": messageId,
+      References: references.map((id) => `<${id}>`).join(" "),
+      ...(request.inReplyTo ? { "In-Reply-To": `<${request.inReplyTo}>` } : {}),
+    });
+  } else {
+    await smtpTransport(request.credentials).sendMail({
+      envelope: { from: request.from.address, to: request.to },
+      raw,
+    });
+  }
   await appendToSent(request.credentials, raw);
   return { messageId: messageId.replace(/^<|>$/g, "") };
 }
