@@ -217,11 +217,14 @@ async function recordCall(
     welcomeStatus: null,
   });
 
+  // The number the caller read out is the one they asked us to use; the line
+  // they rang from can be a landline or a phone without WhatsApp.
+  const whatsappTo = phoneFromText(report.captured.callback_details) ?? phone;
   // Anyone who has not had the thank-you yet gets it, so a caller whose
   // first call came before a template was set up is not left out.
   const welcomeOwed = !(await Repo.welcomeSentTo(organizationId, contact.id));
   const welcome = welcomeOwed
-    ? await sendWelcome(organizationId, welcomeTemplate, phone, {
+    ? await sendWelcome(organizationId, welcomeTemplate, whatsappTo, {
         // Template: "Hi {{1}}, thanks for calling … about {{2}} …"
         "1": firstName || "there",
         "2": report.captured.service_interest
