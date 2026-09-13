@@ -59,6 +59,22 @@ async function setWelcomeStatus(id: string, welcomeStatus: string) {
     .where(eq(voicePhoneCalls.id, id));
 }
 
+/** Whether a call has already delivered the thank-you to this contact. */
+async function welcomeSentTo(organizationId: string, contactId: string) {
+  const [row] = await db
+    .select({ id: voicePhoneCalls.id })
+    .from(voicePhoneCalls)
+    .where(
+      and(
+        eq(voicePhoneCalls.organizationId, organizationId),
+        eq(voicePhoneCalls.contactId, contactId),
+        eq(voicePhoneCalls.welcomeStatus, "sent"),
+      ),
+    )
+    .limit(1);
+  return Boolean(row);
+}
+
 async function listCalls(organizationId: string, limit = 100) {
   return db
     .select({
@@ -262,6 +278,7 @@ export const PhoneCallRepository = {
   findCall,
   insertCall,
   setWelcomeStatus,
+  welcomeSentTo,
   listCalls,
   findContactByPhone,
   findContactByEmail,

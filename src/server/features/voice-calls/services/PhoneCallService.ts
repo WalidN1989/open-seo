@@ -87,8 +87,8 @@ async function sendWelcome(
   const value = template.trim();
   // Twilio sends by Content SID (HX…); Meta sends by template name.
   const isContentSid = /^HX[0-9a-f]{32}$/i.test(value);
-  try {
-    await sendWhatsappTemplate(
+  const send = (withVariables: boolean) =>
+    sendWhatsappTemplate(
       connection,
       connection.provider === "twilio"
         ? recipient
@@ -97,9 +97,18 @@ async function sendWelcome(
         name: isContentSid ? "call_welcome" : value,
         languageCode: "en",
         externalTemplateId: isContentSid ? value : null,
-        variables: isContentSid ? variables : undefined,
+        variables: withVariables ? variables : undefined,
       },
     );
+  try {
+    try {
+      await send(isContentSid);
+    } catch (error) {
+      // A template without placeholders can refuse the name and service;
+      // the plain template is still the right message.
+      if (!isContentSid) throw error;
+      await send(false);
+    }
     return "sent";
   } catch (error) {
     return `failed: ${error instanceof Error ? error.message : "unknown error"}`.slice(
@@ -208,7 +217,10 @@ async function recordCall(
     welcomeStatus: null,
   });
 
-  const welcome = firstTimeCaller
+  // Anyone who has not had the thank-you yet gets it, so a caller whose
+  // first call came before a template was set up is not left out.
+  const welcomeOwed = !(await Repo.welcomeSentTo(organizationId, contact.id));
+  const welcome = welcomeOwed
     ? await sendWelcome(organizationId, welcomeTemplate, phone, {
         // Template: "Hi {{1}}, thanks for calling … about {{2}} …"
         "1": firstName || "there",
@@ -216,7 +228,7 @@ async function recordCall(
           ? inSentence(shortNeed(report.captured.service_interest))
           : "our services",
       })
-    : "skipped: returning caller";
+    : "skipped: already welcomed";
   await Repo.setWelcomeStatus(call.id, welcome);
 
   await BusinessAuditRepository.record({
