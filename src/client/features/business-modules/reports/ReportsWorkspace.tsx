@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Copy, FileBarChart, Pencil, Trash2 } from "lucide-react";
+import { FileBarChart } from "lucide-react";
 import {
   createClientReportLink,
   deleteClientReport,
@@ -10,9 +10,11 @@ import {
   getReportBranding,
   listClientReports,
   listReportableProjects,
+  sendClientReport,
 } from "@/serverFunctions/reports";
 import { getStandardErrorMessage } from "@/client/lib/error-messages";
 import { ClientReportDocument } from "./ClientReportDocument";
+import { ReportList } from "./ReportList";
 import {
   EMPTY_ENGAGEMENT,
   EngagementForm,
@@ -38,7 +40,8 @@ export function ReportsWorkspace() {
   // picked and poured into the form, so nothing is retyped report to report.
   const savedProfile = useQuery({
     queryKey: ["client-reports", "profile", projectId],
-    queryFn: () => getClientReportProfile({ data: { projectId } }),
+    queryFn: () =>
+      getClientReportProfile({ data: { targetProjectId: projectId } }),
     enabled: Boolean(projectId),
   });
   useEffect(() => {
@@ -79,7 +82,7 @@ export function ReportsWorkspace() {
     mutationFn: () =>
       generateClientReport({
         data: {
-          projectId,
+          targetProjectId: projectId,
           clientName: clientName.trim(),
           loginEmail: loginEmail.trim(),
           ...engagement,
@@ -108,6 +111,28 @@ export function ReportsWorkspace() {
       void navigator.clipboard.writeText(url);
     },
   });
+  // Which report is being sent, and to whom. The address defaults to the
+  // sign-in email the report was made with, since that is nearly always it.
+  const [sending, setSending] = useState<{
+    reportId: string;
+    to: string;
+    note: string;
+  } | null>(null);
+  const send = useMutation({
+    mutationFn: (input: { reportId: string; to: string; note: string }) =>
+      sendClientReport({
+        data: {
+          reportId: input.reportId,
+          to: input.to.trim(),
+          note: input.note.trim() || undefined,
+        },
+      }),
+    onSuccess: async () => {
+      setSending(null);
+      await refresh();
+    },
+  });
+
   const remove = useMutation({
     mutationFn: (reportId: string) =>
       deleteClientReport({ data: { reportId } }),
@@ -258,58 +283,25 @@ export function ReportsWorkspace() {
         </div>
       ) : null}
 
-      {reports.data?.length ? (
-        <div className="space-y-2">
-          <h2 className="text-sm font-semibold">Reports you have generated</h2>
-          {reports.data.map((report) => (
-            <div
-              key={report.id}
-              className="flex flex-wrap items-center gap-3 rounded-lg border border-base-300 px-4 py-3"
-            >
-              <span className="font-medium">{report.clientName}</span>
-              <span className="text-xs text-base-content/50">
-                {report.createdAt.slice(0, 10)}
-              </span>
-              <div className="ml-auto flex flex-wrap gap-2">
-                <button
-                  className="btn btn-ghost btn-xs"
-                  title="Fill the form with what this report was made from"
-                  onClick={() => {
-                    // Picking the project is what loads its remembered form;
-                    // when nothing was remembered, the report itself is read.
-                    setProjectId(report.projectId);
-                    window.scrollTo({ top: 0, behavior: "smooth" });
-                  }}
-                >
-                  <Pencil className="size-3.5" /> Edit
-                </button>
-                <button
-                  className="btn btn-ghost btn-xs"
-                  onClick={() =>
-                    setOpenId(shownId === report.id ? "" : report.id)
-                  }
-                >
-                  {shownId === report.id ? "Hide" : "Preview"}
-                </button>
-                <button
-                  className="btn btn-ghost btn-xs"
-                  disabled={link.isPending}
-                  onClick={() => link.mutate(report.id)}
-                >
-                  <Copy className="size-3.5" /> Share link
-                </button>
-                <button
-                  className="btn btn-ghost btn-xs text-error"
-                  disabled={remove.isPending}
-                  onClick={() => remove.mutate(report.id)}
-                >
-                  <Trash2 className="size-3.5" />
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : null}
+      <ReportList
+        reports={reports.data ?? []}
+        shownId={shownId}
+        onPreview={(id) => setOpenId(shownId === id ? "" : id)}
+        onEdit={(reportProjectId) => {
+          setProjectId(reportProjectId);
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        }}
+        onShare={(id) => link.mutate(id)}
+        onRemove={(id) => remove.mutate(id)}
+        onSend={(id, to) => setSending({ reportId: id, to, note: "" })}
+        defaultSendTo={loginEmail}
+        busy={{ link: link.isPending, remove: remove.isPending }}
+        sending={sending}
+        onSendingChange={setSending}
+        onSendSubmit={(input) => send.mutate(input)}
+        sendPending={send.isPending}
+        sendError={send.isError ? getStandardErrorMessage(send.error) : null}
+      />
 
       {shownId && open.data ? (
         <div className="rounded-xl bg-base-200/40 p-4">

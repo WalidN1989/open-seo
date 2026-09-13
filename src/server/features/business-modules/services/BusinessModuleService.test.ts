@@ -20,6 +20,11 @@ vi.mock("../repositories/BusinessModuleRepository", () => ({
 vi.mock("../repositories/BusinessAuditRepository", () => ({
   BusinessAuditRepository: auditRepository,
 }));
+// Client Reports is gated on the workspace owning its letterhead. These
+// tests are about entitlements and permissions, so no letterhead here.
+vi.mock("@/server/features/invoicing/repositories/InvoiceRepository", () => ({
+  InvoiceRepository: { getSettings: () => Promise.resolve(null) },
+}));
 
 import { BusinessModuleService } from "./BusinessModuleService";
 

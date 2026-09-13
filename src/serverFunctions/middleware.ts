@@ -16,10 +16,10 @@ const ensuredUserContextSchema: z.ZodType<EnsuredUserContext> = z.object({
 function getAuthenticatedContext(context: unknown): EnsuredUserContext {
   const result = ensuredUserContextSchema.safeParse(context);
   if (!result.success) {
-    throw new AppError(
-      "INTERNAL_ERROR",
-      "Authenticated server function context missing",
-    );
+    // The global middleware resolves a user when it can and passes an empty
+    // context when it cannot. This is the point where an endpoint that needs
+    // one says so.
+    throw new AppError("UNAUTHENTICATED");
   }
   return result.data;
 }

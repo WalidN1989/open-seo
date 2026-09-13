@@ -100,6 +100,8 @@ async function sendResendEmail({
   subject,
   html,
   text,
+  replyTo,
+  fromName,
   fetcher = fetch,
 }: {
   config: ResendConfig;
@@ -107,15 +109,30 @@ async function sendResendEmail({
   subject: string;
   html: string;
   text: string;
+  /** Where a reply goes — the agency's own inbox, not the sending domain. */
+  replyTo?: string;
+  /** The name shown beside the sending address, e.g. the agency's. */
+  fromName?: string;
   fetcher?: typeof fetch;
 }) {
+  // The verified address stays; only the display name changes. Resend
+  // refuses a from-address on a domain the account has not verified.
+  const bareFrom = /<([^>]+)>/.exec(config.from)?.[1] ?? config.from;
+  const from = fromName ? `${fromName} <${bareFrom}>` : config.from;
   const response = await fetcher(RESEND_SEND_URL, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${config.apiKey}`,
     },
-    body: JSON.stringify({ from: config.from, to: [to], subject, html, text }),
+    body: JSON.stringify({
+      from,
+      to: [to],
+      subject,
+      html,
+      text,
+      ...(replyTo ? { reply_to: replyTo } : {}),
+    }),
     signal: AbortSignal.timeout(20_000),
   });
 
@@ -194,5 +211,46 @@ export async function sendResendVerificationEmail(
     }),
     text: `Confirm your ${appName} email address\n\nConfirm this address to finish setting up your ${appName} account.\n\n${confirmationUrl}\n\nIf you did not create this account, you can ignore this email.\n`,
     fetcher,
+  });
+}
+
+/**
+ * A message with one thing to click, sent on behalf of a business.
+ *
+ * Used for the report a client is sent: the button is the report link, the
+ * sender shows the agency's name, and replies go to the agency's own inbox.
+ */
+export async function sendResendActionEmail(
+  config: ResendConfig,
+  input: {
+    to: string;
+    subject: string;
+    heading: string;
+    body: string;
+    buttonLabel: string;
+    actionUrl: string;
+    footer: string;
+    replyTo?: string;
+    fromName?: string;
+    fetcher?: typeof fetch;
+  },
+) {
+  const html = renderActionEmail({
+    heading: input.heading,
+    body: input.body,
+    buttonLabel: input.buttonLabel,
+    actionUrl: input.actionUrl,
+    footer: input.footer,
+  });
+  const text = `${input.heading}\n\n${input.body}\n\n${input.buttonLabel}: ${input.actionUrl}\n\n${input.footer}`;
+  await sendResendEmail({
+    config,
+    to: input.to,
+    subject: input.subject,
+    html,
+    text,
+    replyTo: input.replyTo,
+    fromName: input.fromName,
+    fetcher: input.fetcher,
   });
 }

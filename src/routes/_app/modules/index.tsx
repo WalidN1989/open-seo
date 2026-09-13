@@ -153,7 +153,7 @@ function BusinessModulesPage() {
         ) : (
           <div className="grid gap-4 md:grid-cols-2">
             {(accessQuery.data ?? [])
-              .filter((module) => module.key !== "leads")
+              .filter((module) => module.key !== "leads" && !module.hidden)
               .map((module) => {
                 const Icon = icons[module.key];
                 return (

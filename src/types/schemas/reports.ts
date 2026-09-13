@@ -1,7 +1,14 @@
 import { z } from "zod";
 
+/**
+ * `targetProjectId`, not `projectId`, on purpose. The global middleware
+ * treats a `projectId` in any payload as "act inside that project's
+ * workspace" and moves the session there. A report is about a client's
+ * project but belongs to the agency's workspace, so the field is named so the
+ * middleware leaves the session where it is.
+ */
 export const generateClientReportSchema = z.object({
-  projectId: z.string().min(1),
+  targetProjectId: z.string().min(1),
   clientName: z.string().trim().max(160).default(""),
   /** The address the client signs in with. Never a password. */
   loginEmail: z.string().trim().max(200).default(""),
@@ -49,5 +56,12 @@ export const clientReportTokenSchema = z.object({
 });
 
 export const clientReportProfileSchema = z.object({
-  projectId: z.string().min(1),
+  targetProjectId: z.string().min(1),
+});
+
+export const sendClientReportSchema = z.object({
+  reportId: z.string().min(1),
+  to: z.string().trim().email().max(200),
+  /** A line from the sender, placed above the link. */
+  note: z.string().trim().max(1000).optional(),
 });

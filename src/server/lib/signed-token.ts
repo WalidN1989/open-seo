@@ -92,5 +92,11 @@ export async function verifyToken<T>(
   }
 }
 
-/** How long a minted link stays good. Long enough to email, short enough to matter. */
-export const DOCUMENT_LINK_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+/**
+ * How long a minted link stays good.
+ *
+ * Thirty days: a client is sent a report, sits on it, and comes back to it
+ * when they are ready to talk. Seven proved too short for that, and a dead
+ * link is the worst first impression a document can make.
+ */
+export const DOCUMENT_LINK_TTL_MS = 30 * 24 * 60 * 60 * 1000;

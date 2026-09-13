@@ -1725,6 +1725,9 @@ export const clientReports = pgTable(
     /** Everything the document renders, as it stood when generated. */
     snapshotJson: text("snapshot_json").notNull(),
     generatedByUserId: text("generated_by_user_id"),
+    /** Last address it was emailed to, and when. Null until it is sent. */
+    sentTo: text("sent_to"),
+    sentAt: text("sent_at"),
     createdAt: createdAt(),
   },
   (table) => [

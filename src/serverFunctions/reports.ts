@@ -5,6 +5,7 @@ import {
 } from "./middleware";
 import { ClientReportService } from "@/server/features/reports/services/ClientReportService";
 import {
+  sendClientReportSchema,
   clientReportProfileSchema,
   clientReportIdSchema,
   clientReportTokenSchema,
@@ -88,6 +89,18 @@ export const getClientReportProfile = createServerFn({ method: "POST" })
     ClientReportService.profile(
       context.organizationId,
       context.userId,
-      data.projectId,
+      data.targetProjectId,
+    ),
+  );
+
+/** Email the report link to the client, from the agency's name. */
+export const sendClientReport = createServerFn({ method: "POST" })
+  .middleware(requireAuthenticatedContext)
+  .validator(sendClientReportSchema)
+  .handler(({ context, data }) =>
+    ClientReportService.sendToClient(
+      context.organizationId,
+      context.userId,
+      data,
     ),
   );

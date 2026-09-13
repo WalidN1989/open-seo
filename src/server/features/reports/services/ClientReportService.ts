@@ -8,6 +8,7 @@ import {
 import { AuthRepository } from "@/server/auth/repositories/AuthRepository";
 import { BusinessModuleService } from "@/server/features/business-modules/services/BusinessModuleService";
 import { resolveLetterhead } from "../letterhead";
+import { sendReportToClient } from "../reportEmail";
 import {
   accessFor,
   formFromSnapshot,
@@ -240,23 +241,23 @@ async function generate(
 ) {
   await requireManage(organizationId, userId);
   const memberships = await AuthRepository.listOrganizationIdsForUser(userId);
-  const project = await Data.project(input.projectId);
+  const project = await Data.project(input.targetProjectId);
   if (!project || !memberships.includes(project.organizationId)) {
     throw new AppError("FORBIDDEN");
   }
   // Remembered before the report is built, so a generation that fails
   // halfway still leaves the form filled next time. Everything except the
   // project id goes in; the project is the key.
-  const { projectId: _projectId, ...remembered } = input;
+  const { targetProjectId: _targetProjectId, ...remembered } = input;
   await Repo.saveProfile({
     organizationId,
-    projectId: input.projectId,
+    projectId: input.targetProjectId,
     profileJson: JSON.stringify(remembered),
   });
 
   const snapshot = await buildSnapshot({
     organizationId,
-    projectId: input.projectId,
+    projectId: input.targetProjectId,
     clientName: input.clientName.trim() || project.name,
     userId,
     appUrl: (await getOptionalEnvValue("BETTER_AUTH_URL")) ?? "",
@@ -289,7 +290,7 @@ async function generate(
   const yearMonth = snapshot.generatedAt.slice(0, 7);
   const existing = await Repo.findInMonth(
     organizationId,
-    input.projectId,
+    input.targetProjectId,
     yearMonth,
   );
   const values = {
@@ -302,7 +303,7 @@ async function generate(
     : await Repo.insert({
         id: crypto.randomUUID(),
         organizationId,
-        projectId: input.projectId,
+        projectId: input.targetProjectId,
         ...values,
       });
   return { id: row.id, snapshot, replaced: Boolean(existing) };
@@ -406,6 +407,21 @@ async function documentLink(
 }
 
 export const ClientReportService = {
+  sendToClient: (
+    organizationId: string,
+    userId: string,
+    input: { reportId: string; to: string; note?: string | null },
+  ) =>
+    sendReportToClient({
+      organizationId,
+      userId,
+      input,
+      requireManage,
+      documentLink,
+      getReport: Repo.get,
+      markSent: Repo.markSent,
+      parse,
+    }),
   branding,
   profile,
   projects,

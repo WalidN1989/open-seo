@@ -140,6 +140,18 @@ async function latestForProject(organizationId: string, projectId: string) {
   return row ?? null;
 }
 
+async function markSent(organizationId: string, id: string, sentTo: string) {
+  await db
+    .update(clientReports)
+    .set({ sentTo, sentAt: now() })
+    .where(
+      and(
+        eq(clientReports.organizationId, organizationId),
+        eq(clientReports.id, id),
+      ),
+    );
+}
+
 async function list(organizationId: string, limit = 50) {
   return db
     .select({
@@ -147,6 +159,8 @@ async function list(organizationId: string, limit = 50) {
       projectId: clientReports.projectId,
       clientName: clientReports.clientName,
       createdAt: clientReports.createdAt,
+      sentTo: clientReports.sentTo,
+      sentAt: clientReports.sentAt,
     })
     .from(clientReports)
     .where(eq(clientReports.organizationId, organizationId))
@@ -218,6 +232,7 @@ export const ClientReportRepository = {
   findInMonth,
   replace,
   latestForProject,
+  markSent,
   reportableProjects,
   organizationName,
   whatsappNumber,

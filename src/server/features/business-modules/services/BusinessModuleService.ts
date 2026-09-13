@@ -1,4 +1,5 @@
 import { AppError } from "@/server/lib/errors";
+import { InvoiceRepository } from "@/server/features/invoicing/repositories/InvoiceRepository";
 import {
   businessModuleCatalog,
   businessModuleKeySchema,
@@ -33,20 +34,29 @@ async function getAccess(organizationId: string, userId: string) {
     ),
   ]);
   const organizationAdmin = isOrganizationAdmin(membership.role);
+  // Client Reports is the agency's tool, not the client's. A client's
+  // workspace has no company details of its own; the agency's does. That is
+  // the whole test, and it needs no flag to be set per client.
+  const ownsLetterhead = Boolean(
+    (await InvoiceRepository.getSettings(organizationId))?.legalName?.trim(),
+  );
 
   return businessModuleCatalog.map((module) => {
+    const agencyOnly = module.key === "reports" && !ownsLetterhead;
     const entitlement = entitlements.find(
       (row) => row.moduleKey === module.key,
     );
     const permission = permissions.find(
       (row) => row.moduleKey === module.key,
     )?.permission;
-    const enabled = entitlement?.status === "enabled";
+    const enabled = entitlement?.status === "enabled" && !agencyOnly;
     return {
       ...module,
       enabled,
       permission: organizationAdmin && enabled ? "admin" : (permission ?? null),
-      canConfigureEntitlement: organizationAdmin,
+      canConfigureEntitlement: organizationAdmin && !agencyOnly,
+      /** Not shown at all here: it belongs to another workspace. */
+      hidden: agencyOnly,
     };
   });
 }
