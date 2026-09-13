@@ -355,9 +355,10 @@ export const integrationCatalogue: readonly IntegrationCatalogueEntry[] = [
       "WhatsApp welcome",
     ],
     howToConnect: [
-      "Save this connection first with any value, then copy the webhook address shown on this page.",
-      "In ElevenLabs, open Settings → Webhooks, create a webhook with that address and HMAC authentication, and copy its secret.",
-      "Paste the secret here and save. In Settings → Post-call webhook, select it and tick Transcript.",
+      "Type any placeholder in Webhook secret and click Connect. The webhook address then appears on this page; copy it.",
+      "In ElevenLabs, open Settings → Webhooks, create a webhook with that address and HMAC authentication, and copy the secret it shows.",
+      "Back here, replace the placeholder with that secret and save.",
+      "In ElevenLabs, open your agent → Security → post-call webhook override, choose the new webhook and tick Transcript. Use the agent override, not the workspace default, so other agents' calls don't land in this business.",
       "Optionally add an approved WhatsApp template so first-time callers get a welcome.",
     ],
   },
