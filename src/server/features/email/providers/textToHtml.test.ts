@@ -19,4 +19,22 @@ describe("textToHtml", () => {
     expect(html).toContain('<p style="margin:0 0 1em">Bye &amp; thanks</p>');
     expect(html).not.toContain("<Connor>");
   });
+
+  it("opens WhatsApp for a number beside the word, dials otherwise", () => {
+    const html = textToHtml("WhatsApp: +61 408 579 044\nOffice: 07 3000 1234");
+    expect(html).toContain(
+      '<a href="https://wa.me/61408579044">+61 408 579 044</a>',
+    );
+    expect(html).toContain('<a href="tel:0730001234">07 3000 1234</a>');
+    expect(textToHtml("WhatsApp us on 0408 579 044")).toContain(
+      'href="https://wa.me/61408579044"',
+    );
+  });
+
+  it("does not mistake a year or a report code for a phone number", () => {
+    expect(textToHtml("Prepared 13 September 2026.")).not.toContain("<a ");
+    expect(
+      textToHtml("https://seo.digitalurgency.com.au/r/oTHueycNQx"),
+    ).toContain('href="https://seo.digitalurgency.com.au/r/oTHueycNQx"');
+  });
 });

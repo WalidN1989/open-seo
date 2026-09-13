@@ -16,7 +16,25 @@ function escapeHtml(value: string) {
 }
 
 const URL_OR_EMAIL =
-  /(https?:\/\/[^\s<>"']+|www\.[^\s<>"']+|[\w.+-]+@[\w-]+(?:\.[\w-]+)+)/g;
+  /(https?:\/\/[^\s<>"']+|www\.[^\s<>"']+|[\w.+-]+@[\w-]+(?:\.[\w-]+)+|\+?\d[\d\s()-]{6,}\d)/g;
+
+/**
+ * A phone number as a link. On a line that mentions WhatsApp it opens a chat
+ * with that number (wa.me needs the country code, so a local 04… number is
+ * read as Australian); anywhere else it dials.
+ */
+function phoneHref(raw: string, line: string) {
+  const digits = raw.replace(/\D/g, "");
+  if (/whatsapp/i.test(line)) {
+    const international = raw.trim().startsWith("+")
+      ? digits
+      : digits.startsWith("0")
+        ? `61${digits.slice(1)}`
+        : digits;
+    return `https://wa.me/${international}`;
+  }
+  return `tel:${raw.trim().startsWith("+") ? "+" : ""}${digits}`;
+}
 
 /** Trailing punctuation belongs to the sentence, not the address. */
 function splitTrailing(match: string) {
@@ -35,7 +53,9 @@ function linkify(line: string) {
       ? `mailto:${link}`
       : link.startsWith("www.")
         ? `https://${link}`
-        : link;
+        : /^\+?\d/.test(link) && !link.startsWith("http")
+          ? phoneHref(link, line)
+          : link;
     out += `<a href="${escapeHtml(href)}">${escapeHtml(link)}</a>${escapeHtml(rest)}`;
     last = index + found[0].length;
   }
