@@ -32,6 +32,12 @@ export const invoiceSettingsSchema = z.object({
   logoUrl: z.string().max(400_000).nullish(),
   invoicePrefix: z.string().max(12).default("INV"),
   nextInvoiceNumber: z.number().int().min(1).default(1),
+  // Optional with no default: a settings form that does not show them must
+  // not reset the quote sequence to 1 when it saves.
+  quotePrefix: z.string().max(12).optional(),
+  nextQuoteNumber: z.number().int().min(1).optional(),
+  quoteValidityDays: z.number().int().min(1).max(365).optional(),
+  quoteTerms: z.string().max(2000).nullish(),
 });
 
 const invoiceLineSchema = z.object({

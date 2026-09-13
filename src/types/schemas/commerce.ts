@@ -9,8 +9,13 @@ const minorUnits = z.number().int().min(0).max(1_000_000_000_000);
 
 const productStatusSchema = z.enum(["active", "archived"]);
 
+export const productItemTypeSchema = z.enum(["product", "service"]);
+
 export const createProductSchema = z.object({
   name: z.string().trim().min(1).max(200),
+  // Optional with no default so an update that leaves it out keeps it; the
+  // column itself defaults to "product".
+  itemType: productItemTypeSchema.optional(),
   // Trimmed and required: a SKU is the tenant-scoped identity of the product,
   // and " ABC " and "ABC" must not become two different products.
   sku: z.string().trim().min(1).max(100),
@@ -55,6 +60,7 @@ export const productIdSchema = z.object({ id: z.string().min(1) });
 export const listProductsSchema = z.object({
   search: z.string().trim().max(200).optional(),
   status: productStatusSchema.optional(),
+  itemType: productItemTypeSchema.optional(),
   externalSource: z.enum(["woocommerce", "shopify"]).optional(),
   limit: z.number().int().min(1).max(200).default(50),
   offset: z.number().int().min(0).max(1_000_000).default(0),

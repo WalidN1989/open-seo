@@ -19,6 +19,7 @@ const optimizations = source("tools/optimization-tools.ts");
 const invoices = source("tools/invoice-tools.ts");
 const reports = source("tools/report-tools.ts");
 const email = source("tools/email-tools.ts");
+const quotes = source("tools/quote-tools.ts");
 const server = source("server.ts");
 
 function declaredToolNames(text: string) {
@@ -98,6 +99,33 @@ describe("the invoice MCP surface", () => {
   });
 });
 
+describe("the quote MCP surface", () => {
+  it("finds catalogue items and writes only drafts", () => {
+    expect(declaredToolNames(quotes).toSorted()).toEqual([
+      "draft_quote",
+      "get_quote",
+      "get_quote_document",
+      "list_quotes",
+      "search_quote_catalogue",
+    ]);
+  });
+
+  it("offers no way to send, answer, invoice or delete a quote", () => {
+    for (const name of declaredToolNames(quotes)) {
+      expect(name).not.toMatch(
+        /send|sent|accept|decline|status|convert|invoice|delete|remove|settings/,
+      );
+    }
+  });
+
+  it("never reaches the service methods that change a quote's standing", () => {
+    for (const method of ["setStatus", "convertToInvoice", "remove"]) {
+      expect(quotes).not.toContain(`QuoteFlowService.${method}`);
+      expect(quotes).not.toContain(`QuoteService.${method}`);
+    }
+  });
+});
+
 describe("the module registry", () => {
   it("registers every surface it declares", () => {
     const surfaces = [...server.matchAll(/^\s*(\w+Surface),$/gm)].map(
@@ -107,12 +135,13 @@ describe("the module registry", () => {
       "emailSurface",
       "invoiceSurface",
       "optimizationsSurface",
+      "quoteSurface",
       "reportSurface",
     ]);
   });
 
   it("makes each module state what it withholds and why", () => {
-    for (const text of [optimizations, invoices, reports, email]) {
+    for (const text of [optimizations, invoices, reports, email, quotes]) {
       const withheld = text.slice(text.indexOf("withheld:"));
       expect(withheld).toContain("action:");
       expect(withheld).toContain("because:");

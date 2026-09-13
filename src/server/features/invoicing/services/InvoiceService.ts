@@ -1,11 +1,15 @@
-import { z } from "zod";
+import type { z } from "zod";
 import { AppError } from "@/server/lib/errors";
 import { BusinessModuleService } from "@/server/features/business-modules/services/BusinessModuleService";
 import {
   InvoiceRepository as Repo,
   type InvoiceRow,
-  type InvoiceSettingsRow,
 } from "../repositories/InvoiceRepository";
+import {
+  issuerFor,
+  quoteSettingsOrDefaults,
+  settingsOrDefaults,
+} from "../issuer";
 import { getRequiredEnvValue } from "@/server/lib/runtime-env";
 import {
   documentPath,
@@ -25,75 +29,6 @@ import type {
 } from "@/types/schemas/invoicing";
 
 const MODULE = "invoicing" as const;
-
-/** Sensible defaults so the first invoice is not blocked on a settings page. */
-function settingsOrDefaults(row: InvoiceSettingsRow | null) {
-  return {
-    legalName: row?.legalName ?? "",
-    addressLines: row?.addressLines ?? "",
-    email: row?.email ?? null,
-    phone: row?.phone ?? null,
-    website: row?.website ?? null,
-    taxIdLabel: row?.taxIdLabel ?? null,
-    taxIdValue: row?.taxIdValue ?? null,
-    taxRegistered: row?.taxRegistered ?? false,
-    taxLabel: row?.taxLabel ?? null,
-    taxRatePercent: row?.taxRatePercent ?? 0,
-    taxNote: row?.taxNote ?? null,
-    defaultCurrency: row?.defaultCurrency ?? "AUD",
-    paymentTermsDays: row?.paymentTermsDays ?? 14,
-    paymentInstructions: row?.paymentInstructions ?? null,
-    bankDetails: row?.bankDetails ?? null,
-    footerNote: row?.footerNote ?? null,
-    logoUrl: row?.logoUrl ?? null,
-    invoicePrefix: row?.invoicePrefix ?? "INV",
-    nextInvoiceNumber: row?.nextInvoiceNumber ?? 1,
-  };
-}
-
-type IssuerSnapshot = ReturnType<typeof settingsOrDefaults>;
-
-const issuerSnapshotSchema = z.object({
-  legalName: z.string(),
-  addressLines: z.string(),
-  email: z.string().nullable(),
-  phone: z.string().nullable(),
-  website: z.string().nullable(),
-  taxIdLabel: z.string().nullable(),
-  taxIdValue: z.string().nullable(),
-  taxRegistered: z.boolean(),
-  taxLabel: z.string().nullable(),
-  taxRatePercent: z.number(),
-  taxNote: z.string().nullable(),
-  defaultCurrency: z.string(),
-  paymentTermsDays: z.number(),
-  paymentInstructions: z.string().nullable(),
-  bankDetails: z.string().nullable(),
-  footerNote: z.string().nullable(),
-  logoUrl: z.string().nullable(),
-  invoicePrefix: z.string(),
-  nextInvoiceNumber: z.number(),
-}) satisfies z.ZodType<IssuerSnapshot>;
-
-/**
- * The issuer as it was when the invoice was written. A snapshot that no
- * longer parses (an older shape, a hand edit) falls back to current settings
- * rather than rendering a broken document.
- */
-function issuerFor(
-  row: InvoiceRow,
-  settingsRow: InvoiceSettingsRow | null,
-): IssuerSnapshot {
-  if (!row.issuerSnapshotJson) return settingsOrDefaults(settingsRow);
-  try {
-    const parsed: unknown = JSON.parse(row.issuerSnapshotJson);
-    const result = issuerSnapshotSchema.safeParse(parsed);
-    if (result.success) return result.data;
-  } catch {
-    // fall through to current settings
-  }
-  return settingsOrDefaults(settingsRow);
-}
 
 function publicInvoice(row: InvoiceRow) {
   return {
@@ -129,7 +64,10 @@ async function workspace(organizationId: string, userId: string) {
     Repo.listInvoices(organizationId),
   ]);
   return {
-    settings: settingsOrDefaults(settingsRow),
+    settings: {
+      ...settingsOrDefaults(settingsRow),
+      ...quoteSettingsOrDefaults(settingsRow),
+    },
     invoices: invoiceRows.map(publicInvoice),
   };
 }
@@ -146,7 +84,7 @@ async function saveSettings(
     "manage",
   );
   const row = await Repo.upsertSettings(organizationId, input);
-  return settingsOrDefaults(row);
+  return { ...settingsOrDefaults(row), ...quoteSettingsOrDefaults(row) };
 }
 
 async function detail(

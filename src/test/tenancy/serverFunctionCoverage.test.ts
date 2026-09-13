@@ -69,6 +69,7 @@ describe("server function authorization coverage", () => {
         // Signed, expiring links standing in for a session, so a client can
         // open the invoice or report they were sent without an account.
         block.includes("requireSignedDocumentToken") ||
+        block.includes("requireSignedQuoteToken") ||
         block.includes("requireSignedReportToken");
       expect(
         sanctioned,

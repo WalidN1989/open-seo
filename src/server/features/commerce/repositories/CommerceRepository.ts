@@ -15,6 +15,9 @@ import type {
 function productFilters(organizationId: string, input: ListProductsInput) {
   const filters = [eq(commerceProducts.organizationId, organizationId)];
   if (input.status) filters.push(eq(commerceProducts.status, input.status));
+  if (input.itemType) {
+    filters.push(eq(commerceProducts.itemType, input.itemType));
+  }
   if (input.externalSource) {
     filters.push(eq(commerceProducts.externalSource, input.externalSource));
   }

@@ -113,6 +113,33 @@ export const requireSignedReportToken = [
   }),
 ] as const;
 
+/** The quote a client was sent, opened by the same kind of signed link. */
+export const requireSignedQuoteToken = [
+  createMiddleware({ type: "function" }).server(async ({ next, data }) => {
+    // Same read as the invoice link: middleware runs before the validator,
+    // so `data` is still untyped here.
+    const token =
+      data && typeof data === "object" && "token" in data
+        ? (data as { token?: unknown }).token
+        : null;
+    if (typeof token !== "string" || !token) {
+      throw new AppError("NOT_FOUND", "That link is not valid.");
+    }
+    const { getRequiredEnvValue } = await import("@/server/lib/runtime-env");
+    const { verifyQuoteToken } =
+      await import("@/server/features/quotes/quoteLink");
+    const claims = await verifyQuoteToken(
+      token,
+      await getRequiredEnvValue("BETTER_AUTH_SECRET"),
+      Date.now(),
+    );
+    if (!claims) {
+      throw new AppError("NOT_FOUND", "That link has expired or is not valid.");
+    }
+    return next({ context: claims });
+  }),
+] as const;
+
 export const requireProjectContext = [
   createMiddleware({ type: "function" }).server(async ({ next, context }) => {
     const authenticatedContext = getAuthenticatedContext(context);

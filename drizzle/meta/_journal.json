@@ -610,6 +610,13 @@
       "when": 1789327358773,
       "tag": "0086_premium_jack_murdock",
       "breakpoints": true
+    },
+    {
+      "idx": 87,
+      "version": "6",
+      "when": 1789330380727,
+      "tag": "0087_curly_power_pack",
+      "breakpoints": true
     }
   ]
 }

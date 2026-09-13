@@ -1104,6 +1104,10 @@ export const commerceProducts = pgTable(
     isbn: text("isbn"),
     description: text("description"),
     category: text("category"),
+    /** A service has no stock; quotes and the catalogue show it apart. */
+    itemType: text("item_type", { enum: ["product", "service"] })
+      .notNull()
+      .default("product"),
     salePriceMinor: integer("sale_price_minor").notNull().default(0),
     costPriceMinor: integer("cost_price_minor"),
     reorderThreshold: integer("reorder_threshold").notNull().default(0),
@@ -1729,6 +1733,13 @@ export const invoiceSettings = pgTable("invoice_settings", {
   logoUrl: text("logo_url"),
   invoicePrefix: text("invoice_prefix").notNull().default("INV"),
   nextInvoiceNumber: integer("next_invoice_number").notNull().default(1),
+  // Quotes number separately so a declined quote never leaves a gap in the
+  // invoice sequence an accountant has to explain.
+  quotePrefix: text("quote_prefix").notNull().default("QUO"),
+  nextQuoteNumber: integer("next_quote_number").notNull().default(1),
+  quoteValidityDays: integer("quote_validity_days").notNull().default(30),
+  /** Printed on every quote: scope, deposit, what happens on acceptance. */
+  quoteTerms: text("quote_terms"),
   createdAt: createdAt(),
   updatedAt: text("updated_at").notNull().default(isoNow),
 });
@@ -1803,6 +1814,100 @@ export const invoiceLineItems = pgTable(
   },
   (table) => [
     index("invoice_line_items_invoice_idx").on(table.invoiceId, table.position),
+  ],
+);
+
+/**
+ * A quotation: what the work would cost, before anyone has agreed to it.
+ *
+ * Kept apart from invoices because its life is different (sent, accepted,
+ * declined, expired) and an unaccepted quote is not a debt. Money follows the
+ * invoice rules: minor units, totals frozen when saved, issuer snapshotted.
+ */
+export const quotes = pgTable(
+  "quotes",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    number: text("number").notNull(),
+    /** draft | sent | accepted | declined | expired */
+    status: text("status").notNull().default("draft"),
+    leadId: text("lead_id").references(() => crmLeads.id, {
+      onDelete: "set null",
+    }),
+    contactId: text("contact_id").references(() => crmContacts.id, {
+      onDelete: "set null",
+    }),
+    companyId: text("company_id").references(() => crmCompanies.id, {
+      onDelete: "set null",
+    }),
+    /** One line on what is being quoted, e.g. "Five-page website". */
+    title: text("title"),
+    clientName: text("client_name").notNull(),
+    clientAddressLines: text("client_address_lines"),
+    clientEmail: text("client_email"),
+    clientTaxIdLabel: text("client_tax_id_label"),
+    clientTaxIdValue: text("client_tax_id_value"),
+    currency: text("currency").notNull().default("AUD"),
+    issueDate: text("issue_date").notNull(),
+    validUntil: text("valid_until").notNull(),
+    notes: text("notes"),
+    terms: text("terms"),
+    taxLabel: text("tax_label"),
+    taxRatePercent: integer("tax_rate_percent").notNull().default(0),
+    subtotalMinor: integer("subtotal_minor").notNull().default(0),
+    taxMinor: integer("tax_minor").notNull().default(0),
+    totalMinor: integer("total_minor").notNull().default(0),
+    issuerSnapshotJson: text("issuer_snapshot_json"),
+    sentAt: text("sent_at"),
+    /** When the client accepted or declined. */
+    respondedAt: text("responded_at"),
+    convertedInvoiceId: text("converted_invoice_id").references(
+      () => invoices.id,
+      { onDelete: "set null" },
+    ),
+    createdAt: createdAt(),
+    updatedAt: text("updated_at").notNull().default(isoNow),
+  },
+  (table) => [
+    uniqueIndex("quotes_organization_number_idx").on(
+      table.organizationId,
+      table.number,
+    ),
+    index("quotes_organization_status_idx").on(
+      table.organizationId,
+      table.status,
+    ),
+    index("quotes_lead_idx").on(table.leadId),
+  ],
+);
+
+export const quoteLineItems = pgTable(
+  "quote_line_items",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    quoteId: text("quote_id")
+      .notNull()
+      .references(() => quotes.id, { onDelete: "cascade" }),
+    position: integer("position").notNull().default(0),
+    /** The catalogue item this line came from, if any; the text is a copy. */
+    productId: text("product_id").references(() => commerceProducts.id, {
+      onDelete: "set null",
+    }),
+    description: text("description").notNull(),
+    detail: text("detail"),
+    quantityMilli: integer("quantity_milli").notNull().default(1000),
+    unitPriceMinor: integer("unit_price_minor").notNull().default(0),
+    amountMinor: integer("amount_minor").notNull().default(0),
+    createdAt: createdAt(),
+  },
+  (table) => [
+    index("quote_line_items_quote_idx").on(table.quoteId, table.position),
   ],
 );
 

@@ -186,6 +186,8 @@ export const {
   invoiceSettings,
   invoices,
   invoiceLineItems,
+  quotes,
+  quoteLineItems,
   clientReports,
   clientReportProfiles,
   clientReportLinks,
