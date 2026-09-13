@@ -26,7 +26,7 @@ const clipped = (max: number) =>
 
 const readingSchema = z.object({
   standingIntro: clipped(300),
-  figureCaption: clipped(400),
+  captions: z.array(clipped(400)).min(1).max(2),
   pitch: z
     .array(clipped(240))
     .max(6)
@@ -39,14 +39,14 @@ const readingSchema = z.object({
 
 export type FigureReading = z.infer<typeof readingSchema>;
 
-const SYSTEM_PROMPT = `You write for an SEO agency's client-facing report. You are shown a screenshot, usually Google's local results ("local pack") or a Business Profile card, for the client's own search. Read only what is visible: business names, star ratings, review counts, positions, badges, years in business, buttons. Never invent a number or a name.
+const SYSTEM_PROMPT = `You write for an SEO agency's client-facing report. You are shown one or two screenshots: usually the client's own Google Business Profile card, and Google's local results ("local pack") or map for the client's main search showing the businesses around them. Read only what is visible: business names, star ratings, review counts, positions, badges, years in business, buttons. Never invent a number or a name.
 
 Write from a sales angle: make the gap between the client and the businesses around them felt, plainly and without exaggeration, so the client wants to close it. Second person ("you"), Australian English, no exclamation marks, no markdown.
 
 Return one JSON object and nothing else:
 {
-  "standingIntro": "one or two sentences, max 300 characters, naming where the client stands on this search and the gap that matters",
-  "figureCaption": "one sentence, max 400 characters, stating the concrete numbers seen: e.g. You: 5.0 stars from 5 reviews. Deduct Tax: 4.9 from 147. Same suburb, far bigger proof.",
+  "standingIntro": "one or two sentences, max 300 characters, naming where the client stands and the gap that matters, drawing on every picture given",
+  "captions": ["one sentence per picture, in the order given, max 400 characters each, stating the concrete numbers seen in that picture: e.g. You: 5.0 stars from 5 reviews. Deduct Tax: 4.9 from 147. Same suburb, far bigger proof."],
   "pitch": ["up to 4 short recommendation lines the agency could add, each a concrete next step tied to what the picture shows"],
   "seen": ["up to 8 short facts read from the image, one per business or element, for the agency to check"]
 }
@@ -71,7 +71,7 @@ function imageBlock(dataUrl: string) {
 }
 
 export async function readReportFigure(input: {
-  image: string;
+  images: string[];
   clientName: string;
   domain: string | null;
   fetcher?: typeof fetch;
@@ -101,10 +101,13 @@ export async function readReportFigure(input: {
         {
           role: "user",
           content: [
-            imageBlock(input.image),
+            ...input.images.flatMap((image, index) => [
+              { type: "text" as const, text: `Picture ${index + 1}:` },
+              imageBlock(image),
+            ]),
             {
               type: "text",
-              text: `The client is "${input.clientName}"${input.domain ? ` (${input.domain})` : ""}. Read the screenshot and return the JSON.`,
+              text: `The client is "${input.clientName}"${input.domain ? ` (${input.domain})` : ""}. There ${input.images.length === 1 ? "is one picture" : "are two pictures: usually the client's own profile first, then the map or results showing who else appears"}. Return the JSON with one caption per picture.`,
             },
           ],
         },

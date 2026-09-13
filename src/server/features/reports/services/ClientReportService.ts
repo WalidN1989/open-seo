@@ -130,7 +130,7 @@ async function buildSnapshot(input: {
   googleReviewUrl: string | null;
   conclusion: string | null;
   standingIntro: string | null;
-  figure: { src: string; caption: string | null } | null;
+  figures: { src: string; caption: string | null }[];
 }): Promise<ReportSnapshot> {
   const project = await Data.project(input.projectId);
   if (!project)
@@ -230,7 +230,8 @@ async function buildSnapshot(input: {
     googleReviewUrl: input.googleReviewUrl,
     conclusion: input.conclusion,
     standingIntro: input.standingIntro,
-    figure: input.figure,
+    figure: input.figures[0] ?? null,
+    figures: input.figures,
     keywordsToConfirm: topResearched,
   };
 }
@@ -280,9 +281,10 @@ async function generate(
     googleReviewUrl: input.googleReviewUrl || null,
     conclusion: input.conclusion || null,
     standingIntro: input.standingIntro || null,
-    figure: input.figureImage
-      ? { src: input.figureImage, caption: input.figureCaption || null }
-      : null,
+    figures: [
+      { src: input.figureImage, caption: input.figureCaption || null },
+      { src: input.figureImage2, caption: input.figureCaption2 || null },
+    ].filter((figure) => figure.src),
   });
   // One report per project per month. Generating again inside the month
   // replaces it — the earlier one was a draft of this one, not a record worth
@@ -411,7 +413,11 @@ export const ClientReportService = {
   readFigure: async (
     organizationId: string,
     userId: string,
-    input: { targetProjectId: string; clientName: string; figureImage: string },
+    input: {
+      targetProjectId: string;
+      clientName: string;
+      figureImages: string[];
+    },
   ) => {
     await requireManage(organizationId, userId);
     const memberships = await AuthRepository.listOrganizationIdsForUser(userId);
@@ -420,7 +426,7 @@ export const ClientReportService = {
     );
     if (!project) throw new AppError("NOT_FOUND", "That project is not yours.");
     return readReportFigure({
-      image: input.figureImage,
+      images: input.figureImages,
       clientName: input.clientName,
       domain: project.domain ?? null,
     });

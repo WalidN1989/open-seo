@@ -11,7 +11,7 @@ import {
   Conclusion,
   KeywordsToConfirm,
   Recommendations,
-  ReportFigure,
+  ReportFigures,
 } from "./ConfirmSections";
 
 function longDate(iso: string | null) {
@@ -196,12 +196,11 @@ export function ClientReportDocument({
         ) : null}
         {/* The picture comes before the numbers. Someone who skims the report
             sees the gap before they see a figure they might argue with. */}
-        {snapshot.figure ? (
-          <ReportFigure
-            src={snapshot.figure.src}
-            caption={snapshot.figure.caption}
-          />
-        ) : null}
+        <ReportFigures
+          figures={
+            snapshot.figures ?? (snapshot.figure ? [snapshot.figure] : [])
+          }
+        />
         <div className="report-stats">
           <Stat value={headline.trackedKeywords} label="Keywords tracked" />
           <Stat value={headline.topThree} label="In the top 3" />

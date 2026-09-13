@@ -751,20 +751,43 @@
 }
 
 /* Full column width, rounded, captioned. No float, no half column. */
-.report-figure {
+.report-figures {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
   margin: 4px 0 18px;
-  width: 100%;
+}
+
+.report-figures[data-count="2"] {
+  grid-template-columns: 1fr 1fr;
+}
+
+.report-figure {
+  margin: 0;
+  min-width: 0;
   overflow: hidden;
   border: 1px solid #e5e7eb;
   border-radius: 12px;
   background: #ffffff;
 }
 
+/* A fixed-height window: tall phone screenshots and wide map captures both
+   sit inside it at their own proportions instead of setting the page. */
+.report-figure-frame {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  height: 340px;
+  background: #f9fafb;
+}
+
 .report-figure img {
   display: block;
-  width: 100%;
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
   height: auto;
-  max-width: none;
+  object-fit: contain;
 }
 
 .report-figure figcaption {
@@ -775,8 +798,17 @@
   color: #4b5563;
 }
 
+@media screen and (max-width: 720px) {
+  .report-figures[data-count="2"] {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media print {
-  .report-figure {
+  .report-figures {
     break-inside: avoid;
+  }
+  .report-figure-frame {
+    height: 9cm;
   }
 }

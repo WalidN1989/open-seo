@@ -143,17 +143,32 @@ export function ReportsWorkspace() {
         data: {
           targetProjectId: projectId,
           clientName: clientName.trim() || "the client",
-          figureImage: engagement.figureImage,
+          figureImages: [
+            engagement.figureImage,
+            engagement.figureImage2,
+          ].filter(Boolean),
         },
       }),
     onSuccess: (reading) => {
-      setEngagement((current) => ({
-        ...current,
-        standingIntro: reading.standingIntro,
-        figureCaption: reading.figureCaption,
-        recommendations:
-          current.recommendations.trim() || reading.pitch.join("\n"),
-      }));
+      setEngagement((current) => {
+        // Captions come back in the order the pictures were sent, which is
+        // the order of the filled slots.
+        const slots = [current.figureImage, current.figureImage2];
+        const captions = [current.figureCaption, current.figureCaption2];
+        let next = 0;
+        for (const [index, image] of slots.entries()) {
+          if (image)
+            captions[index] = reading.captions[next++] ?? captions[index] ?? "";
+        }
+        return {
+          ...current,
+          standingIntro: reading.standingIntro,
+          figureCaption: captions[0] ?? "",
+          figureCaption2: captions[1] ?? "",
+          recommendations:
+            current.recommendations.trim() || reading.pitch.join("\n"),
+        };
+      });
     },
   });
 

@@ -118,8 +118,10 @@ export type ReportSnapshot = {
   conclusion: string | null;
   /** Short lead-in under "Where you stand", before the picture and the cards. */
   standingIntro: string | null;
-  /** The picture under "Where you stand", full column width. */
+  /** Older reports: the one picture under "Where you stand". */
   figure: { src: string; caption: string | null } | null;
+  /** Up to two pictures side by side under "Where you stand". */
+  figures?: { src: string; caption: string | null }[];
   /**
    * The best of what has been researched, for the client to confirm. Printed
    * with a box beside each so it can be ticked on paper and sent back.

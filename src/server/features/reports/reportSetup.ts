@@ -172,6 +172,8 @@ export function includedFor(active: Record<string, boolean>) {
  * the memory. Missing pieces stay at their defaults.
  */
 export function formFromSnapshot(snapshot: ReportSnapshot) {
+  const figures =
+    snapshot.figures ?? (snapshot.figure ? [snapshot.figure] : []);
   const item = (label: string) =>
     snapshot.setup.find((entry) => entry.label === label);
   const done = (label: string) => item(label)?.done ?? false;
@@ -196,7 +198,9 @@ export function formFromSnapshot(snapshot: ReportSnapshot) {
     recommendations: snapshot.recommendations ?? "",
     conclusion: snapshot.conclusion ?? "",
     standingIntro: snapshot.standingIntro ?? "",
-    figureImage: snapshot.figure?.src ?? "",
-    figureCaption: snapshot.figure?.caption ?? "",
+    figureImage: figures[0]?.src ?? "",
+    figureCaption: figures[0]?.caption ?? "",
+    figureImage2: figures[1]?.src ?? "",
+    figureCaption2: figures[1]?.caption ?? "",
   };
 }

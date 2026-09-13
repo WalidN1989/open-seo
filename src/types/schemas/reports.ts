@@ -36,6 +36,8 @@ export const generateClientReportSchema = z.object({
    */
   figureImage: z.string().max(2_800_000).default(""),
   figureCaption: z.string().trim().max(400).default(""),
+  figureImage2: z.string().max(2_800_000).default(""),
+  figureCaption2: z.string().trim().max(400).default(""),
   /** One or two sentences under "Where you stand", above the picture. */
   standingIntro: z.string().trim().max(300).default(""),
   /** Our own words. Kept short enough to fit a page. */
@@ -51,7 +53,8 @@ export const generateClientReportSchema = z.object({
 export const readReportFigureSchema = z.object({
   targetProjectId: z.string().min(1),
   clientName: z.string().trim().min(1).max(120),
-  figureImage: z.string().min(1).max(2_800_000),
+  /** One or two pictures, in the order they sit on the report. */
+  figureImages: z.array(z.string().min(1).max(2_800_000)).min(1).max(2),
 });
 
 export const clientReportIdSchema = z.object({

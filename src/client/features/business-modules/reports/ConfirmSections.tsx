@@ -259,17 +259,26 @@ export function Conclusion({ text }: { text: string | null }) {
  * empty: the point of the picture is that the client feels the gap at a
  * glance, and a thumbnail beside a paragraph does not do that.
  */
-export function ReportFigure({
-  src,
-  caption,
+/**
+ * One or two pictures side by side, each held to a modest height so the
+ * section reads as evidence beside the numbers, not as a poster.
+ */
+export function ReportFigures({
+  figures,
 }: {
-  src: string;
-  caption: string | null;
+  figures: { src: string; caption: string | null }[];
 }) {
+  if (figures.length === 0) return null;
   return (
-    <figure className="report-figure">
-      <img src={src} alt={caption ?? ""} loading="lazy" />
-      {caption ? <figcaption>{caption}</figcaption> : null}
-    </figure>
+    <div className="report-figures" data-count={figures.length}>
+      {figures.map((figure, index) => (
+        <figure key={index} className="report-figure">
+          <div className="report-figure-frame">
+            <img src={figure.src} alt={figure.caption ?? ""} loading="lazy" />
+          </div>
+          {figure.caption ? <figcaption>{figure.caption}</figcaption> : null}
+        </figure>
+      ))}
+    </div>
   );
 }

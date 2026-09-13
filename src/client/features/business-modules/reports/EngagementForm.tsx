@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Sparkles } from "lucide-react";
+import { FigurePicker } from "./FigurePicker";
 /**
  * What is running for this client that the database cannot see.
  *
@@ -24,6 +25,8 @@ export type Engagement = {
   standingIntro: string;
   figureImage: string;
   figureCaption: string;
+  figureImage2: string;
+  figureCaption2: string;
 };
 
 export const EMPTY_ENGAGEMENT: Engagement = {
@@ -43,10 +46,9 @@ export const EMPTY_ENGAGEMENT: Engagement = {
   standingIntro: "",
   figureImage: "",
   figureCaption: "",
+  figureImage2: "",
+  figureCaption2: "",
 };
-
-/** A screenshot, not a photo library: two megabytes is plenty. */
-const MAX_FIGURE_BYTES = 2_000_000;
 
 type ToggleKey = {
   [K in keyof Engagement]: Engagement[K] extends boolean ? K : never;
@@ -137,7 +139,6 @@ export function EngagementForm({
   const [showConclusion, setShowConclusion] = useState(
     Boolean(value.conclusion),
   );
-  const [figureError, setFigureError] = useState<string | null>(null);
   useEffect(() => {
     if (value.conclusion) setShowConclusion(true);
   }, [value.conclusion]);
@@ -208,82 +209,50 @@ export function EngagementForm({
           placeholder="One or two sentences, e.g. On Google you are visible in Springfield Lakes, but nearby firms own far more review trust."
           aria-label="Where you stand, intro"
         />
-        <div className="flex flex-wrap items-center gap-3">
-          <input
-            type="file"
-            accept="image/png,image/jpeg,image/webp"
-            className="file-input file-input-bordered file-input-sm"
-            aria-label="Screenshot"
-            onChange={(event) => {
-              const file = event.target.files?.[0];
-              if (!file) return;
-              if (file.size > MAX_FIGURE_BYTES) {
-                setFigureError("That image is over 2 MB. Crop or compress it.");
-                return;
-              }
-              const reader = new FileReader();
-              reader.addEventListener("load", () => {
-                // readAsDataURL always yields a string; anything else is a
-                // read that did not happen.
-                if (typeof reader.result !== "string") return;
-                setFigureError(null);
-                set("figureImage", reader.result);
-              });
-              reader.readAsDataURL(file);
-            }}
+        <div className="grid gap-3 md:grid-cols-2">
+          <FigurePicker
+            label="Picture 1: their own profile"
+            hint="Their Business Profile card, or their spot in the results."
+            image={value.figureImage}
+            caption={value.figureCaption}
+            onImage={(next) => set("figureImage", next)}
+            onCaption={(next) => set("figureCaption", next)}
           />
-          {value.figureImage ? (
-            <>
-              <img
-                src={value.figureImage}
-                alt=""
-                className="h-12 rounded border border-base-300 object-cover"
-              />
-              <button
-                type="button"
-                className="btn btn-ghost btn-xs"
-                onClick={() => set("figureImage", "")}
-              >
-                Remove
-              </button>
-              {figureReader ? (
-                <button
-                  type="button"
-                  className="btn btn-outline btn-xs"
-                  disabled={figureReader.pending}
-                  onClick={figureReader.run}
-                  title="Claude reads the screenshot and drafts the intro, caption and pitch lines from a sales angle. You can edit everything after."
-                >
-                  <Sparkles className="size-3.5" />
-                  {figureReader.pending ? "Reading…" : "Draft from screenshot"}
-                </button>
-              ) : null}
-            </>
-          ) : null}
+          <FigurePicker
+            label="Picture 2: who else shows up"
+            hint="The map or local pack for their main search, competitors visible."
+            image={value.figureImage2}
+            caption={value.figureCaption2}
+            onImage={(next) => set("figureImage2", next)}
+            onCaption={(next) => set("figureCaption2", next)}
+          />
         </div>
-        {figureError ? (
-          <p className="text-sm text-error">{figureError}</p>
-        ) : null}
-        {figureReader?.error ? (
-          <p className="text-sm text-error">{figureReader.error}</p>
+        {figureReader && (value.figureImage || value.figureImage2) ? (
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              className="btn btn-outline btn-xs"
+              disabled={figureReader.pending}
+              onClick={figureReader.run}
+              title="Claude reads the pictures and drafts the intro, captions and pitch lines from a sales angle. You can edit everything after."
+            >
+              <Sparkles className="size-3.5" />
+              {figureReader.pending ? "Reading…" : "Draft from screenshots"}
+            </button>
+            {figureReader.error ? (
+              <span className="text-sm text-error">{figureReader.error}</span>
+            ) : null}
+          </div>
         ) : null}
         {figureReader?.seen.length ? (
           <p className="text-xs text-base-content/55">
-            Read from the picture: {figureReader.seen.join(" · ")}. Check these
+            Read from the pictures: {figureReader.seen.join(" · ")}. Check these
             before you generate.
           </p>
         ) : null}
-        <input
-          className="input input-bordered input-sm w-full"
-          value={value.figureCaption}
-          onChange={(event) => set("figureCaption", event.target.value)}
-          placeholder="Caption, e.g. You: 5.0★ from 5 reviews. Deduct Tax: 4.9★ from 147. Same area, much bigger proof gap."
-          aria-label="Caption"
-        />
         <p className="text-xs text-base-content/55">
-          Usually a screenshot of Google&rsquo;s local pack for their main
-          search. It prints full width under &ldquo;Where you stand&rdquo;,
-          before the numbers.
+          Both print side by side under &ldquo;Where you stand&rdquo;, before
+          the numbers, each no taller than half a page.
         </p>
       </fieldset>
 
