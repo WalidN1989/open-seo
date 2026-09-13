@@ -242,83 +242,105 @@ export function DraftsList({ data }: { data: WorkspaceData }) {
       </p>
     );
   }
+  const field = "input input-bordered input-sm w-full";
   return (
-    <ul className="grid max-w-3xl gap-3">
+    <ul className="grid gap-4">
       {data.drafts.map((draft) => {
         const text = edits[draft.id] ?? draft.textBody ?? "";
+        const agent = draft.authoredBy === "assistant" ? "Assistant" : "Agent";
         return (
           <li
             key={draft.id}
-            className="grid gap-2 rounded-xl border border-warning/50 bg-warning/5 p-4"
+            className="flex flex-col rounded-xl border border-base-300 bg-base-100"
           >
-            <div className="flex items-center justify-between gap-2 text-sm">
-              <span className="flex items-center gap-2 font-medium">
-                <Sparkles className="size-4" />
-                {draft.subject || "(no subject)"}
-                <span className="font-normal text-base-content/55">
-                  to {draft.toAddresses.join(", ") || "?"}
+            <header className="flex flex-wrap items-center justify-between gap-2 border-b border-base-300 px-4 py-3">
+              <div className="flex min-w-0 items-center gap-2">
+                <span className="badge badge-warning badge-sm shrink-0">
+                  <Sparkles className="mr-1 size-3" /> {agent} draft
                 </span>
-              </span>
+                <h2 className="truncate font-semibold">
+                  {draft.subject || "(no subject)"}
+                </h2>
+              </div>
               <span className="text-xs text-base-content/55">
-                {formatEmailTime(draft.createdAt)}
+                {formatEmailTime(draft.createdAt)} · not sent
               </span>
+            </header>
+            <div className="grid gap-2 border-b border-base-300 px-4 py-3 text-sm">
+              <div className="grid grid-cols-[4.5rem_minmax(0,1fr)] items-center gap-2">
+                <span className="text-base-content/60">From</span>
+                <span className="truncate">{draft.fromAddress}</span>
+              </div>
+              <div className="grid grid-cols-[4.5rem_minmax(0,1fr)] items-center gap-2">
+                <span className="text-base-content/60">To</span>
+                <span className="truncate">
+                  {draft.toAddresses.join(", ") || "?"}
+                </span>
+              </div>
+              <label className="grid grid-cols-[4.5rem_minmax(0,1fr)] items-center gap-2">
+                <span className="text-base-content/60">Cc</span>
+                <input
+                  className={field}
+                  placeholder="Optional, comma-separated"
+                  value={copies[draft.id] ?? draft.ccAddresses.join(", ")}
+                  onChange={(event) =>
+                    setCopies({
+                      ...copies,
+                      [draft.id]: event.currentTarget.value,
+                    })
+                  }
+                />
+              </label>
+              {draft.bccAddresses.length ? (
+                <div className="grid grid-cols-[4.5rem_minmax(0,1fr)] items-center gap-2">
+                  <span className="text-base-content/60">Bcc</span>
+                  <span className="truncate">
+                    {draft.bccAddresses.join(", ")}
+                  </span>
+                </div>
+              ) : null}
             </div>
-            <label className="grid grid-cols-[3rem_minmax(0,1fr)] items-center gap-2 text-sm">
-              <span className="text-base-content/60">Cc</span>
-              <input
-                className="input input-bordered input-sm w-full"
-                placeholder="Comma-separated, optional"
-                value={copies[draft.id] ?? draft.ccAddresses.join(", ")}
-                onChange={(event) =>
-                  setCopies({
-                    ...copies,
-                    [draft.id]: event.currentTarget.value,
-                  })
-                }
-              />
-            </label>
-            {draft.bccAddresses.length ? (
-              <p className="text-xs text-base-content/55">
-                Bcc {draft.bccAddresses.join(", ")}
-              </p>
-            ) : null}
             <textarea
-              className="textarea textarea-bordered w-full text-sm"
-              rows={8}
+              className="min-h-[24rem] w-full resize-y border-0 bg-transparent px-4 py-3 text-sm leading-relaxed focus:outline-none"
               value={text}
               onChange={(event) =>
                 setEdits({ ...edits, [draft.id]: event.currentTarget.value })
               }
             />
-            <div className="flex justify-end gap-2">
-              <button
-                type="button"
-                className="btn btn-ghost btn-sm"
-                onClick={() => discard.mutate(draft.id)}
-              >
-                Discard
-              </button>
-              <button
-                type="button"
-                className="btn btn-primary btn-sm"
-                disabled={approve.isPending}
-                onClick={() =>
-                  approve.mutate({
-                    messageId: draft.id,
-                    text:
-                      edits[draft.id] !== undefined
-                        ? edits[draft.id]
-                        : undefined,
-                    cc:
-                      copies[draft.id] !== undefined
-                        ? splitAddresses(copies[draft.id] ?? "")
-                        : undefined,
-                  })
-                }
-              >
-                Approve & send
-              </button>
-            </div>
+            <footer className="flex flex-wrap items-center justify-between gap-2 border-t border-base-300 px-4 py-3">
+              <span className="text-xs text-base-content/55">
+                Edit anything above. Nothing leaves until you approve.
+              </span>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-sm"
+                  onClick={() => discard.mutate(draft.id)}
+                >
+                  Discard
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-primary btn-sm"
+                  disabled={approve.isPending}
+                  onClick={() =>
+                    approve.mutate({
+                      messageId: draft.id,
+                      text:
+                        edits[draft.id] !== undefined
+                          ? edits[draft.id]
+                          : undefined,
+                      cc:
+                        copies[draft.id] !== undefined
+                          ? splitAddresses(copies[draft.id] ?? "")
+                          : undefined,
+                    })
+                  }
+                >
+                  {approve.isPending ? "Sending…" : "Approve & send"}
+                </button>
+              </div>
+            </footer>
           </li>
         );
       })}
