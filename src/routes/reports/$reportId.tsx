@@ -49,7 +49,7 @@ function SharedReportPage() {
   if (!query.data) return null;
 
   return (
-    <main className="min-h-screen bg-base-200/40 py-8">
+    <main className="h-dvh overflow-y-auto bg-base-200/40 py-8 print:h-auto print:overflow-visible">
       <div className="mx-auto max-w-4xl px-4">
         <ClientReportDocument snapshot={query.data.snapshot} />
         <p className="mt-6 text-center text-xs opacity-60 print:hidden">
