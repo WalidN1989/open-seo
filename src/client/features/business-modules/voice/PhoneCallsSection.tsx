@@ -113,6 +113,10 @@ export function PhoneCallsSection() {
                         <dt className="text-base-content/55">WhatsApp</dt>
                         <dd>{call.welcomeStatus ?? "not attempted"}</dd>
                       </div>
+                      <div className="grid grid-cols-[7rem_1fr] gap-2">
+                        <dt className="text-base-content/55">Recap email</dt>
+                        <dd>{call.recapEmailStatus ?? "not attempted"}</dd>
+                      </div>
                     </dl>
                     <div className="max-h-80 space-y-1 overflow-auto rounded-lg bg-base-200/60 p-3">
                       {call.transcript.map((turn, index) => (

@@ -12,6 +12,7 @@ import {
   type PhoneCallReport,
 } from "../elevenlabsWebhook";
 import { PhoneCallRepository as Repo } from "../repositories/PhoneCallRepository";
+import { CallRecapService } from "./CallRecapService";
 
 const PROVIDER = "elevenlabs";
 
@@ -215,6 +216,7 @@ async function recordCall(
     contactId: contact.id,
     leadId: lead.id,
     welcomeStatus: null,
+    recapEmailStatus: null,
   });
 
   // The number the caller read out is the one they asked us to use; the line
@@ -233,6 +235,13 @@ async function recordCall(
       })
     : "skipped: already welcomed";
   await Repo.setWelcomeStatus(call.id, welcome);
+  const recapEmail = await CallRecapService.sendCallRecap({
+    organizationId,
+    email,
+    firstName,
+    report,
+  });
+  await Repo.setRecapEmailStatus(call.id, recapEmail);
 
   await BusinessAuditRepository.record({
     organizationId,
@@ -246,6 +255,7 @@ async function recordCall(
       provider: PROVIDER,
       firstTimeCaller,
       welcome,
+      recapEmail,
     },
   });
   return { callId: call.id, duplicate: false };
@@ -315,6 +325,7 @@ async function listCalls(organizationId: string, userId: string) {
     captured: capturedFrom(call.capturedJson),
     transcript: transcriptFrom(call.transcriptJson),
     welcomeStatus: call.welcomeStatus,
+    recapEmailStatus: call.recapEmailStatus,
     contact: contact
       ? {
           id: contact.id,

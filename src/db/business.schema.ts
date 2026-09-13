@@ -979,6 +979,8 @@ export const voicePhoneCalls = sqliteTable(
     }),
     // What happened to the WhatsApp welcome: sent, skipped:<why>, failed:<why>.
     welcomeStatus: text("welcome_status"),
+    /** What happened to the recap email: sent, skipped or failed, and why. */
+    recapEmailStatus: text("recap_email_status"),
     createdAt: createdAt(),
   },
   (table) => [

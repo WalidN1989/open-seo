@@ -59,6 +59,13 @@ async function setWelcomeStatus(id: string, welcomeStatus: string) {
     .where(eq(voicePhoneCalls.id, id));
 }
 
+async function setRecapEmailStatus(id: string, recapEmailStatus: string) {
+  await db
+    .update(voicePhoneCalls)
+    .set({ recapEmailStatus })
+    .where(eq(voicePhoneCalls.id, id));
+}
+
 /** Whether a call has already delivered the thank-you to this contact. */
 async function welcomeSentTo(organizationId: string, contactId: string) {
   const [row] = await db
@@ -278,6 +285,7 @@ export const PhoneCallRepository = {
   findCall,
   insertCall,
   setWelcomeStatus,
+  setRecapEmailStatus,
   welcomeSentTo,
   listCalls,
   findContactByPhone,

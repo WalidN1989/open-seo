@@ -1,0 +1,1 @@
+ALTER TABLE "voice_phone_calls" ADD COLUMN "recap_email_status" text;
