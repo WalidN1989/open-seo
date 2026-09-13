@@ -16,6 +16,7 @@ import type {
   ImportHunterDomainInput,
 } from "@/types/schemas/crm";
 import { CrmRepository } from "../repositories/CrmRepository";
+import { LeadDetailRepository } from "../repositories/LeadDetailRepository";
 import { CommunicationsRepository } from "@/server/features/communications/repositories/CommunicationsRepository";
 import { searchHunterDomain } from "@/server/features/communications/providers/integrations";
 
@@ -41,16 +42,25 @@ async function ensureStages(organizationId: string) {
 
 async function getLeadsWorkspace(organizationId: string, userId: string) {
   await BusinessModuleService.requireAccess(organizationId, userId, "leads");
-  const [leads, stages, members, hunter, hunterAlias] = await Promise.all([
-    CrmRepository.listLeads(organizationId),
-    ensureStages(organizationId),
-    BusinessModuleRepository.listMembers(organizationId),
-    CommunicationsRepository.getIntegrationByProvider(organizationId, "hunter"),
-    CommunicationsRepository.getIntegrationByProvider(
-      organizationId,
-      "hunter.io",
-    ),
-  ]);
+  const [rows, outreach, stages, members, hunter, hunterAlias] =
+    await Promise.all([
+      CrmRepository.listLeads(organizationId),
+      LeadDetailRepository.outreachByLead(organizationId),
+      ensureStages(organizationId),
+      BusinessModuleRepository.listMembers(organizationId),
+      CommunicationsRepository.getIntegrationByProvider(
+        organizationId,
+        "hunter",
+      ),
+      CommunicationsRepository.getIntegrationByProvider(
+        organizationId,
+        "hunter.io",
+      ),
+    ]);
+  const leads = rows.map((row) => ({
+    ...row,
+    outreach: outreach.get(row.lead.id) ?? null,
+  }));
   return {
     leads,
     stages,

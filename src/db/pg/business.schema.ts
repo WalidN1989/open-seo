@@ -330,6 +330,44 @@ export const crmActivities = pgTable(
   ],
 );
 
+/**
+ * A follow-up someone asked to be nudged about. It pops up in the app when
+ * it falls due and stays in the bell until it is done; snoozing moves the
+ * time rather than keeping a second one.
+ */
+export const crmReminders = pgTable(
+  "crm_reminders",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    memberId: text("member_id")
+      .notNull()
+      .references(() => member.id, { onDelete: "cascade" }),
+    leadId: text("lead_id").references(() => crmLeads.id, {
+      onDelete: "cascade",
+    }),
+    title: text("title").notNull(),
+    note: text("note"),
+    remindAt: text("remind_at").notNull(),
+    status: text("status", { enum: ["pending", "done"] })
+      .notNull()
+      .default("pending"),
+    createdAt: createdAt(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (table) => [
+    index("crm_reminders_member_due_idx").on(
+      table.organizationId,
+      table.memberId,
+      table.status,
+      table.remindAt,
+    ),
+    index("crm_reminders_lead_idx").on(table.leadId),
+  ],
+);
+
 export const crmInquiries = pgTable(
   "crm_inquiries",
   {

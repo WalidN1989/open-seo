@@ -65,6 +65,7 @@ import { Route as ProjectPProjectIdDomainRouteImport } from './routes/_project/p
 import { Route as ProjectPProjectIdBrandLookupRouteImport } from './routes/_project/p/$projectId/brand-lookup'
 import { Route as ProjectPProjectIdBacklinksRouteImport } from './routes/_project/p/$projectId/backlinks'
 import { Route as ProjectPProjectIdAuditRouteImport } from './routes/_project/p/$projectId/audit'
+import { Route as AppModulesLeadsLeadIdRouteImport } from './routes/_app/modules/leads.$leadId'
 import { Route as AppModulesIntegrationsConnectionsRouteImport } from './routes/_app/modules/integrations/connections'
 import { Route as AppModulesIntegrationsProviderKeyRouteImport } from './routes/_app/modules/integrations.$providerKey'
 import { Route as AppModulesCrmSourcesRouteImport } from './routes/_app/modules/crm/sources'
@@ -377,6 +378,11 @@ const ProjectPProjectIdAuditRoute = ProjectPProjectIdAuditRouteImport.update({
   path: '/audit',
   getParentRoute: () => ProjectPProjectIdRouteRoute,
 } as any)
+const AppModulesLeadsLeadIdRoute = AppModulesLeadsLeadIdRouteImport.update({
+  id: '/leads/$leadId',
+  path: '/leads/$leadId',
+  getParentRoute: () => AppModulesRouteRoute,
+} as any)
 const AppModulesIntegrationsConnectionsRoute =
   AppModulesIntegrationsConnectionsRouteImport.update({
     id: '/connections',
@@ -542,6 +548,7 @@ export interface FileRoutesByFullPath {
   '/modules/crm/sources': typeof AppModulesCrmSourcesRoute
   '/modules/integrations/$providerKey': typeof AppModulesIntegrationsProviderKeyRoute
   '/modules/integrations/connections': typeof AppModulesIntegrationsConnectionsRoute
+  '/modules/leads/$leadId': typeof AppModulesLeadsLeadIdRoute
   '/p/$projectId/audit': typeof ProjectPProjectIdAuditRouteWithChildren
   '/p/$projectId/backlinks': typeof ProjectPProjectIdBacklinksRoute
   '/p/$projectId/brand-lookup': typeof ProjectPProjectIdBrandLookupRoute
@@ -613,6 +620,7 @@ export interface FileRoutesByTo {
   '/modules/crm/sources': typeof AppModulesCrmSourcesRoute
   '/modules/integrations/$providerKey': typeof AppModulesIntegrationsProviderKeyRoute
   '/modules/integrations/connections': typeof AppModulesIntegrationsConnectionsRoute
+  '/modules/leads/$leadId': typeof AppModulesLeadsLeadIdRoute
   '/p/$projectId/backlinks': typeof ProjectPProjectIdBacklinksRoute
   '/p/$projectId/brand-lookup': typeof ProjectPProjectIdBrandLookupRoute
   '/p/$projectId/domain': typeof ProjectPProjectIdDomainRoute
@@ -690,6 +698,7 @@ export interface FileRoutesById {
   '/_app/modules/crm/sources': typeof AppModulesCrmSourcesRoute
   '/_app/modules/integrations/$providerKey': typeof AppModulesIntegrationsProviderKeyRoute
   '/_app/modules/integrations/connections': typeof AppModulesIntegrationsConnectionsRoute
+  '/_app/modules/leads/$leadId': typeof AppModulesLeadsLeadIdRoute
   '/_project/p/$projectId/audit': typeof ProjectPProjectIdAuditRouteWithChildren
   '/_project/p/$projectId/backlinks': typeof ProjectPProjectIdBacklinksRoute
   '/_project/p/$projectId/brand-lookup': typeof ProjectPProjectIdBrandLookupRoute
@@ -767,6 +776,7 @@ export interface FileRouteTypes {
     | '/modules/crm/sources'
     | '/modules/integrations/$providerKey'
     | '/modules/integrations/connections'
+    | '/modules/leads/$leadId'
     | '/p/$projectId/audit'
     | '/p/$projectId/backlinks'
     | '/p/$projectId/brand-lookup'
@@ -838,6 +848,7 @@ export interface FileRouteTypes {
     | '/modules/crm/sources'
     | '/modules/integrations/$providerKey'
     | '/modules/integrations/connections'
+    | '/modules/leads/$leadId'
     | '/p/$projectId/backlinks'
     | '/p/$projectId/brand-lookup'
     | '/p/$projectId/domain'
@@ -914,6 +925,7 @@ export interface FileRouteTypes {
     | '/_app/modules/crm/sources'
     | '/_app/modules/integrations/$providerKey'
     | '/_app/modules/integrations/connections'
+    | '/_app/modules/leads/$leadId'
     | '/_project/p/$projectId/audit'
     | '/_project/p/$projectId/backlinks'
     | '/_project/p/$projectId/brand-lookup'
@@ -1362,6 +1374,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProjectPProjectIdAuditRouteImport
       parentRoute: typeof ProjectPProjectIdRouteRoute
     }
+    '/_app/modules/leads/$leadId': {
+      id: '/_app/modules/leads/$leadId'
+      path: '/leads/$leadId'
+      fullPath: '/modules/leads/$leadId'
+      preLoaderRoute: typeof AppModulesLeadsLeadIdRouteImport
+      parentRoute: typeof AppModulesRouteRoute
+    }
     '/_app/modules/integrations/connections': {
       id: '/_app/modules/integrations/connections'
       path: '/connections'
@@ -1580,6 +1599,7 @@ interface AppModulesRouteRouteChildren {
   AppModulesCrmRoute: typeof AppModulesCrmRouteWithChildren
   AppModulesIntegrationsRoute: typeof AppModulesIntegrationsRouteWithChildren
   AppModulesIndexRoute: typeof AppModulesIndexRoute
+  AppModulesLeadsLeadIdRoute: typeof AppModulesLeadsLeadIdRoute
 }
 
 const AppModulesRouteRouteChildren: AppModulesRouteRouteChildren = {
@@ -1587,6 +1607,7 @@ const AppModulesRouteRouteChildren: AppModulesRouteRouteChildren = {
   AppModulesCrmRoute: AppModulesCrmRouteWithChildren,
   AppModulesIntegrationsRoute: AppModulesIntegrationsRouteWithChildren,
   AppModulesIndexRoute: AppModulesIndexRoute,
+  AppModulesLeadsLeadIdRoute: AppModulesLeadsLeadIdRoute,
 }
 
 const AppModulesRouteRouteWithChildren = AppModulesRouteRoute._addFileChildren(

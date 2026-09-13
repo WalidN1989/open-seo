@@ -42,7 +42,18 @@ export type LeadRow = {
     country: string | null;
   } | null;
   stage: { name: string } | null;
+  /** Whether the automated WhatsApp and email reached this lead. */
+  outreach?: { whatsapp?: "sent" | "failed"; email?: "sent" | "failed" } | null;
 };
+
+const OUTREACH_CLASS = {
+  sent: "text-success",
+  failed: "text-error",
+} as const;
+
+function outreachTitle(channel: string, state?: "sent" | "failed") {
+  return state ? ` · ${channel} ${state}` : "";
+}
 
 export type ColumnKey =
   | "company"
@@ -174,8 +185,12 @@ function CommsCell({ row }: { row: LeadRow }) {
       {contact.email ? (
         <a
           href={`mailto:${contact.email}`}
-          title={contact.email}
-          className="text-base-content/50 hover:text-primary"
+          title={`${contact.email}${outreachTitle("recap email", row.outreach?.email)}`}
+          className={`${
+            row.outreach?.email
+              ? OUTREACH_CLASS[row.outreach.email]
+              : "text-base-content/50"
+          } hover:text-primary`}
           onClick={(event) => event.stopPropagation()}
         >
           <Mail className="size-3.5" />
@@ -196,8 +211,12 @@ function CommsCell({ row }: { row: LeadRow }) {
           href={`https://wa.me/${whatsapp.replace(/[^\d]/g, "")}`}
           target="_blank"
           rel="noopener noreferrer"
-          title={`WhatsApp ${whatsapp}`}
-          className="text-base-content/50 hover:text-success"
+          title={`WhatsApp ${whatsapp}${outreachTitle("thank-you", row.outreach?.whatsapp)}`}
+          className={`${
+            row.outreach?.whatsapp
+              ? OUTREACH_CLASS[row.outreach.whatsapp]
+              : "text-base-content/50"
+          } hover:text-success`}
           onClick={(event) => event.stopPropagation()}
         >
           <MessageCircle className="size-3.5" />

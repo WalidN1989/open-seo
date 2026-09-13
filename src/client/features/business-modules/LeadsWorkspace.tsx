@@ -1,4 +1,5 @@
 /* oxlint-disable max-lines, max-lines-per-function */
+import { useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { LayoutGrid, Plus, Table2, Target } from "lucide-react";
@@ -18,6 +19,7 @@ import { useWorkspaceCurrency } from "@/client/hooks/useWorkspaceCurrency";
 
 export function LeadsWorkspace() {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const money = useWorkspaceCurrency();
   // The board is kept; the table is the default because a wide, dense list
   // is what you scan a pipeline with. Neither replaces the other.
@@ -237,7 +239,16 @@ export function LeadsWorkspace() {
       ) : null}
 
       {view === "table" ? (
-        <LeadsTable rows={data.leads} members={data.members} />
+        <LeadsTable
+          rows={data.leads}
+          members={data.members}
+          onOpenLead={(leadId) =>
+            void navigate({
+              to: "/modules/leads/$leadId",
+              params: { leadId },
+            })
+          }
+        />
       ) : null}
 
       <div className={view === "board" ? "overflow-x-auto pb-3" : "hidden"}>

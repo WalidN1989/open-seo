@@ -1,5 +1,30 @@
 import { z } from "zod";
 
+export const ACTIVITY_TYPES = [
+  "call",
+  "whatsapp",
+  "meeting",
+  "email",
+  "visit",
+  "note",
+  "quotation",
+  "task",
+] as const;
+export const activityTypeSchema = z.enum(ACTIVITY_TYPES);
+
+export const ACTIVITY_OUTCOMES = [
+  "interested",
+  "need_quotation",
+  "need_followup",
+  "waiting",
+  "decision_pending",
+  "no_response",
+  "ignoring",
+  "not_interested",
+  "won",
+  "lost",
+] as const;
+
 export const leadPrioritySchema = z.enum(["low", "medium", "high", "urgent"]);
 export const createLeadSchema = z.object({
   title: z.string().trim().min(1).max(200),
@@ -43,19 +68,38 @@ export const createCompanySchema = z.object({
 export const createActivitySchema = z.object({
   leadId: z.string().min(1),
   contactId: z.string().min(1).optional(),
-  activityType: z.enum([
-    "note",
-    "call",
-    "email",
-    "meeting",
-    "whatsapp",
-    "task",
-  ]),
+  activityType: activityTypeSchema,
   subject: z.string().trim().min(1).max(200),
   notes: z.string().trim().max(10_000).optional(),
   outcome: z.string().trim().max(100).optional(),
   occurredAt: z.string().datetime().optional(),
 });
+/** The journal entry, plus the follow-up it sets: one save, one intent. */
+export const logLeadActivitySchema = z.object({
+  leadId: z.string().min(1),
+  activityType: activityTypeSchema,
+  notes: z.string().trim().min(1).max(2000),
+  outcome: z.enum(ACTIVITY_OUTCOMES).optional(),
+  nextActionDue: z.string().datetime().optional(),
+  nextAction: z.string().trim().max(300).optional(),
+  /** Pop a reminder at nextActionDue; only meaningful with a time of day. */
+  remind: z.boolean().default(false),
+});
+
+export const leadIdSchema = z.object({ leadId: z.string().min(1) });
+
+export const createReminderSchema = z.object({
+  leadId: z.string().min(1).optional(),
+  title: z.string().trim().min(1).max(200),
+  note: z.string().trim().max(500).optional(),
+  remindAt: z.string().datetime(),
+});
+export const reminderIdSchema = z.object({ id: z.string().min(1) });
+export const snoozeReminderSchema = z.object({
+  id: z.string().min(1),
+  minutes: z.number().int().min(1).max(10_080),
+});
+
 export const createInquirySchema = z.object({
   title: z.string().trim().min(1).max(200),
   description: z.string().trim().max(10_000).optional(),
@@ -98,6 +142,8 @@ export type UpdateLeadInput = z.infer<typeof updateLeadSchema>;
 export type CreateContactInput = z.infer<typeof createContactSchema>;
 export type CreateCompanyInput = z.infer<typeof createCompanySchema>;
 export type CreateActivityInput = z.infer<typeof createActivitySchema>;
+export type LogLeadActivityInput = z.infer<typeof logLeadActivitySchema>;
+export type CreateReminderInput = z.infer<typeof createReminderSchema>;
 export type CreateInquiryInput = z.infer<typeof createInquirySchema>;
 export type PromoteInquiryInput = z.infer<typeof promoteInquirySchema>;
 export type CreateMeetingInput = z.infer<typeof createMeetingSchema>;

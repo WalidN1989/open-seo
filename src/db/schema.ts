@@ -143,6 +143,7 @@ export const {
   crmSourceRuns,
   crmSourceCandidates,
   crmActivities,
+  crmReminders,
   crmInquiries,
   crmInquiryLeads,
   crmMeetings,

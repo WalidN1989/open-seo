@@ -1,3 +1,4 @@
+import { ReminderBell } from "@/client/features/reminders/ReminderBell";
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import type { LinkOptions } from "@tanstack/react-router";
 import { useEffect, useState, type ComponentType } from "react";
@@ -141,6 +142,7 @@ export function Sidebar({ projectId, onNavigate, onClose }: SidebarProps) {
           />
           <span className="truncate">Digital Urgency</span>
         </Link>
+        <ReminderBell onNavigate={onNavigate} />
         {onClose ? (
           <button
             type="button"

@@ -119,6 +119,46 @@ async function sendWelcome(
   }
 }
 
+/**
+ * Put the WhatsApp and email the call set off into the lead's journal, so
+ * whether they went out is visible on the lead rather than buried in the
+ * call record. Skips are left out; a failure is worth seeing.
+ */
+async function journalOutreach(input: {
+  organizationId: string;
+  leadId: string;
+  contactId: string;
+  welcome: string;
+  recapEmail: string;
+}) {
+  const occurredAt = new Date().toISOString();
+  const entries = [
+    {
+      activityType: "whatsapp" as const,
+      status: input.welcome,
+      label: "WhatsApp thank-you",
+    },
+    {
+      activityType: "email" as const,
+      status: input.recapEmail,
+      label: "Recap email",
+    },
+  ].filter((entry) => !entry.status.startsWith("skipped"));
+  for (const entry of entries) {
+    const sent = entry.status.startsWith("sent");
+    await Repo.insertCallActivity({
+      organizationId: input.organizationId,
+      leadId: input.leadId,
+      contactId: input.contactId,
+      activityType: entry.activityType,
+      subject: `${entry.label} ${sent ? "sent" : "failed"}`,
+      notes: entry.status,
+      outcome: sent ? "sent" : "failed",
+      occurredAt,
+    });
+  }
+}
+
 async function recordCall(
   organizationId: string,
   integrationId: string,
@@ -242,6 +282,13 @@ async function recordCall(
     report,
   });
   await Repo.setRecapEmailStatus(call.id, recapEmail);
+  await journalOutreach({
+    organizationId,
+    leadId: lead.id,
+    contactId: contact.id,
+    welcome,
+    recapEmail,
+  });
 
   await BusinessAuditRepository.record({
     organizationId,
