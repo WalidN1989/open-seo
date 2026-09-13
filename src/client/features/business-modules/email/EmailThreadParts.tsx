@@ -99,57 +99,87 @@ export function MessageCard({
   );
 }
 
-export function Compose({ onDone }: { onDone: () => void }) {
+export function Compose({
+  onDone,
+  from,
+}: {
+  onDone: () => void;
+  from: string;
+}) {
   const [form, setForm] = useState({ to: "", subject: "", text: "" });
   const send = useEmailMutation(
     (input: typeof form) => composeEmail({ data: input }),
     "Email sent",
   );
+  const field = "input input-bordered input-sm w-full";
   return (
     <form
-      className="grid gap-3 rounded-xl border border-primary/30 bg-primary/5 p-4"
+      className="flex max-h-[70vh] min-h-[28rem] flex-col self-start rounded-xl border border-base-300 bg-base-100"
       onSubmit={(event) => {
         event.preventDefault();
         send.mutate(form, { onSuccess: onDone });
       }}
     >
-      <input
-        className="input input-bordered input-sm w-full"
-        type="email"
-        placeholder="To"
-        required
-        value={form.to}
-        onChange={(event) =>
-          setForm({ ...form, to: event.currentTarget.value })
-        }
-      />
-      <input
-        className="input input-bordered input-sm w-full"
-        placeholder="Subject"
-        required
-        value={form.subject}
-        onChange={(event) =>
-          setForm({ ...form, subject: event.currentTarget.value })
-        }
-      />
+      <header className="flex items-center justify-between gap-2 border-b border-base-300 px-4 py-3">
+        <h2 className="font-semibold">New email</h2>
+        <span className="truncate text-xs text-base-content/55">
+          From {from}
+        </span>
+      </header>
+      <div className="grid gap-2 border-b border-base-300 px-4 py-3">
+        <label className="grid grid-cols-[4.5rem_minmax(0,1fr)] items-center gap-2 text-sm">
+          <span className="text-base-content/60">To</span>
+          <input
+            className={field}
+            type="email"
+            placeholder="name@theirbusiness.com.au"
+            required
+            autoFocus
+            value={form.to}
+            onChange={(event) =>
+              setForm({ ...form, to: event.currentTarget.value })
+            }
+          />
+        </label>
+        <label className="grid grid-cols-[4.5rem_minmax(0,1fr)] items-center gap-2 text-sm">
+          <span className="text-base-content/60">Subject</span>
+          <input
+            className={field}
+            placeholder="What this is about"
+            required
+            value={form.subject}
+            onChange={(event) =>
+              setForm({ ...form, subject: event.currentTarget.value })
+            }
+          />
+        </label>
+      </div>
       <textarea
-        className="textarea textarea-bordered w-full text-sm"
-        rows={8}
-        placeholder="Write your email…"
+        className="min-h-[14rem] flex-1 resize-none border-0 bg-transparent px-4 py-3 text-sm leading-relaxed focus:outline-none"
+        placeholder="Write your email. Plain text; it is sent exactly as written."
         required
         value={form.text}
         onChange={(event) =>
           setForm({ ...form, text: event.currentTarget.value })
         }
       />
-      <div className="flex justify-end gap-2">
-        <button type="button" className="btn btn-ghost btn-sm" onClick={onDone}>
-          Cancel
-        </button>
-        <button className="btn btn-primary btn-sm" disabled={send.isPending}>
-          Send
-        </button>
-      </div>
+      <footer className="flex items-center justify-between gap-2 border-t border-base-300 px-4 py-3">
+        <span className="text-xs text-base-content/55">
+          A copy lands in your Sent folder.
+        </span>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            className="btn btn-ghost btn-sm"
+            onClick={onDone}
+          >
+            Cancel
+          </button>
+          <button className="btn btn-primary btn-sm" disabled={send.isPending}>
+            {send.isPending ? "Sending…" : "Send"}
+          </button>
+        </div>
+      </footer>
     </form>
   );
 }

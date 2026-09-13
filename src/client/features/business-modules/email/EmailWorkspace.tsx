@@ -104,7 +104,10 @@ export function EmailWorkspace() {
               }}
             />
             {composing ? (
-              <Compose onDone={() => setComposing(false)} />
+              <Compose
+                onDone={() => setComposing(false)}
+                from={data.account?.address ?? ""}
+              />
             ) : selected ? (
               <ThreadView threadId={selected} />
             ) : (
