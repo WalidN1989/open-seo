@@ -1,6 +1,5 @@
 import type { z } from "zod";
 import { AppError } from "@/server/lib/errors";
-import { decryptCredentials } from "@/server/lib/connection-secrets";
 import { BusinessModuleService } from "@/server/features/business-modules/services/BusinessModuleService";
 import type {
   approveEmailDraftSchema,
@@ -8,7 +7,7 @@ import type {
   sendEmailReplySchema,
   setEmailThreadStatusSchema,
 } from "@/types/schemas/email";
-import { agentmailClient } from "../providers/agentmail";
+import { outboundFor } from "../providers/outbound";
 import {
   EmailRepository as Repo,
   type EmailAccountRow,
@@ -29,20 +28,12 @@ export function parseList(value: string): string[] {
   }
 }
 
-async function requireConnectedAccount(organizationId: string) {
+export async function requireConnectedAccount(organizationId: string) {
   const account = await Repo.getAccount(organizationId);
-  if (!account || account.status !== "connected" || !account.inboxId) {
+  if (!account || account.status !== "connected") {
     throw new AppError("VALIDATION_ERROR", "Connect an email account first.");
   }
-  const creds = await decryptCredentials(account.credentials);
-  const apiKey = creds.API_KEY;
-  if (!apiKey) {
-    throw new AppError(
-      "VALIDATION_ERROR",
-      "The account has no stored API key. Reconnect it.",
-    );
-  }
-  return { account, apiKey, inboxId: account.inboxId };
+  return { account, outbound: await outboundFor(account) };
 }
 
 async function workspace(organizationId: string, userId: string) {
@@ -154,19 +145,18 @@ async function sendReply(
     MODULE,
     "manage",
   );
-  const { account, apiKey, inboxId } =
-    await requireConnectedAccount(organizationId);
+  const { account, outbound } = await requireConnectedAccount(organizationId);
   const threadRow = await Repo.getThread(organizationId, input.threadId);
   if (!threadRow) throw new AppError("NOT_FOUND", "Thread not found.");
   const last = await Repo.lastInboundMessage(threadRow.id);
-  if (!last?.externalMessageId) {
+  if (!last) {
     throw new AppError(
       "VALIDATION_ERROR",
       "Nothing to reply to in this thread yet.",
     );
   }
-  const sent = await agentmailClient(apiKey)
-    .replyToMessage(inboxId, last.externalMessageId, { text: input.text })
+  const sent = await outbound
+    .reply({ thread: threadRow, last, text: input.text })
     .catch(providerFailure);
   await recordOutbound(account, threadRow, sent, {
     to: [last.fromAddress],
@@ -189,14 +179,9 @@ async function compose(
     MODULE,
     "manage",
   );
-  const { account, apiKey, inboxId } =
-    await requireConnectedAccount(organizationId);
-  const sent = await agentmailClient(apiKey)
-    .sendMessage(inboxId, {
-      to: [input.to],
-      subject: input.subject,
-      text: input.text,
-    })
+  const { account, outbound } = await requireConnectedAccount(organizationId);
+  const sent = await outbound
+    .compose({ to: input.to, subject: input.subject, text: input.text })
     .catch(providerFailure);
   const occurredAt = new Date().toISOString();
   const threadRow = await Repo.upsertThread(account, {
@@ -246,18 +231,17 @@ async function approveDraft(
   const text = input.text ?? draft.textBody ?? "";
   if (!text.trim())
     throw new AppError("VALIDATION_ERROR", "The draft is empty.");
-  const { account, apiKey, inboxId } =
-    await requireConnectedAccount(organizationId);
+  const { account, outbound } = await requireConnectedAccount(organizationId);
   const threadRow = await Repo.getThread(organizationId, draft.threadId);
   const last = await Repo.lastInboundMessage(draft.threadId);
-  if (!threadRow || !last?.externalMessageId) {
+  if (!threadRow || !last) {
     throw new AppError(
       "VALIDATION_ERROR",
       "Nothing to reply to in this thread.",
     );
   }
-  const sent = await agentmailClient(apiKey)
-    .replyToMessage(inboxId, last.externalMessageId, { text })
+  const sent = await outbound
+    .reply({ thread: threadRow, last, text })
     .catch(providerFailure);
   const occurredAt = new Date().toISOString();
   await Repo.updateMessage(organizationId, draft.id, {

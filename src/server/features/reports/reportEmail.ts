@@ -1,4 +1,9 @@
-import { getResendConfig, sendResendActionEmail } from "@/server/email/resend";
+import {
+  getResendConfig,
+  renderActionEmail,
+  sendResendActionEmail,
+} from "@/server/email/resend";
+import { EmailSendService } from "@/server/features/email/services/EmailSendService";
 import { AppError } from "@/server/lib/errors";
 import { getOptionalEnvValue } from "@/server/lib/runtime-env";
 import type { ReportSnapshot } from "./reportSnapshot";
@@ -8,8 +13,12 @@ import type { ReportSnapshot } from "./reportSnapshot";
  *
  * A link, never an attachment. The page is the report — it carries the
  * download button, it is what the share link opens, and a link can be sent by
- * an agent that has no way to attach a file. Sent from the agency's name on
- * the verified sending address, with replies going to the agency's own inbox.
+ * an agent that has no way to attach a file.
+ *
+ * When the agency has connected its own mailbox in the Email module the
+ * message goes out from there and is mirrored as a thread, so the client's
+ * reply lands beside it. Otherwise it is sent through Resend from the agency's
+ * name on the verified sending address, with replies going to the agency inbox.
  *
  * The collaborators are passed in rather than imported so this file does not
  * reach back into the service that calls it.
@@ -33,13 +42,6 @@ export async function sendReportToClient(deps: {
 }) {
   const { organizationId, userId, input } = deps;
   await deps.requireManage(organizationId, userId);
-  const config = getResendConfig();
-  if (!config) {
-    throw new AppError(
-      "VALIDATION_ERROR",
-      "Email is not configured on this server: RESEND_API_KEY and RESEND_FROM_EMAIL are needed.",
-    );
-  }
   const row = await deps.getReport(organizationId, input.reportId);
   if (!row) throw new AppError("NOT_FOUND", "That report no longer exists.");
   const snapshot = deps.parse(row.snapshotJson);
@@ -59,8 +61,7 @@ export async function sendReportToClient(deps: {
     .filter(Boolean)
     .join("\n\n");
 
-  await sendResendActionEmail(config, {
-    to: input.to,
+  const email = {
     subject: `Your report from ${agency.name}`,
     heading: `${snapshot.client.name}: your report is ready`,
     body,
@@ -69,9 +70,37 @@ export async function sendReportToClient(deps: {
     footer: [agency.name, agency.phone, agency.email]
       .filter(Boolean)
       .join(" · "),
-    fromName: agency.name,
-    replyTo: agency.email ?? undefined,
-  });
+  };
+  const viaMailbox = await EmailSendService.sendFromConnectedMailbox(
+    organizationId,
+    {
+      to: input.to,
+      subject: email.subject,
+      text: `${email.heading}\n\n${email.body}\n\n${email.buttonLabel}: ${url}\n\n${email.footer}`,
+      html: renderActionEmail(email),
+      authoredBy: userId,
+    },
+  );
+  if (!viaMailbox) {
+    const config = getResendConfig();
+    if (!config) {
+      throw new AppError(
+        "VALIDATION_ERROR",
+        "Connect a mailbox in the Email module, or set RESEND_API_KEY and RESEND_FROM_EMAIL on the server.",
+      );
+    }
+    await sendResendActionEmail(config, {
+      to: input.to,
+      ...email,
+      fromName: agency.name,
+      replyTo: agency.email ?? undefined,
+    });
+  }
   await deps.markSent(organizationId, input.reportId, input.to);
-  return { to: input.to, url, expiresAt: link.expiresAt };
+  return {
+    to: input.to,
+    url,
+    expiresAt: link.expiresAt,
+    from: viaMailbox?.from ?? null,
+  };
 }

@@ -45,6 +45,13 @@ Humans can also read an AgentMail inbox in any mail client over IMAP:
 ## Code
 
 - `src/server/features/email/providers/agentmail.ts` — fetch client, signature verification, event parsing
+- `src/server/features/email/providers/mailbox.ts` — the worker's calls to the mailbox bridge (verify, send, reload)
+- `src/server/features/email/providers/outbound.ts` — one send interface over both providers
+- `src/server/features/email/providers/threading.ts` — Message-ID / References helpers
+- `src/server/features/email/services/MailboxIngestService.ts` — new mail from the bridge into threads
+- `src/server/features/email/services/EmailSendService.ts` — app-written mail (client reports) from the connected mailbox
+- `src/server/features/email/bridgeHandler.ts` + `src/shared/mail-bridge.ts` — the internal endpoints and the contract
+- `scripts/mail-bridge.ts` — the Node process beside the server: IMAP IDLE per mailbox, SMTP, Sent copy
 - `src/server/features/email/services/EmailAccountService.ts` — connect / disconnect / autopilot
 - `src/server/features/email/services/EmailService.ts` — inbox, send, reply, drafts
 - `src/server/features/email/services/EmailWebhookService.ts` — ingestion and the assistant hand-off
@@ -55,9 +62,20 @@ Humans can also read an AgentMail inbox in any mail client over IMAP:
 ## Decisions and what is not built
 
 - **No Google Workspace or Microsoft 365 providers.** Ruled out deliberately.
-- **SMTP/IMAP mailboxes** (e.g. a Namecheap address) are the second provider
-  card, shown as "coming later". The server runtime cannot open raw sockets,
-  so this needs a small companion service; build it when a business needs it.
+- **SMTP/IMAP mailboxes** (e.g. a Namecheap address) are the second provider.
+  The Worker runtime cannot open sockets, so `scripts/mail-bridge.ts` runs
+  beside the server in the container (started by `docker-entrypoint.sh` with
+  the ticker, guarded by `INTERNAL_CRON_SECRET`, loopback only, port
+  `MAIL_BRIDGE_PORT` default 3002). It holds one IMAP IDLE connection per
+  connected mailbox and pushes new mail to `/api/internal/mailbox/ingest`;
+  the worker calls it for `/verify`, `/send` and `/reload`. Login is checked
+  over both protocols before the credentials are stored (encrypted).
+  `email_accounts.sync_cursor` is the last IMAP UID handed over; a fresh
+  connection starts from "now" rather than importing history. Threading is by
+  `In-Reply-To`/`References` against message ids the mirror already holds.
+  When a business has a mailbox connected, Client Reports sends its "review
+  your report" email from it and mirrors the thread, so the reply lands in
+  the Inbox next to it; otherwise Resend is used.
 - **Custom domains** (`hello@mail.example.com`) need AgentMail's Developer
   plan and a subdomain, because AgentMail takes the MX of the domain it owns.
   Parked until a use case pays for it; `@agentmail.to` addresses work on the

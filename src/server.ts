@@ -29,6 +29,8 @@ import { handleGdprStorageErasure } from "@/server/gdpr/storage-erasure";
 import { GDPR_STORAGE_ERASURE_PATH } from "@/shared/gdpr-erasure";
 import { INTERNAL_CRON_PATH } from "@/shared/internal-cron";
 import { handleInternalCronRequest } from "@/server/features/scheduler/handler";
+import { MAIL_BRIDGE_INTERNAL_PREFIX } from "@/shared/mail-bridge";
+import { handleMailBridgeRequest } from "@/server/features/email/bridgeHandler";
 
 const appFetch = createStartHandler(defaultStreamHandler);
 const openSeoOAuthProvider = createOpenSeoOAuthProvider(appFetch);
@@ -172,6 +174,11 @@ function handleFetch(
   // user session, so it must not be routed into the OAuth provider.
   if (pathname === INTERNAL_CRON_PATH) {
     return handleInternalCronRequest(publicRequest, env);
+  }
+  // Same secret, same reasoning: the mailbox bridge is a process in this
+  // container, not a user.
+  if (pathname.startsWith(MAIL_BRIDGE_INTERNAL_PREFIX)) {
+    return handleMailBridgeRequest(publicRequest);
   }
 
   if (pathname === GDPR_STORAGE_ERASURE_PATH) {

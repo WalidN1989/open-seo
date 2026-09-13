@@ -4,13 +4,21 @@ import { encryptCredentials } from "@/server/lib/connection-secrets";
 import { getRequiredEnvValue } from "@/server/lib/runtime-env";
 import { BusinessAuditRepository } from "@/server/features/business-modules/repositories/BusinessAuditRepository";
 import { BusinessModuleService } from "@/server/features/business-modules/services/BusinessModuleService";
-import type { connectAgentmailSchema } from "@/types/schemas/email";
+import type {
+  connectAgentmailSchema,
+  connectMailboxSchema,
+} from "@/types/schemas/email";
 import {
   AgentmailError,
   POD_KEY_PERMISSIONS,
   WEBHOOK_EVENT_TYPES,
   agentmailClient,
 } from "../providers/agentmail";
+import {
+  mailboxCredentialsToStored,
+  pokeBridgeReload,
+  verifyMailbox,
+} from "../providers/mailbox";
 import {
   EmailRepository as Repo,
   type EmailAccountRow,
@@ -241,6 +249,73 @@ async function connectAgentmail(
   }
 }
 
+/**
+ * A mailbox the business already owns. The login is checked over both IMAP
+ * and SMTP before anything is stored, then kept encrypted like every other
+ * credential; the bridge beside the server starts watching it at once.
+ */
+async function connectMailbox(
+  organizationId: string,
+  userId: string,
+  input: z.infer<typeof connectMailboxSchema>,
+) {
+  await BusinessModuleService.requireAccess(
+    organizationId,
+    userId,
+    MODULE,
+    "admin",
+  );
+  const existing = await Repo.getAccount(organizationId);
+  if (existing?.status === "connected") {
+    throw new AppError(
+      "CONFLICT",
+      "This business already has an email account. Disconnect it first.",
+    );
+  }
+  const credentials = {
+    username: input.username?.trim() || input.address,
+    password: input.password,
+    imapHost: input.imapHost,
+    imapPort: input.imapPort,
+    smtpHost: input.smtpHost,
+    smtpPort: input.smtpPort,
+  };
+  await verifyMailbox(credentials);
+  const values = {
+    displayName: input.displayName,
+    address: input.address,
+    podId: null,
+    inboxId: null,
+  };
+  // A row left by a disconnect may describe another provider entirely.
+  const account = existing
+    ? await Repo.updateAccount(existing.id, { ...values, provider: "mailbox" })
+    : await Repo.createAccount({
+        organizationId,
+        provider: "mailbox",
+        ...values,
+      });
+  if (!account) throw new AppError("NOT_FOUND", "No email account.");
+  const connected = await Repo.updateAccount(account.id, {
+    credentials: await encryptCredentials(
+      mailboxCredentialsToStored(credentials),
+    ),
+    webhookId: null,
+    // Start from now: the bridge reports where the inbox is on first sight.
+    syncCursor: null,
+    status: "connected",
+    lastError: null,
+  });
+  await audit(organizationId, userId, "email.account.connected", account.id, {
+    provider: "mailbox",
+    address: input.address,
+    imapHost: input.imapHost,
+    smtpHost: input.smtpHost,
+  });
+  await pokeBridgeReload();
+  return publicAccount(connected);
+}
+
 async function disconnect(organizationId: string, userId: string) {
   await BusinessModuleService.requireAccess(
     organizationId,
@@ -256,6 +331,7 @@ async function disconnect(organizationId: string, userId: string) {
     credentials: null,
   });
   await audit(organizationId, userId, "email.account.disconnected", account.id);
+  if (account.provider === "mailbox") await pokeBridgeReload();
   return publicAccount(updated);
 }
 
@@ -281,6 +357,7 @@ async function setAutopilot(
 
 export const EmailAccountService = {
   connectAgentmail,
+  connectMailbox,
   disconnect,
   setAutopilot,
 };

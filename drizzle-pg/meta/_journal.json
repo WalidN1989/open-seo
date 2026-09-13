@@ -414,6 +414,13 @@
       "when": 1789278706005,
       "tag": "0058_nebulous_shiva",
       "breakpoints": true
+    },
+    {
+      "idx": 59,
+      "version": "7",
+      "when": 1789281373243,
+      "tag": "0059_typical_monster_badoon",
+      "breakpoints": true
     }
   ]
 }

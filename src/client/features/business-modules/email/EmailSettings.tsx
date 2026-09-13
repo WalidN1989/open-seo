@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { Bot, Mail, Server } from "lucide-react";
+import { Bot, Mail } from "lucide-react";
 import {
   connectAgentmail,
   disconnectEmailAccount,
   setEmailAutopilot,
 } from "@/serverFunctions/email";
 import { type EmailWorkspace, useEmailMutation } from "./emailQuery";
+import { MailboxConnectForm } from "./MailboxConnectForm";
 
 export function EmailSettings({ data }: { data: EmailWorkspace }) {
   return data.account && data.account.status !== "disconnected" ? (
@@ -36,7 +37,8 @@ function ConnectedAccount({
           <div>
             <p className="font-medium">{account.address}</p>
             <p className="text-sm text-base-content/60">
-              {account.displayName} · AgentMail ·{" "}
+              {account.displayName} ·{" "}
+              {account.provider === "mailbox" ? "Your mailbox" : "AgentMail"} ·{" "}
               <span
                 className={
                   account.status === "connected"
@@ -94,27 +96,42 @@ function ConnectedAccount({
           <Bot className="size-4" />
           <h3 className="font-medium">For your monitoring agent</h3>
         </div>
-        <ul className="grid gap-1 text-base-content/70">
-          <li>
-            Inbound webhook (signed, one per account):{" "}
-            <code className="break-all rounded bg-base-200 px-1">
-              {webhookUrl}
-            </code>
-          </li>
-          <li>
-            Read this inbox in Apple Mail or Outlook over IMAP at{" "}
-            <code className="rounded bg-base-200 px-1">
-              imap.agentmail.to:993
-            </code>{" "}
-            with the address as username and an AgentMail API key as password.
-          </li>
-          <li>
-            Pod:{" "}
-            <code className="rounded bg-base-200 px-1">{account.podId}</code> —
-            this business's inbox lives in its own pod, and the stored key is
-            scoped to it.
-          </li>
-        </ul>
+        {account.provider === "mailbox" ? (
+          <ul className="grid gap-1 text-base-content/70">
+            <li>
+              New mail is read over IMAP the moment it arrives and shows in the
+              Inbox here; replies and anything the app sends (client reports,
+              for one) go out over SMTP from {account.address} and are copied to
+              its Sent folder.
+            </li>
+            <li>
+              Read it as usual in webmail or any mail app; nothing changes
+              there.
+            </li>
+          </ul>
+        ) : (
+          <ul className="grid gap-1 text-base-content/70">
+            <li>
+              Inbound webhook (signed, one per account):{" "}
+              <code className="break-all rounded bg-base-200 px-1">
+                {webhookUrl}
+              </code>
+            </li>
+            <li>
+              Read this inbox in Apple Mail or Outlook over IMAP at{" "}
+              <code className="rounded bg-base-200 px-1">
+                imap.agentmail.to:993
+              </code>{" "}
+              with the address as username and an AgentMail API key as password.
+            </li>
+            <li>
+              Pod:{" "}
+              <code className="rounded bg-base-200 px-1">{account.podId}</code>{" "}
+              — this business's inbox lives in its own pod, and the stored key
+              is scoped to it.
+            </li>
+          </ul>
+        )}
       </section>
     </div>
   );
@@ -251,18 +268,7 @@ function ProviderChoice() {
         </div>
       </form>
 
-      <section className="grid gap-3 rounded-xl border border-base-300 p-4 opacity-70">
-        <div className="flex items-center gap-2">
-          <Server className="size-4" />
-          <h3 className="font-medium">Custom mailbox (SMTP / IMAP)</h3>
-          <span className="badge badge-ghost badge-sm">coming later</span>
-        </div>
-        <p className="text-sm text-base-content/60">
-          For a professional address you already own, such as a Namecheap
-          mailbox. OpenSEO will send through SMTP and read through IMAP, with
-          the same inbox, drafts and assistant. Not available yet.
-        </p>
-      </section>
+      <MailboxConnectForm />
     </div>
   );
 }

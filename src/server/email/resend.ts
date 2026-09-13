@@ -53,7 +53,7 @@ function escapeHtml(value: string) {
  * and Outlook ignores flexbox, so anything more modern renders as unstyled
  * text in the clients most people read mail in.
  */
-function renderActionEmail({
+export function renderActionEmail({
   heading,
   body,
   buttonLabel,

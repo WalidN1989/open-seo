@@ -32,6 +32,19 @@ async function getAccountById(id: string) {
   return row ?? null;
 }
 
+/** Every connected account on one provider, across all organisations. */
+async function listConnectedByProvider(provider: string) {
+  return db
+    .select()
+    .from(emailAccounts)
+    .where(
+      and(
+        eq(emailAccounts.provider, provider),
+        eq(emailAccounts.status, "connected"),
+      ),
+    );
+}
+
 async function createAccount(values: {
   organizationId: string;
   provider: string;
@@ -61,6 +74,8 @@ async function updateAccount(
       | "address"
       | "podId"
       | "inboxId"
+      | "syncCursor"
+      | "provider"
     >
   >,
 ) {
@@ -343,6 +358,8 @@ async function projectNameFor(organizationId: string) {
 }
 
 export const EmailRepository = {
+  listConnectedByProvider,
+  findThreadByExternalId,
   getAccount,
   getAccountById,
   createAccount,

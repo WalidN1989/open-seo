@@ -6,6 +6,7 @@ import {
   approveEmailDraftSchema,
   composeEmailSchema,
   connectAgentmailSchema,
+  connectMailboxSchema,
   emailMessageIdSchema,
   emailThreadIdSchema,
   sendEmailReplySchema,
@@ -31,6 +32,17 @@ export const connectAgentmail = createServerFn({ method: "POST" })
   .validator(connectAgentmailSchema)
   .handler(({ context, data }) =>
     EmailAccountService.connectAgentmail(
+      context.organizationId,
+      context.userId,
+      data,
+    ),
+  );
+
+export const connectMailbox = createServerFn({ method: "POST" })
+  .middleware(requireAuthenticatedContext)
+  .validator(connectMailboxSchema)
+  .handler(({ context, data }) =>
+    EmailAccountService.connectMailbox(
       context.organizationId,
       context.userId,
       data,

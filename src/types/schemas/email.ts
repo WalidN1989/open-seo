@@ -1,5 +1,21 @@
 import { z } from "zod";
 
+const hostSchema = z.string().trim().min(1).max(253);
+const portSchema = z.coerce.number().int().min(1).max(65535);
+
+/** A mailbox the business already owns, reached over IMAP and SMTP. */
+export const connectMailboxSchema = z.object({
+  displayName: z.string().trim().min(1).max(120),
+  address: z.string().trim().toLowerCase().email().max(320),
+  /** Most hosts log in with the full address; leave blank for that. */
+  username: z.string().trim().max(320).optional(),
+  password: z.string().min(1).max(400),
+  imapHost: hostSchema,
+  imapPort: portSchema,
+  smtpHost: hostSchema,
+  smtpPort: portSchema,
+});
+
 export const connectAgentmailSchema = z.object({
   /** An inbox that already exists in the AgentMail account, to adopt as is. */
   existingAddress: z

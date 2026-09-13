@@ -1,0 +1,1 @@
+ALTER TABLE `email_accounts` ADD `sync_cursor` text;

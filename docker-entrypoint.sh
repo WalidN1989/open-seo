@@ -33,9 +33,13 @@ pnpm exec tsx scripts/write-runtime-dev-vars.ts "$OUT_DIR/server/.dev.vars"
 if [ -n "${INTERNAL_CRON_SECRET:-}" ]; then
   pnpm exec tsx scripts/internal-ticker.ts &
   TICKER_PID=$!
-  # Take the server down with the ticker rather than leaving a half-running
+  # The mailbox bridge does IMAP and SMTP for customer-owned mailboxes; the
+  # Worker runtime cannot open sockets, so it lives beside the server too.
+  pnpm exec tsx scripts/mail-bridge.ts &
+  BRIDGE_PID=$!
+  # Take the server down with the helpers rather than leaving a half-running
   # container that looks healthy but processes nothing.
-  trap 'kill "$TICKER_PID" 2>/dev/null' INT TERM EXIT
+  trap 'kill "$TICKER_PID" "$BRIDGE_PID" 2>/dev/null' INT TERM EXIT
 else
   echo "INTERNAL_CRON_SECRET not set - background jobs (webhook retries, rank checks, audit watchdog) will NOT run."
 fi

@@ -1393,6 +1393,9 @@ export const emailAccounts = pgTable(
     podId: text("pod_id"),
     inboxId: text("inbox_id"),
     webhookId: text("webhook_id"),
+    // Where the mailbox bridge is up to in this account's inbox (the last
+    // IMAP UID it handed over), so a restart resumes rather than re-reads.
+    syncCursor: text("sync_cursor"),
     /** Encrypted blob: API_KEY (pod-scoped) and WEBHOOK_SECRET. */
     credentials: text("credentials"),
     status: text("status").notNull().default("pending"),

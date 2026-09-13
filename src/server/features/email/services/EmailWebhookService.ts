@@ -12,9 +12,9 @@ import {
 } from "@/server/features/communications/services/WhatsappAssistantReplyService";
 import { generateWhatsappAiReply } from "@/server/features/communications/providers/whatsapp-ai";
 import { toPlainText } from "@/server/features/communications/providers/assistant-knowledge";
+import { outboundFor } from "../providers/outbound";
 import {
   addressOf,
-  agentmailClient,
   parseAgentmailEvent,
   verifyAgentmailSignature,
   type AgentmailMessage,
@@ -35,7 +35,7 @@ const ASSISTANT = "assistant";
  * settings, facts, prices and product lookup as WhatsApp — nothing is
  * duplicated — but writes a draft unless this account is on autopilot.
  */
-async function replyWithAssistant(
+export async function replyWithAssistant(
   account: EmailAccountRow,
   threadRow: EmailThreadRow,
   inbound: EmailMessageRow,
@@ -72,14 +72,9 @@ async function replyWithAssistant(
   // asterisks around the words it was meant to lift.
   const body = toPlainText(result.reply);
   if (account.autopilot) {
-    const creds = await decryptCredentials(account.credentials);
-    if (!creds.API_KEY || !account.inboxId || !inbound.externalMessageId)
-      return;
-    const sent = await agentmailClient(creds.API_KEY).replyToMessage(
-      account.inboxId,
-      inbound.externalMessageId,
-      { text: body },
-    );
+    const sent = await (
+      await outboundFor(account)
+    ).reply({ thread: threadRow, last: inbound, text: body });
     await recordOutbound(account, threadRow, sent, {
       to: [inbound.fromAddress],
       subject: inbound.subject,
