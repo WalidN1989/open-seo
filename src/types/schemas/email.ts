@@ -57,6 +57,19 @@ export const composeEmailSchema = z.object({
   text: z.string().trim().min(1).max(20_000),
 });
 
+/** A reply drafted for a person to approve; replaces the thread's draft. */
+export const draftEmailReplySchema = z.object({
+  threadId: z.string().min(1),
+  text: z.string().trim().min(1).max(20_000),
+});
+
+/** A new message drafted for a person to approve, on a thread of its own. */
+export const draftEmailSchema = z.object({
+  to: z.string().trim().email().max(320),
+  subject: z.string().trim().min(1).max(200),
+  text: z.string().trim().min(1).max(20_000),
+});
+
 export const approveEmailDraftSchema = z.object({
   messageId: z.string().min(1),
   /** An edited body, when the person changed the assistant's draft. */

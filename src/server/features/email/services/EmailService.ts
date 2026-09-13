@@ -235,16 +235,22 @@ async function approveDraft(
     throw new AppError("VALIDATION_ERROR", "The draft is empty.");
   const { account, outbound } = await requireConnectedAccount(organizationId);
   const threadRow = await Repo.getThread(organizationId, draft.threadId);
+  if (!threadRow) throw new AppError("NOT_FOUND", "Thread not found.");
   const last = await Repo.lastInboundMessage(draft.threadId);
-  if (!threadRow || !last) {
-    throw new AppError(
-      "VALIDATION_ERROR",
-      "Nothing to reply to in this thread.",
-    );
+  const to = parseList(draft.toAddresses)[0];
+  if (!last && !to) {
+    throw new AppError("VALIDATION_ERROR", "The draft has no recipient.");
   }
-  const sent = await outbound
-    .reply({ thread: threadRow, last, text })
-    .catch(providerFailure);
+  // A drafted reply answers the last inbound message; a drafted new email
+  // starts the conversation, and the thread then takes the provider's id.
+  const sent = last
+    ? await outbound
+        .reply({ thread: threadRow, last, text })
+        .catch(providerFailure)
+    : await outbound
+        .compose({ to: to ?? "", subject: draft.subject ?? "", text })
+        .catch(providerFailure);
+  if (!last) await Repo.setThreadExternalId(threadRow.id, sent.thread_id);
   const occurredAt = new Date().toISOString();
   await Repo.updateMessage(organizationId, draft.id, {
     externalMessageId: sent.message_id,
@@ -254,7 +260,7 @@ async function approveDraft(
     occurredAt,
   });
   await Repo.upsertThread(account, {
-    externalThreadId: threadRow.externalThreadId,
+    externalThreadId: last ? threadRow.externalThreadId : sent.thread_id,
     subject: threadRow.subject,
     preview: text.slice(0, 160),
     senders: parseList(threadRow.senders),

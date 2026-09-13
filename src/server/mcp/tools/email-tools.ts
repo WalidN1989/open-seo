@@ -4,6 +4,10 @@ import { mcpResponse } from "@/server/mcp/formatters";
 import { optionalMetaOutputSchema } from "@/server/mcp/output-schemas";
 import { withMcpOrganizationAuth } from "@/server/mcp/organization-auth";
 import type { McpModuleSurface } from "@/server/mcp/module-registry";
+import {
+  draftEmailTool,
+  draftReplyToEmailThreadTool,
+} from "./email-draft-tools";
 
 const organizationIdSchema = z
   .string()
@@ -35,10 +39,10 @@ const threadSummary = z.object({
 const listInput = {
   organizationId: organizationIdSchema,
   folder: z
-    .enum(["all", "inbox", "sent"])
+    .enum(["all", "inbox", "sent", "drafts"])
     .default("all")
     .describe(
-      "inbox: threads where the other party wrote last. sent: threads where the business wrote last.",
+      "inbox: threads where the other party wrote last. sent: threads where the business wrote last. drafts: threads holding a draft awaiting a person's approval.",
     ),
   limit: z.number().int().min(1).max(100).default(30),
 } as const;
@@ -69,14 +73,20 @@ export const listEmailThreadsTool = {
       context.organizationId,
       context.auth.userId,
     );
+    const drafted = new Set(data.drafts.map((draft) => draft.threadId));
     const threads = data.threads
-      .filter((thread) =>
-        args.folder === "all"
-          ? true
-          : args.folder === "sent"
-            ? thread.lastDirection === "outbound"
-            : thread.lastDirection !== "outbound",
-      )
+      .filter((thread) => {
+        switch (args.folder) {
+          case "all":
+            return true;
+          case "drafts":
+            return drafted.has(thread.id);
+          case "sent":
+            return thread.lastDirection === "outbound";
+          default:
+            return thread.lastDirection !== "outbound";
+        }
+      })
       .slice(0, args.limit)
       .map((thread) => ({
         id: thread.id,
@@ -273,10 +283,12 @@ export const emailSurface: McpModuleSurface = {
   key: "email",
   scope: "organization",
   summary:
-    "Read the business's inbox and sent mail, open a thread, reply on it, or send a new message from the business's own address.",
+    "Read the business's inbox and sent mail, open a thread, draft a reply or a new message for a person to approve, or send one after the user says yes.",
   tools: [
     listEmailThreadsTool,
     getEmailThreadTool,
+    draftReplyToEmailThreadTool,
+    draftEmailTool,
     replyToEmailThreadTool,
     sendEmailTool,
   ],
@@ -287,9 +299,9 @@ export const emailSurface: McpModuleSurface = {
         "Those change who answers the business's customers and need the mailbox password. A person does that in Settings.",
     },
     {
-      action: "approve or discard assistant drafts",
+      action: "approve or discard drafts",
       because:
-        "Drafts exist so a person reads them before they leave. An agent that approves its own drafts has no reviewer.",
+        "Drafts exist so a person reads them before they leave. An agent that approves its own drafts has no reviewer; the send tools exist for the case where the user has already said yes in conversation.",
     },
   ],
 };

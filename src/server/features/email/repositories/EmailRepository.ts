@@ -319,6 +319,31 @@ async function deleteMessage(organizationId: string, id: string) {
   return rows.length > 0;
 }
 
+/** The pending draft on one thread, if any (one per thread by design). */
+async function draftOnThread(organizationId: string, threadId: string) {
+  const [row] = await db
+    .select()
+    .from(emailMessages)
+    .where(
+      and(
+        eq(emailMessages.organizationId, organizationId),
+        eq(emailMessages.threadId, threadId),
+        eq(emailMessages.direction, "draft"),
+        isNull(emailMessages.externalMessageId),
+      ),
+    )
+    .limit(1);
+  return row ?? null;
+}
+
+/** A draft-started thread takes the provider's thread id once it is sent. */
+async function setThreadExternalId(id: string, externalThreadId: string) {
+  await db
+    .update(emailThreads)
+    .set({ externalThreadId, updatedAt: now() })
+    .where(eq(emailThreads.id, id));
+}
+
 /** Assistant drafts waiting for a person, newest first. */
 async function listDrafts(organizationId: string) {
   return db
@@ -362,6 +387,8 @@ async function projectNameFor(organizationId: string) {
 export const EmailRepository = {
   listConnectedByProvider,
   findThreadByExternalId,
+  draftOnThread,
+  setThreadExternalId,
   getAccount,
   getAccountById,
   createAccount,
