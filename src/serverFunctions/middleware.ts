@@ -72,13 +72,29 @@ export const requireSignedDocumentToken = [
   }),
 ] as const;
 
-/** The same idea as the invoice link, for the report a client is handed. */
+/**
+ * The same idea as the invoice link, for the report a client is handed. A
+ * short code is only a lookup for the stored token; the token is still what
+ * is verified, so both forms of link carry exactly the same scope and expiry.
+ */
 export const requireSignedReportToken = [
   createMiddleware({ type: "function" }).server(async ({ next, data }) => {
-    const token =
-      data && typeof data === "object" && "token" in data
-        ? (data as { token?: unknown }).token
+    const field = (name: string) =>
+      data && typeof data === "object" && name in data
+        ? (data as Record<string, unknown>)[name]
         : null;
+    let token = field("token");
+    const code = field("code");
+    if (typeof code === "string" && code) {
+      const { isShortCode } =
+        await import("@/server/features/reports/reportLink");
+      const { ClientReportRepository } =
+        await import("@/server/features/reports/repositories/ClientReportRepository");
+      const link = isShortCode(code)
+        ? await ClientReportRepository.getLink(code)
+        : null;
+      token = link?.token ?? null;
+    }
     if (typeof token !== "string" || !token) {
       throw new AppError("NOT_FOUND", "That link is not valid.");
     }

@@ -1838,6 +1838,38 @@ export const clientReports = sqliteTable(
 );
 
 /**
+ * Short links to a report, for pasting into plain-text mail.
+ *
+ * The signed token is the credential and stays so; the code is only a
+ * lookup for it, so a short link carries exactly the token's expiry and
+ * scope. Old long links keep working: the guard accepts either.
+ */
+export const clientReportLinks = sqliteTable(
+  "client_report_links",
+  {
+    /** The short code itself: opaque, URL-safe, ten characters. */
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    reportId: text("report_id")
+      .notNull()
+      .references(() => clientReports.id, { onDelete: "cascade" }),
+    token: text("token").notNull(),
+    /** ISO text, the same instant the token carries. */
+    expiresAt: text("expires_at").notNull(),
+    createdByUserId: text("created_by_user_id"),
+    createdAt: createdAt(),
+  },
+  (table) => [
+    index("client_report_links_report_idx").on(
+      table.organizationId,
+      table.reportId,
+    ),
+  ],
+);
+
+/**
  * What was last said about a client when a report was generated.
  *
  * The form asks a dozen things the database cannot see — a Facebook page,

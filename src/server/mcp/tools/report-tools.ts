@@ -80,11 +80,12 @@ export const getClientReportLinkTool = {
   config: {
     title: "Get a shareable link to a client report",
     description:
-      "A signed URL to the report exactly as the client sees it. Needs no login, works for thirty days, and carries the full document including the client's dashboard address — so treat it as you would the report itself. Uses no credits.",
+      "A short URL (seo…/r/<code>) to the report exactly as the client sees it, fit for a plain-text email. Needs no login, works for thirty days, and carries the full document including the client's dashboard address — so treat it as you would the report itself. The same code comes back while the link has a week or more left. fallbackUrl is the long signed form. Uses no credits.",
     inputSchema: linkInput,
     outputSchema: {
       clientName: z.string(),
       url: z.string(),
+      fallbackUrl: z.string(),
       expiresAt: z.string(),
       ...optionalMetaOutputSchema,
     },
@@ -104,11 +105,13 @@ export const getClientReportLinkTool = {
       args.reportId,
     );
     const url = `${context.baseUrl}${link.path}`;
+    const fallbackUrl = `${context.baseUrl}${link.fallbackPath}`;
     return mcpResponse({
       text: `${link.clientName}: ${url}\nValid until ${link.expiresAt}.`,
       structuredContent: {
         clientName: link.clientName,
         url,
+        fallbackUrl,
         expiresAt: link.expiresAt,
       },
     });

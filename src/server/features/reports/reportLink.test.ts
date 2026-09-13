@@ -62,3 +62,19 @@ describe("a shared report link", () => {
     expect(await verifyReportToken(token, SECRET, NOW)).toBeNull();
   });
 });
+
+describe("short codes", () => {
+  it("are ten characters from an alphabet without look-alikes", async () => {
+    const { isShortCode, newShortCode, shortReportPath } =
+      await import("./reportLink");
+    for (let i = 0; i < 50; i += 1) {
+      const code = newShortCode();
+      expect(code).toHaveLength(10);
+      expect(code).not.toMatch(/[0OIl1]/);
+      expect(isShortCode(code)).toBe(true);
+    }
+    expect(isShortCode("abc")).toBe(false);
+    expect(isShortCode("../../etc/x")).toBe(false);
+    expect(shortReportPath("Ab2Cd3Ef4G")).toBe("/r/Ab2Cd3Ef4G");
+  });
+});

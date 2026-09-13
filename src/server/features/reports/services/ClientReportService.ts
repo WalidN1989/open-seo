@@ -1,15 +1,13 @@
 import type { z } from "zod";
 import type { generateClientReportSchema } from "@/types/schemas/reports";
 import { AppError } from "@/server/lib/errors";
-import {
-  getOptionalEnvValue,
-  getRequiredEnvValue,
-} from "@/server/lib/runtime-env";
+import { getOptionalEnvValue } from "@/server/lib/runtime-env";
 import { AuthRepository } from "@/server/auth/repositories/AuthRepository";
 import { BusinessModuleService } from "@/server/features/business-modules/services/BusinessModuleService";
 import { resolveLetterhead } from "../letterhead";
 import { sendReportToClient } from "../reportEmail";
 import { draftingSurface } from "../reportDrafting";
+import { shareLinkFor } from "../shareLink";
 import {
   accessFor,
   formFromSnapshot,
@@ -19,11 +17,6 @@ import {
 } from "../reportSetup";
 import { ClientReportRepository as Repo } from "../repositories/ClientReportRepository";
 import { ReportDataRepository as Data } from "../repositories/ReportDataRepository";
-import {
-  DOCUMENT_LINK_TTL_MS,
-  reportPath,
-  signReportToken,
-} from "../reportLink";
 import { searchPerformanceFor } from "../searchPerformance";
 import {
   bucketsFor,
@@ -404,18 +397,7 @@ async function documentLink(
   reportId: string,
 ) {
   await BusinessModuleService.requireAccess(organizationId, userId, MODULE);
-  const row = await Repo.get(organizationId, reportId);
-  if (!row) throw new AppError("NOT_FOUND", "That report no longer exists.");
-  const expiresAt = Date.now() + DOCUMENT_LINK_TTL_MS;
-  const token = await signReportToken(
-    { reportId: row.id, organizationId, expiresAt },
-    await getRequiredEnvValue("BETTER_AUTH_SECRET"),
-  );
-  return {
-    clientName: row.clientName,
-    path: reportPath(row.id, token),
-    expiresAt: new Date(expiresAt).toISOString(),
-  };
+  return shareLinkFor(organizationId, userId, reportId);
 }
 
 export const ClientReportService = {

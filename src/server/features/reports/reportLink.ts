@@ -53,3 +53,27 @@ export { DOCUMENT_LINK_TTL_MS };
 export function reportPath(reportId: string, token: string): string {
   return `/reports/${encodeURIComponent(reportId)}?t=${encodeURIComponent(token)}`;
 }
+
+/** The short form: ten URL-safe characters, nothing to decode. */
+export function shortReportPath(code: string): string {
+  return `/r/${code}`;
+}
+
+const CODE_ALPHABET =
+  "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
+
+/**
+ * Ten characters from an alphabet without look-alikes (no 0/O, 1/l/I), so a
+ * code read out over the phone survives. 57^10 codes: a guess does not land.
+ */
+export function newShortCode(): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(10));
+  return Array.from(
+    bytes,
+    (byte) => CODE_ALPHABET[byte % CODE_ALPHABET.length],
+  ).join("");
+}
+
+export function isShortCode(value: string): boolean {
+  return /^[A-Za-z0-9]{10}$/.test(value);
+}

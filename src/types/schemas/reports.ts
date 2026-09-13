@@ -69,9 +69,15 @@ export const clientReportIdSchema = z.object({
   reportId: z.string().min(1),
 });
 
-export const clientReportTokenSchema = z.object({
-  token: z.string().min(1),
-});
+/** A long signed link carries `token`; a short link carries `code`. */
+export const clientReportTokenSchema = z
+  .object({
+    token: z.string().min(1).optional(),
+    code: z.string().min(1).max(32).optional(),
+  })
+  .refine((value) => Boolean(value.token || value.code), {
+    message: "A link needs a token or a code.",
+  });
 
 export const clientReportProfileSchema = z.object({
   targetProjectId: z.string().min(1),

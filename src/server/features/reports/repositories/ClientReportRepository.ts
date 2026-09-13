@@ -1,6 +1,7 @@
-import { and, desc, eq, inArray, isNull, like } from "drizzle-orm";
+import { and, desc, eq, gt, inArray, isNull, like } from "drizzle-orm";
 import { db } from "@/db";
 import {
+  clientReportLinks,
   clientReportProfiles,
   clientReports,
   organization,
@@ -168,6 +169,46 @@ async function list(organizationId: string, limit = 50) {
     .limit(limit);
 }
 
+/** A short link by its code, whoever it belongs to; the guard checks scope. */
+async function getLink(code: string) {
+  const [row] = await db
+    .select()
+    .from(clientReportLinks)
+    .where(eq(clientReportLinks.id, code))
+    .limit(1);
+  return row ?? null;
+}
+
+/** The newest short link for a report still valid past `notBefore` (ISO). */
+async function latestLinkFor(
+  organizationId: string,
+  reportId: string,
+  notBefore: string,
+) {
+  const [row] = await db
+    .select()
+    .from(clientReportLinks)
+    .where(
+      and(
+        eq(clientReportLinks.organizationId, organizationId),
+        eq(clientReportLinks.reportId, reportId),
+        gt(clientReportLinks.expiresAt, notBefore),
+      ),
+    )
+    .orderBy(desc(clientReportLinks.createdAt))
+    .limit(1);
+  return row ?? null;
+}
+
+async function insertLink(values: typeof clientReportLinks.$inferInsert) {
+  const [row] = await db
+    .insert(clientReportLinks)
+    .values({ createdAt: now(), ...values })
+    .returning();
+  if (!row) throw new Error("The link could not be saved.");
+  return row;
+}
+
 async function get(organizationId: string, id: string) {
   const [row] = await db
     .select()
@@ -227,6 +268,9 @@ async function saveProfile(input: {
 }
 
 export const ClientReportRepository = {
+  getLink,
+  latestLinkFor,
+  insertLink,
   getProfile,
   saveProfile,
   findInMonth,
