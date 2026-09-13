@@ -131,3 +131,21 @@ caption, puts the pitch under recommendations only when that box is empty,
 and shows `seen` so the agency checks the numbers before generating. The
 prompt forbids invented facts; a client missing from the pack is reported
 as missing.
+
+## Two pictures, and the drafted conclusion
+
+"Where you stand" holds up to two pictures (`snapshot.figures`; older reports
+keep `figure`): the client's own profile and the map or local pack showing
+who else appears. They render side by side in a fixed-height frame (340px on
+screen, 9cm in print). The reader takes both in one call.
+
+The conclusion can be drafted from the form (`draftReportConclusion`,
+`src/server/features/reports/conclusionDrafter.ts`): "general" is a template
+built from the snapshot with no model call; "sales" sends the snapshot digest
+and the pictures to Claude for the honest case and returns `redFlags` the
+agency checks before sending. Both end on the chosen follow-up (channel,
+days, note). Orchestration is in `reportDrafting.ts` (server) and
+`useReportDrafting.ts` (client).
+
+Public document pages (`/reports/$id`, `/invoices/$id`) are their own scroll
+containers: the app shell pins `html, body` to the viewport.
