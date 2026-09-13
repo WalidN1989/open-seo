@@ -192,6 +192,8 @@ function inline(text: string, keyPrefix: string) {
  * Two or more " - " in one paragraph is a list somebody did not put on
  * separate lines, not a paragraph with a lot of dashes in it.
  */
+const isBullet = (line: string) => /^\s*[-•]\s+/.test(line);
+
 function splitInlineBullets(block: string): string[] {
   const parts = block.split(/\s+-\s+/);
   if (parts.length < 3) return [block];
@@ -218,7 +220,6 @@ export function PastedText({
     >
       {blocks.map((block, blockIndex) => {
         const lines = block.split("\n");
-        const isBullet = (line: string) => /^\s*[-•]\s+/.test(line);
         // A lead line followed by bullets ("**The gap:**" then "- …") is a
         // heading and its list, not one run-on paragraph with dashes in it.
         const lead =
