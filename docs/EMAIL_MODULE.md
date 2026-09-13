@@ -82,3 +82,20 @@ Humans can also read an AgentMail inbox in any mail client over IMAP:
   Free tier (3 inboxes, 3,000 emails/month).
 - **No MCP business tools.** The monitoring agent logs into the web app as a
   staff member with Email/WhatsApp at "manage" and works from the UI.
+
+## Drafts, Cc and Bcc, and the MCP surface (2026-09-13)
+
+- `src/server/features/email/services/EmailDraftService.ts` — drafts an agent
+  writes for a person to approve: one per thread (saving again replaces it),
+  or a new thread keyed `draft:<uuid>` until it is sent. Approving a draft on
+  a thread with no inbound message composes instead of replying and the
+  thread takes the provider's id.
+- `email_messages.cc_addresses` / `bcc_addresses` (JSON lists). Inbound Cc is
+  mirrored; outbound copies go through `copiesFor()` in `EmailService.ts`,
+  which de-duplicates and drops the sender and the To. Both providers and the
+  bridge (SMTP envelope, Resend `cc`/`bcc`) carry them.
+- MCP (`src/server/mcp/tools/email-tools.ts`, `email-draft-tools.ts`):
+  `list_email_threads` (all/inbox/sent/drafts), `get_email_thread` (with
+  cc/bcc), `draft_reply_to_email_thread`, `draft_email` (draft-only),
+  `reply_to_email_thread`, `send_email` (send-only; the description tells the
+  agent to get the user's yes first). Connect/autopilot/approve stay in the UI.
