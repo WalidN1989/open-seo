@@ -18,6 +18,7 @@ function source(file: string) {
 const optimizations = source("tools/optimization-tools.ts");
 const invoices = source("tools/invoice-tools.ts");
 const reports = source("tools/report-tools.ts");
+const email = source("tools/email-tools.ts");
 const server = source("server.ts");
 
 function declaredToolNames(text: string) {
@@ -103,6 +104,7 @@ describe("the module registry", () => {
       (match) => match[1]!,
     );
     expect(surfaces.toSorted()).toEqual([
+      "emailSurface",
       "invoiceSurface",
       "optimizationsSurface",
       "reportSurface",
@@ -110,7 +112,7 @@ describe("the module registry", () => {
   });
 
   it("makes each module state what it withholds and why", () => {
-    for (const text of [optimizations, invoices, reports]) {
+    for (const text of [optimizations, invoices, reports, email]) {
       const withheld = text.slice(text.indexOf("withheld:"));
       expect(withheld).toContain("action:");
       expect(withheld).toContain("because:");

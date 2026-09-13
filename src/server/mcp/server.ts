@@ -44,6 +44,7 @@ import { listSavedKeywordsTool } from "@/server/mcp/tools/list-saved-keywords";
 import { optimizationsSurface } from "@/server/mcp/tools/optimization-tools";
 import { invoiceSurface } from "@/server/mcp/tools/invoice-tools";
 import { reportSurface } from "@/server/mcp/tools/report-tools";
+import { emailSurface } from "@/server/mcp/tools/email-tools";
 import type { McpModuleSurface } from "@/server/mcp/module-registry";
 
 /**
@@ -55,6 +56,7 @@ const MODULE_SURFACES: readonly McpModuleSurface[] = [
   optimizationsSurface,
   invoiceSurface,
   reportSurface,
+  emailSurface,
 ];
 import {
   findSerpCompetitorsTool,
