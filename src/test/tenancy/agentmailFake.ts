@@ -3,8 +3,7 @@
  * answers with the documented response shapes, plus a Svix-style signer for
  * webhook bodies.
  */
-export const WEBHOOK_SECRET =
-  "whsec_" + btoa("email-module-test-secret-32bytes!");
+const WEBHOOK_SECRET = "whsec_" + btoa("email-module-test-secret-32bytes!");
 
 export const calls: Array<{
   method: string;

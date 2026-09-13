@@ -107,7 +107,8 @@ export function CrmProductsView() {
           className="select select-bordered select-sm"
           value={source}
           onChange={(event) => {
-            setSource(event.target.value as typeof source);
+            const next = event.target.value;
+            setSource(next === "shopify" || next === "woocommerce" ? next : "");
             setPage(0);
           }}
         >

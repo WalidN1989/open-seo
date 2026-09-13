@@ -119,7 +119,7 @@ function SocialRow({
   );
 }
 
-export type FigureReader = {
+type FigureReader = {
   run: () => void;
   pending: boolean;
   error: string | null;

@@ -35,9 +35,3 @@ export function canTransition(
 ): boolean {
   return ALLOWED[from].includes(to);
 }
-
-export function allowedFrom(
-  from: OptimizationStatus,
-): readonly OptimizationStatus[] {
-  return ALLOWED[from];
-}

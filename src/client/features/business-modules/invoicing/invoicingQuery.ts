@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  createInvoiceDocumentLink,
   deleteInvoice,
   getInvoice,
   getInvoicingWorkspace,
@@ -76,6 +77,14 @@ export function useSetInvoiceStatus() {
     (data: Parameters<typeof setInvoiceStatus>[0]["data"]) =>
       setInvoiceStatus({ data }),
   );
+}
+
+/** A signed, expiring link the client can open without an account. */
+export function useInvoiceShareLink() {
+  return useMutation({
+    mutationFn: (invoiceId: string) =>
+      createInvoiceDocumentLink({ data: { invoiceId } }),
+  });
 }
 
 export function useDeleteInvoice() {

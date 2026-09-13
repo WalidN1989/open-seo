@@ -1,13 +1,14 @@
-import type { z } from "zod";
+import { z } from "zod";
 import { AppError } from "@/server/lib/errors";
 import {
   OptimizationRepository as Repo,
   type OptimizationOpportunityRow,
 } from "../repositories/OptimizationRepository";
-import type {
-  createOpportunitySchema,
-  listOpportunitiesSchema,
-  OptimizationStatus,
+import {
+  optimizationStatusSchema,
+  type createOpportunitySchema,
+  type listOpportunitiesSchema,
+  type OptimizationStatus,
 } from "@/types/schemas/optimizations";
 import { canTransition, PUBLISHABLE_FROM } from "../stateMachine";
 import { BusinessModuleRepository } from "@/server/features/business-modules/repositories/BusinessModuleRepository";
@@ -25,7 +26,7 @@ function assertTransition(
   row: OptimizationOpportunityRow,
   to: OptimizationStatus,
 ) {
-  const from = row.status as OptimizationStatus;
+  const from = statusOf(row);
   if (!canTransition(from, to)) {
     throw new AppError(
       "VALIDATION_ERROR",
@@ -54,10 +55,17 @@ type JsonValue =
   | JsonValue[]
   | { [key: string]: JsonValue };
 
+/** A stored status outside the enum is corrupt data, not a new state. */
+function statusOf(row: { status: string }): OptimizationStatus {
+  return optimizationStatusSchema.parse(row.status);
+}
+
 function parseJson(value: string | null): JsonValue {
   if (!value) return null;
   try {
-    return JSON.parse(value) as JsonValue;
+    const parsed: unknown = JSON.parse(value);
+    const result = z.json().safeParse(parsed);
+    return result.success ? result.data : null;
   } catch {
     return null;
   }
@@ -84,7 +92,7 @@ function publicOpportunity(row: OptimizationOpportunityRow) {
     draftVersion: row.draftVersion,
     cms: row.cms,
     cmsTarget: parseJson(row.cmsTargetJson),
-    status: row.status as OptimizationStatus,
+    status: statusOf(row),
     createdBy: row.createdBy,
     creditsUsed: row.creditsUsed,
     approvedByUserId: row.approvedByUserId,
@@ -95,8 +103,6 @@ function publicOpportunity(row: OptimizationOpportunityRow) {
     updatedAt: row.updatedAt,
   };
 }
-
-export type PublicOpportunity = ReturnType<typeof publicOpportunity>;
 
 async function list(
   organizationId: string,
@@ -125,7 +131,7 @@ async function detail(
   const staff = isStaffRole(membership?.role);
   return {
     opportunity: publicOpportunity(row),
-    canComment: COMMENTABLE.includes(row.status as OptimizationStatus),
+    canComment: COMMENTABLE.includes(statusOf(row)),
     viewerIsStaff: staff,
     comments: visibleComments(comments, staff).map((comment) => ({
       id: comment.id,
@@ -393,7 +399,7 @@ async function addComment(input: {
     input.organizationId,
     input.opportunityId,
   );
-  if (!COMMENTABLE.includes(row.status as OptimizationStatus)) {
+  if (!COMMENTABLE.includes(statusOf(row))) {
     throw new AppError(
       "VALIDATION_ERROR",
       "This opportunity is closed, so there is nothing to comment on.",

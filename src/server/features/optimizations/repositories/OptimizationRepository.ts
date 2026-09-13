@@ -10,7 +10,6 @@ import { LIVE_STATUSES } from "@/types/schemas/optimizations";
 
 export type OptimizationOpportunityRow =
   typeof optimizationOpportunities.$inferSelect;
-export type OptimizationCommentRow = typeof optimizationComments.$inferSelect;
 
 function now() {
   return new Date().toISOString();
@@ -96,7 +95,7 @@ async function insert(
     .insert(optimizationOpportunities)
     .values(values)
     .returning();
-  return row!;
+  return row;
 }
 
 async function update(
@@ -151,7 +150,7 @@ async function insertComment(values: typeof optimizationComments.$inferInsert) {
     .insert(optimizationComments)
     .values(values)
     .returning();
-  return row!;
+  return row;
 }
 
 async function insertRevision(
@@ -161,7 +160,7 @@ async function insertRevision(
     .insert(optimizationRevisions)
     .values(values)
     .returning();
-  return row!;
+  return row;
 }
 
 async function listRevisions(organizationId: string, opportunityId: string) {

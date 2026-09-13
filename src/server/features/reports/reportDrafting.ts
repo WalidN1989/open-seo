@@ -23,7 +23,7 @@ type Deps = {
  * and costs nothing; "sales" sends the whole snapshot and the pictures to
  * the model for the honest case, with red flags for the agency to check.
  */
-export async function draftConclusion(
+async function draftConclusion(
   deps: Deps & {
     input: z.infer<typeof draftReportConclusionSchema>;
     snapshotForForm: (
@@ -53,7 +53,7 @@ export async function draftConclusion(
 }
 
 /** Read the uploaded pictures into an intro, captions and pitch lines. */
-export async function readFigures(
+async function readFigures(
   deps: Deps & {
     input: {
       targetProjectId: string;

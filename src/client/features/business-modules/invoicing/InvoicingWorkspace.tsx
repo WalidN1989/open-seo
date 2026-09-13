@@ -1,12 +1,16 @@
 import { useState } from "react";
-import { Printer } from "lucide-react";
+import { Link2, Printer, Trash2 } from "lucide-react";
+import { toast } from "sonner";
+import { getStandardErrorMessage } from "@/client/lib/error-messages";
 import { InvoiceDocument } from "./InvoiceDocument";
 import { InvoiceEditor } from "./InvoiceEditor";
 import { InvoiceSettingsForm } from "./InvoiceSettingsForm";
 import {
   STATUS_LABEL,
   STATUS_TONE,
+  useDeleteInvoice,
   useInvoiceDetail,
+  useInvoiceShareLink,
   useInvoicingWorkspace,
   useSetInvoiceStatus,
   type InvoiceSummary,
@@ -53,6 +57,8 @@ function InvoiceView({
 }) {
   const query = useInvoiceDetail(invoiceId);
   const setStatus = useSetInvoiceStatus();
+  const remove = useDeleteInvoice();
+  const share = useInvoiceShareLink();
   if (query.isPending) {
     return (
       <div className="flex justify-center py-16">
@@ -77,6 +83,41 @@ function InvoiceView({
         <button className="btn btn-ghost btn-sm" onClick={() => window.print()}>
           <Printer className="size-4" /> Print / Save as PDF
         </button>
+        <button
+          className="btn btn-ghost btn-sm"
+          disabled={share.isPending}
+          onClick={() =>
+            share.mutate(invoiceId, {
+              onSuccess: async (link) => {
+                const url = `${window.location.origin}${link.path}`;
+                try {
+                  await navigator.clipboard.writeText(url);
+                  toast.success("Client link copied");
+                } catch {
+                  toast.message("Client link", { description: url });
+                }
+              },
+              onError: (error) =>
+                toast.error(
+                  getStandardErrorMessage(error, "Could not create the link"),
+                ),
+            })
+          }
+        >
+          <Link2 className="size-4" /> Copy client link
+        </button>
+        {invoice.status === "draft" ? (
+          <button
+            className="btn btn-ghost btn-sm text-error"
+            disabled={remove.isPending}
+            onClick={() => {
+              if (!window.confirm(`Delete draft ${invoice.number}?`)) return;
+              remove.mutate(invoiceId, { onSuccess: onBack });
+            }}
+          >
+            <Trash2 className="size-4" /> Delete draft
+          </button>
+        ) : null}
         <div className="ml-auto flex gap-2">
           {invoice.status === "draft" ? (
             <button

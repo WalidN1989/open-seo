@@ -9,7 +9,7 @@ type ReportRow = {
   sentAt?: string | null;
 };
 
-export type SendDraft = { reportId: string; to: string; note: string };
+type SendDraft = { reportId: string; to: string; note: string };
 
 /**
  * The reports already generated, one row each, plus the send panel that opens

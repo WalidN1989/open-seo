@@ -1,9 +1,8 @@
 import { z } from "zod";
 
-export const invoiceStatusSchema = z.enum(["draft", "sent", "paid", "void"]);
-export type InvoiceStatus = z.infer<typeof invoiceStatusSchema>;
+const invoiceStatusSchema = z.enum(["draft", "sent", "paid", "void"]);
 
-export const invoiceDocumentTypeSchema = z.enum([
+const invoiceDocumentTypeSchema = z.enum([
   "invoice",
   "proforma",
   "credit_note",
@@ -35,7 +34,7 @@ export const invoiceSettingsSchema = z.object({
   nextInvoiceNumber: z.number().int().min(1).default(1),
 });
 
-export const invoiceLineSchema = z.object({
+const invoiceLineSchema = z.object({
   description: z.string().min(1).max(300),
   detail: z.string().max(1000).nullish(),
   quantityMilli: z.number().int().min(-1_000_000).max(1_000_000).default(1000),

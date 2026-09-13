@@ -8,9 +8,9 @@ import type { PhoneCallReport } from "./elevenlabsWebhook";
  * one.
  */
 
-export const RECAP_MODEL = "claude-haiku-4-5-20251001";
+const RECAP_MODEL = "claude-haiku-4-5-20251001";
 
-export type CallRecap = { subject: string; body: string };
+type CallRecap = { subject: string; body: string };
 
 type RecapInput = {
   report: PhoneCallReport;

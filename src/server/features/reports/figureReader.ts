@@ -37,7 +37,7 @@ const readingSchema = z.object({
     .transform((list) => list.slice(0, 8)),
 });
 
-export type FigureReading = z.infer<typeof readingSchema>;
+type FigureReading = z.infer<typeof readingSchema>;
 
 const SYSTEM_PROMPT = `You write for an SEO agency's client-facing report. You are shown one or two screenshots: usually the client's own Google Business Profile card, and Google's local results ("local pack") or map for the client's main search showing the businesses around them. Read only what is visible: business names, star ratings, review counts, positions, badges, years in business, buttons. Never invent a number or a name.
 

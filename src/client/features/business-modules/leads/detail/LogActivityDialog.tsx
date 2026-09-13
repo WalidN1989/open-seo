@@ -29,7 +29,7 @@ const microLabel =
 export function LogActivityDialog({ saving, onClose, onSave }: Props) {
   const [kind, setKind] = useState<ActivityKind>("call");
   const [notes, setNotes] = useState("");
-  const [outcome, setOutcome] = useState<string | null>(null);
+  const [outcome, setOutcome] = useState<LogActivityInput["outcome"]>();
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
   const [nextAction, setNextAction] = useState("");
@@ -40,7 +40,7 @@ export function LogActivityDialog({ saving, onClose, onSave }: Props) {
     onSave({
       activityType: kind,
       notes: notes.trim(),
-      outcome: (outcome ?? undefined) as LogActivityInput["outcome"],
+      outcome,
       nextActionDue: date ? localMoment(date, time) : undefined,
       nextAction: date && nextAction.trim() ? nextAction.trim() : undefined,
       remind: Boolean(date && time),
@@ -126,7 +126,7 @@ export function LogActivityDialog({ saving, onClose, onSave }: Props) {
                     <button
                       key={key}
                       type="button"
-                      onClick={() => setOutcome(selected ? null : key)}
+                      onClick={() => setOutcome(selected ? undefined : key)}
                       className={`rounded-full px-2.5 py-1 text-xs font-medium ${
                         selected
                           ? `${meta.className} shadow-sm ring-1 ring-primary/30`

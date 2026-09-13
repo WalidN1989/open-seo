@@ -13,7 +13,7 @@ import { SerpObservationRepository } from "./repositories/SerpObservationReposit
  * Never allowed to fail its caller. Whoever asked for the SERP wanted search
  * results, not bookkeeping.
  */
-export type ObservedDomain = {
+type ObservedDomain = {
   domain: string | null;
   rank: number | null;
   referringDomains: number | null;

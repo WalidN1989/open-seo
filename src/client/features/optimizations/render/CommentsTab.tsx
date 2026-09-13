@@ -2,7 +2,7 @@ import { useState } from "react";
 import { RefreshCw } from "lucide-react";
 import { getStandardErrorMessage } from "@/client/lib/error-messages";
 
-export type ThreadComment = {
+type ThreadComment = {
   id: string;
   authorRole: string;
   authorUserId: string | null;

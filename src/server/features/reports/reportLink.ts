@@ -11,7 +11,7 @@ import {
   verifyToken,
 } from "@/server/lib/signed-token";
 
-export type ReportClaims = {
+type ReportClaims = {
   reportId: string;
   organizationId: string;
   /** Epoch milliseconds. */

@@ -181,7 +181,7 @@ export function buildBusinessContext(input: {
   return parts.join("\n\n");
 }
 
-export type CatalogueMatch = {
+type CatalogueMatch = {
   name: string;
   sku: string;
   salePriceMinor: number;

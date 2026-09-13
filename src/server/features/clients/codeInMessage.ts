@@ -42,13 +42,13 @@ export function findAccessCodeCandidate(
   const grouped = GROUPED.exec(text);
   if (grouped) {
     return {
-      code: `${grouped[1]!}${grouped[2]!}`.toUpperCase(),
+      code: `${grouped[1]}${grouped[2]}`.toUpperCase(),
       deliberate: true,
     };
   }
 
   const bare = BARE.exec(text);
-  if (bare) return { code: bare[1]!.toUpperCase(), deliberate: false };
+  if (bare) return { code: bare[1].toUpperCase(), deliberate: false };
 
   return null;
 }

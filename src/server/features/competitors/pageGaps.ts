@@ -21,7 +21,7 @@ export type PageObservation = {
   title: string | null;
 };
 
-export type CompetitorPage = {
+type CompetitorPage = {
   domain: string;
   url: string;
   title: string | null;
@@ -29,7 +29,7 @@ export type CompetitorPage = {
   dedicated: boolean;
 };
 
-export type PageGap = {
+type PageGap = {
   keyword: string;
   /** Rivals answering with a page built for this search. */
   dedicated: CompetitorPage[];
@@ -47,7 +47,7 @@ export type PageGap = {
  * which is technically true and commercially useless — somebody looking to buy
  * a Smiggle bag has landed on an article about them.
  */
-export type PageKind = "homepage" | "article" | "commercial";
+type PageKind = "homepage" | "article" | "commercial";
 
 const ARTICLE = /^\/(blogs?|news|articles?|posts?|stories)(\/|$)/i;
 

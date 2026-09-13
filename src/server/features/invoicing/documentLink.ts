@@ -12,7 +12,7 @@ import {
   verifyToken,
 } from "@/server/lib/signed-token";
 
-export type DocumentClaims = {
+type DocumentClaims = {
   invoiceId: string;
   organizationId: string;
   /** Epoch milliseconds. */

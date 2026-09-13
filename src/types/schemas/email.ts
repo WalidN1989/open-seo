@@ -47,7 +47,7 @@ export const connectAgentmailSchema = z.object({
 export const emailThreadIdSchema = z.object({ threadId: z.string().min(1) });
 
 /** Cc or Bcc as typed: each an address, at most ten. Cleaned server-side. */
-export const copyListSchema = z
+const copyListSchema = z
   .array(z.string().trim().toLowerCase().email().max(320))
   .max(10)
   .optional();

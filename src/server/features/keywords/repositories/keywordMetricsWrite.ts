@@ -2,7 +2,7 @@ import { sql } from "drizzle-orm";
 import { db } from "@/db";
 import { keywordMetrics } from "@/db/schema";
 
-export type KeywordMetricRow = {
+type KeywordMetricRow = {
   projectId: string;
   keyword: string;
   locationCode: number;

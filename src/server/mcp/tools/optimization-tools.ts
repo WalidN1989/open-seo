@@ -36,7 +36,7 @@ const listInput = {
   type: optimizationTypeSchema.optional().describe("Filter by content type."),
 } as const;
 
-export const listOptimizationOpportunitiesTool = {
+const listOptimizationOpportunitiesTool = {
   name: "list_optimization_opportunities",
   config: {
     title: "List content optimization opportunities",
@@ -56,7 +56,7 @@ export const listOptimizationOpportunitiesTool = {
   handler: withMcpProjectAuth(
     async (args: z.infer<z.ZodObject<typeof listInput>>, context) => {
       const opportunities = await OptimizationService.list(
-        context.auth.organizationId!,
+        context.auth.organizationId,
         args.projectId,
         { status: args.status, type: args.type },
       );
@@ -132,7 +132,7 @@ const createInput = {
     .describe("What is holding it back."),
 } as const;
 
-export const createOptimizationOpportunityTool = {
+const createOptimizationOpportunityTool = {
   name: "create_optimization_opportunity",
   config: {
     title: "Create a content optimization opportunity",
@@ -152,7 +152,7 @@ export const createOptimizationOpportunityTool = {
   handler: withMcpProjectAuth(
     async (args: z.infer<z.ZodObject<typeof createInput>>, context) => {
       const opportunity = await OptimizationService.create(
-        context.auth.organizationId!,
+        context.auth.organizationId,
         args.projectId,
         {
           type: args.type,
@@ -190,7 +190,7 @@ const briefInput = {
     ),
 } as const;
 
-export const attachOptimizationBriefTool = {
+const attachOptimizationBriefTool = {
   name: "attach_optimization_brief",
   config: {
     title: "Attach a brief to an opportunity",
@@ -210,7 +210,7 @@ export const attachOptimizationBriefTool = {
   handler: withMcpProjectAuth(
     async (args: z.infer<z.ZodObject<typeof briefInput>>, context) => {
       const opportunity = await OptimizationService.attachBrief(
-        context.auth.organizationId!,
+        context.auth.organizationId,
         args.opportunityId,
         args.brief,
       );
@@ -233,7 +233,7 @@ const draftInput = {
     ),
 } as const;
 
-export const attachOptimizationDraftTool = {
+const attachOptimizationDraftTool = {
   name: "attach_optimization_draft",
   config: {
     title: "Attach a draft to an opportunity",
@@ -253,7 +253,7 @@ export const attachOptimizationDraftTool = {
   handler: withMcpProjectAuth(
     async (args: z.infer<z.ZodObject<typeof draftInput>>, context) => {
       const opportunity = await OptimizationService.attachDraft(
-        context.auth.organizationId!,
+        context.auth.organizationId,
         args.opportunityId,
         args.draft,
       );
@@ -278,7 +278,7 @@ const commentInput = {
     ),
 } as const;
 
-export const appendOptimizationCommentTool = {
+const appendOptimizationCommentTool = {
   name: "append_optimization_comment",
   config: {
     title: "Comment on an opportunity",
@@ -295,7 +295,7 @@ export const appendOptimizationCommentTool = {
   handler: withMcpProjectAuth(
     async (args: z.infer<z.ZodObject<typeof commentInput>>, context) => {
       await OptimizationService.appendComment({
-        organizationId: context.auth.organizationId!,
+        organizationId: context.auth.organizationId,
         opportunityId: args.opportunityId,
         body: args.body,
         visibility: args.forClient ? "client" : "internal",
@@ -311,7 +311,7 @@ export const appendOptimizationCommentTool = {
 
 const feedbackInput = { projectId: projectIdSchema } as const;
 
-export const getOptimizationFeedbackTool = {
+const getOptimizationFeedbackTool = {
   name: "get_optimization_feedback",
   config: {
     title: "Read what reviewers asked to change",
@@ -331,7 +331,7 @@ export const getOptimizationFeedbackTool = {
   handler: withMcpProjectAuth(
     async (args: z.infer<z.ZodObject<typeof feedbackInput>>, context) => {
       const items = await OptimizationService.feedback(
-        context.auth.organizationId!,
+        context.auth.organizationId,
         args.projectId,
       );
       const text = items.length

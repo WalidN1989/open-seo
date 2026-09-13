@@ -188,11 +188,12 @@ async function outreachByLead(organizationId: string) {
     { whatsapp?: "sent" | "failed"; email?: "sent" | "failed" }
   >();
   for (const row of rows) {
-    if (!row.leadId) continue;
-    const entry = byLead.get(row.leadId) ?? {};
-    const key = row.activityType as "whatsapp" | "email";
-    entry[key] ??= row.outcome as "sent" | "failed";
-    byLead.set(row.leadId, entry);
+    const { leadId, activityType, outcome } = row;
+    if (!leadId || (outcome !== "sent" && outcome !== "failed")) continue;
+    if (activityType !== "whatsapp" && activityType !== "email") continue;
+    const entry = byLead.get(leadId) ?? {};
+    entry[activityType] ??= outcome;
+    byLead.set(leadId, entry);
   }
   // Calls from before outreach was journalled only say so on the call.
   const calls = await db

@@ -62,7 +62,7 @@ async function threadKeyFor(
 }
 
 /** {"inbox":"12","sent":"3"}; an older plain number was the inbox cursor. */
-export function parseCursor(
+function parseCursor(
   raw: string | null,
 ): Partial<Record<MailboxFolder, string>> {
   if (!raw) return {};

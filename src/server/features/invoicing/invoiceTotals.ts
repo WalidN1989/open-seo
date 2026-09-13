@@ -9,12 +9,12 @@
  * is 1500 and never becomes 1.4999999999999998.
  */
 
-export type LineInput = {
+type LineInput = {
   quantityMilli: number;
   unitPriceMinor: number;
 };
 
-export type Totals = {
+type Totals = {
   lineAmountsMinor: number[];
   subtotalMinor: number;
   taxMinor: number;

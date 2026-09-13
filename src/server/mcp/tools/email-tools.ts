@@ -47,7 +47,7 @@ const listInput = {
   limit: z.number().int().min(1).max(100).default(30),
 } as const;
 
-export const listEmailThreadsTool = {
+const listEmailThreadsTool = {
   name: "list_email_threads",
   config: {
     title: "List email threads",
@@ -119,7 +119,7 @@ const threadInput = {
   threadId: z.string().min(1).describe("From list_email_threads."),
 } as const;
 
-export const getEmailThreadTool = {
+const getEmailThreadTool = {
   name: "get_email_thread",
   config: {
     title: "Read an email thread",
@@ -216,7 +216,7 @@ const replyInput = {
     .describe("Blind copies; never shown to the other recipients."),
 } as const;
 
-export const replyToEmailThreadTool = {
+const replyToEmailThreadTool = {
   name: "reply_to_email_thread",
   config: {
     title: "Reply on an email thread",
@@ -269,7 +269,7 @@ const composeInput = {
     .describe("Blind copies; never shown to the other recipients."),
 } as const;
 
-export const sendEmailTool = {
+const sendEmailTool = {
   name: "send_email",
   config: {
     title: "Send a new email",

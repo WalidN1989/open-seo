@@ -53,7 +53,7 @@ const listInput = {
     .describe("Filter by status."),
 } as const;
 
-export const listInvoicesTool = {
+const listInvoicesTool = {
   name: "list_invoices",
   config: {
     title: "List invoices",
@@ -100,7 +100,7 @@ const getInput = {
   invoiceId: invoiceIdSchema,
 } as const;
 
-export const getInvoiceTool = {
+const getInvoiceTool = {
   name: "get_invoice",
   config: {
     title: "Read one invoice",
@@ -165,7 +165,7 @@ const documentInput = {
   invoiceId: invoiceIdSchema,
 } as const;
 
-export const getInvoiceDocumentTool = {
+const getInvoiceDocumentTool = {
   name: "get_invoice_document",
   config: {
     title: "Get a shareable link to an invoice document",
@@ -238,7 +238,7 @@ const draftInput = {
   lines: z.array(lineSchema).min(1).max(50),
 } as const;
 
-export const draftInvoiceTool = {
+const draftInvoiceTool = {
   name: "draft_invoice",
   config: {
     title: "Create or revise an invoice draft",

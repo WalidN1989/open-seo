@@ -4,7 +4,6 @@ import { invoiceLineItems, invoiceSettings, invoices } from "@/db/schema";
 
 export type InvoiceSettingsRow = typeof invoiceSettings.$inferSelect;
 export type InvoiceRow = typeof invoices.$inferSelect;
-export type InvoiceLineRow = typeof invoiceLineItems.$inferSelect;
 
 function now() {
   return new Date().toISOString();
@@ -29,7 +28,7 @@ async function upsertSettings(
       .insert(invoiceSettings)
       .values({ organizationId, ...patch })
       .returning();
-    return row!;
+    return row;
   }
   const [row] = await db
     .update(invoiceSettings)
@@ -74,7 +73,7 @@ async function listLines(organizationId: string, invoiceId: string) {
 
 async function insertInvoice(values: typeof invoices.$inferInsert) {
   const [row] = await db.insert(invoices).values(values).returning();
-  return row!;
+  return row;
 }
 
 async function updateInvoice(

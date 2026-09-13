@@ -7,7 +7,7 @@
  * the only thing standing between the two.
  */
 
-export type VisibilityRow = { visibility: string };
+type VisibilityRow = { visibility: string };
 
 export function isStaffRole(role: string | null | undefined): boolean {
   return role === "owner" || role === "admin";

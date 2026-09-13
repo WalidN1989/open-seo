@@ -23,7 +23,7 @@ const server = source("server.ts");
 
 function declaredToolNames(text: string) {
   return [...text.matchAll(/^\s*name: "([a-z_]+)",$/gm)].map(
-    (match) => match[1]!,
+    (match) => match[1],
   );
 }
 
@@ -77,8 +77,8 @@ describe("the invoice MCP surface", () => {
     // get_invoice reports that a document exists; it does not hand out the
     // URL, because that page carries the payment details.
     const read = invoices.slice(
-      invoices.indexOf("export const getInvoiceTool"),
-      invoices.indexOf("export const getInvoiceDocumentTool"),
+      invoices.indexOf("const getInvoiceTool ="),
+      invoices.indexOf("const getInvoiceDocumentTool ="),
     );
     expect(read).toContain("documentAvailable: true");
     expect(read).not.toContain("documentLink");
@@ -101,7 +101,7 @@ describe("the invoice MCP surface", () => {
 describe("the module registry", () => {
   it("registers every surface it declares", () => {
     const surfaces = [...server.matchAll(/^\s*(\w+Surface),$/gm)].map(
-      (match) => match[1]!,
+      (match) => match[1],
     );
     expect(surfaces.toSorted()).toEqual([
       "emailSurface",

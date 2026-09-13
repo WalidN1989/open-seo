@@ -20,9 +20,9 @@ import { normalizeMessageId, replySubject } from "./threading";
 import { textToHtml } from "./textToHtml";
 
 /** What every provider must be able to do, in the mirror's own terms. */
-export type Copies = { cc?: string[]; bcc?: string[] };
+type Copies = { cc?: string[]; bcc?: string[] };
 
-export type Outbound = {
+type Outbound = {
   reply(
     input: {
       thread: EmailThreadRow;

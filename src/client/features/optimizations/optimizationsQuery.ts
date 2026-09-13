@@ -16,14 +16,11 @@ import type { z } from "zod";
 
 type ListPayload = z.infer<typeof listOpportunitiesSchema>;
 /** The filters a caller chooses; the project comes from the page, not the user. */
-export type OpportunityFilters = Omit<ListPayload, "projectId">;
+type OpportunityFilters = Omit<ListPayload, "projectId">;
 
 export type OpportunitySummary = Awaited<
   ReturnType<typeof listOptimizationOpportunities>
 >[number];
-export type OpportunityDetail = Awaited<
-  ReturnType<typeof getOptimizationOpportunity>
->;
 
 /**
  * Words a reviewer understands, not the words the state machine uses.

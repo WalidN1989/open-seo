@@ -178,6 +178,11 @@ export function createOpenSeoMcpServer(authProps: McpProps) {
   // Business and content modules register from their declared surfaces.
   for (const surface of MODULE_SURFACES) {
     for (const tool of surface.tools) {
+      // A surface holds tools with different input schemas; TypeScript has no
+      // existential type to name "a tool of some schema", so the list is
+      // loosely typed and each tool is narrowed back here. The surface tests
+      // pin which tools can appear.
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion
       register(tool as Parameters<typeof register>[0]);
     }
   }

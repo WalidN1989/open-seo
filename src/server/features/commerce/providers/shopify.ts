@@ -316,7 +316,7 @@ export function productUrl(
   return product.handle ? `https://${shop}/products/${product.handle}` : null;
 }
 
-export function normalizeStorefrontDomain(value: string): string {
+function normalizeStorefrontDomain(value: string): string {
   const hostname = value
     .trim()
     .replace(/^https?:\/\//, "")

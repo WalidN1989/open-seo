@@ -2,7 +2,6 @@ import { createServerFn } from "@tanstack/react-start";
 import { OptimizationService } from "@/server/features/optimizations/services/OptimizationService";
 import { requireProjectContext } from "@/serverFunctions/middleware";
 import {
-  createOpportunitySchema,
   decisionSchema,
   getOpportunitySchema,
   listOpportunitiesSchema,
@@ -24,18 +23,6 @@ export const getOptimizationOpportunity = createServerFn({ method: "POST" })
       context.organizationId,
       data.opportunityId,
       context.userId,
-    ),
-  );
-
-export const createOptimizationOpportunity = createServerFn({ method: "POST" })
-  .middleware(requireProjectContext)
-  .validator(createOpportunitySchema)
-  .handler(({ data, context }) =>
-    OptimizationService.create(
-      context.organizationId,
-      context.projectId,
-      data,
-      "user",
     ),
   );
 

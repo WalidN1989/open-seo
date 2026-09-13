@@ -15,7 +15,7 @@ import {
 } from "./emailQuery";
 import type { useEmailThread } from "./emailQuery";
 
-export type ThreadMessage = NonNullable<
+type ThreadMessage = NonNullable<
   ReturnType<typeof useEmailThread>["data"]
 >["messages"][number];
 

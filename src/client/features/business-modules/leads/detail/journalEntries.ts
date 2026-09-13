@@ -100,19 +100,22 @@ function fromStatus(status: string | null, at: string): OutreachResult | null {
  */
 export function outreachState(detail: LeadDetail) {
   const latest = (kind: "whatsapp" | "email"): OutreachResult | null => {
-    const activity = detail.activities.find(
-      (entry) =>
+    let fromActivity: OutreachResult | null = null;
+    for (const entry of detail.activities) {
+      const outcome = entry.outcome;
+      if (
         entry.activityType === kind &&
         !entry.createdByMemberId &&
-        (entry.outcome === "sent" || entry.outcome === "failed"),
-    );
-    const fromActivity = activity
-      ? {
-          state: activity.outcome as "sent" | "failed",
-          at: activity.occurredAt,
-          detail: activity.notes,
-        }
-      : null;
+        (outcome === "sent" || outcome === "failed")
+      ) {
+        fromActivity = {
+          state: outcome,
+          at: entry.occurredAt,
+          detail: entry.notes,
+        };
+        break;
+      }
+    }
     const fromCall =
       detail.calls
         .map((call) =>

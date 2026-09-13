@@ -1,4 +1,4 @@
-import type { z } from "zod";
+import { z } from "zod";
 import { AppError } from "@/server/lib/errors";
 import { BusinessModuleService } from "@/server/features/business-modules/services/BusinessModuleService";
 import {
@@ -51,7 +51,49 @@ function settingsOrDefaults(row: InvoiceSettingsRow | null) {
   };
 }
 
-export type IssuerSnapshot = ReturnType<typeof settingsOrDefaults>;
+type IssuerSnapshot = ReturnType<typeof settingsOrDefaults>;
+
+const issuerSnapshotSchema = z.object({
+  legalName: z.string(),
+  addressLines: z.string(),
+  email: z.string().nullable(),
+  phone: z.string().nullable(),
+  website: z.string().nullable(),
+  taxIdLabel: z.string().nullable(),
+  taxIdValue: z.string().nullable(),
+  taxRegistered: z.boolean(),
+  taxLabel: z.string().nullable(),
+  taxRatePercent: z.number(),
+  taxNote: z.string().nullable(),
+  defaultCurrency: z.string(),
+  paymentTermsDays: z.number(),
+  paymentInstructions: z.string().nullable(),
+  bankDetails: z.string().nullable(),
+  footerNote: z.string().nullable(),
+  logoUrl: z.string().nullable(),
+  invoicePrefix: z.string(),
+  nextInvoiceNumber: z.number(),
+}) satisfies z.ZodType<IssuerSnapshot>;
+
+/**
+ * The issuer as it was when the invoice was written. A snapshot that no
+ * longer parses (an older shape, a hand edit) falls back to current settings
+ * rather than rendering a broken document.
+ */
+function issuerFor(
+  row: InvoiceRow,
+  settingsRow: InvoiceSettingsRow | null,
+): IssuerSnapshot {
+  if (!row.issuerSnapshotJson) return settingsOrDefaults(settingsRow);
+  try {
+    const parsed: unknown = JSON.parse(row.issuerSnapshotJson);
+    const result = issuerSnapshotSchema.safeParse(parsed);
+    if (result.success) return result.data;
+  } catch {
+    // fall through to current settings
+  }
+  return settingsOrDefaults(settingsRow);
+}
 
 function publicInvoice(row: InvoiceRow) {
   return {
@@ -79,8 +121,6 @@ function publicInvoice(row: InvoiceRow) {
     createdAt: row.createdAt,
   };
 }
-
-export type PublicInvoice = ReturnType<typeof publicInvoice>;
 
 async function workspace(organizationId: string, userId: string) {
   await BusinessModuleService.requireAccess(organizationId, userId, MODULE);
@@ -123,9 +163,7 @@ async function detail(
   ]);
   // The issuer is read from the snapshot taken when the invoice was written,
   // so editing settings later never rewrites a document already sent.
-  const issuer = row.issuerSnapshotJson
-    ? (JSON.parse(row.issuerSnapshotJson) as IssuerSnapshot)
-    : settingsOrDefaults(settingsRow);
+  const issuer = issuerFor(row, settingsRow);
   return {
     invoice: publicInvoice(row),
     heading: documentHeading({
@@ -277,9 +315,7 @@ async function detailForClaims(organizationId: string, invoiceId: string) {
     Repo.listLines(claims.organizationId, claims.invoiceId),
     Repo.getSettings(claims.organizationId),
   ]);
-  const issuer = row.issuerSnapshotJson
-    ? (JSON.parse(row.issuerSnapshotJson) as IssuerSnapshot)
-    : settingsOrDefaults(settingsRow);
+  const issuer = issuerFor(row, settingsRow);
   return {
     invoice: publicInvoice(row),
     heading: documentHeading({

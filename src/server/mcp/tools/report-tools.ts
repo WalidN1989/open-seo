@@ -25,7 +25,7 @@ const organizationIdSchema = z
 
 const reportIdSchema = z.string().min(1).describe("From list_client_reports.");
 
-export const listClientReportsTool = {
+const listClientReportsTool = {
   name: "list_client_reports",
   config: {
     title: "List client reports",
@@ -75,7 +75,7 @@ const linkInput = {
   reportId: reportIdSchema,
 } as const;
 
-export const getClientReportLinkTool = {
+const getClientReportLinkTool = {
   name: "get_client_report_link",
   config: {
     title: "Get a shareable link to a client report",
@@ -131,7 +131,7 @@ const sendInput = {
     ),
 } as const;
 
-export const sendClientReportTool = {
+const sendClientReportTool = {
   name: "send_client_report",
   config: {
     title: "Email a client their report",

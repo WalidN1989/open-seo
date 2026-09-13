@@ -201,7 +201,7 @@ function splitInlineBullets(block: string): string[] {
   return [head, ...items.map((item) => `- ${item}`)];
 }
 
-export function PastedText({
+function PastedText({
   text,
   emphasis = false,
 }: {

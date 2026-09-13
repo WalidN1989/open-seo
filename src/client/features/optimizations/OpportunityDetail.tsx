@@ -12,7 +12,6 @@ import {
   useRequestChanges,
   useSubmitForReview,
 } from "./optimizationsQuery";
-import type { OptimizationStatus } from "@/types/schemas/optimizations";
 import { BriefTab } from "./render/BriefTab";
 import { DraftTab } from "./render/DraftTab";
 import { WhyTab } from "./render/WhyTab";
@@ -61,7 +60,7 @@ export function OpportunityDetail({
   if (!query.data) return null;
 
   const { opportunity, comments } = query.data;
-  const status = opportunity.status as OptimizationStatus;
+  const status = opportunity.status;
   const busy =
     submit.isPending ||
     approve.isPending ||

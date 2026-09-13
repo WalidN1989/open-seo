@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const clientAccountStatusSchema = z.enum(["active", "paused"]);
+const clientAccountStatusSchema = z.enum(["active", "paused"]);
 
 export const createClientAccountSchema = z.object({
   clientOrganizationId: z.string().min(1),

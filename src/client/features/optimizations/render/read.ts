@@ -47,12 +47,12 @@ export function readStringList(value: Json, ...keys: string[]): string[] {
     .filter(Boolean);
 }
 
-export function readList(value: Json, ...keys: string[]): unknown[] {
+function readList(value: Json, ...keys: string[]): unknown[] {
   const found = pick(value, ...keys);
   return Array.isArray(found) ? found : [];
 }
 
-export type GscRow = {
+type GscRow = {
   query: string;
   page: string | null;
   clicks: number | null;
@@ -82,7 +82,7 @@ export function readDateRange(snapshot: Json): string | null {
   return readText(snapshot, "dateRange", "period");
 }
 
-export type SerpResult = {
+type SerpResult = {
   rank: number | null;
   title: string | null;
   domain: string | null;
@@ -100,7 +100,7 @@ export function readSerpResults(snapshot: Json): SerpResult[] {
     .filter((row) => row.title || row.domain);
 }
 
-export type BriefLink = { anchor: string; url: string | null };
+type BriefLink = { anchor: string; url: string | null };
 
 export function readBriefLinks(brief: Json): BriefLink[] {
   return readList(brief, "internalLinks", "internal_links", "links")
@@ -111,7 +111,7 @@ export function readBriefLinks(brief: Json): BriefLink[] {
     .filter((row) => row.anchor || row.url);
 }
 
-export type DraftImage = {
+type DraftImage = {
   placement: string | null;
   alt: string | null;
   prompt: string | null;

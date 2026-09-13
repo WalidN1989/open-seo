@@ -11,7 +11,7 @@ import { serpObservations } from "@/db/schema";
 
 const MAX_PER_KEYWORD = 20;
 
-export type ObservedItem = {
+type ObservedItem = {
   domain: string;
   rank: number;
   referringDomains: number | null;

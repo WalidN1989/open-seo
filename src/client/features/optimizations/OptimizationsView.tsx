@@ -60,7 +60,7 @@ function OpportunityCard({
   opportunity: OpportunitySummary;
   onOpen: () => void;
 }) {
-  const status = opportunity.status as OptimizationStatus;
+  const status = opportunity.status;
   return (
     <button
       className="group w-full min-w-0 rounded-2xl border border-base-300 bg-base-100 p-5 text-left transition-all hover:border-primary/40 hover:shadow-md focus-visible:outline-2 focus-visible:outline-primary"

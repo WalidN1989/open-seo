@@ -12,7 +12,7 @@ export type LeadDetail = Awaited<ReturnType<typeof getLeadDetail>>;
 export type LogActivityInput = Parameters<typeof logLeadActivity>[0]["data"];
 type LeadChanges = Omit<Parameters<typeof updateCrmLead>[0]["data"], "id">;
 
-export const leadDetailKey = (leadId: string) =>
+const leadDetailKey = (leadId: string) =>
   ["crm", "lead-detail", leadId] as const;
 
 export function useLeadDetail(leadId: string) {

@@ -17,13 +17,11 @@ import { SERVICE_CATALOGUE, type ReportSnapshot } from "./reportSnapshot";
  * on the follow-up the agency has planned.
  */
 
-export type FollowUp = {
+type FollowUp = {
   channel: "email" | "phone" | "whatsapp" | "meeting";
   inDays: number;
   note: string | null;
 };
-
-export type ConclusionTone = "general" | "sales";
 
 const MODEL = "claude-sonnet-5";
 

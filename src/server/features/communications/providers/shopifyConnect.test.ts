@@ -63,14 +63,12 @@ describe("connecting a Shopify store", () => {
     const fetcher = connectedStore();
     await testIntegrationConnection(connection, fetcher);
     const [tokenUrl, tokenInit] = fetcher.mock.calls[0];
-    expect(tokenUrl.toString()).toContain("/admin/oauth/access_token");
-    expect(tokenInit?.body?.toString()).toContain(
+    expect(urlOf(tokenUrl)).toContain("/admin/oauth/access_token");
+    expect(bodyText(tokenInit?.body)).toContain(
       "grant_type=client_credentials",
     );
-    expect(tokenInit?.body?.toString()).toContain("client_id=client-id");
-    expect(tokenInit?.body?.toString()).toContain(
-      "client_secret=client-secret",
-    );
+    expect(bodyText(tokenInit?.body)).toContain("client_id=client-id");
+    expect(bodyText(tokenInit?.body)).toContain("client_secret=client-secret");
     const [url, init] = fetcher.mock.calls[1];
     // The provider always passes a plain string; normalising keeps the
     // assertion honest if that ever becomes a Request or URL.
@@ -139,3 +137,13 @@ describe("the store domain must be Shopify's own", () => {
     expect(result.detail).toContain("X");
   });
 });
+
+function urlOf(input: RequestInfo | URL) {
+  return input instanceof Request ? input.url : input.toString();
+}
+
+function bodyText(body: BodyInit | null | undefined) {
+  return body instanceof URLSearchParams || typeof body === "string"
+    ? body.toString()
+    : "";
+}

@@ -26,7 +26,7 @@ export function InvoiceSettingsForm({
     const reader = new FileReader();
     reader.addEventListener("load", () => {
       setLogoError(null);
-      set("logoUrl", String(reader.result));
+      if (typeof reader.result === "string") set("logoUrl", reader.result);
     });
     reader.readAsDataURL(file);
   };

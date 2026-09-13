@@ -12,7 +12,7 @@ export type Observation = {
   referringDomains: number | null;
 };
 
-export type Competitor = {
+type Competitor = {
   domain: string;
   /** How many of this project's keywords the domain appears for. */
   keywords: number;

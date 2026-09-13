@@ -33,7 +33,9 @@ describe("voice Claude agent", () => {
     delete process.env.ANTHROPIC_API_KEY;
     process.env.OPENROUTER_API_KEY = "openrouter-key";
     const fetcher = async (input: RequestInfo | URL, init?: RequestInit) => {
-      expect(String(input)).toContain("openrouter.ai");
+      expect(input instanceof Request ? input.url : input.toString()).toContain(
+        "openrouter.ai",
+      );
       expect(init?.headers).toMatchObject({
         authorization: "Bearer openrouter-key",
       });

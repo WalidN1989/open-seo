@@ -31,7 +31,7 @@ export function ActivityJournal({ entries, onAdd }: Props) {
   // typing into a field.
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
-      const target = event.target as HTMLElement | null;
+      const target = event.target instanceof HTMLElement ? event.target : null;
       if (
         event.key.toLowerCase() !== "a" ||
         event.metaKey ||

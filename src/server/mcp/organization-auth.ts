@@ -59,7 +59,7 @@ async function requireOrganizationAccess(
   };
 }
 
-export type McpOrganizationAuthContext = Awaited<
+type McpOrganizationAuthContext = Awaited<
   ReturnType<typeof requireOrganizationAccess>
 >;
 

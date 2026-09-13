@@ -10,7 +10,7 @@ import { keywordMetrics, savedKeywords } from "@/db/schema";
  * This is the record of what has actually been bought.
  */
 
-export type ResearchedSort = "volume" | "difficulty" | "keyword" | "recent";
+type ResearchedSort = "volume" | "difficulty" | "keyword" | "recent";
 
 const SORTS = {
   volume: desc(keywordMetrics.searchVolume),

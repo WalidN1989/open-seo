@@ -38,7 +38,3 @@ export type McpToolLike = {
   config: Record<string, unknown>;
   handler: (...args: never[]) => unknown;
 };
-
-export function toolNames(surface: McpModuleSurface): string[] {
-  return surface.tools.map((tool) => tool.name);
-}

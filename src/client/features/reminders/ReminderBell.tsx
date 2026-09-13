@@ -20,7 +20,8 @@ export function ReminderBell({ onNavigate }: { onNavigate?: () => void }) {
   useEffect(() => {
     if (!open) return;
     const onClick = (event: MouseEvent) => {
-      if (!root.current?.contains(event.target as Node)) setOpen(false);
+      const target = event.target instanceof Node ? event.target : null;
+      if (!root.current?.contains(target)) setOpen(false);
     };
     window.addEventListener("mousedown", onClick);
     return () => window.removeEventListener("mousedown", onClick);

@@ -7,9 +7,6 @@ import {
   organization,
 } from "@/db/schema";
 
-export type ClientAccountRow = typeof clientAccounts.$inferSelect;
-export type ClientContactRow = typeof clientContacts.$inferSelect;
-
 function now() {
   return new Date().toISOString();
 }
@@ -52,7 +49,7 @@ async function getAccount(organizationId: string, id: string) {
 
 async function insertAccount(values: typeof clientAccounts.$inferInsert) {
   const [row] = await db.insert(clientAccounts).values(values).returning();
-  return row!;
+  return row;
 }
 
 async function updateAccount(
@@ -136,7 +133,7 @@ async function recordEvent(values: typeof clientAccessEvents.$inferInsert) {
     .insert(clientAccessEvents)
     .values({ createdAt: now(), ...values })
     .returning();
-  return row!;
+  return row;
 }
 
 export const ClientAccountRepository = {

@@ -82,7 +82,7 @@ export function WhyTab({
           How this search performs today
         </h3>
         <p className="mt-0.5 text-xs text-base-content/50">
-          {property ? `${property}` : "Google Search Console"}
+          {property || "Google Search Console"}
           {dateRange ? ` · ${dateRange}` : ""}
         </p>
         {rows.length ? (

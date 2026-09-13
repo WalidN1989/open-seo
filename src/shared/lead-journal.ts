@@ -55,8 +55,14 @@ export const LOGGABLE_KINDS: ActivityKind[] = [
   "quotation",
 ];
 
+function isActivityKind(kind: string): kind is ActivityKind {
+  return Object.hasOwn(ACTIVITY_KIND_META, kind);
+}
+
 export function kindMeta(kind: string) {
-  return ACTIVITY_KIND_META[kind as ActivityKind] ?? ACTIVITY_KIND_META.note;
+  return isActivityKind(kind)
+    ? ACTIVITY_KIND_META[kind]
+    : ACTIVITY_KIND_META.note;
 }
 
 export const OUTCOME_META: Record<
@@ -170,7 +176,7 @@ export function whenLabel(iso: string, now = new Date()) {
   return `${day}, ${timeLabel(iso)}`;
 }
 
-export type FollowUpTone = "overdue" | "today" | "soon" | "later";
+type FollowUpTone = "overdue" | "today" | "soon" | "later";
 
 export function followUpDue(iso: string, now = new Date()) {
   const diff = dayDiff(iso, now);

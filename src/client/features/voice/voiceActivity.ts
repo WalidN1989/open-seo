@@ -1,4 +1,4 @@
-export type VoiceActivityConfig = {
+type VoiceActivityConfig = {
   speechThreshold: number;
   silenceMs: number;
   patienceMs: number;
@@ -14,7 +14,7 @@ export const VOICE_ACTIVITY_DEFAULTS: VoiceActivityConfig = {
   minSpeechMs: 250,
 };
 
-export type VoiceActivityState = {
+type VoiceActivityState = {
   startedAt: number;
   lastSpeechAt: number | null;
   speechMs: number;

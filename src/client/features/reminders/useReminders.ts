@@ -11,7 +11,7 @@ import {
 
 export type Reminder = Awaited<ReturnType<typeof listReminders>>[number];
 
-export const REMINDERS_KEY = ["crm", "reminders"] as const;
+const REMINDERS_KEY = ["crm", "reminders"] as const;
 
 /**
  * One poll shared by the bell and the popup. Thirty seconds is close enough

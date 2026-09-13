@@ -21,7 +21,7 @@ import { InvoiceRepository } from "@/server/features/invoicing/repositories/Invo
  * Two or more candidates is left alone on purpose. Picking one would be a coin
  * toss printed on a client's document, and the screen asks instead.
  */
-export type Letterhead = {
+type Letterhead = {
   settings: Awaited<ReturnType<typeof InvoiceRepository.getSettings>>;
   /** The workspace the details came from, when it is not the current one. */
   borrowedFrom: string | null;
