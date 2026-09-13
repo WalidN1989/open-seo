@@ -62,6 +62,13 @@ function activityNotes(report: PhoneCallReport) {
   return lines.join("\n").slice(0, 20_000);
 }
 
+/** "Website design" reads as "website design" mid-sentence; "SEO" stays. */
+function inSentence(phrase: string) {
+  return /^[A-Z][a-z]/.test(phrase)
+    ? phrase[0].toLowerCase() + phrase.slice(1)
+    : phrase;
+}
+
 /**
  * Send the configured WhatsApp welcome to a first-time caller. A template is
  * required: the business has never messaged this person, so WhatsApp allows
@@ -71,6 +78,7 @@ async function sendWelcome(
   organizationId: string,
   template: string | undefined,
   recipient: string | null,
+  variables: Record<string, string>,
 ) {
   if (!template?.trim()) return "skipped: no welcome template configured";
   if (!recipient) return "skipped: no caller number";
@@ -89,6 +97,7 @@ async function sendWelcome(
         name: isContentSid ? "call_welcome" : value,
         languageCode: "en",
         externalTemplateId: isContentSid ? value : null,
+        variables: isContentSid ? variables : undefined,
       },
     );
     return "sent";
@@ -200,7 +209,13 @@ async function recordCall(
   });
 
   const welcome = firstTimeCaller
-    ? await sendWelcome(organizationId, welcomeTemplate, phone)
+    ? await sendWelcome(organizationId, welcomeTemplate, phone, {
+        // Template: "Hi {{1}}, thanks for calling … about {{2}} …"
+        "1": firstName || "there",
+        "2": report.captured.service_interest
+          ? inSentence(shortNeed(report.captured.service_interest))
+          : "our services",
+      })
     : "skipped: returning caller";
   await Repo.setWelcomeStatus(call.id, welcome);
 
