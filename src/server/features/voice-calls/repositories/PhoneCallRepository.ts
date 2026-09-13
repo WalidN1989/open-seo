@@ -2,6 +2,7 @@ import { and, desc, eq, inArray, notInArray, or } from "drizzle-orm";
 import { db } from "@/db";
 import {
   crmActivities,
+  crmCompanies,
   crmContacts,
   crmLeads,
   integrationConnections,
@@ -88,11 +89,79 @@ async function findContactByPhone(organizationId: string, phone: string) {
   return row ?? null;
 }
 
+async function findContactByEmail(organizationId: string, email: string) {
+  const [row] = await db
+    .select()
+    .from(crmContacts)
+    .where(
+      and(
+        eq(crmContacts.organizationId, organizationId),
+        eq(crmContacts.email, email),
+      ),
+    )
+    .limit(1);
+  return row ?? null;
+}
+
+/** Fill in what the contact is missing; never overwrite what a person typed. */
+async function completeContact(
+  contact: typeof crmContacts.$inferSelect,
+  values: {
+    phone: string | null;
+    email: string | null;
+    companyId: string | null;
+  },
+) {
+  const patch: Partial<typeof crmContacts.$inferInsert> = {};
+  if (!contact.phone && values.phone) patch.phone = values.phone;
+  if (!contact.whatsappPhone && values.phone)
+    patch.whatsappPhone = values.phone;
+  if (!contact.email && values.email) patch.email = values.email;
+  if (!contact.companyId && values.companyId)
+    patch.companyId = values.companyId;
+  if (Object.keys(patch).length === 0) return contact;
+  const [row] = await db
+    .update(crmContacts)
+    .set({ ...patch, updatedAt: now() })
+    .where(eq(crmContacts.id, contact.id))
+    .returning();
+  return row ?? contact;
+}
+
+/** The company with this name, created when it isn't in the CRM yet. */
+async function companyNamed(organizationId: string, name: string) {
+  const [existing] = await db
+    .select()
+    .from(crmCompanies)
+    .where(
+      and(
+        eq(crmCompanies.organizationId, organizationId),
+        eq(crmCompanies.name, name),
+      ),
+    )
+    .limit(1);
+  if (existing) return existing;
+  const [row] = await db
+    .insert(crmCompanies)
+    .values({
+      id: crypto.randomUUID(),
+      organizationId,
+      name,
+      createdAt: now(),
+      updatedAt: now(),
+    })
+    .returning();
+  if (!row) throw new Error("The company could not be saved.");
+  return row;
+}
+
 async function insertContact(values: {
   organizationId: string;
   firstName: string;
   lastName: string | null;
   phone: string | null;
+  email: string | null;
+  companyId: string | null;
 }) {
   const [row] = await db
     .insert(crmContacts)
@@ -128,6 +197,7 @@ async function findOpenLead(organizationId: string, contactId: string) {
 async function insertLead(values: {
   organizationId: string;
   contactId: string;
+  companyId: string | null;
   stageId: string | null;
   title: string;
   notes: string | null;
@@ -194,6 +264,9 @@ export const PhoneCallRepository = {
   setWelcomeStatus,
   listCalls,
   findContactByPhone,
+  findContactByEmail,
+  completeContact,
+  companyNamed,
   insertContact,
   findOpenLead,
   insertLead,

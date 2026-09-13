@@ -152,6 +152,36 @@ export function normalisePhone(raw: unknown): string | null {
 }
 
 /**
+ * The first phone number written inside free text, such as the agent's
+ * "callback details" ("+971 50 486 3547, anytime"). Web-widget calls carry no
+ * caller ID, so this is often the only number there is.
+ */
+export function phoneFromText(text: string | undefined): string | null {
+  if (!text) return null;
+  for (const match of text.matchAll(/\+?\d[\d\s().-]{6,}\d/g)) {
+    const phone = normalisePhone(match[0]);
+    if (phone) return phone;
+  }
+  return null;
+}
+
+/** A plausible email address, lower-cased, or null. */
+export function emailFrom(text: string | undefined): string | null {
+  const match = text?.match(/[\w.+-]+@[\w-]+(?:\.[\w-]+)+/);
+  return match ? match[0].toLowerCase() : null;
+}
+
+/** A short lead title from a long "what they need" answer. */
+export function shortNeed(text: string | undefined): string {
+  const cleaned = (text ?? "").trim().replace(/\s+/g, " ");
+  if (!cleaned) return "Phone enquiry";
+  const firstClause = cleaned.split(/[,;(.]/)[0]?.trim() || cleaned;
+  return firstClause.length > 60
+    ? `${firstClause.slice(0, 57).trimEnd()}…`
+    : firstClause;
+}
+
+/**
  * The call as the rest of the app needs it, or null for any other event
  * (audio, initiation failures), which are acknowledged and ignored.
  */

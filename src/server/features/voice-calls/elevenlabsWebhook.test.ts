@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  emailFrom,
+  phoneFromText,
+  shortNeed,
   normalisePhone,
   readPostCall,
   verifyElevenLabsSignature,
@@ -96,6 +99,28 @@ describe("normalisePhone", () => {
     expect(normalisePhone("0061408579044")).toBe("+61408579044");
     expect(normalisePhone("12")).toBeNull();
     expect(normalisePhone(undefined)).toBeNull();
+  });
+});
+
+describe("callback details helpers", () => {
+  it("finds the phone number inside free text", () => {
+    expect(phoneFromText("+971504863547, anytime")).toBe("+971504863547");
+    expect(phoneFromText("call 0408 579 044 after 3pm")).toBe("+61408579044");
+    expect(phoneFromText("anytime")).toBeNull();
+    expect(phoneFromText(undefined)).toBeNull();
+  });
+
+  it("reads an email and a short need", () => {
+    expect(emailFrom("It's Sales@DigitalUrgency.com.au thanks")).toBe(
+      "sales@digitalurgency.com.au",
+    );
+    expect(emailFrom("no email")).toBeNull();
+    expect(
+      shortNeed(
+        "Digital marketing services, specifically building a website (the $299 option).",
+      ),
+    ).toBe("Digital marketing services");
+    expect(shortNeed("")).toBe("Phone enquiry");
   });
 });
 

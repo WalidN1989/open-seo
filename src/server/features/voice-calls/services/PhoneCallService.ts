@@ -4,6 +4,9 @@ import { sendWhatsappTemplate } from "@/server/features/communications/providers
 import { CrmService } from "@/server/features/crm/services/CrmService";
 import { decryptCredentials } from "@/server/lib/connection-secrets";
 import {
+  emailFrom,
+  phoneFromText,
+  shortNeed,
   readPostCall,
   verifyElevenLabsSignature,
   type PhoneCallReport,
@@ -107,18 +110,35 @@ async function recordCall(
   if (existing) return { callId: existing.id, duplicate: true };
 
   const { firstName, lastName } = splitName(report.captured.caller_name);
-  let contact = report.callerNumber
-    ? await Repo.findContactByPhone(organizationId, report.callerNumber)
+  // Caller ID first; a web-widget call has none, and then the number the
+  // caller gave out loud is the one to use.
+  const phone =
+    report.callerNumber ?? phoneFromText(report.captured.callback_details);
+  const email = emailFrom(report.captured.caller_email);
+  const businessName = report.captured.business_name?.trim();
+  const company = businessName
+    ? await Repo.companyNamed(organizationId, businessName.slice(0, 200))
     : null;
-  const firstTimeCaller = !contact;
-  contact ??= await Repo.insertContact({
-    organizationId,
-    firstName,
-    lastName,
-    phone: report.callerNumber,
-  });
 
-  const need = report.captured.service_interest?.trim();
+  let contact =
+    (phone ? await Repo.findContactByPhone(organizationId, phone) : null) ??
+    (email ? await Repo.findContactByEmail(organizationId, email) : null);
+  const firstTimeCaller = !contact;
+  contact = contact
+    ? await Repo.completeContact(contact, {
+        phone,
+        email,
+        companyId: company?.id ?? null,
+      })
+    : await Repo.insertContact({
+        organizationId,
+        firstName,
+        lastName,
+        phone,
+        email,
+        companyId: company?.id ?? null,
+      });
+
   const occurredAt = report.startedAt ?? new Date().toISOString();
   let lead = await Repo.findOpenLead(organizationId, contact.id);
   if (!lead) {
@@ -126,13 +146,22 @@ async function recordCall(
     lead = await Repo.insertLead({
       organizationId,
       contactId: contact.id,
+      companyId: company?.id ?? null,
       stageId: stages.find((stage) => stage.stageType === "open")?.id ?? null,
-      title:
-        `${need || "Phone enquiry"} — ${[firstName, lastName].filter(Boolean).join(" ")}`.slice(
-          0,
-          200,
-        ),
-      notes: report.summary,
+      title: `${shortNeed(report.captured.service_interest)} — ${
+        businessName || [firstName, lastName].filter(Boolean).join(" ")
+      }`.slice(0, 200),
+      notes: [
+        report.summary,
+        report.captured.service_interest
+          ? `Needs: ${report.captured.service_interest}`
+          : null,
+        report.captured.caller_suburb
+          ? `Location: ${report.captured.caller_suburb}`
+          : null,
+      ]
+        .filter(Boolean)
+        .join("\n\n"),
       nextAction: report.captured.callback_details
         ? `Call back: ${report.captured.callback_details}`.slice(0, 300)
         : "Call back",
@@ -157,7 +186,7 @@ async function recordCall(
     externalAgentId: report.agentId,
     agentName: report.agentName,
     direction: report.direction,
-    callerNumber: report.callerNumber,
+    callerNumber: phone,
     calledNumber: report.calledNumber,
     startedAt: report.startedAt,
     durationSeconds: report.durationSeconds,
@@ -171,7 +200,7 @@ async function recordCall(
   });
 
   const welcome = firstTimeCaller
-    ? await sendWelcome(organizationId, welcomeTemplate, report.callerNumber)
+    ? await sendWelcome(organizationId, welcomeTemplate, phone)
     : "skipped: returning caller";
   await Repo.setWelcomeStatus(call.id, welcome);
 
