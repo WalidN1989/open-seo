@@ -75,11 +75,21 @@ describe("mail bridge handler", () => {
     const response = await handleMailBridgeRequest(
       post(
         "/api/internal/mailbox/ingest",
-        { accountId: "a1", messages: [message] },
+        {
+          accountId: "a1",
+          folder: "inbox",
+          backfill: false,
+          messages: [message],
+        },
         "s3cret",
       ),
     );
     expect(response.status).toBe(200);
-    expect(ingest).toHaveBeenCalledWith("a1", [message]);
+    expect(ingest).toHaveBeenCalledWith({
+      accountId: "a1",
+      folder: "inbox",
+      backfill: false,
+      messages: [message],
+    });
   });
 });

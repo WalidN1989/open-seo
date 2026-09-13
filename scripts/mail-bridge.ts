@@ -22,16 +22,20 @@ import { simpleParser, type AddressObject } from "mailparser";
 import nodemailer from "nodemailer";
 import MailComposer from "nodemailer/lib/mail-composer";
 import {
+  BACKFILL_DAYS,
+  BACKFILL_MAX,
   MAIL_BRIDGE_ACCOUNTS_PATH,
   MAIL_BRIDGE_DEFAULT_PORT,
   MAIL_BRIDGE_INGEST_PATH,
   MAIL_BRIDGE_INTERNAL_PREFIX,
   MAIL_BRIDGE_SECRET_HEADER,
   type BridgeAccount,
+  type BridgeIngestRequest,
   type BridgeInboundMessage,
   type BridgeSendRequest,
   type BridgeVerifyResult,
   type MailboxCredentials,
+  type MailboxFolder,
 } from "../src/shared/mail-bridge";
 
 const secret = process.env.INTERNAL_CRON_SECRET;
@@ -119,7 +123,30 @@ async function parseMessage(
   };
 }
 
-/** One mailbox: connect, catch up, idle, hand over, reconnect. */
+/** {"inbox":"12","sent":"3"}; an older plain number was the inbox cursor. */
+function cursorFor(raw: string | null, folder: MailboxFolder): number | null {
+  if (!raw) return null;
+  if (/^\d+$/.test(raw)) return folder === "inbox" ? Number(raw) : null;
+  try {
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    const value = parsed[folder];
+    return typeof value === "string" ? Number(value) : null;
+  } catch {
+    return null;
+  }
+}
+
+/** The host's Sent folder, whatever it is called. */
+async function sentPathOf(client: ImapFlow) {
+  const boxes = await client.list();
+  return (
+    boxes.find((box) => box.specialUse === "\\Sent")?.path ??
+    boxes.find((box) => /^sent/i.test(box.name))?.path ??
+    "Sent"
+  );
+}
+
+/** One folder of one mailbox: connect, catch up, idle, hand over, reconnect. */
 class Watcher {
   private client: ImapFlow | null = null;
   private stopped = false;
@@ -128,13 +155,19 @@ class Watcher {
   private cursor: number | null;
   private backoffMs = 5_000;
 
-  constructor(readonly account: BridgeAccount) {
-    this.cursor =
-      account.syncCursor === null ? null : Number(account.syncCursor);
+  constructor(
+    readonly account: BridgeAccount,
+    readonly folder: MailboxFolder,
+  ) {
+    this.cursor = cursorFor(account.syncCursor, folder);
   }
 
   get key() {
     return JSON.stringify([this.account.address, this.account.credentials]);
+  }
+
+  private get label() {
+    return `${this.account.address}/${this.folder}`;
   }
 
   start() {
@@ -157,7 +190,7 @@ class Watcher {
         this.backoffMs = 5_000;
       } catch (error) {
         log(
-          `${this.account.address}: ${error instanceof Error ? error.message : String(error)}`,
+          `${this.label}: ${error instanceof Error ? error.message : String(error)}`,
         );
       }
       if (this.stopped) return;
@@ -170,17 +203,20 @@ class Watcher {
     const client = imapClient(this.account.credentials);
     this.client = client;
     await client.connect();
-    const mailbox = await client.mailboxOpen("INBOX");
+    const path = this.folder === "inbox" ? "INBOX" : await sentPathOf(client);
+    const mailbox = await client.mailboxOpen(path);
     if (this.cursor === null) {
-      // First sight of this inbox: everything already there is history the
-      // business has read elsewhere. Start from the next message.
+      // First sight of this folder: bring in recent history so the module
+      // opens with the conversations already going, then watch from here.
+      await this.backfill(client);
       this.cursor = mailbox.uidNext - 1;
       await worker(`${MAIL_BRIDGE_INTERNAL_PREFIX}cursor`, {
         accountId: this.account.accountId,
+        folder: this.folder,
         cursor: String(this.cursor),
       });
     }
-    log(`${this.account.address}: watching from UID ${this.cursor + 1}`);
+    log(`${this.label}: watching from UID ${this.cursor + 1}`);
     client.on("exists", () => void this.catchUp());
     await this.catchUp();
     // imapflow idles by itself whenever no command is running; the promise
@@ -190,6 +226,45 @@ class Watcher {
       client.once("error", (error: Error) => reject(error));
     });
     this.client = null;
+  }
+
+  private async backfill(client: ImapFlow) {
+    const since = new Date(Date.now() - BACKFILL_DAYS * 24 * 60 * 60 * 1000);
+    const found = await client.search({ since }, { uid: true });
+    const uids = (Array.isArray(found) ? found : [])
+      .toSorted((a, b) => a - b)
+      .slice(-BACKFILL_MAX);
+    if (uids.length === 0) return;
+    log(`${this.label}: importing ${uids.length} message(s) of history`);
+    // Small batches keep each worker request short.
+    for (let start = 0; start < uids.length; start += 25) {
+      const slice = uids.slice(start, start + 25);
+      const batch: BridgeInboundMessage[] = [];
+      for await (const message of client.fetch(
+        slice,
+        { uid: true, source: true },
+        { uid: true },
+      )) {
+        if (message.source) {
+          batch.push(await parseMessage(message.uid, message.source));
+        }
+      }
+      if (batch.length) await this.handOver(batch, true);
+    }
+  }
+
+  private async handOver(batch: BridgeInboundMessage[], backfill: boolean) {
+    const request: BridgeIngestRequest = {
+      accountId: this.account.accountId,
+      folder: this.folder,
+      backfill,
+      messages: batch,
+    };
+    const result = await worker<{ accepted: number; cursor: string | null }>(
+      MAIL_BRIDGE_INGEST_PATH,
+      request,
+    );
+    log(`${this.label}: ${batch.length} new, ${result.accepted} kept`);
   }
 
   private async catchUp() {
@@ -205,7 +280,7 @@ class Watcher {
       } while (this.again && !this.stopped);
     } catch (error) {
       log(
-        `${this.account.address}: fetch failed, ${error instanceof Error ? error.message : String(error)}`,
+        `${this.label}: fetch failed, ${error instanceof Error ? error.message : String(error)}`,
       );
     } finally {
       this.syncing = false;
@@ -228,14 +303,8 @@ class Watcher {
       batch.push(await parseMessage(message.uid, message.source));
     }
     if (batch.length === 0) return;
-    const result = await worker<{ accepted: number; cursor: string | null }>(
-      MAIL_BRIDGE_INGEST_PATH,
-      { accountId: this.account.accountId, messages: batch },
-    );
+    await this.handOver(batch, false);
     this.cursor = Math.max(this.cursor, ...batch.map((m) => m.uid));
-    log(
-      `${this.account.address}: ${batch.length} new, ${result.accepted} kept`,
-    );
   }
 }
 
@@ -258,19 +327,22 @@ async function reload() {
     accounts.map((account) => [account.accountId, account]),
   );
   for (const [id, watcher] of watchers) {
-    const next = wanted.get(id);
-    if (!next || new Watcher(next).key !== watcher.key) {
+    const next = wanted.get(watcher.account.accountId);
+    if (!next || new Watcher(next, watcher.folder).key !== watcher.key) {
       watchers.delete(id);
       void watcher.stop();
     }
   }
   for (const account of accounts) {
-    if (watchers.has(account.accountId)) continue;
-    const watcher = new Watcher(account);
-    watchers.set(account.accountId, watcher);
-    watcher.start();
+    for (const folder of ["inbox", "sent"] as const) {
+      const id = `${account.accountId}/${folder}`;
+      if (watchers.has(id)) continue;
+      const watcher = new Watcher(account, folder);
+      watchers.set(id, watcher);
+      watcher.start();
+    }
   }
-  log(`${watchers.size} mailbox(es) watched`);
+  log(`${watchers.size / 2} mailbox(es) watched`);
 }
 
 // ---------------------------------------------------------------------------
@@ -373,12 +445,7 @@ async function appendToSent(credentials: MailboxCredentials, raw: Buffer) {
   const client = imapClient(credentials);
   try {
     await client.connect();
-    const boxes = await client.list();
-    const sent =
-      boxes.find((box) => box.specialUse === "\\Sent")?.path ??
-      boxes.find((box) => /^sent/i.test(box.name))?.path ??
-      "Sent";
-    await client.append(sent, raw, ["\\Seen"]);
+    await client.append(await sentPathOf(client), raw, ["\\Seen"]);
   } catch (error) {
     log(
       `could not copy to Sent: ${error instanceof Error ? error.message : String(error)}`,

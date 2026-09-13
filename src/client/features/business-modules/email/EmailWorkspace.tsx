@@ -15,12 +15,23 @@ import {
 import { Compose, DraftsList, MessageCard } from "./EmailThreadParts";
 
 const SECTIONS = ["Inbox", "Drafts", "Assistant", "Settings"] as const;
+const FOLDERS = ["All", "Inbox", "Sent"] as const;
+type Folder = (typeof FOLDERS)[number];
+
+/** Inbox: the other party wrote last. Sent: we did. */
+function inFolder(thread: WorkspaceData["threads"][number], folder: Folder) {
+  if (folder === "All") return true;
+  return folder === "Sent"
+    ? thread.lastDirection === "outbound"
+    : thread.lastDirection !== "outbound";
+}
 
 export function EmailWorkspace() {
   const query = useEmailWorkspace();
   const [section, setSection] = useState<(typeof SECTIONS)[number]>("Inbox");
   const [selected, setSelected] = useState<string | null>(null);
   const [composing, setComposing] = useState(false);
+  const [folder, setFolder] = useState<Folder>("All");
   if (query.isPending) {
     return (
       <div className="flex justify-center py-16">
@@ -84,6 +95,8 @@ export function EmailWorkspace() {
           <div className="grid gap-4 lg:grid-cols-[minmax(260px,1fr)_2fr]">
             <ThreadList
               data={data}
+              folder={folder}
+              onFolder={setFolder}
               selected={selected}
               onSelect={(id) => {
                 setComposing(false);
@@ -108,23 +121,56 @@ export function EmailWorkspace() {
 
 function ThreadList({
   data,
+  folder,
+  onFolder,
   selected,
   onSelect,
 }: {
   data: WorkspaceData;
+  folder: Folder;
+  onFolder: (folder: Folder) => void;
   selected: string | null;
   onSelect: (id: string) => void;
 }) {
-  if (!data.threads.length) {
-    return (
-      <p className="rounded-xl border border-base-300 p-6 text-center text-sm text-base-content/60">
-        No email yet. Send one to {data.account?.address} and it appears here.
-      </p>
-    );
-  }
+  const threads = data.threads.filter((thread) => inFolder(thread, folder));
+  return (
+    <div className="space-y-2">
+      <div className="join">
+        {FOLDERS.map((item) => (
+          <button
+            key={item}
+            className={`btn join-item btn-xs ${folder === item ? "btn-active" : "btn-ghost"}`}
+            onClick={() => onFolder(item)}
+          >
+            {item}
+          </button>
+        ))}
+      </div>
+      {threads.length ? (
+        <ThreadRows threads={threads} selected={selected} onSelect={onSelect} />
+      ) : (
+        <p className="rounded-xl border border-base-300 p-6 text-center text-sm text-base-content/60">
+          {folder === "Sent"
+            ? "Nothing sent yet."
+            : `No email yet. Send one to ${data.account?.address} and it appears here.`}
+        </p>
+      )}
+    </div>
+  );
+}
+
+function ThreadRows({
+  threads,
+  selected,
+  onSelect,
+}: {
+  threads: WorkspaceData["threads"];
+  selected: string | null;
+  onSelect: (id: string) => void;
+}) {
   return (
     <ul className="max-h-[70vh] overflow-auto rounded-xl border border-base-300">
-      {data.threads.map((thread) => (
+      {threads.map((thread) => (
         <li key={thread.id}>
           <button
             className={`w-full border-b border-base-300 px-4 py-3 text-left hover:bg-base-200 ${selected === thread.id ? "bg-base-200" : ""}`}

@@ -131,6 +131,7 @@ export async function recordOutbound(
     recipients: parseList(threadRow.recipients),
     messageCount: threadRow.messageCount + 1,
     lastMessageAt: occurredAt,
+    lastDirection: "outbound",
   });
 }
 
@@ -192,6 +193,7 @@ async function compose(
     recipients: [input.to],
     messageCount: 1,
     lastMessageAt: occurredAt,
+    lastDirection: "outbound",
   });
   await Repo.insertMessage({
     organizationId,
@@ -259,6 +261,7 @@ async function approveDraft(
     recipients: parseList(threadRow.recipients),
     messageCount: threadRow.messageCount + 1,
     lastMessageAt: occurredAt,
+    lastDirection: "outbound",
   });
   await audit(organizationId, userId, "email.draft.approved", draft.id, {
     edited: input.text !== undefined,

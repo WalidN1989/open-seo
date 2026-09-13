@@ -33,6 +33,7 @@ async function sendFromConnectedMailbox(
     recipients: [input.to],
     messageCount: 1,
     lastMessageAt: occurredAt,
+    lastDirection: "outbound",
   });
   await Repo.insertMessage({
     organizationId,

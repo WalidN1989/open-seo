@@ -1,0 +1,1 @@
+ALTER TABLE `email_threads` ADD `last_direction` text;

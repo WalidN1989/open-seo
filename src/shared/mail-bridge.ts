@@ -37,14 +37,32 @@ export type BridgeVerifyResult = {
   smtpProblem: string | null;
 };
 
-/** One mailbox the bridge should keep an IMAP connection open for. */
+/** The two folders the bridge mirrors. */
+export type MailboxFolder = "inbox" | "sent";
+
+/** One mailbox the bridge should keep IMAP connections open for. */
 export type BridgeAccount = {
   accountId: string;
   address: string;
   credentials: MailboxCredentials;
-  /** Last IMAP UID already handed over; null means "start from now". */
+  /**
+   * Last IMAP UID handed over, per folder, as JSON ({"inbox":"12","sent":"3"}).
+   * A missing folder means "never seen": recent history is imported first.
+   */
   syncCursor: string | null;
 };
+
+export type BridgeIngestRequest = {
+  accountId: string;
+  folder: MailboxFolder;
+  /** History imported on first sight: mirrored, but never answered. */
+  backfill: boolean;
+  messages: BridgeInboundMessage[];
+};
+
+/** How far back the first import reaches, and at most how many messages. */
+export const BACKFILL_DAYS = 90;
+export const BACKFILL_MAX = 300;
 
 /** A message the bridge read from the inbox, already parsed. */
 export type BridgeInboundMessage = {

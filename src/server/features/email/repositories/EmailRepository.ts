@@ -138,6 +138,7 @@ async function upsertThread(
     recipients: string[];
     messageCount: number | null;
     lastMessageAt: string;
+    lastDirection?: "inbound" | "outbound";
   },
 ) {
   const existing = await findThreadByExternalId(
@@ -151,6 +152,7 @@ async function upsertThread(
     recipients: JSON.stringify(values.recipients),
     messageCount: values.messageCount ?? (existing?.messageCount ?? 0) + 1,
     lastMessageAt: values.lastMessageAt,
+    lastDirection: values.lastDirection ?? existing?.lastDirection ?? null,
     updatedAt: now(),
   };
   if (existing) {

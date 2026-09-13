@@ -1431,6 +1431,9 @@ export const emailThreads = pgTable(
     senders: text("senders").notNull().default("[]"),
     recipients: text("recipients").notNull().default("[]"),
     messageCount: integer("message_count").notNull().default(0),
+    // Direction of the newest message, so the list can show Inbox and Sent
+    // without reading every thread's messages.
+    lastDirection: text("last_direction"),
     status: text("status").notNull().default("open"),
     lastMessageAt: text("last_message_at").notNull().default(isoNow),
     createdAt: createdAt(),

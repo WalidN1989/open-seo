@@ -421,6 +421,13 @@
       "when": 1789281373243,
       "tag": "0059_typical_monster_badoon",
       "breakpoints": true
+    },
+    {
+      "idx": 60,
+      "version": "7",
+      "when": 1789284405707,
+      "tag": "0060_aromatic_blade",
+      "breakpoints": true
     }
   ]
 }

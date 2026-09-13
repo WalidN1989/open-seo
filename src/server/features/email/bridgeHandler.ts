@@ -20,13 +20,18 @@ const inboundSchema = z.object({
   date: z.string().min(1),
 });
 
+const folderSchema = z.enum(["inbox", "sent"]);
+
 const ingestSchema = z.object({
   accountId: z.string().min(1),
+  folder: folderSchema,
+  backfill: z.boolean(),
   messages: z.array(inboundSchema).max(500),
 });
 
 const cursorSchema = z.object({
   accountId: z.string().min(1),
+  folder: folderSchema,
   cursor: z.string().min(1),
 });
 
@@ -56,10 +61,7 @@ export async function handleMailBridgeRequest(
     if (!parsed.success) {
       return Response.json({ error: "unreadable batch" }, { status: 400 });
     }
-    const result = await MailboxIngestService.ingest(
-      parsed.data.accountId,
-      parsed.data.messages,
-    );
+    const result = await MailboxIngestService.ingest(parsed.data);
     return Response.json(result);
   }
   if (pathname === `${MAIL_BRIDGE_INTERNAL_PREFIX}cursor`) {
@@ -71,6 +73,7 @@ export async function handleMailBridgeRequest(
     }
     await MailboxIngestService.setCursor(
       parsed.data.accountId,
+      parsed.data.folder,
       parsed.data.cursor,
     );
     return Response.json({ ok: true });

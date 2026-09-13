@@ -126,6 +126,7 @@ async function ingestReceived(
     recipients: thread?.recipients ?? message.to ?? [],
     messageCount: thread?.message_count ?? null,
     lastMessageAt: message.timestamp,
+    lastDirection: "inbound",
   });
   const inbound = await Repo.insertMessage({
     organizationId: account.organizationId,
