@@ -149,3 +149,16 @@ days, note). Orchestration is in `reportDrafting.ts` (server) and
 
 Public document pages (`/reports/$id`, `/invoices/$id`) are their own scroll
 containers: the app shell pins `html, body` to the viewport.
+
+## Short links
+
+`/r/<code>` (ten characters, no look-alike letters) is a lookup for the same
+signed token the long `/reports/<id>?t=` link carries, stored in
+`client_report_links` with its expiry. `requireSignedReportToken` accepts
+`token` or `code` and verifies the stored token either way, so both forms
+share scope and the thirty-day expiry, and old long links keep working.
+`shareLink.ts` reuses the newest code with a week or more left. Share link,
+the report email button and `get_client_report_link` lead with the short URL;
+the tool also returns `fallbackUrl`. The public page component lives in
+`src/client/features/public-reports/` (outside business-modules, so its query
+key is not treated as workspace-scoped).
