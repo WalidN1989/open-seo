@@ -10,12 +10,12 @@ import {
   getReportBranding,
   listClientReports,
   listReportableProjects,
-  readReportFigure,
   sendClientReport,
 } from "@/serverFunctions/reports";
 import { getStandardErrorMessage } from "@/client/lib/error-messages";
 import { ClientReportDocument } from "./ClientReportDocument";
 import { ReportList } from "./ReportList";
+import { useReportDrafting } from "./useReportDrafting";
 import {
   EMPTY_ENGAGEMENT,
   EngagementForm,
@@ -134,42 +134,12 @@ export function ReportsWorkspace() {
     },
   });
 
-  // Claude reads the uploaded local-pack screenshot and fills the intro and
-  // caption; pitch lines go under recommendations only when that box is
-  // empty, so nothing the agency wrote is overwritten.
-  const readFigure = useMutation({
-    mutationFn: () =>
-      readReportFigure({
-        data: {
-          targetProjectId: projectId,
-          clientName: clientName.trim() || "the client",
-          figureImages: [
-            engagement.figureImage,
-            engagement.figureImage2,
-          ].filter(Boolean),
-        },
-      }),
-    onSuccess: (reading) => {
-      setEngagement((current) => {
-        // Captions come back in the order the pictures were sent, which is
-        // the order of the filled slots.
-        const slots = [current.figureImage, current.figureImage2];
-        const captions = [current.figureCaption, current.figureCaption2];
-        let next = 0;
-        for (const [index, image] of slots.entries()) {
-          if (image)
-            captions[index] = reading.captions[next++] ?? captions[index] ?? "";
-        }
-        return {
-          ...current,
-          standingIntro: reading.standingIntro,
-          figureCaption: captions[0] ?? "",
-          figureCaption2: captions[1] ?? "",
-          recommendations:
-            current.recommendations.trim() || reading.pitch.join("\n"),
-        };
-      });
-    },
+  const drafting = useReportDrafting({
+    projectId,
+    clientName,
+    loginEmail,
+    engagement,
+    setEngagement,
   });
 
   const remove = useMutation({
@@ -286,14 +256,8 @@ export function ReportsWorkspace() {
         <EngagementForm
           value={engagement}
           onChange={setEngagement}
-          figureReader={{
-            run: () => readFigure.mutate(),
-            pending: readFigure.isPending,
-            error: readFigure.isError
-              ? getStandardErrorMessage(readFigure.error)
-              : null,
-            seen: readFigure.data?.seen ?? [],
-          }}
+          figureReader={drafting.figureReader}
+          conclusionDrafter={drafting.conclusionDrafter}
         />
 
         {chosen ? (

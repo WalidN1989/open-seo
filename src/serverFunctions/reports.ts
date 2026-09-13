@@ -9,6 +9,7 @@ import {
   clientReportProfileSchema,
   clientReportIdSchema,
   clientReportTokenSchema,
+  draftReportConclusionSchema,
   generateClientReportSchema,
   readReportFigureSchema,
 } from "@/types/schemas/reports";
@@ -95,6 +96,17 @@ export const getClientReportProfile = createServerFn({ method: "POST" })
   );
 
 /** Email the report link to the client, from the agency's name. */
+export const draftReportConclusion = createServerFn({ method: "POST" })
+  .middleware(requireAuthenticatedContext)
+  .validator(draftReportConclusionSchema)
+  .handler(({ context, data }) =>
+    ClientReportService.draftConclusion(
+      context.organizationId,
+      context.userId,
+      data,
+    ),
+  );
+
 export const readReportFigure = createServerFn({ method: "POST" })
   .middleware(requireAuthenticatedContext)
   .validator(readReportFigureSchema)

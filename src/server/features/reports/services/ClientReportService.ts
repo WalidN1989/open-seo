@@ -9,7 +9,7 @@ import { AuthRepository } from "@/server/auth/repositories/AuthRepository";
 import { BusinessModuleService } from "@/server/features/business-modules/services/BusinessModuleService";
 import { resolveLetterhead } from "../letterhead";
 import { sendReportToClient } from "../reportEmail";
-import { readReportFigure } from "../figureReader";
+import { draftingSurface } from "../reportDrafting";
 import {
   accessFor,
   formFromSnapshot,
@@ -236,27 +236,17 @@ async function buildSnapshot(input: {
   };
 }
 
-async function generate(
+/** The report exactly as generate would build it, without saving anything. */
+async function snapshotForForm(
   organizationId: string,
   userId: string,
   input: z.infer<typeof generateClientReportSchema>,
 ) {
-  await requireManage(organizationId, userId);
   const memberships = await AuthRepository.listOrganizationIdsForUser(userId);
   const project = await Data.project(input.targetProjectId);
   if (!project || !memberships.includes(project.organizationId)) {
     throw new AppError("FORBIDDEN");
   }
-  // Remembered before the report is built, so a generation that fails
-  // halfway still leaves the form filled next time. Everything except the
-  // project id goes in; the project is the key.
-  const { targetProjectId: _targetProjectId, ...remembered } = input;
-  await Repo.saveProfile({
-    organizationId,
-    projectId: input.targetProjectId,
-    profileJson: JSON.stringify(remembered),
-  });
-
   const snapshot = await buildSnapshot({
     organizationId,
     projectId: input.targetProjectId,
@@ -286,6 +276,25 @@ async function generate(
       { src: input.figureImage2, caption: input.figureCaption2 || null },
     ].filter((figure) => figure.src),
   });
+  return snapshot;
+}
+
+async function generate(
+  organizationId: string,
+  userId: string,
+  input: z.infer<typeof generateClientReportSchema>,
+) {
+  await requireManage(organizationId, userId);
+  // Remembered before the report is built, so a generation that fails
+  // halfway still leaves the form filled next time. Everything except the
+  // project id goes in; the project is the key.
+  const { targetProjectId: _targetProjectId, ...remembered } = input;
+  await Repo.saveProfile({
+    organizationId,
+    projectId: input.targetProjectId,
+    profileJson: JSON.stringify(remembered),
+  });
+  const snapshot = await snapshotForForm(organizationId, userId, input);
   // One report per project per month. Generating again inside the month
   // replaces it — the earlier one was a draft of this one, not a record worth
   // keeping — and a new month starts a new one, which is the cadence a client
@@ -410,27 +419,19 @@ async function documentLink(
 }
 
 export const ClientReportService = {
-  readFigure: async (
-    organizationId: string,
-    userId: string,
-    input: {
-      targetProjectId: string;
-      clientName: string;
-      figureImages: string[];
+  ...draftingSurface({
+    requireManage,
+    snapshotForForm,
+    // undefined: not one of the user's projects; null: no domain set.
+    projectDomain: async (userId, projectId) => {
+      const memberships =
+        await AuthRepository.listOrganizationIdsForUser(userId);
+      const project = (await Repo.reportableProjects(memberships)).find(
+        (row) => row.id === projectId,
+      );
+      return project ? (project.domain ?? null) : undefined;
     },
-  ) => {
-    await requireManage(organizationId, userId);
-    const memberships = await AuthRepository.listOrganizationIdsForUser(userId);
-    const project = (await Repo.reportableProjects(memberships)).find(
-      (row) => row.id === input.targetProjectId,
-    );
-    if (!project) throw new AppError("NOT_FOUND", "That project is not yours.");
-    return readReportFigure({
-      images: input.figureImages,
-      clientName: input.clientName,
-      domain: project.domain ?? null,
-    });
-  },
+  }),
   sendToClient: (
     organizationId: string,
     userId: string,

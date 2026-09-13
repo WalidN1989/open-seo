@@ -1,6 +1,10 @@
 import { useEffect, useState } from "react";
 import { Sparkles } from "lucide-react";
 import { FigurePicker } from "./FigurePicker";
+import {
+  ConclusionDrafter,
+  type ConclusionDrafterState,
+} from "./ConclusionDrafter";
 /**
  * What is running for this client that the database cannot see.
  *
@@ -126,11 +130,14 @@ export function EngagementForm({
   value,
   onChange,
   figureReader,
+  conclusionDrafter,
 }: {
   value: Engagement;
   onChange: (next: Engagement) => void;
   /** Reads the uploaded screenshot into the intro and caption; optional. */
   figureReader?: FigureReader;
+  /** Drafts the conclusion from the report's data; optional. */
+  conclusionDrafter?: ConclusionDrafterState;
 }) {
   const set = <K extends keyof Engagement>(key: K, next: Engagement[K]) =>
     onChange({ ...value, [key]: next });
@@ -266,6 +273,9 @@ export function EngagementForm({
         >
           Include a conclusion (for a client who has been with us a while)
         </Toggle>
+        {showConclusion && conclusionDrafter ? (
+          <ConclusionDrafter drafter={conclusionDrafter} />
+        ) : null}
         {showConclusion ? (
           <label className="form-control">
             <textarea

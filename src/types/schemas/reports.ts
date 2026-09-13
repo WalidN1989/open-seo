@@ -49,6 +49,14 @@ export const generateClientReportSchema = z.object({
   conclusion: z.string().trim().max(8000).default(""),
 });
 
+/** Draft the closing section: a template (no credits) or the model's honest sales case. */
+export const draftReportConclusionSchema = generateClientReportSchema.extend({
+  tone: z.enum(["general", "sales"]),
+  followUpChannel: z.enum(["email", "phone", "whatsapp", "meeting"]),
+  followUpDays: z.coerce.number().int().min(0).max(90),
+  followUpNote: z.string().trim().max(300).default(""),
+});
+
 /** Read the "Where you stand" screenshot into an intro, caption and pitch. */
 export const readReportFigureSchema = z.object({
   targetProjectId: z.string().min(1),
