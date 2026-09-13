@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { AppError } from "@/server/lib/errors";
 import { getOptionalEnvValue } from "@/server/lib/runtime-env";
-import type { ReportSnapshot } from "./reportSnapshot";
+import { SERVICE_CATALOGUE, type ReportSnapshot } from "./reportSnapshot";
 
 /**
  * The conclusion at the end of a report, two ways.
@@ -83,7 +83,7 @@ export function generalConclusion(
     );
   }
   lines.push(
-    `SEO compounds: the work done this month keeps paying next month. ${followUpSentence(followUp)}`,
+    `Search visibility builds month on month: what is set up now keeps working for you next month and the one after. ${followUpSentence(followUp)}`,
   );
   return lines.join("\n\n");
 }
@@ -140,18 +140,38 @@ function digest(snapshot: ReportSnapshot) {
 
 const SYSTEM_PROMPT = `You write the closing section of an SEO agency's client report. The reader is the business owner. Australian English, second person ("you"), plain and direct, no exclamation marks, no hype, no markdown headings. **Bold** is allowed for a lead phrase; lines starting with "- " are allowed for a short list.
 
-Your job is the honest sales case. From the data and pictures given, say what is thin, missing, wrong or behind — a profile with five reviews next to rivals with a hundred, a social link that points to the wrong network or looks unfinished, tracking or reviews or email not set up, competitors owning the searches that matter. Name each with its number or detail; never invent one. If something is genuinely good, say so in a line, then move on. End with what the agency proposes and the follow-up you are told about.
+Your job is the honest sales case. From the data and pictures given, say what is thin, missing, wrong or behind — a profile with five reviews next to rivals with a hundred, a map where competitors sit above the client, a social link that points to the wrong network or looks unfinished, tracking or reviews not set up, competitors owning the searches that matter. Name each with its number or detail; never invent one. If something is genuinely good, say so in a line, then move on.
 
-Return one JSON object and nothing else:
-{
-  "conclusion": "300 to 600 words, paragraphs separated by blank lines",
-  "redFlags": ["up to 8 short items, each a specific problem seen in the data or pictures, for the agency to double-check before sending"]
-}`;
+Then make the ask. Name the specific services that close each gap, using the agency's own service names given to you (for a map or profile gap that is Local SEO and Google Business Profile optimisation, with map citations; for links it is link building; for content it is blog and landing page writing). Make the client feel that competitors are taking the searches they should own and that this is fixable with those services. Never mention money, prices, fees, budgets or payment in any form. End on the follow-up you are told about.
+
+Format, exactly:
+===CONCLUSION===
+300 to 600 words, paragraphs separated by blank lines.
+===RED FLAGS===
+- one line per flag, up to 8, each a specific problem seen in the data or pictures, for the agency to double-check before sending
+===END===`;
 
 const readingSchema = z.object({
   conclusion: z.string().trim().min(1),
   redFlags: z.array(z.string().trim().min(1)).max(12),
 });
+
+/** Prose comes back between markers, not as JSON: a quote or a line break
+ * inside a paragraph must not be able to break the reading. */
+export function parseSalesReply(text: string) {
+  const body = text.split("===CONCLUSION===")[1] ?? text;
+  const [conclusionPart, rest = ""] = body.split("===RED FLAGS===");
+  const flagsPart = rest.split("===END===")[0] ?? "";
+  const redFlags = flagsPart
+    .split("\n")
+    .map((line) => line.replace(/^\s*[-*•]\s*/, "").trim())
+    .filter(Boolean)
+    .slice(0, 12);
+  return readingSchema.safeParse({
+    conclusion: (conclusionPart ?? "").replace(/===END===/g, "").trim(),
+    redFlags,
+  });
+}
 
 function imageBlock(dataUrl: string) {
   const match = dataUrl.match(
@@ -202,7 +222,7 @@ export async function salesConclusion(
             ]),
             {
               type: "text",
-              text: `${digest(snapshot)}\n\nFollow-up planned: ${followUpSentence(followUp)}\n\nWrite the conclusion and return the JSON.`,
+              text: `${digest(snapshot)}\n\nServices the agency offers:\n${SERVICE_CATALOGUE.map((service) => `- ${service.label}: ${service.detail}`).join("\n")}\n- Local SEO and Google Business Profile optimisation: the profile, its photos, services, posts and map citations, so the business ranks in the map results.\n\nFollow-up planned: ${followUpSentence(followUp)}\n\nWrite the conclusion in the exact format.`,
             },
           ],
         },
@@ -224,29 +244,12 @@ export async function salesConclusion(
     .filter((block) => block.type === "text")
     .map((block) => block.text ?? "")
     .join("\n");
-  const start = text.indexOf("{");
-  const end = text.lastIndexOf("}");
-  if (start === -1 || end <= start) {
-    console.error("conclusion drafter: no JSON", {
+  const parsed = parseSalesReply(text);
+  if (!parsed.success) {
+    console.error("conclusion drafter: unreadable reply", {
       stopReason: payload.stop_reason,
       head: text.slice(0, 300),
     });
-    throw new AppError(
-      "INTEGRATION_CHECK_FAILED",
-      "The model did not return a conclusion. Try again.",
-    );
-  }
-  let json: unknown;
-  try {
-    json = JSON.parse(text.slice(start, end + 1));
-  } catch {
-    throw new AppError(
-      "INTEGRATION_CHECK_FAILED",
-      "The model's conclusion could not be read. Try again.",
-    );
-  }
-  const parsed = readingSchema.safeParse(json);
-  if (!parsed.success) {
     console.error("conclusion drafter: shape", parsed.error.issues);
     throw new AppError(
       "INTEGRATION_CHECK_FAILED",

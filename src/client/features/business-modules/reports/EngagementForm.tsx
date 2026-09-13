@@ -279,7 +279,7 @@ export function EngagementForm({
         {showConclusion ? (
           <label className="form-control">
             <textarea
-              className="textarea textarea-bordered min-h-40"
+              className="textarea textarea-bordered min-h-64 w-full leading-relaxed"
               value={value.conclusion}
               onChange={(event) => set("conclusion", event.target.value)}
               placeholder="Paste the read on the account. **Bold** and lines starting with - are kept."
@@ -289,9 +289,9 @@ export function EngagementForm({
       </div>
 
       <label className="form-control">
-        <span className="label-text">Our recommendations (optional)</span>
+        <span className="label-text mb-1">Our recommendations (optional)</span>
         <textarea
-          className="textarea textarea-bordered min-h-28"
+          className="textarea textarea-bordered min-h-40 w-full leading-relaxed"
           value={value.recommendations}
           onChange={(event) => set("recommendations", event.target.value)}
           placeholder="What they should do next, in your words. Blank lines start a new paragraph."
