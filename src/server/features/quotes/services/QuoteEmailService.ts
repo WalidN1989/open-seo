@@ -5,6 +5,7 @@ import { EmailSendService } from "@/server/features/email/services/EmailSendServ
 import { formatMoney } from "@/server/features/invoicing/invoiceTotals";
 import { AppError } from "@/server/lib/errors";
 import { getOptionalEnvValue } from "@/server/lib/runtime-env";
+import { companyFooterLines, yearOf } from "@/shared/company-footer";
 import { composeQuoteEmail, toBase64 } from "../quoteEmail";
 import { renderQuotePdf } from "../quotePdf";
 import { todayIso } from "../quoteRules";
@@ -87,9 +88,7 @@ async function emailQuote(
     viewUrl: `${appUrl}${link.path}`,
     pdfUrl: `${appUrl}${link.pdfPath}`,
     message: input.message ?? null,
-    footer: [issuer.legalName, issuer.phone, issuer.email]
-      .filter(Boolean)
-      .join(" · "),
+    footer: companyFooterLines(issuer, yearOf(quote.issueDate)).join("\n"),
   });
 
   const sent = await EmailSendService.sendFromConnectedMailbox(organizationId, {

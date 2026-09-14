@@ -75,7 +75,7 @@ ${paragraph(closing)}
 <a href="${escapeHtml(input.viewUrl)}" style="display:inline-block;background:#1c2530;color:#ffffff;text-decoration:none;font-size:15px;font-weight:600;padding:12px 26px;border-radius:8px;">View your quotation</a>
 </td></tr>
 <tr><td style="font-size:14px;line-height:1.6;padding-bottom:26px;"><a href="${escapeHtml(input.pdfUrl)}" style="color:#0c6a6a;">Download the PDF</a></td></tr>
-<tr><td style="font-size:12px;line-height:1.6;color:#8a95a1;border-top:1px solid #e6e9ed;padding-top:18px;">${escapeHtml(input.footer)}</td></tr>
+<tr><td style="font-size:12px;line-height:1.6;color:#8a95a1;border-top:1px solid #e6e9ed;padding-top:18px;">${escapeHtml(input.footer).replaceAll("\n", "<br>")}</td></tr>
 </table>
 </td></tr>
 </table>
