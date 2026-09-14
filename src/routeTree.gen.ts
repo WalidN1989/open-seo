@@ -53,6 +53,7 @@ import { Route as ProjectPProjectIdIndexRouteImport } from './routes/_project/p/
 import { Route as AppModulesIntegrationsIndexRouteImport } from './routes/_app/modules/integrations/index'
 import { Route as AppModulesCrmIndexRouteImport } from './routes/_app/modules/crm/index'
 import { Route as ApiVoiceElevenlabsConnectionIdRouteImport } from './routes/api/voice/elevenlabs/$connectionId'
+import { Route as ApiVoiceElevenlabsCallerConnectionIdRouteImport } from './routes/api/voice/elevenlabs-caller/$connectionId'
 import { Route as ApiQuotesQuoteIdPdfRouteImport } from './routes/api/quotes/$quoteId/pdf'
 import { Route as ApiGscOauthCallbackRouteImport } from './routes/api/gsc/oauth/callback'
 import { Route as ApiGa4OauthCallbackRouteImport } from './routes/api/ga4/oauth/callback'
@@ -313,6 +314,12 @@ const ApiVoiceElevenlabsConnectionIdRoute =
   ApiVoiceElevenlabsConnectionIdRouteImport.update({
     id: '/api/voice/elevenlabs/$connectionId',
     path: '/api/voice/elevenlabs/$connectionId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiVoiceElevenlabsCallerConnectionIdRoute =
+  ApiVoiceElevenlabsCallerConnectionIdRouteImport.update({
+    id: '/api/voice/elevenlabs-caller/$connectionId',
+    path: '/api/voice/elevenlabs-caller/$connectionId',
     getParentRoute: () => rootRouteImport,
   } as any)
 const ApiQuotesQuoteIdPdfRoute = ApiQuotesQuoteIdPdfRouteImport.update({
@@ -590,6 +597,7 @@ export interface FileRoutesByFullPath {
   '/api/ga4/oauth/callback': typeof ApiGa4OauthCallbackRoute
   '/api/gsc/oauth/callback': typeof ApiGscOauthCallbackRoute
   '/api/quotes/$quoteId/pdf': typeof ApiQuotesQuoteIdPdfRoute
+  '/api/voice/elevenlabs-caller/$connectionId': typeof ApiVoiceElevenlabsCallerConnectionIdRoute
   '/api/voice/elevenlabs/$connectionId': typeof ApiVoiceElevenlabsConnectionIdRoute
   '/modules/crm/': typeof AppModulesCrmIndexRoute
   '/modules/integrations/': typeof AppModulesIntegrationsIndexRoute
@@ -663,6 +671,7 @@ export interface FileRoutesByTo {
   '/api/ga4/oauth/callback': typeof ApiGa4OauthCallbackRoute
   '/api/gsc/oauth/callback': typeof ApiGscOauthCallbackRoute
   '/api/quotes/$quoteId/pdf': typeof ApiQuotesQuoteIdPdfRoute
+  '/api/voice/elevenlabs-caller/$connectionId': typeof ApiVoiceElevenlabsCallerConnectionIdRoute
   '/api/voice/elevenlabs/$connectionId': typeof ApiVoiceElevenlabsConnectionIdRoute
   '/modules/crm': typeof AppModulesCrmIndexRoute
   '/modules/integrations': typeof AppModulesIntegrationsIndexRoute
@@ -748,6 +757,7 @@ export interface FileRoutesById {
   '/api/ga4/oauth/callback': typeof ApiGa4OauthCallbackRoute
   '/api/gsc/oauth/callback': typeof ApiGscOauthCallbackRoute
   '/api/quotes/$quoteId/pdf': typeof ApiQuotesQuoteIdPdfRoute
+  '/api/voice/elevenlabs-caller/$connectionId': typeof ApiVoiceElevenlabsCallerConnectionIdRoute
   '/api/voice/elevenlabs/$connectionId': typeof ApiVoiceElevenlabsConnectionIdRoute
   '/_app/modules/crm/': typeof AppModulesCrmIndexRoute
   '/_app/modules/integrations/': typeof AppModulesIntegrationsIndexRoute
@@ -830,6 +840,7 @@ export interface FileRouteTypes {
     | '/api/ga4/oauth/callback'
     | '/api/gsc/oauth/callback'
     | '/api/quotes/$quoteId/pdf'
+    | '/api/voice/elevenlabs-caller/$connectionId'
     | '/api/voice/elevenlabs/$connectionId'
     | '/modules/crm/'
     | '/modules/integrations/'
@@ -903,6 +914,7 @@ export interface FileRouteTypes {
     | '/api/ga4/oauth/callback'
     | '/api/gsc/oauth/callback'
     | '/api/quotes/$quoteId/pdf'
+    | '/api/voice/elevenlabs-caller/$connectionId'
     | '/api/voice/elevenlabs/$connectionId'
     | '/modules/crm'
     | '/modules/integrations'
@@ -987,6 +999,7 @@ export interface FileRouteTypes {
     | '/api/ga4/oauth/callback'
     | '/api/gsc/oauth/callback'
     | '/api/quotes/$quoteId/pdf'
+    | '/api/voice/elevenlabs-caller/$connectionId'
     | '/api/voice/elevenlabs/$connectionId'
     | '/_app/modules/crm/'
     | '/_app/modules/integrations/'
@@ -1027,6 +1040,7 @@ export interface RootRouteChildren {
   ApiGa4OauthCallbackRoute: typeof ApiGa4OauthCallbackRoute
   ApiGscOauthCallbackRoute: typeof ApiGscOauthCallbackRoute
   ApiQuotesQuoteIdPdfRoute: typeof ApiQuotesQuoteIdPdfRoute
+  ApiVoiceElevenlabsCallerConnectionIdRoute: typeof ApiVoiceElevenlabsCallerConnectionIdRoute
   ApiVoiceElevenlabsConnectionIdRoute: typeof ApiVoiceElevenlabsConnectionIdRoute
 }
 
@@ -1338,6 +1352,13 @@ declare module '@tanstack/react-router' {
       path: '/api/voice/elevenlabs/$connectionId'
       fullPath: '/api/voice/elevenlabs/$connectionId'
       preLoaderRoute: typeof ApiVoiceElevenlabsConnectionIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/voice/elevenlabs-caller/$connectionId': {
+      id: '/api/voice/elevenlabs-caller/$connectionId'
+      path: '/api/voice/elevenlabs-caller/$connectionId'
+      fullPath: '/api/voice/elevenlabs-caller/$connectionId'
+      preLoaderRoute: typeof ApiVoiceElevenlabsCallerConnectionIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/quotes/$quoteId/pdf': {
@@ -1890,6 +1911,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiGa4OauthCallbackRoute: ApiGa4OauthCallbackRoute,
   ApiGscOauthCallbackRoute: ApiGscOauthCallbackRoute,
   ApiQuotesQuoteIdPdfRoute: ApiQuotesQuoteIdPdfRoute,
+  ApiVoiceElevenlabsCallerConnectionIdRoute:
+    ApiVoiceElevenlabsCallerConnectionIdRoute,
   ApiVoiceElevenlabsConnectionIdRoute: ApiVoiceElevenlabsConnectionIdRoute,
 }
 export const routeTree = rootRouteImport

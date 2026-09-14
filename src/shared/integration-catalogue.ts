@@ -348,11 +348,19 @@ export const integrationCatalogue: readonly IntegrationCatalogueEntry[] = [
         placeholder: "HX… Content SID, or a Meta template name",
         help: "Sent once to first-time callers from your connected WhatsApp number. Must be an approved template: Twilio uses the Content SID, Meta the template name.",
       },
+      {
+        key: "CALLER_LOOKUP_SECRET",
+        label: "Caller recognition secret (optional)",
+        type: "secret",
+        required: false,
+        help: "A long random value you make up (for example from `openssl rand -hex 24`). Put the same value in ElevenLabs as the x-openseo-secret header of the conversation initiation webhook, so returning callers are greeted by name.",
+      },
     ],
     capabilities: [
       "post-call transcripts",
       "CRM contact and lead per caller",
       "WhatsApp welcome",
+      "returning callers greeted by name",
     ],
     howToConnect: [
       "Type any placeholder in Webhook secret and click Connect. The webhook address then appears on this page; copy it.",
@@ -360,6 +368,7 @@ export const integrationCatalogue: readonly IntegrationCatalogueEntry[] = [
       "Back here, replace the placeholder with that secret and save.",
       "In ElevenLabs, open your agent → Security → post-call webhook override, choose the new webhook and tick Transcript. Use the agent override, not the workspace default, so other agents' calls don't land in this business.",
       "Optionally add an approved WhatsApp template so first-time callers get a welcome.",
+      "Optionally, to greet returning callers by name: save a Caller recognition secret here, then in ElevenLabs set the conversation initiation webhook to https://<this site>/api/voice/elevenlabs-caller/<connection id> with header x-openseo-secret set to the same value, and turn on fetching initiation data in the agent's Security tab.",
     ],
   },
   {

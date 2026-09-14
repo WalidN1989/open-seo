@@ -17,7 +17,7 @@ function hex(buffer: ArrayBuffer) {
     .join("");
 }
 
-function timingSafeEqual(a: string, b: string) {
+export function timingSafeEqual(a: string, b: string) {
   if (a.length !== b.length) return false;
   let mismatch = 0;
   for (let i = 0; i < a.length; i += 1) {

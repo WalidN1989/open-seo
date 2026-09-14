@@ -198,6 +198,14 @@ async function recordCall(
         companyId: company?.id ?? null,
       });
 
+  // A returning caller who was recognised isn't asked their name or email
+  // again, so what the CRM already holds fills the gaps.
+  const knownName =
+    report.captured.caller_name?.trim() || contact.firstName === "Caller"
+      ? firstName
+      : contact.firstName;
+  const recapTo = email ?? contact.email;
+
   const occurredAt = report.startedAt ?? new Date().toISOString();
   let lead = await Repo.findOpenLead(organizationId, contact.id);
   if (!lead) {
@@ -255,7 +263,7 @@ async function recordCall(
   const welcome = welcomeOwed
     ? await sendWelcome(organizationId, welcomeTemplate, whatsappTo, {
         // Template: "Hi {{1}}, thanks for calling … about {{2}} …"
-        "1": firstName || "there",
+        "1": knownName || "there",
         "2": report.captured.service_interest
           ? inSentence(shortNeed(report.captured.service_interest))
           : "our services",
@@ -264,8 +272,8 @@ async function recordCall(
   await Repo.setWelcomeStatus(call.id, welcome);
   const recapEmail = await CallRecapService.sendCallRecap({
     organizationId,
-    email,
-    firstName,
+    email: recapTo,
+    firstName: knownName,
     report,
   });
   await Repo.setRecapEmailStatus(call.id, recapEmail);
