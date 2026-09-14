@@ -13,6 +13,7 @@ import {
 } from "../elevenlabsWebhook";
 import { activityNotes, duration, inSentence, splitName } from "../callNotes";
 import { PhoneCallRepository as Repo } from "../repositories/PhoneCallRepository";
+import { CallQuoteService } from "./CallQuoteService";
 import { CallRecapService } from "./CallRecapService";
 
 const PROVIDER = "elevenlabs";
@@ -277,6 +278,17 @@ async function recordCall(
     report,
   });
   await Repo.setRecapEmailStatus(call.id, recapEmail);
+  const quote = await CallQuoteService.quoteFromCall({
+    organizationId,
+    leadId: lead.id,
+    contactId: contact.id,
+    clientName:
+      businessName ||
+      [knownName, contact.lastName].filter(Boolean).join(" ") ||
+      "Caller",
+    email: recapTo,
+    report,
+  });
   await journalOutreach({
     organizationId,
     leadId: lead.id,
@@ -298,6 +310,7 @@ async function recordCall(
       firstTimeCaller,
       welcome,
       recapEmail,
+      quote,
     },
   });
   return { callId: call.id, duplicate: false };
