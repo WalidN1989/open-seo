@@ -97,6 +97,13 @@ describe("normalisePhone", () => {
     expect(normalisePhone("+971 50 133 5775")).toBe("+971501335775");
     expect(normalisePhone("0408 579 044")).toBe("+61408579044");
     expect(normalisePhone("0061408579044")).toBe("+61408579044");
+    // Australian numbers said without the 0, with a stray trunk 0, or
+    // without the plus.
+    expect(normalisePhone("408 579 044")).toBe("+61408579044");
+    expect(normalisePhone("7 3123 4567")).toBe("+61731234567");
+    expect(normalisePhone("+61 0408 579 044")).toBe("+61408579044");
+    expect(normalisePhone("61408579044")).toBe("+61408579044");
+    expect(normalisePhone("(07) 3123 4567")).toBe("+61731234567");
     expect(normalisePhone("12")).toBeNull();
     expect(normalisePhone(undefined)).toBeNull();
   });

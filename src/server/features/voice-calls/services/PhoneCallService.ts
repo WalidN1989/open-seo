@@ -11,64 +11,13 @@ import {
   verifyElevenLabsSignature,
   type PhoneCallReport,
 } from "../elevenlabsWebhook";
+import { activityNotes, duration, inSentence, splitName } from "../callNotes";
 import { PhoneCallRepository as Repo } from "../repositories/PhoneCallRepository";
 import { CallRecapService } from "./CallRecapService";
 
 const PROVIDER = "elevenlabs";
 
 type WebhookResult = { status: number; body: string };
-
-function duration(seconds: number | null) {
-  if (!seconds) return "";
-  const minutes = Math.floor(seconds / 60);
-  const rest = Math.round(seconds % 60);
-  return minutes ? ` (${minutes}m ${rest}s)` : ` (${rest}s)`;
-}
-
-function splitName(raw: string | undefined) {
-  const cleaned = (raw ?? "").trim().replace(/\s+/g, " ");
-  if (!cleaned) return { firstName: "Caller", lastName: null };
-  const [first, ...rest] = cleaned.split(" ");
-  return { firstName: first ?? "Caller", lastName: rest.join(" ") || null };
-}
-
-function label(key: string) {
-  return key
-    .replace(/^caller_/, "")
-    .replace(/_/g, " ")
-    .replace(/^\w/, (c) => c.toUpperCase());
-}
-
-/** The activity note a person reads on the lead. */
-function activityNotes(report: PhoneCallReport) {
-  const lines: string[] = [];
-  if (report.summary) lines.push(report.summary, "");
-  const captured = Object.entries(report.captured);
-  if (captured.length) {
-    lines.push("Captured on the call:");
-    for (const [key, value] of captured)
-      lines.push(`- ${label(key)}: ${value}`);
-    lines.push("");
-  }
-  if (report.callerNumber)
-    lines.push(`Caller number: ${report.callerNumber}`, "");
-  if (report.transcript.length) {
-    lines.push("Transcript:");
-    for (const turn of report.transcript) {
-      lines.push(
-        `${turn.role === "agent" ? "Agent" : "Caller"}: ${turn.message}`,
-      );
-    }
-  }
-  return lines.join("\n").slice(0, 20_000);
-}
-
-/** "Website design" reads as "website design" mid-sentence; "SEO" stays. */
-function inSentence(phrase: string) {
-  return /^[A-Z][a-z]/.test(phrase)
-    ? phrase[0].toLowerCase() + phrase.slice(1)
-    : phrase;
-}
 
 /**
  * Send the configured WhatsApp welcome to a first-time caller. A template is
@@ -159,6 +108,39 @@ async function journalOutreach(input: {
   }
 }
 
+/** The call log row; `links` is what the pipeline decided about the caller. */
+function callRow(
+  organizationId: string,
+  integrationId: string,
+  report: PhoneCallReport,
+  links: {
+    callerNumber: string | null;
+    contactId: string | null;
+    leadId: string | null;
+    welcomeStatus: string | null;
+    recapEmailStatus: string | null;
+  },
+) {
+  return {
+    id: crypto.randomUUID(),
+    organizationId,
+    integrationId,
+    provider: PROVIDER,
+    externalConversationId: report.conversationId,
+    externalAgentId: report.agentId,
+    agentName: report.agentName,
+    direction: report.direction,
+    calledNumber: report.calledNumber,
+    startedAt: report.startedAt,
+    durationSeconds: report.durationSeconds,
+    summary: report.summary,
+    callSuccessful: report.callSuccessful,
+    capturedJson: JSON.stringify(report.captured),
+    transcriptJson: JSON.stringify(report.transcript),
+    ...links,
+  };
+}
+
 async function recordCall(
   organizationId: string,
   integrationId: string,
@@ -175,6 +157,24 @@ async function recordCall(
     report.callerNumber ?? phoneFromText(report.captured.callback_details);
   const email = emailFrom(report.captured.caller_email);
   const businessName = report.captured.business_name?.trim();
+
+  // A website visitor who opens the widget and says nothing leaves no caller
+  // ID, name, number or email. Keep the call in the log, but a CRM contact
+  // and lead called "Caller" with no way to reach them is only clutter.
+  if (!phone && !email && !report.captured.caller_name?.trim()) {
+    const skipped = "skipped: nothing captured";
+    const call = await Repo.insertCall(
+      callRow(organizationId, integrationId, report, {
+        callerNumber: null,
+        contactId: null,
+        leadId: null,
+        welcomeStatus: skipped,
+        recapEmailStatus: skipped,
+      }),
+    );
+    return { callId: call.id, duplicate: false };
+  }
+
   const company = businessName
     ? await Repo.companyNamed(organizationId, businessName.slice(0, 200))
     : null;
@@ -236,28 +236,15 @@ async function recordCall(
     occurredAt,
   });
 
-  const call = await Repo.insertCall({
-    id: crypto.randomUUID(),
-    organizationId,
-    integrationId,
-    provider: PROVIDER,
-    externalConversationId: report.conversationId,
-    externalAgentId: report.agentId,
-    agentName: report.agentName,
-    direction: report.direction,
-    callerNumber: phone,
-    calledNumber: report.calledNumber,
-    startedAt: report.startedAt,
-    durationSeconds: report.durationSeconds,
-    summary: report.summary,
-    callSuccessful: report.callSuccessful,
-    capturedJson: JSON.stringify(report.captured),
-    transcriptJson: JSON.stringify(report.transcript),
-    contactId: contact.id,
-    leadId: lead.id,
-    welcomeStatus: null,
-    recapEmailStatus: null,
-  });
+  const call = await Repo.insertCall(
+    callRow(organizationId, integrationId, report, {
+      callerNumber: phone,
+      contactId: contact.id,
+      leadId: lead.id,
+      welcomeStatus: null,
+      recapEmailStatus: null,
+    }),
+  );
 
   // The number the caller read out is the one they asked us to use; the line
   // they rang from can be a landline or a phone without WhatsApp.

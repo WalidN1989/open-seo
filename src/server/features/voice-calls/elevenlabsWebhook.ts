@@ -142,13 +142,19 @@ export function normalisePhone(raw: unknown): string | null {
   const trimmed = raw.trim();
   const digits = trimmed.replace(/\D/g, "");
   if (digits.length < 8 || digits.length > 15) return null;
-  if (trimmed.startsWith("+")) return `+${digits}`;
-  if (trimmed.startsWith("00")) return `+${digits.slice(2)}`;
-  // A local Australian mobile or landline, which is who calls these lines.
-  if (digits.startsWith("0") && digits.length === 10) {
-    return `+61${digits.slice(1)}`;
-  }
-  return `+${digits}`;
+  const international = trimmed.startsWith("+")
+    ? digits
+    : trimmed.startsWith("00")
+      ? digits.slice(2)
+      : null;
+  // Callers are Australian, so a number without a country code is read as
+  // one: "0412 345 678", or "412 345 678" with the 0 dropped (mobiles start
+  // 4, landlines 2, 3, 7 or 8). "+61 0412…" keeps a trunk 0 that must go.
+  const national = (international ?? digits).replace(/^610(?=\d{9}$)/, "61");
+  if (international !== null) return `+${national}`;
+  if (/^0\d{9}$/.test(national)) return `+61${national.slice(1)}`;
+  if (/^[23478]\d{8}$/.test(national)) return `+61${national}`;
+  return `+${national}`;
 }
 
 /**
