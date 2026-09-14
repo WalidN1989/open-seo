@@ -55,6 +55,19 @@ async function listMembers(organizationId: string) {
     .where(eq(member.organizationId, organizationId));
 }
 
+/**
+ * Who the app acts for when no one is signed in (a webhook, a mailbox): the
+ * owner, or an admin in a workspace without one.
+ */
+async function findOwner(organizationId: string) {
+  const members = await listMembers(organizationId);
+  return (
+    members.find((row) => row.role === "owner") ??
+    members.find((row) => row.role === "admin") ??
+    null
+  );
+}
+
 async function findMemberById(organizationId: string, memberId: string) {
   const [row] = await db
     .select({ id: member.id, role: member.role })
@@ -150,6 +163,7 @@ export const BusinessModuleRepository = {
   listEntitlements,
   listMemberPermissions,
   listMembers,
+  findOwner,
   setEntitlement,
   setMemberPermission,
 };

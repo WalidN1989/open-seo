@@ -1646,6 +1646,10 @@ export const emailMessages = sqliteTable(
     textBody: text("text_body"),
     htmlBody: text("html_body"),
     status: text("status").notNull(),
+    /** Photos and PDFs attached, as [{filename, contentType, size}]. */
+    attachmentsJson: text("attachments_json").notNull().default("[]"),
+    /** What the attachments show, read by the model when the mail arrived. */
+    attachmentNotes: text("attachment_notes"),
     /** Set when the assistant wrote it, so the inbox can say so. */
     authoredBy: text("authored_by"),
     occurredAt: text("occurred_at")

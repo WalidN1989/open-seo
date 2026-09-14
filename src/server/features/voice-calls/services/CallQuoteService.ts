@@ -31,19 +31,6 @@ function describe(error: unknown) {
   return error instanceof Error ? error.message : "unknown error";
 }
 
-/**
- * Quotes are written as the business owner: a webhook has no signed-in
- * member, and the owner is who the quote goes out on behalf of.
- */
-async function ownerOf(organizationId: string) {
-  const members = await BusinessModuleRepository.listMembers(organizationId);
-  return (
-    members.find((row) => row.role === "owner") ??
-    members.find((row) => row.role === "admin") ??
-    null
-  );
-}
-
 async function aiKey(organizationId: string) {
   const connection = await CommunicationsRepository.getIntegrationByProvider(
     organizationId,
@@ -145,7 +132,8 @@ async function quoteFromCall(input: QuoteInput): Promise<string> {
   if (!input.report.captured.quote_request?.trim()) {
     return "skipped: no quote requested";
   }
-  const owner = await ownerOf(input.organizationId);
+  // Quotes are written as the owner: a webhook has no signed-in member.
+  const owner = await BusinessModuleRepository.findOwner(input.organizationId);
   if (!owner) return "skipped: no owner to act for";
   try {
     const found = await match(input);

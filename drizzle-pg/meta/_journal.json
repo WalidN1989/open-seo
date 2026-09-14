@@ -470,6 +470,13 @@
       "when": 1789330381368,
       "tag": "0066_sweet_baron_zemo",
       "breakpoints": true
+    },
+    {
+      "idx": 67,
+      "version": "7",
+      "when": 1789416548230,
+      "tag": "0067_regular_aaron_stack",
+      "breakpoints": true
     }
   ]
 }

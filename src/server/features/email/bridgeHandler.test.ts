@@ -90,7 +90,8 @@ describe("mail bridge handler", () => {
       accountId: "a1",
       folder: "inbox",
       backfill: false,
-      messages: [message],
+      // A bridge from before attachments were carried still validates.
+      messages: [{ ...message, attachments: [] }],
     });
   });
 });

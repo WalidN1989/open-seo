@@ -15,7 +15,7 @@ import {
   EmailRepository as Repo,
   type EmailAccountRow,
 } from "../repositories/EmailRepository";
-import { replyWithAssistant } from "./EmailWebhookService";
+import { EmailAssistantService } from "./EmailAssistantService";
 
 const PROVIDER = "mailbox";
 
@@ -133,6 +133,11 @@ async function ingestOne(
     status: outbound ? "sent" : "received",
     authoredBy: null,
     occurredAt: message.date,
+    attachments: message.attachments.map(({ filename, contentType, size }) => ({
+      filename,
+      contentType,
+      size,
+    })),
   });
   return { threadRow, inbound };
 }
@@ -159,7 +164,12 @@ async function ingest(input: BridgeIngestRequest) {
     // would be noise, and answering it would be worse.
     if (input.backfill || input.folder !== "inbox") continue;
     try {
-      await replyWithAssistant(account, ingested.threadRow, ingested.inbound);
+      await EmailAssistantService.onInbound(
+        account,
+        ingested.threadRow,
+        ingested.inbound,
+        message.attachments,
+      );
     } catch (error) {
       console.error("Email assistant failed; message kept for a person", error);
     }
