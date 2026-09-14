@@ -1,5 +1,11 @@
 # Agent guidance
 
+## Start here
+
+Read `docs/HANDOVER.md` first. It says where the local checkout lives
+(`~/Developer/open-seo`, outside iCloud), the full gate to run before pushing
+to `main`, the traps already paid for, and what is deliberately not built yet.
+
 ## Engineering principles
 
 - Prefer simple, readable, flat code with minimal indirection.
