@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { BriefingService } from "@/server/features/crm/services/BriefingService";
 import { CrmService } from "@/server/features/crm/services/CrmService";
 import { LeadDetailService } from "@/server/features/crm/services/LeadDetailService";
 import { formatMoney } from "@/server/features/invoicing/invoiceTotals";
@@ -324,12 +325,68 @@ const logLeadActivityTool = {
   ),
 };
 
+const briefingInput = {
+  organizationId: organizationIdSchema,
+  sinceHours: z
+    .number()
+    .int()
+    .min(1)
+    .max(168)
+    .default(12)
+    .describe(
+      "How far back to look, in hours. 12 for a morning or evening round.",
+    ),
+} as const;
+
+const businessBriefingTool = {
+  name: "get_business_briefing",
+  config: {
+    title: "Business briefing: what needs a person, what happened",
+    description:
+      "One read for a twice-daily round. Needs you: reminders due, accepted quotes, email replies waiting for approval, WhatsApp chats waiting for a person, unsent draft quotes, follow-ups due, quotes about to expire. What happened: calls, new leads, customer emails (and whether they sent photos), assistant replies, quotes and follow-up emails sent, declines, WhatsApp volume. Waiting on customers: every sent quote with its age and follow-ups. Use get_lead to dig into one.",
+    inputSchema: briefingInput,
+    outputSchema: {
+      needsYou: z.array(z.string()),
+      happened: z.array(z.string()),
+      waitingOnCustomers: z.array(z.string()),
+      ...optionalMetaOutputSchema,
+    },
+    annotations: {
+      readOnlyHint: true,
+      openWorldHint: false,
+      destructiveHint: false,
+    },
+  },
+  handler: withMcpOrganizationAuth(
+    async (args: z.infer<z.ZodObject<typeof briefingInput>>, context) => {
+      const briefing = await BriefingService.getBriefing(
+        context.organizationId,
+        context.auth.userId,
+        args.sinceHours,
+      );
+      return mcpResponse({
+        text: briefing.text,
+        structuredContent: {
+          needsYou: briefing.needsYou,
+          happened: briefing.happened,
+          waitingOnCustomers: briefing.waitingOnCustomers,
+        },
+      });
+    },
+  ),
+};
+
 export const crmSurface: McpModuleSurface = {
   key: "leads",
   scope: "organization",
   summary:
-    "Read the pipeline and each lead's journal and quotes; log activities and schedule follow-ups. Closing and deleting stay with a person.",
-  tools: [listLeadsTool, getLeadTool, logLeadActivityTool],
+    "A twice-daily business briefing; read the pipeline and each lead's journal and quotes; log activities and schedule follow-ups. Closing and deleting stay with a person.",
+  tools: [
+    businessBriefingTool,
+    listLeadsTool,
+    getLeadTool,
+    logLeadActivityTool,
+  ],
   withheld: [
     {
       action: "close a lead as won or lost",

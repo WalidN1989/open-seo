@@ -130,6 +130,7 @@ describe("the quote MCP surface", () => {
 describe("the CRM MCP surface", () => {
   it("reads leads and keeps the journal", () => {
     expect(declaredToolNames(crm).toSorted()).toEqual([
+      "get_business_briefing",
       "get_lead",
       "list_leads",
       "log_lead_activity",
