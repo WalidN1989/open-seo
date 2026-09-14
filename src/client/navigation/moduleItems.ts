@@ -4,6 +4,7 @@ import {
   CalendarDays,
   ClipboardList,
   ContactRound,
+  FileSignature,
   Inbox,
   LayoutDashboard,
   Package,
@@ -66,6 +67,11 @@ const crmNavGroups = [
         to: "/modules/crm/meetings",
         label: "Meetings",
         icon: CalendarDays,
+      }),
+      linkOptions({
+        to: "/modules/crm/quotations",
+        label: "Quotations",
+        icon: FileSignature,
       }),
       linkOptions({
         to: "/modules/crm/analytics",

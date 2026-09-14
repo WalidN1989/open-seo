@@ -15,6 +15,8 @@ import type * as QuoteServiceModule from "@/server/features/quotes/services/Quot
 import type * as QuoteFlowServiceModule from "@/server/features/quotes/services/QuoteFlowService";
 import type * as InvoiceServiceModule from "@/server/features/invoicing/services/InvoiceService";
 import type * as CrmRepositoryModule from "@/server/features/crm/repositories/CrmRepository";
+import type * as LeadDetailServiceModule from "@/server/features/crm/services/LeadDetailService";
+import type * as QuoteEmailServiceModule from "@/server/features/quotes/services/QuoteEmailService";
 
 // Real in-memory SQLite, migrated from drizzle/, as in crossTenantAccess.
 const mockEnv = vi.hoisted(() => ({ DATABASE_PROVIDER: "d1" }));
@@ -24,6 +26,8 @@ let QuoteService: typeof QuoteServiceModule.QuoteService;
 let QuoteFlowService: typeof QuoteFlowServiceModule.QuoteFlowService;
 let InvoiceService: typeof InvoiceServiceModule.InvoiceService;
 let CrmRepository: typeof CrmRepositoryModule.CrmRepository;
+let LeadDetailService: typeof LeadDetailServiceModule.LeadDetailService;
+let QuoteEmailService: typeof QuoteEmailServiceModule.QuoteEmailService;
 let db: TestDb;
 
 const TODAY = new Date().toISOString().slice(0, 10);
@@ -73,6 +77,10 @@ beforeAll(async () => {
     await import("@/server/features/invoicing/services/InvoiceService"));
   ({ CrmRepository } =
     await import("@/server/features/crm/repositories/CrmRepository"));
+  ({ LeadDetailService } =
+    await import("@/server/features/crm/services/LeadDetailService"));
+  ({ QuoteEmailService } =
+    await import("@/server/features/quotes/services/QuoteEmailService"));
 });
 
 describe("quote numbering", () => {
@@ -208,5 +216,78 @@ describe("a quote's life", () => {
         status: "sent",
       }),
     ).rejects.toThrow(/valid-until/);
+  });
+});
+
+describe("quote PDF and email", () => {
+  it("renders the PDF from the stored quote", async () => {
+    const quote = await QuoteService.save(ORG_A, USER_OWNER_A, draft());
+    const pdf = await QuoteEmailService.pdfFor(ORG_A, quote.id);
+    expect(pdf.filename).toBe(`${quote.number}.pdf`);
+    expect(new TextDecoder().decode(pdf.bytes.slice(0, 5))).toBe("%PDF-");
+  });
+
+  it("will not email without an address or a connected mailbox", async () => {
+    const quote = await QuoteService.save(ORG_A, USER_OWNER_A, draft());
+    await expect(
+      QuoteEmailService.emailQuote(ORG_A, USER_OWNER_A, { quoteId: quote.id }),
+    ).rejects.toThrow(/email address/);
+    await expect(
+      QuoteEmailService.emailQuote(ORG_A, USER_OWNER_A, {
+        quoteId: quote.id,
+        to: "client@example.com",
+      }),
+    ).rejects.toThrow();
+    const after = await QuoteService.detail(ORG_A, USER_OWNER_A, quote.id);
+    // Nothing went out, so the quote is still a draft.
+    expect(after.quote.status).toBe("draft");
+  });
+
+  it("refuses to email another tenant's quote", async () => {
+    const quote = await QuoteService.save(ORG_A, USER_OWNER_A, draft());
+    await expectDenied(
+      () =>
+        QuoteEmailService.emailQuote(ORG_B, USER_OWNER_B, {
+          quoteId: quote.id,
+          to: "client@example.com",
+        }),
+      [quote.id, quote.number],
+    );
+  });
+});
+
+describe("the lead journal an agent writes", () => {
+  it("refuses another tenant's lead", async () => {
+    await expectDenied(
+      () =>
+        LeadDetailService.logActivity(ORG_B, USER_OWNER_B, {
+          leadId: LEAD_A,
+          activityType: "note",
+          notes: "Not yours",
+          remind: false,
+        }),
+      [LEAD_A],
+    );
+  });
+
+  it("logs the activity and sets the follow-up with a reminder", async () => {
+    const due = new Date(Date.now() + 2 * 86_400_000).toISOString();
+    const result = await LeadDetailService.logActivity(ORG_A, USER_OWNER_A, {
+      leadId: LEAD_A,
+      activityType: "call",
+      notes: "Asked about the quote; call back Wednesday",
+      outcome: "need_followup",
+      nextActionDue: due,
+      nextAction: "Call to confirm the quote",
+      remind: true,
+    });
+    expect(result.reminder?.remindAt).toBe(due);
+    const detail = await LeadDetailService.getLeadDetail(
+      ORG_A,
+      USER_OWNER_A,
+      LEAD_A,
+    );
+    expect(detail.lead.nextActionDue).toBe(due);
+    expect(detail.lead.nextAction).toBe("Call to confirm the quote");
   });
 });

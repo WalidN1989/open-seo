@@ -17,6 +17,14 @@ export function QuotesSection() {
       </div>
     );
   }
+  if (query.isError) {
+    return (
+      <div className="alert alert-warning">
+        Quotations are part of the Invoicing module. Turn it on under Business
+        to create and send quotes.
+      </div>
+    );
+  }
   const quotes = query.data?.quotes ?? [];
   return (
     <div className="space-y-3">

@@ -20,6 +20,7 @@ const invoices = source("tools/invoice-tools.ts");
 const reports = source("tools/report-tools.ts");
 const email = source("tools/email-tools.ts");
 const quotes = source("tools/quote-tools.ts");
+const crm = source("tools/crm-tools.ts");
 const server = source("server.ts");
 
 function declaredToolNames(text: string) {
@@ -126,12 +127,36 @@ describe("the quote MCP surface", () => {
   });
 });
 
+describe("the CRM MCP surface", () => {
+  it("reads leads and keeps the journal", () => {
+    expect(declaredToolNames(crm).toSorted()).toEqual([
+      "get_lead",
+      "list_leads",
+      "log_lead_activity",
+    ]);
+  });
+
+  it("cannot close, delete or message a lead", () => {
+    for (const name of declaredToolNames(crm)) {
+      expect(name).not.toMatch(/won|lost|close|delete|remove|send|message/);
+    }
+    const logSchema = crm.slice(
+      crm.indexOf("const logInput ="),
+      crm.indexOf("const logLeadActivityTool ="),
+    );
+    expect(logSchema).not.toContain('"won"');
+    expect(logSchema).not.toContain('"lost"');
+    expect(crm).not.toContain("CrmService.updateLead");
+  });
+});
+
 describe("the module registry", () => {
   it("registers every surface it declares", () => {
     const surfaces = [...server.matchAll(/^\s*(\w+Surface),$/gm)].map(
       (match) => match[1],
     );
     expect(surfaces.toSorted()).toEqual([
+      "crmSurface",
       "emailSurface",
       "invoiceSurface",
       "optimizationsSurface",
@@ -141,7 +166,7 @@ describe("the module registry", () => {
   });
 
   it("makes each module state what it withholds and why", () => {
-    for (const text of [optimizations, invoices, reports, email, quotes]) {
+    for (const text of [optimizations, invoices, reports, email, quotes, crm]) {
       const withheld = text.slice(text.indexOf("withheld:"));
       expect(withheld).toContain("action:");
       expect(withheld).toContain("because:");

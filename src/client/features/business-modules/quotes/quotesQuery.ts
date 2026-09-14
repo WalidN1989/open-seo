@@ -5,6 +5,7 @@ import {
   convertQuoteToInvoice,
   createQuoteLink,
   deleteQuote,
+  emailQuote,
   getLeadQuotes,
   getQuote,
   getQuotePrefill,
@@ -126,6 +127,14 @@ export function useConvertQuote() {
   return useQuoteMutation(
     (quoteId: string) => convertQuoteToInvoice({ data: { quoteId } }),
     "Could not create the invoice",
+  );
+}
+
+export function useEmailQuote() {
+  return useQuoteMutation(
+    (data: { quoteId: string; to: string; message: string }) =>
+      emailQuote({ data }),
+    "Could not email the quote",
   );
 }
 

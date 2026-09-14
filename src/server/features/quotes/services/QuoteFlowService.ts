@@ -17,7 +17,12 @@ import { InvoiceService } from "@/server/features/invoicing/services/InvoiceServ
 import { AppError } from "@/server/lib/errors";
 import { getRequiredEnvValue } from "@/server/lib/runtime-env";
 import type { QuoteStatus } from "@/types/schemas/quotes";
-import { QUOTE_LINK_TTL_MS, quotePath, signQuoteToken } from "../quoteLink";
+import {
+  QUOTE_LINK_TTL_MS,
+  quotePath,
+  quotePdfPath,
+  signQuoteToken,
+} from "../quoteLink";
 import { publicQuote } from "../quotePresenters";
 import { canMoveQuote, todayIso } from "../quoteRules";
 import {
@@ -147,6 +152,7 @@ async function documentLink(
   return {
     number: row.number,
     path: quotePath(row.id, token),
+    pdfPath: quotePdfPath(row.id, token),
     expiresAt: new Date(expiresAt).toISOString(),
   };
 }

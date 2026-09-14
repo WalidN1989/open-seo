@@ -45,6 +45,11 @@ export async function verifyQuoteToken(
 
 export const QUOTE_LINK_TTL_MS = DOCUMENT_LINK_TTL_MS;
 
+/** The same signed token opens the PDF, for the email link and downloads. */
+export function quotePdfPath(quoteId: string, token: string): string {
+  return `/api/quotes/${encodeURIComponent(quoteId)}/pdf?t=${encodeURIComponent(token)}`;
+}
+
 export function quotePath(quoteId: string, token: string): string {
   return `/quotes/${encodeURIComponent(quoteId)}?t=${encodeURIComponent(token)}`;
 }

@@ -86,7 +86,9 @@ export function Sidebar({ projectId, onNavigate, onClose }: SidebarProps) {
   // Inside a module the sidebar belongs to that module: its own sections
   // replace the SEO navigation, with one row back out. Stacking a module's
   // sections into a single page is what left it cramped beside empty width.
-  const moduleKey = location.pathname.match(/^\/modules\/([^/]+)/)?.[1];
+  // A quote page belongs to the CRM, so it keeps the CRM sidebar.
+  const pathModule = location.pathname.match(/^\/modules\/([^/]+)/)?.[1];
+  const moduleKey = pathModule === "quotes" ? "crm" : pathModule;
   const moduleNavGroups = moduleKey ? getModuleNavGroups(moduleKey) : [];
   const inModule = moduleNavGroups.length > 0;
 
