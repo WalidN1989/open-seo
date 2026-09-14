@@ -1957,6 +1957,11 @@ export const quotes = sqliteTable(
     issuerSnapshotJson: text("issuer_snapshot_json"),
     sentAt: text("sent_at"),
     /** When the client accepted or declined. */
+    /** The email thread the quote went out in, so a follow-up replies in it. */
+    emailThreadId: text("email_thread_id"),
+    /** Follow-up emails sent while it waited for an answer. */
+    chaseCount: integer("chase_count").notNull().default(0),
+    lastChasedAt: text("last_chased_at"),
     respondedAt: text("responded_at"),
     convertedInvoiceId: text("converted_invoice_id").references(
       () => invoices.id,

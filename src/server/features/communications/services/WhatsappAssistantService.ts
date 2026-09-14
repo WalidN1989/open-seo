@@ -293,7 +293,26 @@ async function deleteAskedQuestion(
   return { deleted: true };
 }
 
-export { priceTokens, resolveAiKey };
+/**
+ * A Claude key for work the app does on its own (a recap, a quote, a
+ * follow-up): the organisation's connected Claude integration first, then the
+ * platform key.
+ */
+async function organizationModelKey(organizationId: string) {
+  const connection = await CommunicationsRepository.getIntegrationByProvider(
+    organizationId,
+    "claude_haiku",
+  );
+  return (
+    (connection?.status === "connected"
+      ? await resolveAiKey(connection)
+      : null) ??
+    (await getOptionalEnvValue("ANTHROPIC_API_KEY")) ??
+    null
+  );
+}
+
+export { organizationModelKey, priceTokens, resolveAiKey };
 
 export const WhatsappAssistantService = {
   getConfig,

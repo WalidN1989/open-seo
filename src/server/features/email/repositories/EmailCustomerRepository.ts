@@ -45,6 +45,7 @@ async function journal(values: {
   subject: string;
   notes: string;
   outcome: string | null;
+  activityType?: "email" | "quotation";
 }) {
   const occurredAt = new Date().toISOString();
   await db.insert(crmActivities).values({
@@ -53,7 +54,7 @@ async function journal(values: {
     leadId: values.leadId,
     contactId: values.contactId,
     createdByMemberId: null,
-    activityType: "email",
+    activityType: values.activityType ?? "email",
     subject: values.subject.slice(0, 200),
     notes: values.notes.slice(0, 4000),
     outcome: values.outcome,

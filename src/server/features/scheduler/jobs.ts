@@ -5,6 +5,7 @@ import { runScheduledRankChecks } from "@/server/features/rank-tracking/services
 import { CommunicationsService } from "@/server/features/communications/services/CommunicationsService";
 import { CatalogueSyncService } from "@/server/features/commerce/services/CatalogueSyncService";
 import { runDueVoiceLearning } from "@/server/features/communications/services/VoiceLearningService";
+import { QuoteChaserService } from "@/server/features/quotes/services/QuoteChaserService";
 
 let registered = false;
 
@@ -52,6 +53,14 @@ export function registerBusinessCronJobs() {
     tier: "slow",
     run: async () => {
       await withPgClient(() => runDueVoiceLearning());
+    },
+  });
+
+  registerCronJob({
+    name: "quotes.followUpUnanswered",
+    tier: "standard",
+    run: async () => {
+      await withPgClient(() => QuoteChaserService.runDueFollowUps());
     },
   });
 

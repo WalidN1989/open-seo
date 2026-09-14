@@ -8,6 +8,7 @@ import { getOptionalEnvValue } from "@/server/lib/runtime-env";
 import { companyFooterLines, yearOf } from "@/shared/company-footer";
 import { composeQuoteEmail, toBase64 } from "../quoteEmail";
 import { renderQuotePdf } from "../quotePdf";
+import { QuoteRepository } from "../repositories/QuoteRepository";
 import { todayIso } from "../quoteRules";
 import { QuoteFlowService } from "./QuoteFlowService";
 import { QUOTE_MODULE, QuoteService } from "./QuoteService";
@@ -112,6 +113,13 @@ async function emailQuote(
     );
   }
 
+  // Follow-ups reply in this thread, and start their clock again from now.
+  await QuoteRepository.updateQuote(organizationId, quote.id, {
+    emailThreadId: sent.threadId,
+    chaseCount: 0,
+    lastChasedAt: null,
+    ...(quote.status === "sent" ? { sentAt: new Date().toISOString() } : {}),
+  });
   const updated =
     quote.status === "draft"
       ? await QuoteFlowService.setStatus(organizationId, userId, {

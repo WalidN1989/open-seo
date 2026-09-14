@@ -1,8 +1,7 @@
 import { BusinessAuditRepository } from "@/server/features/business-modules/repositories/BusinessAuditRepository";
 import { BusinessModuleRepository } from "@/server/features/business-modules/repositories/BusinessModuleRepository";
 import { CommerceRepository } from "@/server/features/commerce/repositories/CommerceRepository";
-import { CommunicationsRepository } from "@/server/features/communications/repositories/CommunicationsRepository";
-import { resolveAiKey } from "@/server/features/communications/services/WhatsappAssistantService";
+import { organizationModelKey } from "@/server/features/communications/services/WhatsappAssistantService";
 import { ReminderRepository } from "@/server/features/crm/repositories/ReminderRepository";
 import { addDays } from "@/server/features/invoicing/invoiceTotals";
 import {
@@ -31,20 +30,6 @@ function describe(error: unknown) {
   return error instanceof Error ? error.message : "unknown error";
 }
 
-async function aiKey(organizationId: string) {
-  const connection = await CommunicationsRepository.getIntegrationByProvider(
-    organizationId,
-    "claude_haiku",
-  );
-  return (
-    (connection?.status === "connected"
-      ? await resolveAiKey(connection)
-      : null) ??
-    (await getOptionalEnvValue("ANTHROPIC_API_KEY")) ??
-    null
-  );
-}
-
 async function match(input: QuoteInput) {
   const { products } = await CommerceRepository.listProducts(
     input.organizationId,
@@ -57,7 +42,7 @@ async function match(input: QuoteInput) {
     salePriceMinor: product.salePriceMinor,
   }));
   if (!catalogue.length) return null;
-  const key = await aiKey(input.organizationId);
+  const key = await organizationModelKey(input.organizationId);
   if (!key) return null;
   try {
     return await matchQuote(input.report, catalogue, key);

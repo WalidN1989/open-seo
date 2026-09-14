@@ -9,6 +9,7 @@ import {
 } from "@/server/features/communications/services/WhatsappAssistantReplyService";
 import {
   WhatsappAssistantService,
+  organizationModelKey,
   resolveAiKey,
 } from "@/server/features/communications/services/WhatsappAssistantService";
 import { ReminderRepository } from "@/server/features/crm/repositories/ReminderRepository";
@@ -43,20 +44,6 @@ type Customer = {
   brief: string;
 };
 
-async function modelKey(organizationId: string) {
-  const connection = await CommunicationsRepository.getIntegrationByProvider(
-    organizationId,
-    "claude_haiku",
-  );
-  return (
-    (connection?.status === "connected"
-      ? await resolveAiKey(connection)
-      : null) ??
-    (await getOptionalEnvValue("ANTHROPIC_API_KEY")) ??
-    null
-  );
-}
-
 /** Read what the sender attached and keep the notes on the message. */
 async function readInbound(
   account: EmailAccountRow,
@@ -75,7 +62,7 @@ async function readInbound(
       : [],
   );
   if (!files.length) return null;
-  const key = await modelKey(account.organizationId);
+  const key = await organizationModelKey(account.organizationId);
   if (!key) return null;
   try {
     const notes = await readAttachments(
