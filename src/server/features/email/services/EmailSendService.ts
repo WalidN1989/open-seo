@@ -1,3 +1,4 @@
+import type { MailAttachment } from "@/shared/mail-bridge";
 import { EmailRepository as Repo } from "../repositories/EmailRepository";
 import { requireConnectedAccount } from "./EmailService";
 
@@ -18,6 +19,7 @@ async function sendFromConnectedMailbox(
     text: string;
     html?: string;
     authoredBy: string | null;
+    attachments?: MailAttachment[];
   },
 ) {
   const account = await Repo.getAccount(organizationId);

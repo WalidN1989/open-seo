@@ -447,6 +447,11 @@ async function sendThroughResend(
       text: request.text,
       html: request.html,
       headers,
+      attachments: request.attachments?.map((file) => ({
+        filename: file.filename,
+        content: file.contentBase64,
+        content_type: file.contentType,
+      })),
     }),
     signal: AbortSignal.timeout(30_000),
   });
@@ -486,6 +491,11 @@ async function send(request: BridgeSendRequest) {
     html: request.html,
     inReplyTo: request.inReplyTo ? `<${request.inReplyTo}>` : undefined,
     references: request.references?.map((id) => `<${id}>`).join(" "),
+    attachments: request.attachments?.map((file) => ({
+      filename: file.filename,
+      contentType: file.contentType,
+      content: Buffer.from(file.contentBase64, "base64"),
+    })),
   });
   const message = composer.compile();
   const messageId = message.messageId();

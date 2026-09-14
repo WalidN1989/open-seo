@@ -239,6 +239,11 @@ export function agentmailClient(apiKey: string, fetcher: typeof fetch = fetch) {
         text?: string;
         html?: string;
         labels?: string[];
+        attachments?: {
+          filename: string;
+          content_type: string;
+          content: string;
+        }[];
       },
     ) =>
       call<AgentmailSendResult>(

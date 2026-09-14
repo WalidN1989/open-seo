@@ -2,6 +2,7 @@ import { AppError } from "@/server/lib/errors";
 import { decryptCredentials } from "@/server/lib/connection-secrets";
 import { getResendConfig } from "@/server/email/resend";
 import type {
+  MailAttachment,
   MailboxCredentials,
   MailboxTransport,
 } from "@/shared/mail-bridge";
@@ -36,6 +37,7 @@ type Outbound = {
       subject: string;
       text: string;
       html?: string;
+      attachments?: MailAttachment[];
     } & Copies,
   ): Promise<{ message_id: string; thread_id: string }>;
 };
@@ -61,7 +63,7 @@ function agentmailOutbound(account: EmailAccountRow, apiKey: string): Outbound {
         bcc,
       });
     },
-    compose: ({ to, subject, text, html, cc, bcc }) =>
+    compose: ({ to, subject, text, html, cc, bcc, attachments }) =>
       client.sendMessage(inboxId, {
         to: [to],
         cc,
@@ -69,6 +71,11 @@ function agentmailOutbound(account: EmailAccountRow, apiKey: string): Outbound {
         subject,
         text,
         html: html ?? textToHtml(text),
+        attachments: attachments?.map((file) => ({
+          filename: file.filename,
+          content_type: file.contentType,
+          content: file.contentBase64,
+        })),
       }),
   };
 }
@@ -115,7 +122,7 @@ function mailboxOutbound(
       });
       return { message_id: sent.messageId, thread_id: thread.externalThreadId };
     },
-    compose: async ({ to, subject, text, html, cc, bcc }) => {
+    compose: async ({ to, subject, text, html, cc, bcc, attachments }) => {
       const sent = await sendViaMailbox({
         ...via,
         credentials,
@@ -126,6 +133,7 @@ function mailboxOutbound(
         subject,
         text,
         html: html ?? textToHtml(text),
+        attachments,
       });
       return { message_id: sent.messageId, thread_id: sent.messageId };
     },

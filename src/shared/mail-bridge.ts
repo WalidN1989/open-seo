@@ -79,6 +79,13 @@ export type BridgeInboundMessage = {
   date: string;
 };
 
+/** A file sent with a message, base64 so it survives the JSON hop. */
+export type MailAttachment = {
+  filename: string;
+  contentType: string;
+  contentBase64: string;
+};
+
 export type BridgeSendRequest = {
   credentials: MailboxCredentials;
   transport: MailboxTransport;
@@ -93,6 +100,7 @@ export type BridgeSendRequest = {
   html?: string;
   inReplyTo?: string;
   references?: string[];
+  attachments?: MailAttachment[];
 };
 
 export type BridgeSendResult = { messageId: string };
