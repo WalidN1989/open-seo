@@ -11,12 +11,8 @@ import { formatMoney } from "@/server/features/invoicing/invoiceTotals";
 import { settingsOrDefaults } from "@/server/features/invoicing/issuer";
 import { InvoiceRepository } from "@/server/features/invoicing/repositories/InvoiceRepository";
 import { getOptionalEnvValue } from "@/server/lib/runtime-env";
-import {
-  inWorkingHours,
-  nextChaseStep,
-  writeChaser,
-  type ChaseStep,
-} from "../quoteChaser";
+import { inWorkingHours } from "@/server/lib/working-hours";
+import { nextChaseStep, writeChaser, type ChaseStep } from "../quoteChaser";
 import { QuoteChaserRepository as Chaser } from "../repositories/QuoteChaserRepository";
 import {
   QuoteRepository,

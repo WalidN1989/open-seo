@@ -15,6 +15,7 @@ import {
   WhatsappWorkspace,
 } from "@/client/features/business-modules/CommunicationsWorkspace";
 import { EmailWorkspace } from "@/client/features/business-modules/email/EmailWorkspace";
+import { SmsWorkspace } from "@/client/features/business-modules/sms/SmsWorkspace";
 import { SocialWorkspace } from "@/client/features/business-modules/social/SocialWorkspace";
 import { InvoicingWorkspace } from "@/client/features/business-modules/invoicing/InvoicingWorkspace";
 import { ClientAccountsWorkspace } from "@/client/features/business-modules/clients/ClientAccountsWorkspace";
@@ -42,6 +43,12 @@ const capabilities: Record<BusinessModuleKey, readonly string[]> = {
     "Templates, campaigns, and automations",
     "AI assistance and order requests",
     "Delivery state and reporting",
+  ],
+  sms: [
+    "Two-way texts from your Twilio number",
+    "Each conversation linked to its CRM contact",
+    "STOP replies honoured automatically",
+    "Agent follow-ups within daily limits",
   ],
   voice: [
     "Provider-neutral agent configuration",
@@ -139,6 +146,7 @@ function BusinessModulePage() {
           <>
             {moduleKey === "leads" ? <LeadsWorkspace /> : null}
             {moduleKey === "whatsapp" ? <WhatsappWorkspace /> : null}
+            {moduleKey === "sms" ? <SmsWorkspace /> : null}
             {moduleKey === "voice" ? <VoiceWorkspace /> : null}
             {moduleKey === "email" ? <EmailWorkspace /> : null}
             {moduleKey === "social" ? <SocialWorkspace /> : null}

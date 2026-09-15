@@ -12,7 +12,7 @@ import { ProviderConnectPanel } from "./ProviderConnectPanel";
 import { CatalogueSyncPanel } from "./CatalogueSyncPanel";
 import { verifyConnection } from "./verifyConnection";
 import { getStandardErrorMessage } from "@/client/lib/error-messages";
-import { ElevenLabsAddresses } from "./ElevenLabsAddresses";
+import { ElevenLabsAddresses, SmsWebhookAddress } from "./ElevenLabsAddresses";
 
 const WORKSPACE_KEY = ["integrations", "workspace"];
 
@@ -164,6 +164,10 @@ export function IntegrationProviderDetailView() {
                 Check now
               </button>
             </div>
+          ) : null}
+
+          {entry.key === "twilio_sms" && connection ? (
+            <SmsWebhookAddress connectionId={connection.id} />
           ) : null}
 
           {entry.key === "elevenlabs" && connection ? (

@@ -54,6 +54,7 @@ import { Route as AppModulesIntegrationsIndexRouteImport } from './routes/_app/m
 import { Route as AppModulesCrmIndexRouteImport } from './routes/_app/modules/crm/index'
 import { Route as ApiVoiceElevenlabsConnectionIdRouteImport } from './routes/api/voice/elevenlabs/$connectionId'
 import { Route as ApiVoiceElevenlabsCallerConnectionIdRouteImport } from './routes/api/voice/elevenlabs-caller/$connectionId'
+import { Route as ApiSmsTwilioConnectionIdRouteImport } from './routes/api/sms/twilio/$connectionId'
 import { Route as ApiQuotesQuoteIdPdfRouteImport } from './routes/api/quotes/$quoteId/pdf'
 import { Route as ApiGscOauthCallbackRouteImport } from './routes/api/gsc/oauth/callback'
 import { Route as ApiGa4OauthCallbackRouteImport } from './routes/api/ga4/oauth/callback'
@@ -73,6 +74,7 @@ import { Route as AppModulesLeadsLeadIdRouteImport } from './routes/_app/modules
 import { Route as AppModulesIntegrationsConnectionsRouteImport } from './routes/_app/modules/integrations/connections'
 import { Route as AppModulesIntegrationsProviderKeyRouteImport } from './routes/_app/modules/integrations.$providerKey'
 import { Route as AppModulesCrmSourcesRouteImport } from './routes/_app/modules/crm/sources'
+import { Route as AppModulesCrmSmsRouteImport } from './routes/_app/modules/crm/sms'
 import { Route as AppModulesCrmQuotationsRouteImport } from './routes/_app/modules/crm/quotations'
 import { Route as AppModulesCrmProductsRouteImport } from './routes/_app/modules/crm/products'
 import { Route as AppModulesCrmOrdersRouteImport } from './routes/_app/modules/crm/orders'
@@ -322,6 +324,12 @@ const ApiVoiceElevenlabsCallerConnectionIdRoute =
     path: '/api/voice/elevenlabs-caller/$connectionId',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiSmsTwilioConnectionIdRoute =
+  ApiSmsTwilioConnectionIdRouteImport.update({
+    id: '/api/sms/twilio/$connectionId',
+    path: '/api/sms/twilio/$connectionId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiQuotesQuoteIdPdfRoute = ApiQuotesQuoteIdPdfRouteImport.update({
   id: '/api/quotes/$quoteId/pdf',
   path: '/api/quotes/$quoteId/pdf',
@@ -424,6 +432,11 @@ const AppModulesIntegrationsProviderKeyRoute =
 const AppModulesCrmSourcesRoute = AppModulesCrmSourcesRouteImport.update({
   id: '/sources',
   path: '/sources',
+  getParentRoute: () => AppModulesCrmRoute,
+} as any)
+const AppModulesCrmSmsRoute = AppModulesCrmSmsRouteImport.update({
+  id: '/sms',
+  path: '/sms',
   getParentRoute: () => AppModulesCrmRoute,
 } as any)
 const AppModulesCrmQuotationsRoute = AppModulesCrmQuotationsRouteImport.update({
@@ -578,6 +591,7 @@ export interface FileRoutesByFullPath {
   '/modules/crm/orders': typeof AppModulesCrmOrdersRoute
   '/modules/crm/products': typeof AppModulesCrmProductsRouteWithChildren
   '/modules/crm/quotations': typeof AppModulesCrmQuotationsRoute
+  '/modules/crm/sms': typeof AppModulesCrmSmsRoute
   '/modules/crm/sources': typeof AppModulesCrmSourcesRoute
   '/modules/integrations/$providerKey': typeof AppModulesIntegrationsProviderKeyRoute
   '/modules/integrations/connections': typeof AppModulesIntegrationsConnectionsRoute
@@ -597,6 +611,7 @@ export interface FileRoutesByFullPath {
   '/api/ga4/oauth/callback': typeof ApiGa4OauthCallbackRoute
   '/api/gsc/oauth/callback': typeof ApiGscOauthCallbackRoute
   '/api/quotes/$quoteId/pdf': typeof ApiQuotesQuoteIdPdfRoute
+  '/api/sms/twilio/$connectionId': typeof ApiSmsTwilioConnectionIdRoute
   '/api/voice/elevenlabs-caller/$connectionId': typeof ApiVoiceElevenlabsCallerConnectionIdRoute
   '/api/voice/elevenlabs/$connectionId': typeof ApiVoiceElevenlabsConnectionIdRoute
   '/modules/crm/': typeof AppModulesCrmIndexRoute
@@ -655,6 +670,7 @@ export interface FileRoutesByTo {
   '/modules/crm/orders': typeof AppModulesCrmOrdersRoute
   '/modules/crm/products': typeof AppModulesCrmProductsRouteWithChildren
   '/modules/crm/quotations': typeof AppModulesCrmQuotationsRoute
+  '/modules/crm/sms': typeof AppModulesCrmSmsRoute
   '/modules/crm/sources': typeof AppModulesCrmSourcesRoute
   '/modules/integrations/$providerKey': typeof AppModulesIntegrationsProviderKeyRoute
   '/modules/integrations/connections': typeof AppModulesIntegrationsConnectionsRoute
@@ -671,6 +687,7 @@ export interface FileRoutesByTo {
   '/api/ga4/oauth/callback': typeof ApiGa4OauthCallbackRoute
   '/api/gsc/oauth/callback': typeof ApiGscOauthCallbackRoute
   '/api/quotes/$quoteId/pdf': typeof ApiQuotesQuoteIdPdfRoute
+  '/api/sms/twilio/$connectionId': typeof ApiSmsTwilioConnectionIdRoute
   '/api/voice/elevenlabs-caller/$connectionId': typeof ApiVoiceElevenlabsCallerConnectionIdRoute
   '/api/voice/elevenlabs/$connectionId': typeof ApiVoiceElevenlabsConnectionIdRoute
   '/modules/crm': typeof AppModulesCrmIndexRoute
@@ -738,6 +755,7 @@ export interface FileRoutesById {
   '/_app/modules/crm/orders': typeof AppModulesCrmOrdersRoute
   '/_app/modules/crm/products': typeof AppModulesCrmProductsRouteWithChildren
   '/_app/modules/crm/quotations': typeof AppModulesCrmQuotationsRoute
+  '/_app/modules/crm/sms': typeof AppModulesCrmSmsRoute
   '/_app/modules/crm/sources': typeof AppModulesCrmSourcesRoute
   '/_app/modules/integrations/$providerKey': typeof AppModulesIntegrationsProviderKeyRoute
   '/_app/modules/integrations/connections': typeof AppModulesIntegrationsConnectionsRoute
@@ -757,6 +775,7 @@ export interface FileRoutesById {
   '/api/ga4/oauth/callback': typeof ApiGa4OauthCallbackRoute
   '/api/gsc/oauth/callback': typeof ApiGscOauthCallbackRoute
   '/api/quotes/$quoteId/pdf': typeof ApiQuotesQuoteIdPdfRoute
+  '/api/sms/twilio/$connectionId': typeof ApiSmsTwilioConnectionIdRoute
   '/api/voice/elevenlabs-caller/$connectionId': typeof ApiVoiceElevenlabsCallerConnectionIdRoute
   '/api/voice/elevenlabs/$connectionId': typeof ApiVoiceElevenlabsConnectionIdRoute
   '/_app/modules/crm/': typeof AppModulesCrmIndexRoute
@@ -821,6 +840,7 @@ export interface FileRouteTypes {
     | '/modules/crm/orders'
     | '/modules/crm/products'
     | '/modules/crm/quotations'
+    | '/modules/crm/sms'
     | '/modules/crm/sources'
     | '/modules/integrations/$providerKey'
     | '/modules/integrations/connections'
@@ -840,6 +860,7 @@ export interface FileRouteTypes {
     | '/api/ga4/oauth/callback'
     | '/api/gsc/oauth/callback'
     | '/api/quotes/$quoteId/pdf'
+    | '/api/sms/twilio/$connectionId'
     | '/api/voice/elevenlabs-caller/$connectionId'
     | '/api/voice/elevenlabs/$connectionId'
     | '/modules/crm/'
@@ -898,6 +919,7 @@ export interface FileRouteTypes {
     | '/modules/crm/orders'
     | '/modules/crm/products'
     | '/modules/crm/quotations'
+    | '/modules/crm/sms'
     | '/modules/crm/sources'
     | '/modules/integrations/$providerKey'
     | '/modules/integrations/connections'
@@ -914,6 +936,7 @@ export interface FileRouteTypes {
     | '/api/ga4/oauth/callback'
     | '/api/gsc/oauth/callback'
     | '/api/quotes/$quoteId/pdf'
+    | '/api/sms/twilio/$connectionId'
     | '/api/voice/elevenlabs-caller/$connectionId'
     | '/api/voice/elevenlabs/$connectionId'
     | '/modules/crm'
@@ -980,6 +1003,7 @@ export interface FileRouteTypes {
     | '/_app/modules/crm/orders'
     | '/_app/modules/crm/products'
     | '/_app/modules/crm/quotations'
+    | '/_app/modules/crm/sms'
     | '/_app/modules/crm/sources'
     | '/_app/modules/integrations/$providerKey'
     | '/_app/modules/integrations/connections'
@@ -999,6 +1023,7 @@ export interface FileRouteTypes {
     | '/api/ga4/oauth/callback'
     | '/api/gsc/oauth/callback'
     | '/api/quotes/$quoteId/pdf'
+    | '/api/sms/twilio/$connectionId'
     | '/api/voice/elevenlabs-caller/$connectionId'
     | '/api/voice/elevenlabs/$connectionId'
     | '/_app/modules/crm/'
@@ -1040,6 +1065,7 @@ export interface RootRouteChildren {
   ApiGa4OauthCallbackRoute: typeof ApiGa4OauthCallbackRoute
   ApiGscOauthCallbackRoute: typeof ApiGscOauthCallbackRoute
   ApiQuotesQuoteIdPdfRoute: typeof ApiQuotesQuoteIdPdfRoute
+  ApiSmsTwilioConnectionIdRoute: typeof ApiSmsTwilioConnectionIdRoute
   ApiVoiceElevenlabsCallerConnectionIdRoute: typeof ApiVoiceElevenlabsCallerConnectionIdRoute
   ApiVoiceElevenlabsConnectionIdRoute: typeof ApiVoiceElevenlabsConnectionIdRoute
 }
@@ -1361,6 +1387,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiVoiceElevenlabsCallerConnectionIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/sms/twilio/$connectionId': {
+      id: '/api/sms/twilio/$connectionId'
+      path: '/api/sms/twilio/$connectionId'
+      fullPath: '/api/sms/twilio/$connectionId'
+      preLoaderRoute: typeof ApiSmsTwilioConnectionIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/quotes/$quoteId/pdf': {
       id: '/api/quotes/$quoteId/pdf'
       path: '/api/quotes/$quoteId/pdf'
@@ -1492,6 +1525,13 @@ declare module '@tanstack/react-router' {
       path: '/sources'
       fullPath: '/modules/crm/sources'
       preLoaderRoute: typeof AppModulesCrmSourcesRouteImport
+      parentRoute: typeof AppModulesCrmRoute
+    }
+    '/_app/modules/crm/sms': {
+      id: '/_app/modules/crm/sms'
+      path: '/sms'
+      fullPath: '/modules/crm/sms'
+      preLoaderRoute: typeof AppModulesCrmSmsRouteImport
       parentRoute: typeof AppModulesCrmRoute
     }
     '/_app/modules/crm/quotations': {
@@ -1653,6 +1693,7 @@ interface AppModulesCrmRouteChildren {
   AppModulesCrmOrdersRoute: typeof AppModulesCrmOrdersRoute
   AppModulesCrmProductsRoute: typeof AppModulesCrmProductsRouteWithChildren
   AppModulesCrmQuotationsRoute: typeof AppModulesCrmQuotationsRoute
+  AppModulesCrmSmsRoute: typeof AppModulesCrmSmsRoute
   AppModulesCrmSourcesRoute: typeof AppModulesCrmSourcesRoute
   AppModulesCrmIndexRoute: typeof AppModulesCrmIndexRoute
 }
@@ -1667,6 +1708,7 @@ const AppModulesCrmRouteChildren: AppModulesCrmRouteChildren = {
   AppModulesCrmOrdersRoute: AppModulesCrmOrdersRoute,
   AppModulesCrmProductsRoute: AppModulesCrmProductsRouteWithChildren,
   AppModulesCrmQuotationsRoute: AppModulesCrmQuotationsRoute,
+  AppModulesCrmSmsRoute: AppModulesCrmSmsRoute,
   AppModulesCrmSourcesRoute: AppModulesCrmSourcesRoute,
   AppModulesCrmIndexRoute: AppModulesCrmIndexRoute,
 }
@@ -1911,6 +1953,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiGa4OauthCallbackRoute: ApiGa4OauthCallbackRoute,
   ApiGscOauthCallbackRoute: ApiGscOauthCallbackRoute,
   ApiQuotesQuoteIdPdfRoute: ApiQuotesQuoteIdPdfRoute,
+  ApiSmsTwilioConnectionIdRoute: ApiSmsTwilioConnectionIdRoute,
   ApiVoiceElevenlabsCallerConnectionIdRoute:
     ApiVoiceElevenlabsCallerConnectionIdRoute,
   ApiVoiceElevenlabsConnectionIdRoute: ApiVoiceElevenlabsConnectionIdRoute,

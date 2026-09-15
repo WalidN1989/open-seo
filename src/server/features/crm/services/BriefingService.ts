@@ -24,6 +24,7 @@ async function getBriefing(
     followUpsDue,
     remindersWaiting,
     whatsapp,
+    sms,
   ] = await Promise.all([
     Repo.calls(organizationId, since),
     Repo.newLeads(organizationId, since),
@@ -33,6 +34,7 @@ async function getBriefing(
     Repo.followUpsDue(organizationId, endOfToday),
     Repo.remindersWaiting(organizationId, now),
     Repo.whatsapp(organizationId, since),
+    Repo.sms(organizationId, since),
   ]);
   return buildBriefing({
     since,
@@ -45,6 +47,7 @@ async function getBriefing(
     followUpsDue,
     remindersWaiting,
     whatsapp,
+    sms,
   });
 }
 

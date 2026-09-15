@@ -1,3 +1,4 @@
+import { optOutChange } from "../outreachRules";
 /* oxlint-disable max-lines */
 import { and, count, desc, eq, isNotNull, lte, sql } from "drizzle-orm";
 import { db } from "@/db";
@@ -145,6 +146,18 @@ async function ingestWhatsappMessage(
         lastMessageAt: message.receivedAt,
         status: sql`case when ${whatsappConversations.status} = 'pending' then 'pending' else 'open' end`,
       })
+      .where(
+        and(
+          eq(whatsappConversations.id, conversationId),
+          eq(whatsappConversations.organizationId, connection.organizationId),
+        ),
+      );
+  }
+  const optOut = optOutChange(message.body ?? null);
+  if (optOut) {
+    await db
+      .update(whatsappConversations)
+      .set({ optedOutAt: optOut === "out" ? message.receivedAt : null })
       .where(
         and(
           eq(whatsappConversations.id, conversationId),

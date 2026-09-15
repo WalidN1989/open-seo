@@ -372,6 +372,51 @@ export const integrationCatalogue: readonly IntegrationCatalogueEntry[] = [
     ],
   },
   {
+    key: "twilio_sms",
+    name: "Twilio SMS",
+    tagline: "Two-way texts from your Twilio number, inside the CRM",
+    description:
+      "Texts customers send to your Twilio number arrive in the SMS inbox, linked to their CRM contact, and your team (or an agent, within daily limits) can text back. STOP replies are honoured.",
+    category: "channels",
+    state: "connectable",
+    credentialFields: [
+      {
+        key: "ACCOUNT_SID",
+        label: "Account SID",
+        type: "text",
+        required: true,
+        placeholder: "AC…",
+        help: "Twilio Console → Account info, for the account that owns the number.",
+      },
+      {
+        key: "AUTH_TOKEN",
+        label: "Auth Token",
+        type: "secret",
+        required: true,
+        help: "Twilio Console → Account info. Used to send texts and to check Twilio really sent each webhook.",
+      },
+      {
+        key: "PHONE_NUMBER",
+        label: "SMS number",
+        type: "text",
+        required: true,
+        placeholder: "+19412974258",
+        help: "The Twilio number texts go from, in international format.",
+      },
+    ],
+    capabilities: [
+      "two-way SMS inbox",
+      "texts on the CRM lead page",
+      "STOP opt-outs",
+    ],
+    howToConnect: [
+      "Enter the Account SID, Auth Token and number, then click Connect.",
+      "Copy the SMS webhook address shown on this page.",
+      "In Twilio, open the number → Messaging configuration → A message comes in: paste the address, method HTTP POST, and save.",
+      "Click Check now here to confirm the credentials, then text the number to test.",
+    ],
+  },
+  {
     key: "custom",
     name: "Custom API",
     tagline: "Bring your own adapter",

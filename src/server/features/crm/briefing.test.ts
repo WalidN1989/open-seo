@@ -26,6 +26,7 @@ const empty: BriefingData = {
   followUpsDue: [],
   remindersWaiting: [],
   whatsapp: { messages: 0, chats: 0, waitingForPerson: 0 },
+  sms: { messages: 0, conversations: 0 },
 };
 
 describe("buildBriefing", () => {

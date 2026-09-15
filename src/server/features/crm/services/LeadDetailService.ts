@@ -1,3 +1,4 @@
+import { SmsRepository } from "@/server/features/sms/repositories/SmsRepository";
 import { BusinessAuditRepository } from "@/server/features/business-modules/repositories/BusinessAuditRepository";
 import { BusinessModuleRepository } from "@/server/features/business-modules/repositories/BusinessModuleRepository";
 import { BusinessModuleService } from "@/server/features/business-modules/services/BusinessModuleService";
@@ -11,6 +12,7 @@ import { CrmService } from "./CrmService";
 const KIND_LABEL: Record<LogLeadActivityInput["activityType"], string> = {
   call: "Call",
   whatsapp: "WhatsApp",
+  sms: "SMS",
   meeting: "Meeting",
   email: "Email",
   visit: "Site visit",
@@ -36,16 +38,28 @@ async function getLeadDetail(
   const phones = [contact?.phone, contact?.whatsappPhone].filter(
     (value): value is string => Boolean(value),
   );
-  const [stages, activities, calls, whatsapp, emails, reminders] =
+  const [stages, activities, calls, whatsapp, sms, emails, reminders] =
     await Promise.all([
       CrmService.ensureStages(organizationId),
       CrmRepository.listActivities(organizationId, leadId),
       Repo.listCalls(organizationId, leadId),
       contact ? Repo.listWhatsapp(organizationId, contact.id, phones) : [],
+      contact
+        ? SmsRepository.listForContact(organizationId, contact.id, phones)
+        : [],
       contact?.email ? Repo.listEmails(organizationId, contact.email) : [],
       ReminderRepository.listPendingForLead(organizationId, leadId),
     ]);
-  return { ...row, stages, activities, calls, whatsapp, emails, reminders };
+  return {
+    ...row,
+    stages,
+    activities,
+    calls,
+    whatsapp,
+    sms,
+    emails,
+    reminders,
+  };
 }
 
 async function logActivity(

@@ -484,6 +484,13 @@
       "when": 1789417680671,
       "tag": "0068_good_khan",
       "breakpoints": true
+    },
+    {
+      "idx": 69,
+      "version": "7",
+      "when": 1789447204040,
+      "tag": "0069_same_winter_soldier",
+      "breakpoints": true
     }
   ]
 }

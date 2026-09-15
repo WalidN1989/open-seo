@@ -26,6 +26,19 @@ function whatsappEntry(message: LeadDetail["whatsapp"][number]): JournalEntry {
   };
 }
 
+function smsEntry(message: LeadDetail["sms"][number]): JournalEntry {
+  const inbound = message.direction === "inbound";
+  return {
+    id: `sms:${message.id}`,
+    kind: "sms",
+    title: inbound ? "SMS received" : "SMS sent",
+    body: message.body,
+    outcome: inbound ? null : message.status === "failed" ? "failed" : null,
+    at: message.occurredAt,
+    automated: true,
+  };
+}
+
 function emailEntry(message: LeadDetail["emails"][number]): JournalEntry {
   const inbound = message.direction === "inbound";
   return {
@@ -74,6 +87,7 @@ export function buildJournal(detail: LeadDetail): JournalEntry[] {
   return [
     ...activities,
     ...detail.whatsapp.map(whatsappEntry),
+    ...detail.sms.map(smsEntry),
     ...emails,
   ].toSorted((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime());
 }

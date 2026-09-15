@@ -21,6 +21,8 @@ const reports = source("tools/report-tools.ts");
 const email = source("tools/email-tools.ts");
 const quotes = source("tools/quote-tools.ts");
 const crm = source("tools/crm-tools.ts");
+const whatsapp = source("tools/whatsapp-tools.ts");
+const sms = source("tools/sms-tools.ts");
 const server = source("server.ts");
 
 function declaredToolNames(text: string) {
@@ -151,6 +153,38 @@ describe("the CRM MCP surface", () => {
   });
 });
 
+describe("the WhatsApp MCP surface", () => {
+  it("reads chats and follows up only through the rule-checked service", () => {
+    expect(declaredToolNames(whatsapp).toSorted()).toEqual([
+      "get_whatsapp_chat",
+      "list_whatsapp_chats",
+      "send_whatsapp_reply",
+      "send_whatsapp_template",
+    ]);
+    // Sends go through WhatsappAgentService, which applies outreachDecision;
+    // calling the raw provider or the unchecked service would skip the rules.
+    expect(whatsapp).not.toContain("sendWhatsappText");
+    expect(whatsapp).not.toContain("CommunicationsService.sendWhatsappMessage");
+    for (const name of declaredToolNames(whatsapp)) {
+      expect(name).not.toMatch(/campaign|template_create|connect|delete/);
+    }
+  });
+});
+
+describe("the SMS MCP surface", () => {
+  it("reads conversations and texts back only through the rule-checked send", () => {
+    expect(declaredToolNames(sms).toSorted()).toEqual([
+      "get_sms_conversation",
+      "list_sms_conversations",
+      "send_sms",
+    ]);
+    // agentSend applies outreachDecision; the person-facing send does not.
+    expect(sms).toContain("SmsService.agentSend");
+    expect(sms).not.toContain("SmsService.send(");
+    expect(sms).not.toContain("sendTwilioSms");
+  });
+});
+
 describe("the module registry", () => {
   it("registers every surface it declares", () => {
     const surfaces = [...server.matchAll(/^\s*(\w+Surface),$/gm)].map(
@@ -163,11 +197,22 @@ describe("the module registry", () => {
       "optimizationsSurface",
       "quoteSurface",
       "reportSurface",
+      "smsSurface",
+      "whatsappSurface",
     ]);
   });
 
   it("makes each module state what it withholds and why", () => {
-    for (const text of [optimizations, invoices, reports, email, quotes, crm]) {
+    for (const text of [
+      optimizations,
+      invoices,
+      reports,
+      email,
+      quotes,
+      crm,
+      whatsapp,
+      sms,
+    ]) {
       const withheld = text.slice(text.indexOf("withheld:"));
       expect(withheld).toContain("action:");
       expect(withheld).toContain("because:");

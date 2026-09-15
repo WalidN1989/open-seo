@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { inWorkingHours, nextChaseStep, plainChaser } from "./quoteChaser";
+import { inWorkingHours } from "@/server/lib/working-hours";
+import { nextChaseStep, plainChaser } from "./quoteChaser";
 
 const sentAt = "2026-09-14T01:00:00.000Z";
 const daysLater = (days: number) =>
@@ -73,5 +74,6 @@ describe("plainChaser", () => {
     expect(text).toContain("QUO-0002 for Local Citations Starter ($79.00 AUD)");
     expect(text).toContain("valid until 14 October");
     expect(text).toContain("https://app.test/quotes/q?t=x");
+    expect(text).toContain("just reply and let us know");
   });
 });

@@ -343,7 +343,7 @@ const businessBriefingTool = {
   config: {
     title: "Business briefing: what needs a person, what happened",
     description:
-      "One read for a twice-daily round. Needs you: reminders due, accepted quotes, email replies waiting for approval, WhatsApp chats waiting for a person, unsent draft quotes, follow-ups due, quotes about to expire. What happened: calls, new leads, customer emails (and whether they sent photos), assistant replies, quotes and follow-up emails sent, declines, WhatsApp volume. Waiting on customers: every sent quote with its age and follow-ups. Use get_lead to dig into one.",
+      "One read for a twice-daily round. Needs you: reminders due, accepted quotes, email replies waiting for approval, WhatsApp chats waiting for a person, unsent draft quotes, follow-ups due, quotes about to expire. What happened: calls, new leads, customer emails (and whether they sent photos), assistant replies, quotes and follow-up emails sent, declines, WhatsApp and SMS volume. Waiting on customers: every sent quote with its age and follow-ups. Use get_lead to dig into one.",
     inputSchema: briefingInput,
     outputSchema: {
       needsYou: z.array(z.string()),

@@ -52,6 +52,7 @@ export type BriefingData = {
     remindAt: string;
   }>;
   whatsapp: { messages: number; chats: number; waitingForPerson: number };
+  sms: { messages: number; conversations: number };
 };
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -178,6 +179,11 @@ export function buildBriefing(data: BriefingData) {
       ? [`${followUps.length} quote follow-up email(s) sent.`]
       : []),
     ...declined.map((quote) => `${quote.clientName} declined ${quote.number}.`),
+    ...(data.sms.messages
+      ? [
+          `${data.sms.messages} SMS in from ${data.sms.conversations} conversation(s).`,
+        ]
+      : []),
     ...(data.whatsapp.messages
       ? [
           `${data.whatsapp.messages} WhatsApp message(s) in from ${data.whatsapp.chats} chat(s).`,

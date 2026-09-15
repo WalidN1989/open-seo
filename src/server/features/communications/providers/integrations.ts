@@ -172,6 +172,22 @@ export async function testIntegrationConnection(
         providerKey: connection.providerKey,
         detail: "Webhook secret is stored; calls arrive when ElevenLabs posts",
       };
+    case "twilio_sms": {
+      const [accountSid, authToken, number] = await Promise.all([
+        credentialValue(connection, "ACCOUNT_SID"),
+        credentialValue(connection, "AUTH_TOKEN"),
+        credentialValue(connection, "PHONE_NUMBER"),
+      ]);
+      await checkedJson(
+        `https://api.twilio.com/2010-04-01/Accounts/${encodeURIComponent(accountSid)}.json`,
+        { Authorization: `Basic ${btoa(`${accountSid}:${authToken}`)}` },
+        fetcher,
+      );
+      return {
+        providerKey: connection.providerKey,
+        detail: `Twilio account authenticated; texts go from ${number}`,
+      };
+    }
     case "make":
       await credentialValue(connection, "SIGNING_SECRET");
       return {

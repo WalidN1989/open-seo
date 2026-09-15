@@ -44,24 +44,6 @@ export function nextChaseStep(quote: ChaseState, now: Date): ChaseStep | null {
   return null;
 }
 
-/** Monday to Friday, 9am to 5pm where the business is. */
-export function inWorkingHours(now: Date, timeZone: string) {
-  let parts: Intl.DateTimeFormatPart[];
-  try {
-    parts = new Intl.DateTimeFormat("en-AU", {
-      timeZone,
-      weekday: "short",
-      hour: "numeric",
-      hourCycle: "h23",
-    }).formatToParts(now);
-  } catch {
-    return false;
-  }
-  const weekday = parts.find((part) => part.type === "weekday")?.value ?? "";
-  const hour = Number(parts.find((part) => part.type === "hour")?.value);
-  return !["Sat", "Sun"].includes(weekday) && hour >= 9 && hour < 17;
-}
-
 type ChaserInput = {
   step: "first" | "second";
   firstName: string | null;
@@ -84,6 +66,13 @@ function longDate(iso: string) {
       });
 }
 
+/**
+ * Every follow-up says how to stop them. The Spam Act asks for a working way
+ * to opt out, and any reply already ends the follow-ups.
+ */
+const OPT_OUT_LINE =
+  "If you'd rather we didn't follow up, just reply and let us know and we won't email about this again.";
+
 /** The follow-up written without a model; always good enough to send. */
 export function plainChaser(input: ChaserInput) {
   const hello = `Hi ${input.firstName?.trim() || "there"},`;
@@ -96,6 +85,7 @@ export function plainChaser(input: ChaserInput) {
     hello,
     body,
     `You can view the quotation here: ${input.viewUrl}`,
+    OPT_OUT_LINE,
     `Kind regards,\n${input.businessName}`,
   ].join("\n\n");
 }
@@ -108,7 +98,9 @@ Rules:
 - Mention the quotation number and what it is for. Only use the facts given; never change the price, offer a discount or invent a deadline.
 - First follow-up: a friendly check-in asking whether they have any questions.
 - Second follow-up: a last gentle note, mention the valid-until date, and make it easy to say yes or "not now".
-- Put the quotation link on its own line near the end, then sign off with the business name.
+- Put the quotation link on its own line near the end.
+- After the link, include this sentence exactly: "If you'd rather we didn't follow up, just reply and let us know and we won't email about this again."
+- Then sign off with the business name.
 
 Reply with the email body only.`;
 
@@ -157,7 +149,11 @@ export async function writeChaser(
       .join("\n")
       .trim();
     // A reply that lost the link or the quote number is not the one to send.
-    if (text.includes(input.viewUrl) && text.includes(input.number)) {
+    if (
+      text.includes(input.viewUrl) &&
+      text.includes(input.number) &&
+      text.includes(OPT_OUT_LINE)
+    ) {
       return { text, written: "model" };
     }
   } catch (error) {

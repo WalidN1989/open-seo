@@ -10,6 +10,7 @@ import {
   ReceiptText,
   ShieldCheck,
   Share2,
+  MessageSquareText,
 } from "lucide-react";
 import { getBusinessModuleAccess } from "@/serverFunctions/business-modules";
 import {
@@ -34,6 +35,7 @@ function hasIcon(key: string): key is keyof typeof MODULE_ICONS {
 const MODULE_ICONS = {
   crm: Blocks,
   whatsapp: MessagesSquare,
+  sms: MessageSquareText,
   voice: Bot,
   email: Mail,
   social: Share2,

@@ -584,6 +584,8 @@ export const whatsappConversations = sqliteTable(
     }),
     externalConversationId: text("external_conversation_id"),
     status: text("status").notNull().default("open"),
+    /** Set when the customer replied STOP; nothing is sent to them after. */
+    optedOutAt: text("opted_out_at"),
     lastMessageAt: text("last_message_at"),
     createdAt: createdAt(),
   },
@@ -748,6 +750,79 @@ export const whatsappInternalNotes = sqliteTable(
       table.organizationId,
       table.conversationId,
       table.createdAt,
+    ),
+  ],
+);
+
+/**
+ * SMS module. One conversation per customer number per SMS connection (a
+ * Twilio number saved as an integration), and its messages. Per organisation
+ * like every business module, so each business keeps its own texts.
+ */
+export const smsConversations = sqliteTable(
+  "sms_conversations",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    connectionId: text("connection_id")
+      .notNull()
+      .references(() => integrationConnections.id, { onDelete: "cascade" }),
+    /** The customer's number, E.164. */
+    phone: text("phone").notNull(),
+    contactId: text("contact_id").references(() => crmContacts.id, {
+      onDelete: "set null",
+    }),
+    status: text("status").notNull().default("open"),
+    /** Set when the customer replied STOP; nothing is sent to them after. */
+    optedOutAt: text("opted_out_at"),
+    lastMessageAt: text("last_message_at"),
+    lastInboundAt: text("last_inbound_at"),
+    lastOutboundAt: text("last_outbound_at"),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (table) => [
+    uniqueIndex("sms_conversations_connection_phone_idx").on(
+      table.connectionId,
+      table.phone,
+    ),
+    index("sms_conversations_org_last_idx").on(
+      table.organizationId,
+      table.lastMessageAt,
+    ),
+  ],
+);
+
+export const smsMessages = sqliteTable(
+  "sms_messages",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    conversationId: text("conversation_id")
+      .notNull()
+      .references(() => smsConversations.id, { onDelete: "cascade" }),
+    /** Twilio's message SID; null until the send is accepted. */
+    externalMessageId: text("external_message_id"),
+    direction: text("direction", { enum: ["inbound", "outbound"] }).notNull(),
+    body: text("body").notNull().default(""),
+    status: text("status").notNull(),
+    errorMessage: text("error_message"),
+    /** Who wrote an outbound text: a member id, or "agent:mcp". */
+    authoredBy: text("authored_by"),
+    occurredAt: text("occurred_at").notNull(),
+  },
+  (table) => [
+    uniqueIndex("sms_messages_org_external_idx").on(
+      table.organizationId,
+      table.externalMessageId,
+    ),
+    index("sms_messages_conversation_idx").on(
+      table.conversationId,
+      table.occurredAt,
     ),
   ],
 );

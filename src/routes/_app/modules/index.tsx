@@ -12,6 +12,7 @@ import {
   ReceiptText,
   ShieldCheck,
   Share2,
+  MessageSquareText,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -35,6 +36,7 @@ const icons = {
   leads: ContactRound,
   crm: Blocks,
   whatsapp: MessagesSquare,
+  sms: MessageSquareText,
   voice: Bot,
   email: Mail,
   social: Share2,

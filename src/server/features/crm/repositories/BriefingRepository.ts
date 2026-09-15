@@ -6,6 +6,7 @@ import {
   crmReminders,
   emailMessages,
   quotes,
+  smsMessages,
   voicePhoneCalls,
   whatsappConversations,
   whatsappMessages,
@@ -196,6 +197,26 @@ async function whatsapp(organizationId: string, since: string) {
   };
 }
 
+async function sms(organizationId: string, since: string) {
+  const [inbound] = await db
+    .select({
+      messages: sql<number>`count(*)`,
+      conversations: sql<number>`count(distinct ${smsMessages.conversationId})`,
+    })
+    .from(smsMessages)
+    .where(
+      and(
+        eq(smsMessages.organizationId, organizationId),
+        eq(smsMessages.direction, "inbound"),
+        gt(smsMessages.occurredAt, since),
+      ),
+    );
+  return {
+    messages: Number(inbound?.messages ?? 0),
+    conversations: Number(inbound?.conversations ?? 0),
+  };
+}
+
 export const BriefingRepository = {
   calls,
   newLeads,
@@ -205,4 +226,5 @@ export const BriefingRepository = {
   followUpsDue,
   remindersWaiting,
   whatsapp,
+  sms,
 };
