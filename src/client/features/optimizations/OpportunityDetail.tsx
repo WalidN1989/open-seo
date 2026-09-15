@@ -217,7 +217,7 @@ export function OpportunityDetail({
               <div className="space-y-3">
                 <div className="flex flex-wrap gap-2">
                   <button
-                    className="btn btn-success"
+                    className="btn btn-primary"
                     disabled={busy}
                     onClick={() =>
                       approve.mutate(opportunityId, {
@@ -250,7 +250,7 @@ export function OpportunityDetail({
                     onChange={(event) => setChangeNote(event.target.value)}
                   />
                   <button
-                    className="btn btn-warning btn-sm"
+                    className="btn btn-outline btn-sm"
                     disabled={busy || !changeNote.trim()}
                     onClick={() => {
                       requestChanges.mutate(
