@@ -16,6 +16,7 @@ describe("initiationResponse", () => {
       leadTitle: "Website build — Walid Nazmi",
     });
     expect(response.dynamic_variables).toEqual({
+      caller_channel: "phone",
       caller_known: "yes",
       caller_first_name: "Walid",
       caller_email_hint: "w…@example.com",

@@ -10,6 +10,10 @@ import { z } from "zod";
  * placeholders, which is what a website call (no lookup) falls back to.
  */
 export const CALLER_DEFAULTS = {
+  // Only a phone call is looked up, so an answer from here always means one.
+  // The agent's own placeholder says "website", which is what a widget call
+  // (never looked up) is left with.
+  caller_channel: "phone",
   caller_known: "no",
   caller_first_name: "",
   caller_email_hint: "",
@@ -66,6 +70,7 @@ export function initiationResponse(
   return {
     type: "conversation_initiation_client_data",
     dynamic_variables: {
+      caller_channel: "phone",
       caller_known: "yes",
       caller_first_name: firstName,
       caller_email_hint: emailHint(caller.email),

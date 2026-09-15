@@ -133,6 +133,7 @@ async function handToTeam(
   customer: Customer,
   inbound: EmailMessageRow,
   reason: string,
+  draftWaiting: boolean,
 ) {
   const title = `Email from ${customer.name} needs you`;
   await Customers.journal({
@@ -140,7 +141,9 @@ async function handToTeam(
     leadId: customer.leadId,
     contactId: customer.contactId,
     subject: `${title}: ${inbound.subject ?? "(no subject)"}`,
-    notes: `${reason}\n\nA draft reply is waiting in the Email module.`,
+    notes: draftWaiting
+      ? `${reason}\n\nA draft reply is waiting in the Email module.`
+      : `${reason}\n\nOpen the thread in the Email module to answer it.`,
     outcome: "need_followup",
   });
   const owner = await BusinessModuleRepository.findOwner(organizationId);
@@ -215,7 +218,10 @@ async function replyWithAssistant(
         organizationId,
         customer,
         inbound,
-        "The assistant could not write a reply.",
+        inbound.textBody?.trim() || inbound.attachmentNotes
+          ? "The assistant could not write a reply."
+          : "Their email had no text to answer (it may be empty, or only quote the earlier message).",
+        false,
       );
     }
     return;
@@ -274,7 +280,7 @@ async function replyWithAssistant(
   });
   await Repo.setThreadStatus(organizationId, threadRow.id, "pending");
   if (customer && holdReason) {
-    await handToTeam(organizationId, customer, inbound, holdReason);
+    await handToTeam(organizationId, customer, inbound, holdReason, true);
   }
 }
 
