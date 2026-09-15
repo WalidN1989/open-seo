@@ -18,8 +18,12 @@ const postSchema = z.object({
   status: z.string(),
 });
 
-function base(siteUrl: string) {
-  const url = new URL(siteUrl);
+/** "bookshopnearme.lk" is what people type; it means https://bookshopnearme.lk. */
+export function siteOrigin(siteUrl: string) {
+  const trimmed = siteUrl.trim();
+  const url = new URL(
+    /^[a-z]+:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`,
+  );
   if (url.protocol !== "https:") {
     throw new Error("The WordPress site address must start with https://.");
   }
@@ -32,7 +36,7 @@ async function call(
   fetcher: typeof fetch,
   init?: { method: string; body: string },
 ) {
-  const response = await fetcher(`${base(credentials.siteUrl)}${path}`, {
+  const response = await fetcher(`${siteOrigin(credentials.siteUrl)}${path}`, {
     method: init?.method ?? "GET",
     headers: {
       Authorization: `Basic ${btoa(`${credentials.username}:${credentials.applicationPassword.replace(/\s+/g, "")}`)}`,

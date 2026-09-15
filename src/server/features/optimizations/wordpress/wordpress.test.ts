@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { articleFromDraft, slugFrom } from "./wordpressArticle";
-import { publishToWordpress } from "./wordpressClient";
+import { publishToWordpress, siteOrigin } from "./wordpressClient";
 
 const refusing: typeof fetch = async () =>
   Response.json({ code: "rest_forbidden", message: "no" }, { status: 401 });
@@ -92,5 +92,14 @@ describe("publishToWordpress", () => {
         refusing,
       ),
     ).rejects.toThrow("https://");
+  });
+});
+
+describe("siteOrigin", () => {
+  it("reads a bare domain as https", () => {
+    expect(siteOrigin("bookshopnearme.lk")).toBe("https://bookshopnearme.lk");
+    expect(siteOrigin(" https://bookshopnearme.lk/blog ")).toBe(
+      "https://bookshopnearme.lk",
+    );
   });
 });

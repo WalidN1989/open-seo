@@ -1,4 +1,7 @@
-import { wordpressWhoAmI } from "@/server/features/optimizations/wordpress/wordpressClient";
+import {
+  siteOrigin,
+  wordpressWhoAmI,
+} from "@/server/features/optimizations/wordpress/wordpressClient";
 import { resolveConnectionCredential } from "@/server/lib/connection-secrets";
 import { z } from "zod";
 import { fetchStoreName } from "@/server/features/commerce/providers/shopify";
@@ -185,7 +188,7 @@ export async function testIntegrationConnection(
       );
       return {
         providerKey: connection.providerKey,
-        detail: `Logged in to ${new URL(siteUrl).host} as ${name}`,
+        detail: `Logged in to ${new URL(siteOrigin(siteUrl)).host} as ${name}`,
       };
     }
     case "twilio_sms": {

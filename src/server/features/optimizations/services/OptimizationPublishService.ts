@@ -10,6 +10,7 @@ import { canTransition } from "../stateMachine";
 import { articleFromDraft } from "../wordpress/wordpressArticle";
 import {
   publishToWordpress,
+  siteOrigin,
   type WordpressCredentials,
 } from "../wordpress/wordpressClient";
 
@@ -49,7 +50,7 @@ async function wordpressStatus(organizationId: string) {
   const credentials = await wordpressFor(organizationId);
   return {
     connected: Boolean(credentials),
-    siteUrl: credentials ? new URL(credentials.siteUrl).host : null,
+    siteUrl: credentials ? new URL(siteOrigin(credentials.siteUrl)).host : null,
   };
 }
 
