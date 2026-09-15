@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { OptimizationPublishService } from "@/server/features/optimizations/services/OptimizationPublishService";
 import { OptimizationService } from "@/server/features/optimizations/services/OptimizationService";
 import { requireProjectContext } from "@/serverFunctions/middleware";
 import {
@@ -46,6 +47,22 @@ export const approveOptimizationOpportunity = createServerFn({ method: "POST" })
   .validator(decisionSchema)
   .handler(({ data, context }) =>
     OptimizationService.approve(
+      context.organizationId,
+      context.userId,
+      data.opportunityId,
+    ),
+  );
+
+/**
+ * Sends an approved article to the project's WordPress site, live. Only a
+ * person in the browser reaches this; the service refuses anything not
+ * approved.
+ */
+export const publishOptimizationOpportunity = createServerFn({ method: "POST" })
+  .middleware(requireProjectContext)
+  .validator(decisionSchema)
+  .handler(({ data, context }) =>
+    OptimizationPublishService.publish(
       context.organizationId,
       context.userId,
       data.opportunityId,

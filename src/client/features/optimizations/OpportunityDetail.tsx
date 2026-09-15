@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "@tanstack/react-router";
 import { ChevronLeft } from "lucide-react";
 import { useSession } from "@/lib/auth-client";
 import {
@@ -8,6 +9,7 @@ import {
   useAddComment,
   useApprove,
   useOpportunity,
+  usePublish,
   useReject,
   useRequestChanges,
   useSubmitForReview,
@@ -16,6 +18,7 @@ import { BriefTab } from "./render/BriefTab";
 import { DraftTab } from "./render/DraftTab";
 import { WhyTab } from "./render/WhyTab";
 import { CommentsTab } from "./render/CommentsTab";
+import { PublishStatus } from "./render/PublishStatus";
 
 const TABS = ["Why", "Brief", "Draft", "Publish", "Comments"] as const;
 type Tab = (typeof TABS)[number];
@@ -45,6 +48,7 @@ export function OpportunityDetail({
   const reject = useReject(projectId);
   const requestChanges = useRequestChanges(projectId);
   const addComment = useAddComment(projectId);
+  const publish = usePublish(projectId);
   const { data: session } = useSession();
   // Captured once per render rather than per row, so every relative time in
   // the thread is measured from the same instant.
@@ -64,6 +68,7 @@ export function OpportunityDetail({
   const busy =
     submit.isPending ||
     approve.isPending ||
+    publish.isPending ||
     reject.isPending ||
     requestChanges.isPending;
 
@@ -176,14 +181,26 @@ export function OpportunityDetail({
               <p className="mt-1 text-sm font-medium">
                 {CMS_LABEL[opportunity.cms] ?? opportunity.cms}
               </p>
-              {opportunity.cms === "manual" ? (
+              {query.data.wordpress.connected ? (
+                <p className="mt-2 text-sm text-base-content/70">
+                  WordPress · {query.data.wordpress.siteUrl}. Approving and
+                  publishing puts the article live there.
+                </p>
+              ) : (
                 // Never claim a publish that did not happen.
                 <p className="mt-2 text-sm text-base-content/70">
-                  No CMS is connected for this project yet. Approving records
-                  your decision and keeps the approved wording here to copy
-                  across by hand — nothing is published automatically.
+                  No WordPress site is connected for this project yet.{" "}
+                  <Link
+                    to="/modules/integrations/$providerKey"
+                    params={{ providerKey: "wordpress" }}
+                    className="link"
+                  >
+                    Connect WordPress
+                  </Link>{" "}
+                  to publish from here; until then, copy the approved wording
+                  across by hand.
                 </p>
-              ) : null}
+              )}
             </div>
 
             {status === "drafted" ? (
@@ -202,9 +219,19 @@ export function OpportunityDetail({
                   <button
                     className="btn btn-success"
                     disabled={busy}
-                    onClick={() => approve.mutate(opportunityId)}
+                    onClick={() =>
+                      approve.mutate(opportunityId, {
+                        onSuccess: () => {
+                          if (query.data.wordpress.connected) {
+                            publish.mutate(opportunityId);
+                          }
+                        },
+                      })
+                    }
                   >
-                    Approve
+                    {query.data.wordpress.connected
+                      ? "Approve & publish"
+                      : "Approve"}
                   </button>
                   <button
                     className="btn btn-ghost"
@@ -238,15 +265,16 @@ export function OpportunityDetail({
               </div>
             ) : null}
 
-            {status === "approved" ? (
-              <p className="text-sm text-base-content/70">
-                Approved
-                {opportunity.approvedAt
-                  ? ` on ${opportunity.approvedAt.slice(0, 10)}`
-                  : ""}
-                .
-              </p>
-            ) : null}
+            <PublishStatus
+              status={status}
+              approvedAt={opportunity.approvedAt}
+              publishError={opportunity.publishError}
+              cmsTarget={opportunity.cmsTarget}
+              connected={query.data.wordpress.connected}
+              busy={busy}
+              error={publish.error}
+              onPublish={() => publish.mutate(opportunityId)}
+            />
 
             {comments.length ? (
               <section className="space-y-2">

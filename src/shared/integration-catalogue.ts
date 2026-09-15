@@ -372,6 +372,46 @@ export const integrationCatalogue: readonly IntegrationCatalogueEntry[] = [
     ],
   },
   {
+    key: "wordpress",
+    name: "WordPress",
+    tagline: "Publish approved articles to your site in one click",
+    description:
+      "Articles approved in Content Optimization go live on this WordPress site as posts, with their title, SEO description and web address. Publishing again updates the same post instead of making a copy.",
+    category: "channels",
+    state: "connectable",
+    credentialFields: [
+      {
+        key: "SITE_URL",
+        label: "Site address",
+        type: "url",
+        required: true,
+        placeholder: "https://bookshopnearme.lk",
+        help: "Your WordPress site, starting with https://.",
+      },
+      {
+        key: "USERNAME",
+        label: "WordPress username",
+        type: "text",
+        required: true,
+        help: "An administrator or editor account.",
+      },
+      {
+        key: "APPLICATION_PASSWORD",
+        label: "Application Password",
+        type: "secret",
+        required: true,
+        help: "WordPress admin → Users → Profile → Application Passwords: name it OpenSEO, click Add, and paste the password shown. It is not your login password.",
+      },
+    ],
+    capabilities: ["publish approved articles", "update existing posts"],
+    howToConnect: [
+      "In WordPress admin, open Users → Profile → Application Passwords.",
+      "Type OpenSEO as the name and click Add New Application Password; copy it.",
+      "Here, enter the site address, your WordPress username and that password, then click Connect.",
+      "Click Check now: it should say who you are logged in as.",
+    ],
+  },
+  {
     key: "twilio_sms",
     name: "Twilio SMS",
     tagline: "Two-way texts from your Twilio number, inside the CRM",

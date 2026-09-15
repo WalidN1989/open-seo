@@ -18,6 +18,7 @@ const logos: Record<string, string> = {
   claude_haiku: "claude",
   elevenlabs: "elevenlabs",
   twilio_sms: "twilio",
+  wordpress: "wordpress",
   instagram: "instagram",
   messenger: "messenger",
   google_sheets: "googlesheets",

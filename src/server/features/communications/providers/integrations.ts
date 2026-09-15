@@ -1,3 +1,4 @@
+import { wordpressWhoAmI } from "@/server/features/optimizations/wordpress/wordpressClient";
 import { resolveConnectionCredential } from "@/server/lib/connection-secrets";
 import { z } from "zod";
 import { fetchStoreName } from "@/server/features/commerce/providers/shopify";
@@ -172,6 +173,21 @@ export async function testIntegrationConnection(
         providerKey: connection.providerKey,
         detail: "Webhook secret is stored; calls arrive when ElevenLabs posts",
       };
+    case "wordpress": {
+      const [siteUrl, username, applicationPassword] = await Promise.all([
+        credentialValue(connection, "SITE_URL"),
+        credentialValue(connection, "USERNAME"),
+        credentialValue(connection, "APPLICATION_PASSWORD"),
+      ]);
+      const name = await wordpressWhoAmI(
+        { siteUrl, username, applicationPassword },
+        fetcher,
+      );
+      return {
+        providerKey: connection.providerKey,
+        detail: `Logged in to ${new URL(siteUrl).host} as ${name}`,
+      };
+    }
     case "twilio_sms": {
       const [accountSid, authToken, number] = await Promise.all([
         credentialValue(connection, "ACCOUNT_SID"),
