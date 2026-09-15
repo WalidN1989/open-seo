@@ -133,9 +133,33 @@ product/service catalogue. Status rules are in `quoteRules.ts`; sending sets a
 and the PDF attached. Invoice/quote number counters are never written by the
 settings form.
 
+### Automation built on top (September 2026)
+
+- **Returning callers**: `/api/voice/elevenlabs-caller/<connection>` (shared
+  secret header) greets known callers by name; phone calls get
+  `caller_channel=phone`, website widget calls ask for a mobile.
+- **Quote from a call**: `voice-calls/services/CallQuoteService.ts` matches the
+  caller's `quote_request` to catalogue ids only and emails the quote when the
+  match is certain; otherwise a draft plus an owner reminder.
+- **Customer email**: `email/services/EmailAssistantService.ts` reads photo/PDF
+  attachments, links the sender to their lead and quote, and auto-replies to
+  customers unless the model flags it for a person.
+- **Quote follow-ups**: cron `quotes.followUpUnanswered` emails at 3 and 7 days
+  in working hours, stops when the customer engages, then reminds the owner.
+- **SMS module** (`sms` key): Twilio webhook `/api/sms/twilio/<connection>`,
+  inbox under CRM > SMS, texts on the lead journal, STOP honoured.
+- **Agent tools (MCP)**: `get_business_briefing`, WhatsApp and SMS surfaces.
+  Outreach rules live in `communications/outreachRules.ts` (STOP, 24-hour
+  WhatsApp window, one unanswered message a day, working hours) — keep them in
+  code, never only in a prompt.
+
+Every feature is per organization: a second business gets it by enabling the
+module and adding its own connections.
+
 ## Not built yet, in the owner's order
 
-1. **SMS module** with an inbound webhook for the US voice number.
+1. **Australian SMS sender**: a Twilio AU mobile (regulatory bundle); the US
+   number receives but cannot text UAE, and US 10DLC is unregistered.
 2. **Human-feeling follow-ups** across WhatsApp, SMS and email after a call or
    quote.
 3. **A twice-daily summary routine** for the monitoring agent (Grok, over MCP).
