@@ -259,6 +259,55 @@ export async function sendWhatsappText(
   throw new Error("This provider cannot send WhatsApp messages yet.");
 }
 
+/**
+ * The words of a Twilio Content template, with its placeholders filled, so a
+ * template the app sent reads in the inbox the way the customer saw it.
+ * Null when Twilio won't say; the caller then records a plain description.
+ */
+export async function twilioTemplateText(
+  connection: WhatsappConnectionRecord,
+  contentSid: string,
+  variables: Record<string, string> = {},
+  fetcher: typeof fetch = fetch,
+): Promise<string | null> {
+  if (connection.provider !== "twilio" || !connection.externalAccountId) {
+    return null;
+  }
+  try {
+    const token = await resolveCredential(connection, "AUTH_TOKEN");
+    const response = await fetcher(
+      `https://content.twilio.com/v1/Content/${encodeURIComponent(contentSid)}`,
+      {
+        headers: {
+          Authorization: `Basic ${btoa(`${connection.externalAccountId}:${token}`)}`,
+        },
+        redirect: "manual",
+        signal: AbortSignal.timeout(10_000),
+      },
+    );
+    if (!response.ok) return null;
+    const parsed = z
+      .object({
+        types: z.record(
+          z.string(),
+          z.object({ body: z.string().optional() }).passthrough(),
+        ),
+      })
+      .safeParse(await response.json());
+    if (!parsed.success) return null;
+    const body = Object.values(parsed.data.types).find(
+      (type) => type.body,
+    )?.body;
+    if (!body) return null;
+    return body.replace(
+      /\{\{\s*(\w+)\s*\}\}/g,
+      (whole, key: string) => variables[key] ?? whole,
+    );
+  } catch {
+    return null;
+  }
+}
+
 export async function sendWhatsappTemplate(
   connection: WhatsappConnectionRecord,
   recipient: string,

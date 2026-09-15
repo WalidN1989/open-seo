@@ -1,6 +1,5 @@
 import { BusinessAuditRepository } from "@/server/features/business-modules/repositories/BusinessAuditRepository";
 import { BusinessModuleService } from "@/server/features/business-modules/services/BusinessModuleService";
-import { sendWhatsappTemplate } from "@/server/features/communications/providers/whatsapp";
 import { CrmService } from "@/server/features/crm/services/CrmService";
 import { decryptCredentials } from "@/server/lib/connection-secrets";
 import {
@@ -14,60 +13,12 @@ import {
 import { activityNotes, duration, inSentence, splitName } from "../callNotes";
 import { PhoneCallRepository as Repo } from "../repositories/PhoneCallRepository";
 import { CallQuoteService } from "./CallQuoteService";
+import { CallWelcomeService } from "./CallWelcomeService";
 import { CallRecapService } from "./CallRecapService";
 
 const PROVIDER = "elevenlabs";
 
 type WebhookResult = { status: number; body: string };
-
-/**
- * Send the configured WhatsApp welcome to a first-time caller. A template is
- * required: the business has never messaged this person, so WhatsApp allows
- * nothing else. Returns what happened, for the call record.
- */
-async function sendWelcome(
-  organizationId: string,
-  template: string | undefined,
-  recipient: string | null,
-  variables: Record<string, string>,
-) {
-  if (!template?.trim()) return "skipped: no welcome template configured";
-  if (!recipient) return "skipped: no caller number";
-  const connection = await Repo.connectedWhatsapp(organizationId);
-  if (!connection) return "skipped: no connected WhatsApp sender";
-  const value = template.trim();
-  // Twilio sends by Content SID (HX…); Meta sends by template name.
-  const isContentSid = /^HX[0-9a-f]{32}$/i.test(value);
-  const send = (withVariables: boolean) =>
-    sendWhatsappTemplate(
-      connection,
-      connection.provider === "twilio"
-        ? recipient
-        : recipient.replace(/^\+/, ""),
-      {
-        name: isContentSid ? "call_welcome" : value,
-        languageCode: "en",
-        externalTemplateId: isContentSid ? value : null,
-        variables: withVariables ? variables : undefined,
-      },
-    );
-  try {
-    try {
-      await send(isContentSid);
-    } catch (error) {
-      // A template without placeholders can refuse the name and service;
-      // the plain template is still the right message.
-      if (!isContentSid) throw error;
-      await send(false);
-    }
-    return "sent";
-  } catch (error) {
-    return `failed: ${error instanceof Error ? error.message : "unknown error"}`.slice(
-      0,
-      300,
-    );
-  }
-}
 
 /**
  * Put the WhatsApp and email the call set off into the lead's journal, so
@@ -262,12 +213,18 @@ async function recordCall(
   // first call came before a template was set up is not left out.
   const welcomeOwed = !(await Repo.welcomeSentTo(organizationId, contact.id));
   const welcome = welcomeOwed
-    ? await sendWelcome(organizationId, welcomeTemplate, whatsappTo, {
+    ? await CallWelcomeService.sendWelcome({
+        organizationId,
+        template: welcomeTemplate,
+        recipient: whatsappTo,
+        contactId: contact.id,
         // Template: "Hi {{1}}, thanks for calling … about {{2}} …"
-        "1": knownName || "there",
-        "2": report.captured.service_interest
-          ? inSentence(shortNeed(report.captured.service_interest))
-          : "our services",
+        variables: {
+          "1": knownName || "there",
+          "2": report.captured.service_interest
+            ? inSentence(shortNeed(report.captured.service_interest))
+            : "our services",
+        },
       })
     : "skipped: already welcomed";
   await Repo.setWelcomeStatus(call.id, welcome);

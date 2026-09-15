@@ -168,6 +168,83 @@ async function ingestWhatsappMessage(
   return { duplicate: false, conversationId, isNew: !existingConversation };
 }
 
+/**
+ * A message the app sent on its own (a call's thank-you, an automation) put
+ * in the shared inbox, so the team sees everything the customer received.
+ * Opens the chat if there isn't one and links it to the CRM contact.
+ */
+async function recordAutomatedWhatsapp(
+  connection: NonNullable<
+    Awaited<ReturnType<typeof getWhatsappConnectionById>>
+  >,
+  input: {
+    recipient: string;
+    contactId: string | null;
+    body: string;
+    externalMessageId: string | null;
+    status: string;
+    sentAt: string;
+  },
+) {
+  const organizationId = connection.organizationId;
+  const find = () =>
+    db
+      .select()
+      .from(whatsappConversations)
+      .where(
+        and(
+          eq(whatsappConversations.connectionId, connection.id),
+          eq(whatsappConversations.externalConversationId, input.recipient),
+        ),
+      )
+      .limit(1);
+  let [conversation] = await find();
+  if (!conversation) {
+    await db
+      .insert(whatsappConversations)
+      .values({
+        id: crypto.randomUUID(),
+        organizationId,
+        connectionId: connection.id,
+        contactId: input.contactId,
+        externalConversationId: input.recipient,
+        lastMessageAt: input.sentAt,
+      })
+      .onConflictDoNothing();
+    [conversation] = await find();
+  }
+  if (!conversation) return null;
+  await db
+    .insert(whatsappMessages)
+    .values({
+      id: crypto.randomUUID(),
+      organizationId,
+      conversationId: conversation.id,
+      externalMessageId: input.externalMessageId,
+      direction: "outbound",
+      messageType: "template",
+      body: input.body,
+      status: input.status,
+      sentAt: input.sentAt,
+    })
+    .onConflictDoNothing();
+  await db
+    .update(whatsappConversations)
+    .set({
+      lastMessageAt: input.sentAt,
+      ...(conversation.contactId || !input.contactId
+        ? {}
+        : { contactId: input.contactId }),
+    })
+    .where(
+      and(
+        eq(whatsappConversations.id, conversation.id),
+        eq(whatsappConversations.organizationId, organizationId),
+      ),
+    );
+  return conversation.id;
+}
+
 async function updateWhatsappDelivery(
   connection: NonNullable<
     Awaited<ReturnType<typeof getWhatsappConnectionById>>
@@ -1256,6 +1333,7 @@ async function createIntegration(
 }
 
 export const CommunicationsRepository = {
+  recordAutomatedWhatsapp,
   appendVoiceTranscript,
   completeWhatsappMessage,
   contactBelongsToOrganization,
