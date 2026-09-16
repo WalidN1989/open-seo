@@ -42,6 +42,12 @@ export type IntegrationCredentialField = {
   required: boolean;
   placeholder?: string;
   help?: string;
+  /**
+   * Offer a button that fills this field with a fresh random value. Only for
+   * secrets this app chooses itself — never for one another service issues,
+   * where a generated value would simply be wrong.
+   */
+  generate?: boolean;
 };
 
 export type IntegrationFeature = {
@@ -353,7 +359,8 @@ export const integrationCatalogue: readonly IntegrationCatalogueEntry[] = [
         label: "Caller recognition secret (optional)",
         type: "secret",
         required: false,
-        help: "A long random value you make up (for example from `openssl rand -hex 24`). Put the same value in ElevenLabs as the x-openseo-secret header of the conversation initiation webhook, so returning callers are greeted by name.",
+        generate: true,
+        help: "Click Generate, then copy it into ElevenLabs as the x-openseo-secret header of the conversation initiation webhook, so returning callers are greeted by name. This one is yours to choose — unlike the webhook secret above, which ElevenLabs issues.",
       },
     ],
     capabilities: [
@@ -368,7 +375,7 @@ export const integrationCatalogue: readonly IntegrationCatalogueEntry[] = [
       "Back here, replace the placeholder with that secret and save.",
       "In ElevenLabs, open your agent → Security → post-call webhook override, choose the new webhook and tick Transcript. Use the agent override, not the workspace default, so other agents' calls don't land in this business.",
       "Optionally add an approved WhatsApp template so first-time callers get a welcome.",
-      "Optionally, to greet returning callers by name: save a Caller recognition secret here, then in ElevenLabs set the conversation initiation webhook to https://<this site>/api/voice/elevenlabs-caller/<connection id> with header x-openseo-secret set to the same value, and turn on fetching initiation data in the agent's Security tab.",
+      "Optionally, to greet returning callers by name: click Generate beside the Caller recognition secret and save, then in ElevenLabs set the conversation initiation webhook to the caller recognition address on this page with header x-openseo-secret set to that value, and turn on fetching initiation data in the agent's Security tab.",
     ],
   },
   {
