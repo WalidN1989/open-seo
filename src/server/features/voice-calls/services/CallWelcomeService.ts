@@ -1,5 +1,7 @@
 import {
+  isWhatsappSandbox,
   sendWhatsappTemplate,
+  sendWhatsappText,
   twilioTemplateText,
 } from "@/server/features/communications/providers/whatsapp";
 import { CommunicationsRepository } from "@/server/features/communications/repositories/CommunicationsRepository";
@@ -27,6 +29,34 @@ async function sendWelcome(input: {
   const value = input.template.trim();
   // Twilio sends by Content SID (HX…); Meta sends by template name.
   const isContentSid = /^HX[0-9a-f]{32}$/i.test(value);
+
+  // The sandbox cannot approve a template, so sending one to it always
+  // fails. Everyone reachable on it has joined by texting a code, which
+  // opens a session that plain text is allowed into — so the template is
+  // read for its words and those words are sent instead. Nothing about the
+  // message the customer sees changes.
+  if (isContentSid && isWhatsappSandbox(connection)) {
+    try {
+      const text = await twilioTemplateText(connection, value, variables);
+      if (!text) return `failed: template ${value} has no readable text`;
+      const sent = await sendWhatsappText(connection, recipient, text);
+      await CommunicationsRepository.recordAutomatedWhatsapp(connection, {
+        recipient,
+        contactId: input.contactId,
+        body: text,
+        externalMessageId: sent.externalMessageId,
+        status: sent.status,
+        sentAt: new Date().toISOString(),
+      });
+      return "sent";
+    } catch (error) {
+      return `failed: ${error instanceof Error ? error.message : "unknown error"}`.slice(
+        0,
+        300,
+      );
+    }
+  }
+
   const to =
     connection.provider === "twilio" ? recipient : recipient.replace(/^\+/, "");
   const send = (withVariables: boolean) =>

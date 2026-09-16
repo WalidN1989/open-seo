@@ -183,6 +183,23 @@ export function parseMetaPayload(payload: unknown): MetaChangeGroup[] {
   return groups;
 }
 
+/**
+ * Twilio's WhatsApp sandbox, the shared number a developer tests against
+ * before their own sender is approved.
+ *
+ * It has no WhatsApp Business account behind it, so it can approve no
+ * templates of its own — but anyone who has texted the join code has an open
+ * session, and plain text reaches them.
+ */
+export const WHATSAPP_SANDBOX_NUMBER = "+14155238886";
+
+export function isWhatsappSandbox(connection: WhatsappConnectionRecord) {
+  return (
+    connection.provider === "twilio" &&
+    connection.displayPhoneNumber === WHATSAPP_SANDBOX_NUMBER
+  );
+}
+
 export async function sendWhatsappText(
   connection: WhatsappConnectionRecord,
   recipient: string,
