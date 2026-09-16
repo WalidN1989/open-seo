@@ -6,6 +6,7 @@ import { AppError } from "@/server/lib/errors";
 import { getOptionalEnvValue } from "@/server/lib/runtime-env";
 import { getAuth } from "@/lib/auth";
 import { generateClientPassword } from "../clientPassword";
+import { ClientLifecycleService } from "./ClientLifecycleService";
 
 /**
  * A login for someone outside the agency — a client who should see their own
@@ -85,7 +86,12 @@ async function workspaceName(organizationId: string) {
 async function createLogin(
   organizationId: string,
   actorUserId: string,
-  input: { email: string; name?: string | null; role?: TeamRole },
+  input: {
+    email: string;
+    name?: string | null;
+    role?: TeamRole;
+    demoData?: boolean;
+  },
 ) {
   await requireOwnerOrAdmin(organizationId, actorUserId);
   const email = input.email.trim().toLowerCase();
@@ -111,12 +117,23 @@ async function createLogin(
       targetId: existing.id,
       metadata: { email, role },
     });
+    const welcome = added
+      ? await ClientLifecycleService.onLoginCreated({
+          organizationId,
+          userId: existing.id,
+          createdByUserId: actorUserId,
+          email,
+          workspace: shared.workspace,
+          demoData: input.demoData ?? false,
+        })
+      : "skipped: already in this workspace";
     return {
       ...shared,
       name: existing.name,
       password: null,
       created: false,
       added,
+      welcome,
     };
   }
 
@@ -154,7 +171,47 @@ async function createLogin(
     // The password is handed to the owner once and never recorded.
     metadata: { email, role },
   });
-  return { ...shared, name, password, created: true, added: true };
+  const welcome = await ClientLifecycleService.onLoginCreated({
+    organizationId,
+    userId,
+    createdByUserId: actorUserId,
+    email,
+    workspace: shared.workspace,
+    demoData: input.demoData ?? false,
+  });
+  return { ...shared, name, password, created: true, added: true, welcome };
 }
 
-export const ClientLoginService = { createLogin };
+/** The client logins in this workspace, for an owner or admin to look over. */
+async function listLogins(organizationId: string, actorUserId: string) {
+  await requireOwnerOrAdmin(organizationId, actorUserId);
+  return ClientLifecycleService.quietLogins(organizationId);
+}
+
+/** Flip the sample-data switch for one client login. */
+async function setDemoData(
+  organizationId: string,
+  actorUserId: string,
+  targetUserId: string,
+  demoData: boolean,
+) {
+  await requireOwnerOrAdmin(organizationId, actorUserId);
+  const updated = await ClientLifecycleService.setDemoData(
+    organizationId,
+    targetUserId,
+    demoData,
+  );
+  if (!updated) {
+    throw new AppError("NOT_FOUND", "That person is not a client login here.");
+  }
+  await BusinessAuditRepository.record({
+    organizationId,
+    actorUserId,
+    action: demoData ? "team.demo.enabled" : "team.demo.disabled",
+    targetType: "user",
+    targetId: targetUserId,
+  });
+  return { userId: targetUserId, demoData };
+}
+
+export const ClientLoginService = { createLogin, listLogins, setDemoData };

@@ -1,6 +1,10 @@
 import { createServerFn } from "@tanstack/react-start";
+import { ClientLifecycleService } from "@/server/features/team/services/ClientLifecycleService";
 import { ClientLoginService } from "@/server/features/team/services/ClientLoginService";
-import { createClientLoginSchema } from "@/types/schemas/team";
+import {
+  createClientLoginSchema,
+  setClientDemoDataSchema,
+} from "@/types/schemas/team";
 import { requireAuthenticatedContext } from "./middleware";
 
 /**
@@ -15,5 +19,43 @@ export const createClientLogin = createServerFn({ method: "POST" })
       context.organizationId,
       context.userId,
       data,
+    ),
+  );
+
+/**
+ * What kind of person is signed in here. A client login sees a simpler app:
+ * the agency's own plumbing — the MCP connection above all — is not theirs to
+ * wire up, and offering it only invites a support call.
+ */
+export const getWorkspaceAccess = createServerFn({ method: "POST" })
+  .middleware(requireAuthenticatedContext)
+  .handler(async ({ context }) => {
+    const login = await ClientLifecycleService.isClientLogin(
+      context.organizationId,
+      context.userId,
+    );
+    return {
+      isClientLogin: Boolean(login),
+      demoData: Boolean(login?.demoData),
+    };
+  });
+
+/** The client logins in this workspace and how long each has been quiet. */
+export const listClientLogins = createServerFn({ method: "POST" })
+  .middleware(requireAuthenticatedContext)
+  .handler(({ context }) =>
+    ClientLoginService.listLogins(context.organizationId, context.userId),
+  );
+
+/** Turn the sample data on or off for one client login. */
+export const setClientDemoData = createServerFn({ method: "POST" })
+  .middleware(requireAuthenticatedContext)
+  .validator(setClientDemoDataSchema)
+  .handler(({ context, data }) =>
+    ClientLoginService.setDemoData(
+      context.organizationId,
+      context.userId,
+      data.userId,
+      data.demoData,
     ),
   );

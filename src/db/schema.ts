@@ -197,4 +197,5 @@ export const {
   clientAccounts,
   clientContacts,
   clientAccessEvents,
+  clientLogins,
 } = schema;

@@ -4,6 +4,7 @@ import { getAuthMode, isHostedClientAuthMode } from "@/lib/auth-mode";
 import { captureClientEvent } from "@/client/lib/posthog";
 import { ClaudeIcon, CodexIcon } from "@/client/features/ai-mcp/AgentIcons";
 import { AvailableTools } from "@/client/features/ai-mcp/AvailableTools";
+import { useWorkspaceAccess } from "@/client/features/team/workspaceAccess";
 import {
   CodeBlock,
   Collapsible,
@@ -110,12 +111,32 @@ function KeyHint({
 }
 
 function AiPage() {
+  // The sidebar already leaves this out for a client login; the address still
+  // works if it is typed or bookmarked, so the page says so itself.
+  const { data: access } = useWorkspaceAccess();
   const mcpUrl =
     typeof window === "undefined"
       ? "https://app.openseo.so/mcp"
       : `${window.location.origin}/mcp`;
   const hosted = isHostedClientAuthMode();
   const copy = guideCopy(hosted, mcpUrl);
+
+  if (access?.isClientLogin) {
+    return (
+      <div className="h-full overflow-auto bg-base-100 px-4 py-12 md:px-6">
+        <div className="mx-auto max-w-lg text-center">
+          <h1 className="text-xl font-semibold">Not part of your workspace</h1>
+          <p className="mt-2 text-sm text-base-content/70">
+            Connecting an AI agent is set up by your account manager. Ask them
+            if you would like it switched on.
+          </p>
+          <Link to="/modules" className="btn btn-primary btn-sm mt-6">
+            Back to your business
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="h-full overflow-auto bg-base-100 px-4 py-12 md:px-6 md:py-16 pb-24 md:pb-12">

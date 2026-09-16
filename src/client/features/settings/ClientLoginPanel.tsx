@@ -14,6 +14,7 @@ type Created = {
   password: string | null;
   created: boolean;
   added: boolean;
+  welcome: string;
 };
 
 /**
@@ -29,16 +30,20 @@ export function ClientLoginPanel() {
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [role, setRole] = useState<Role>("member");
+  const [demoData, setDemoData] = useState(true);
   const [result, setResult] = useState<Created | null>(null);
 
   const create = useMutation({
     mutationFn: () =>
-      createClientLogin({ data: { email, name: name || null, role } }),
+      createClientLogin({
+        data: { email, name: name || null, role, demoData },
+      }),
     onSuccess: async (created: Created) => {
       setResult(created);
       setEmail("");
       setName("");
       await queryClient.invalidateQueries({ queryKey: ["organization"] });
+      await queryClient.invalidateQueries({ queryKey: ["team"] });
       toast.success(
         created.created ? "Login created" : "Added to this workspace",
       );
@@ -65,7 +70,8 @@ export function ClientLoginPanel() {
         </h3>
         <p className="mt-1 text-xs text-base-content/60">
           Makes the account and a password for someone who has none. They sign
-          in and see this workspace only.
+          in and see this workspace only, and get a welcome email that carries
+          no credentials — those you hand over yourself.
         </p>
       </div>
       <form
@@ -115,6 +121,17 @@ export function ClientLoginPanel() {
             <option value="owner">Owner</option>
           </select>
         </label>
+        <label className="form-control">
+          <span className="label-text text-xs">Start on</span>
+          <select
+            value={demoData ? "demo" : "live"}
+            onChange={(event) => setDemoData(event.target.value === "demo")}
+            className="select select-bordered select-sm"
+          >
+            <option value="demo">Sample data</option>
+            <option value="live">Their own data</option>
+          </select>
+        </label>
         <button
           className="btn btn-primary btn-sm"
           disabled={create.isPending || !email.trim()}
@@ -140,6 +157,9 @@ export function ClientLoginPanel() {
           <pre className="overflow-x-auto whitespace-pre-wrap rounded bg-base-200 p-2 text-xs">
             {handover}
           </pre>
+          <p className="text-xs text-base-content/60">
+            Welcome email: {result.welcome}
+          </p>
           <button
             type="button"
             className="btn btn-outline btn-xs"

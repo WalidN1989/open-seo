@@ -2181,3 +2181,42 @@ export const clientReportProfiles = sqliteTable(
     ),
   ],
 );
+
+/**
+ * A login the agency created for someone outside it.
+ *
+ * Its purpose is to tell a client apart from agency staff, which no other
+ * table can: both are ordinary members. The row carries what only a client
+ * needs — the welcome email, the nudges a quiet account earns, and the switch
+ * that shows sample data while their own workspace is still empty. No row
+ * means staff, so the workspaces that existed before this table are untouched.
+ */
+export const clientLogins = sqliteTable(
+  "client_logins",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    userId: text("user_id").notNull(),
+    createdByUserId: text("created_by_user_id"),
+    /** Show generated sample data instead of this workspace's empty own. */
+    demoData: integer("demo_data", { mode: "boolean" })
+      .notNull()
+      .default(false),
+    /** "sent", or the reason the welcome email did not go. */
+    welcomeStatus: text("welcome_status"),
+    welcomeSentAt: text("welcome_sent_at"),
+    /** How far through the quiet-account emails: 0 none, 3 finished. */
+    nudgeStage: integer("nudge_stage").notNull().default(0),
+    lastNudgeAt: text("last_nudge_at"),
+    createdAt: createdAt(),
+  },
+  (table) => [
+    uniqueIndex("client_logins_user_idx").on(
+      table.organizationId,
+      table.userId,
+    ),
+    index("client_logins_stage_idx").on(table.nudgeStage),
+  ],
+);

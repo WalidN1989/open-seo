@@ -20,7 +20,11 @@ const invoices = source("tools/invoice-tools.ts");
 const reports = source("tools/report-tools.ts");
 const email = source("tools/email-tools.ts");
 const quotes = source("tools/quote-tools.ts");
-const crm = source("tools/crm-tools.ts");
+// The CRM surface spans two files: the client-login reader lives on its own
+// so neither grows past the line limit. Both are read, or a tool could be
+// added out of sight of this test.
+const crm =
+  source("tools/crm-tools.ts") + source("tools/client-login-tools.ts");
 const whatsapp = source("tools/whatsapp-tools.ts");
 const sms = source("tools/sms-tools.ts");
 const server = source("server.ts");
@@ -134,6 +138,7 @@ describe("the CRM MCP surface", () => {
     expect(declaredToolNames(crm).toSorted()).toEqual([
       "get_business_briefing",
       "get_lead",
+      "list_client_logins",
       "list_leads",
       "log_lead_activity",
     ]);

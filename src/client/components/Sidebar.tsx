@@ -19,6 +19,7 @@ import {
 } from "@/client/navigation/items";
 import { ProjectSwitcher } from "@/client/features/projects/ProjectSwitcher";
 import { SamSidebarPanel } from "@/client/features/sam/SamSidebarPanel";
+import { useWorkspaceAccess } from "@/client/features/team/workspaceAccess";
 import { ThemePreferenceMenuItems } from "@/client/components/ThemePreferenceMenuItems";
 import { closeDropdown } from "@/client/lib/dropdown";
 import { signOutAndRedirect, useSession } from "@/lib/auth-client";
@@ -92,9 +93,19 @@ export function Sidebar({ projectId, onNavigate, onClose }: SidebarProps) {
   const moduleNavGroups = moduleKey ? getModuleNavGroups(moduleKey) : [];
   const inModule = moduleNavGroups.length > 0;
 
+  // A client sees their own business, not the wiring behind it: the MCP
+  // connection is the agency's tool and only prompts a support call here.
+  const { data: access } = useWorkspaceAccess();
+  const connectGroup = access?.isClientLogin
+    ? {
+        ...connectNavGroup,
+        items: connectNavGroup.items.filter((item) => item.to !== "/ai"),
+      }
+    : connectNavGroup;
+
   const navGroups = inModule
     ? moduleNavGroups
-    : [...(projectId ? getProjectNavGroups(projectId) : []), connectNavGroup];
+    : [...(projectId ? getProjectNavGroups(projectId) : []), connectGroup];
 
   // PostHog-style sidebar tabs: Browse shows the regular nav, Chat shows the
   // SAM chat history. The tab is view state (switching to Browse leaves the

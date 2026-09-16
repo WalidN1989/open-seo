@@ -5,6 +5,7 @@ import { LeadDetailService } from "@/server/features/crm/services/LeadDetailServ
 import { formatMoney } from "@/server/features/invoicing/invoiceTotals";
 import { QuoteFlowService } from "@/server/features/quotes/services/QuoteFlowService";
 import { mcpResponse } from "@/server/mcp/formatters";
+import { clientLoginsTool } from "./client-login-tools";
 import type { McpModuleSurface } from "@/server/mcp/module-registry";
 import { withMcpOrganizationAuth } from "@/server/mcp/organization-auth";
 import {
@@ -386,12 +387,18 @@ export const crmSurface: McpModuleSurface = {
     listLeadsTool,
     getLeadTool,
     logLeadActivityTool,
+    clientLoginsTool,
   ],
   withheld: [
     {
       action: "close a lead as won or lost",
       because:
         "It records the outcome of a real negotiation, which only the person in it knows.",
+    },
+    {
+      action: "close, suspend or delete a client's login",
+      because:
+        "Taking away someone's access ends a relationship; the agent reports who is quiet and a person decides.",
     },
     {
       action: "delete a lead, contact or journal entry",

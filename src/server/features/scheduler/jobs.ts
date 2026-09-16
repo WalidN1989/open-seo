@@ -6,6 +6,7 @@ import { CommunicationsService } from "@/server/features/communications/services
 import { CatalogueSyncService } from "@/server/features/commerce/services/CatalogueSyncService";
 import { runDueVoiceLearning } from "@/server/features/communications/services/VoiceLearningService";
 import { QuoteChaserService } from "@/server/features/quotes/services/QuoteChaserService";
+import { ClientLifecycleService } from "@/server/features/team/services/ClientLifecycleService";
 
 let registered = false;
 
@@ -61,6 +62,14 @@ export function registerBusinessCronJobs() {
     tier: "standard",
     run: async () => {
       await withPgClient(() => QuoteChaserService.runDueFollowUps());
+    },
+  });
+
+  registerCronJob({
+    name: "team.nudgeQuietLogins",
+    tier: "slow",
+    run: async () => {
+      await withPgClient(() => ClientLifecycleService.runDueNudges());
     },
   });
 

@@ -5,6 +5,7 @@ import {
 } from "@/server/email/loops";
 import {
   getResendConfig,
+  sendResendActionEmail,
   sendResendPasswordResetEmail,
   sendResendVerificationEmail,
 } from "@/server/email/resend";
@@ -81,4 +82,38 @@ export async function sendAccountVerificationEmail({
 
   if (getConfiguredEmailProvider() !== "loops") throw noProviderError();
   await sendHostedVerificationEmail({ email, confirmationUrl });
+}
+
+/**
+ * A one-button message the app composes itself — a new client's welcome, or a
+ * nudge about a workspace nobody has opened.
+ *
+ * Loops is not a fallback here: its messages are templates authored in its
+ * dashboard, so wording chosen in code has nowhere to go. Rather than fail the
+ * work that triggered it, this reports why nothing was sent and the caller
+ * records that on the row.
+ */
+export async function sendClientActionEmail(input: {
+  email: string;
+  subject: string;
+  heading: string;
+  body: string;
+  buttonLabel: string;
+  actionUrl: string;
+  footer: string;
+  replyTo?: string;
+  fromName?: string;
+}) {
+  const resend = getResendConfig();
+  if (!resend) return "skipped: no Resend sender configured";
+  try {
+    const { email, ...rest } = input;
+    await sendResendActionEmail(resend, { to: email, ...rest });
+    return "sent";
+  } catch (error) {
+    return `failed: ${error instanceof Error ? error.message : "unknown error"}`.slice(
+      0,
+      300,
+    );
+  }
 }

@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Copy, Trash2, UserPlus, Users } from "lucide-react";
 import { authClient, useSession } from "@/lib/auth-client";
+import { ClientLoginList } from "./ClientLoginList";
 import { ClientLoginPanel } from "./ClientLoginPanel";
 
 const MEMBERS_KEY = ["organization", "members"];
@@ -136,6 +137,7 @@ export function TeamSettings() {
       </div>
 
       <ClientLoginPanel />
+      <ClientLoginList />
 
       <details className="rounded-lg border border-base-300 p-4">
         <summary className="cursor-pointer text-sm font-medium">

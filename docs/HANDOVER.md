@@ -148,7 +148,14 @@ settings form.
   in working hours, stops when the customer engages, then reminds the owner.
 - **SMS module** (`sms` key): Twilio webhook `/api/sms/twilio/<connection>`,
   inbox under CRM > SMS, texts on the lead journal, STOP honoured.
-- **Agent tools (MCP)**: `get_business_briefing`, WhatsApp and SMS surfaces.
+- **Client logins** (`client_logins`): a row exists only for someone the
+  agency created a login for, which is how the app tells a client from staff.
+  It carries the welcome email, the quiet-account reminders (3, 10 and 14 days
+  idle, cron `team.nudgeQuietLogins`, working hours, reset by any sign-in) and
+  the sample-data switch. No row means staff, so nothing about the workspaces
+  that predate it changed. A client login does not see AI & MCP.
+- **Agent tools (MCP)**: `get_business_briefing`, `list_client_logins`,
+  WhatsApp and SMS surfaces.
   Outreach rules live in `communications/outreachRules.ts` (STOP, 24-hour
   WhatsApp window, one unanswered message a day, working hours) — keep them in
   code, never only in a prompt.

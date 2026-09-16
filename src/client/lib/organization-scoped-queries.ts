@@ -18,6 +18,7 @@ const ORGANIZATION_SCOPED_QUERY_ROOTS = [
   "integrations",
   "social",
   "sms",
+  "team",
   "invoicing",
   "invoice",
   "quotes",
