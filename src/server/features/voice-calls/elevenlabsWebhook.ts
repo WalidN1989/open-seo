@@ -136,8 +136,36 @@ export type PhoneCallReport = {
   transcript: { role: string; message: string; atSeconds: number | null }[];
 };
 
+/**
+ * Which country a number with no country code belongs to.
+ *
+ * Callers read their number out the way they say it at home — "0777 995 267"
+ * in Colombo, "0412 345 678" in Brisbane — and the two are indistinguishable
+ * without knowing who is speaking. Assuming Australia everywhere turned every
+ * Sri Lankan mobile into an Australian one that nobody can ring.
+ */
+const PHONE_REGIONS = {
+  AU: { dial: "61", nationalStart: /^[23478]/ },
+  LK: { dial: "94", nationalStart: /^[1-9]/ },
+} as const;
+
+type PhoneRegion = keyof typeof PHONE_REGIONS;
+
+/** The region to read a bare number as, taken from the line they rang on. */
+export function phoneRegionOf(callerNumber: string | null): PhoneRegion {
+  const regions: PhoneRegion[] = ["AU", "LK"];
+  return (
+    regions.find((region) =>
+      callerNumber?.startsWith(`+${PHONE_REGIONS[region].dial}`),
+    ) ?? "AU"
+  );
+}
+
 /** Digits with a leading +, or null when it isn't a usable phone number. */
-export function normalisePhone(raw: unknown): string | null {
+export function normalisePhone(
+  raw: unknown,
+  region: PhoneRegion = "AU",
+): string | null {
   if (typeof raw !== "string") return null;
   const trimmed = raw.trim();
   const digits = trimmed.replace(/\D/g, "");
@@ -147,13 +175,19 @@ export function normalisePhone(raw: unknown): string | null {
     : trimmed.startsWith("00")
       ? digits.slice(2)
       : null;
-  // Callers are Australian, so a number without a country code is read as
-  // one: "0412 345 678", or "412 345 678" with the 0 dropped (mobiles start
-  // 4, landlines 2, 3, 7 or 8). "+61 0412…" keeps a trunk 0 that must go.
-  const national = (international ?? digits).replace(/^610(?=\d{9}$)/, "61");
+  const { dial, nationalStart } = PHONE_REGIONS[region];
+  // A number said without its country code is read as local: "0412 345 678",
+  // or "412 345 678" with the trunk 0 dropped. "+61 0412…" keeps a trunk 0
+  // that must go.
+  const national = (international ?? digits).replace(
+    new RegExp(`^${dial}0(?=\\d{9}$)`),
+    dial,
+  );
   if (international !== null) return `+${national}`;
-  if (/^0\d{9}$/.test(national)) return `+61${national.slice(1)}`;
-  if (/^[23478]\d{8}$/.test(national)) return `+61${national}`;
+  if (/^0\d{9}$/.test(national)) return `+${dial}${national.slice(1)}`;
+  if (national.length === 9 && nationalStart.test(national)) {
+    return `+${dial}${national}`;
+  }
   return `+${national}`;
 }
 
@@ -162,10 +196,13 @@ export function normalisePhone(raw: unknown): string | null {
  * "callback details" ("+971 50 486 3547, anytime"). Web-widget calls carry no
  * caller ID, so this is often the only number there is.
  */
-export function phoneFromText(text: string | undefined): string | null {
+export function phoneFromText(
+  text: string | undefined,
+  region: PhoneRegion = "AU",
+): string | null {
   if (!text) return null;
   for (const match of text.matchAll(/\+?\d[\d\s().-]{6,}\d/g)) {
-    const phone = normalisePhone(match[0]);
+    const phone = normalisePhone(match[0], region);
     if (phone) return phone;
   }
   return null;

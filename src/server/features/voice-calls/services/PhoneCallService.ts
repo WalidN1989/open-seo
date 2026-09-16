@@ -5,6 +5,7 @@ import { decryptCredentials } from "@/server/lib/connection-secrets";
 import {
   emailFrom,
   phoneFromText,
+  phoneRegionOf,
   shortNeed,
   readPostCall,
   verifyElevenLabsSignature,
@@ -103,10 +104,14 @@ async function recordCall(
   if (existing) return { callId: existing.id, duplicate: true };
 
   const { firstName, lastName } = splitName(report.captured.caller_name);
+  // A number said out loud has no country code, and which country it belongs
+  // to is only knowable from the line they rang on.
+  const region = phoneRegionOf(report.callerNumber);
   // Caller ID first; a web-widget call has none, and then the number the
   // caller gave out loud is the one to use.
   const phone =
-    report.callerNumber ?? phoneFromText(report.captured.callback_details);
+    report.callerNumber ??
+    phoneFromText(report.captured.callback_details, region);
   const email = emailFrom(report.captured.caller_email);
   const businessName = report.captured.business_name?.trim();
 
@@ -208,7 +213,8 @@ async function recordCall(
 
   // The number the caller read out is the one they asked us to use; the line
   // they rang from can be a landline or a phone without WhatsApp.
-  const whatsappTo = phoneFromText(report.captured.callback_details) ?? phone;
+  const whatsappTo =
+    phoneFromText(report.captured.callback_details, region) ?? phone;
   // Anyone who has not had the thank-you yet gets it, so a caller whose
   // first call came before a template was set up is not left out.
   const welcomeOwed = !(await Repo.welcomeSentTo(organizationId, contact.id));

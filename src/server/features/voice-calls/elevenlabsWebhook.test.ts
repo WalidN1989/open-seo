@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   emailFrom,
   phoneFromText,
+  phoneRegionOf,
   shortNeed,
   normalisePhone,
   readPostCall,
@@ -106,6 +107,32 @@ describe("normalisePhone", () => {
     expect(normalisePhone("(07) 3123 4567")).toBe("+61731234567");
     expect(normalisePhone("12")).toBeNull();
     expect(normalisePhone(undefined)).toBeNull();
+  });
+});
+
+describe("normalisePhone for Sri Lanka", () => {
+  it("reads a number said in Colombo as Sri Lankan, not Australian", () => {
+    // The same digits are a valid mobile in both countries, which is why the
+    // country has to come from somewhere other than the number itself.
+    expect(normalisePhone("077 799 5267", "LK")).toBe("+94777995267");
+    expect(normalisePhone("0777995267", "LK")).toBe("+94777995267");
+    expect(normalisePhone("777995267", "LK")).toBe("+94777995267");
+    expect(normalisePhone("+94 0777 995 267", "LK")).toBe("+94777995267");
+    expect(normalisePhone("077 799 5267")).toBe("+61777995267");
+  });
+
+  it("takes the country from the line the caller rang on", () => {
+    expect(phoneRegionOf("+94712345678")).toBe("LK");
+    expect(phoneRegionOf("+61408579044")).toBe("AU");
+    // An unknown country falls back rather than guessing wrongly.
+    expect(phoneRegionOf("+971501335775")).toBe("AU");
+    expect(phoneRegionOf(null)).toBe("AU");
+  });
+
+  it("reads a spoken Sri Lankan callback number", () => {
+    expect(phoneFromText("call me on 077 799 5267 after 6", "LK")).toBe(
+      "+94777995267",
+    );
   });
 });
 

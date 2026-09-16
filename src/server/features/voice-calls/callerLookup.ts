@@ -67,23 +67,33 @@ export function initiationResponse(
     };
   }
   const firstName = speakableName(caller.firstName);
+  const dynamic_variables = {
+    caller_channel: "phone",
+    caller_known: "yes",
+    caller_first_name: firstName,
+    caller_email_hint: emailHint(caller.email),
+    caller_last_enquiry: enquiryFrom(caller.leadTitle),
+  };
+  // Without a name there is nothing to personalise, and overriding the
+  // greeting with "Hi, welcome back" would throw away the business's own
+  // opening line to say less than it did.
+  if (!firstName) {
+    return { type: "conversation_initiation_client_data", dynamic_variables };
+  }
   return {
     type: "conversation_initiation_client_data",
-    dynamic_variables: {
-      caller_channel: "phone",
-      caller_known: "yes",
-      caller_first_name: firstName,
-      caller_email_hint: emailHint(caller.email),
-      caller_last_enquiry: enquiryFrom(caller.leadTitle),
-    },
+    dynamic_variables,
     // No business name and no agent persona in here. Both belong to one
     // business, and this file answers for every business in the workspace:
     // a hardcoded "welcome back to Digital Urgency, it's Shifa" greeted a
-    // Sri Lankan shoe shop's customers as somebody else entirely. It also
-    // spares us spelling each brand out for the text-to-speech.
+    // Sri Lankan shoe shop's customers as somebody else entirely.
+    //
+    // No audio tags either. "[warmly]" is only interpreted by some voices
+    // and settings; everywhere else it is read out, and a caller is greeted
+    // with the word "warmly".
     conversation_config_override: {
       agent: {
-        first_message: `[warmly] Hi${firstName ? ` ${firstName}` : ""}, welcome back! What can I do for you today?`,
+        first_message: `Hi ${firstName}, welcome back! What can I do for you today?`,
       },
     },
   };
