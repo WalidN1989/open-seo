@@ -5,6 +5,7 @@ import { OrderService } from "@/server/features/commerce/services/OrderService";
 import { CatalogueSyncService } from "@/server/features/commerce/services/CatalogueSyncService";
 import { AnalyticsService } from "@/server/features/commerce/services/AnalyticsService";
 import { BusinessSettingsService } from "@/server/features/business-modules/services/BusinessSettingsService";
+import { ProductImportService } from "@/server/features/commerce/services/ProductImportService";
 import { requireAuthenticatedContext } from "@/serverFunctions/middleware";
 import {
   adjustStockSchema,
@@ -14,6 +15,7 @@ import {
   createAuditSchema,
   createOrderSchema,
   createProductSchema,
+  importProductsSchema,
   listMovementsSchema,
   listOrdersSchema,
   orderIdSchema,
@@ -69,6 +71,18 @@ export const createCommerceProduct = createServerFn({ method: "POST" })
   .validator(createProductSchema)
   .handler(({ context, data }) =>
     CommerceService.createProduct(context.organizationId, context.userId, data),
+  );
+
+/** Load a whole catalogue from a CSV the shop already has. */
+export const importCommerceProducts = createServerFn({ method: "POST" })
+  .middleware(requireAuthenticatedContext)
+  .validator(importProductsSchema)
+  .handler(({ context, data }) =>
+    ProductImportService.importProducts(
+      context.organizationId,
+      context.userId,
+      data.csv,
+    ),
   );
 
 export const updateCommerceProduct = createServerFn({ method: "POST" })

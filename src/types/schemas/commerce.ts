@@ -41,6 +41,12 @@ export const updateProductSchema = createProductSchema.partial().extend({
   costPriceMinor: minorUnits.optional().nullable(),
 });
 
+export const importProductsSchema = z.object({
+  // The file as pasted or uploaded, not parsed rows: the server reads it, so
+  // one parser decides what a heading means and the browser cannot disagree.
+  csv: z.string().min(1).max(2_000_000),
+});
+
 export const analyticsOverviewSchema = z.object({
   days: z.number().int().min(1).max(365).default(30),
 });
