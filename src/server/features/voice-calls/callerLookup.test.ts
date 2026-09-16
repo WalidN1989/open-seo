@@ -23,7 +23,7 @@ describe("initiationResponse", () => {
       caller_last_enquiry: "Website build",
     });
     expect(response.conversation_config_override?.agent.first_message).toBe(
-      "[warmly] Hi Walid, welcome back to Digital Urgency, it's Shifa. How can I help you today?",
+      "[warmly] Hi Walid, welcome back! What can I do for you today?",
     );
   });
 
@@ -45,5 +45,17 @@ describe("initiationResponse", () => {
       }).dynamic_variables.caller_first_name,
     ).toBe("x Zoë");
     expect(emailHint(null)).toBe("");
+  });
+
+  it("names no business and no persona, because it answers for all of them", () => {
+    const greeting =
+      initiationResponse({
+        firstName: "Walid",
+        email: null,
+        leadTitle: null,
+      }).conversation_config_override?.agent.first_message ?? "";
+    // This endpoint is shared by every workspace. A brand or an agent's name
+    // written here would greet one business's customers as another's.
+    expect(greeting).not.toMatch(/Digital Urgency|Shifa|Bestrends/i);
   });
 });

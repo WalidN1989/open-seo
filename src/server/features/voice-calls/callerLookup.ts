@@ -76,9 +76,14 @@ export function initiationResponse(
       caller_email_hint: emailHint(caller.email),
       caller_last_enquiry: enquiryFrom(caller.leadTitle),
     },
+    // No business name and no agent persona in here. Both belong to one
+    // business, and this file answers for every business in the workspace:
+    // a hardcoded "welcome back to Digital Urgency, it's Shifa" greeted a
+    // Sri Lankan shoe shop's customers as somebody else entirely. It also
+    // spares us spelling each brand out for the text-to-speech.
     conversation_config_override: {
       agent: {
-        first_message: `[warmly] Hi${firstName ? ` ${firstName}` : ""}, welcome back to Digital Urgency, it's Shifa. How can I help you today?`,
+        first_message: `[warmly] Hi${firstName ? ` ${firstName}` : ""}, welcome back! What can I do for you today?`,
       },
     },
   };
