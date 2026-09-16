@@ -1,3 +1,4 @@
+import { Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Users } from "lucide-react";
 import { toast } from "sonner";
@@ -47,9 +48,14 @@ export function ClientLoginList() {
 
   return (
     <section className="space-y-3 rounded-lg border border-base-300 p-4">
-      <h3 className="flex items-center gap-2 text-sm font-medium">
-        <Users className="size-4" /> Client logins
-      </h3>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h3 className="flex items-center gap-2 text-sm font-medium">
+          <Users className="size-4" /> Client logins
+        </h3>
+        <Link to="/modules/overview" className="link link-primary text-xs">
+          Preview the sample overview
+        </Link>
+      </div>
       {logins.isLoading ? (
         <p className="text-xs text-base-content/60">Loading…</p>
       ) : (

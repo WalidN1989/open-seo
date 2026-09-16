@@ -43,6 +43,7 @@ import { Route as ApiEmailAccountIdRouteImport } from './routes/api/email/$accou
 import { Route as ApiAutumnSplatRouteImport } from './routes/api/autumn/$'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as AuthenticatedOnboardingChatRouteImport } from './routes/_authenticated.onboarding.chat'
+import { Route as AppModulesOverviewRouteImport } from './routes/_app/modules/overview'
 import { Route as AppModulesIntegrationsRouteImport } from './routes/_app/modules/integrations'
 import { Route as AppModulesCrmRouteImport } from './routes/_app/modules/crm'
 import { Route as AppModulesModuleKeyRouteImport } from './routes/_app/modules/$moduleKey'
@@ -266,6 +267,11 @@ const AuthenticatedOnboardingChatRoute =
     path: '/onboarding/chat',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
+const AppModulesOverviewRoute = AppModulesOverviewRouteImport.update({
+  id: '/overview',
+  path: '/overview',
+  getParentRoute: () => AppModulesRouteRoute,
+} as any)
 const AppModulesIntegrationsRoute = AppModulesIntegrationsRouteImport.update({
   id: '/integrations',
   path: '/integrations',
@@ -573,6 +579,7 @@ export interface FileRoutesByFullPath {
   '/modules/$moduleKey': typeof AppModulesModuleKeyRoute
   '/modules/crm': typeof AppModulesCrmRouteWithChildren
   '/modules/integrations': typeof AppModulesIntegrationsRouteWithChildren
+  '/modules/overview': typeof AppModulesOverviewRoute
   '/onboarding/chat': typeof AuthenticatedOnboardingChatRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/autumn/$': typeof ApiAutumnSplatRoute
@@ -652,6 +659,7 @@ export interface FileRoutesByTo {
   '/help/dataforseo-api-key': typeof AppHelpDataforseoApiKeyRoute
   '/help/openrouter-api-key': typeof AppHelpOpenrouterApiKeyRoute
   '/modules/$moduleKey': typeof AppModulesModuleKeyRoute
+  '/modules/overview': typeof AppModulesOverviewRoute
   '/onboarding/chat': typeof AuthenticatedOnboardingChatRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/autumn/$': typeof ApiAutumnSplatRoute
@@ -737,6 +745,7 @@ export interface FileRoutesById {
   '/_app/modules/$moduleKey': typeof AppModulesModuleKeyRoute
   '/_app/modules/crm': typeof AppModulesCrmRouteWithChildren
   '/_app/modules/integrations': typeof AppModulesIntegrationsRouteWithChildren
+  '/_app/modules/overview': typeof AppModulesOverviewRoute
   '/_authenticated/onboarding/chat': typeof AuthenticatedOnboardingChatRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/autumn/$': typeof ApiAutumnSplatRoute
@@ -822,6 +831,7 @@ export interface FileRouteTypes {
     | '/modules/$moduleKey'
     | '/modules/crm'
     | '/modules/integrations'
+    | '/modules/overview'
     | '/onboarding/chat'
     | '/api/auth/$'
     | '/api/autumn/$'
@@ -901,6 +911,7 @@ export interface FileRouteTypes {
     | '/help/dataforseo-api-key'
     | '/help/openrouter-api-key'
     | '/modules/$moduleKey'
+    | '/modules/overview'
     | '/onboarding/chat'
     | '/api/auth/$'
     | '/api/autumn/$'
@@ -985,6 +996,7 @@ export interface FileRouteTypes {
     | '/_app/modules/$moduleKey'
     | '/_app/modules/crm'
     | '/_app/modules/integrations'
+    | '/_app/modules/overview'
     | '/_authenticated/onboarding/chat'
     | '/api/auth/$'
     | '/api/autumn/$'
@@ -1309,6 +1321,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/onboarding/chat'
       preLoaderRoute: typeof AuthenticatedOnboardingChatRouteImport
       parentRoute: typeof AuthenticatedRoute
+    }
+    '/_app/modules/overview': {
+      id: '/_app/modules/overview'
+      path: '/overview'
+      fullPath: '/modules/overview'
+      preLoaderRoute: typeof AppModulesOverviewRouteImport
+      parentRoute: typeof AppModulesRouteRoute
     }
     '/_app/modules/integrations': {
       id: '/_app/modules/integrations'
@@ -1741,6 +1760,7 @@ interface AppModulesRouteRouteChildren {
   AppModulesModuleKeyRoute: typeof AppModulesModuleKeyRoute
   AppModulesCrmRoute: typeof AppModulesCrmRouteWithChildren
   AppModulesIntegrationsRoute: typeof AppModulesIntegrationsRouteWithChildren
+  AppModulesOverviewRoute: typeof AppModulesOverviewRoute
   AppModulesIndexRoute: typeof AppModulesIndexRoute
   AppModulesLeadsLeadIdRoute: typeof AppModulesLeadsLeadIdRoute
   AppModulesQuotesQuoteIdRoute: typeof AppModulesQuotesQuoteIdRoute
@@ -1750,6 +1770,7 @@ const AppModulesRouteRouteChildren: AppModulesRouteRouteChildren = {
   AppModulesModuleKeyRoute: AppModulesModuleKeyRoute,
   AppModulesCrmRoute: AppModulesCrmRouteWithChildren,
   AppModulesIntegrationsRoute: AppModulesIntegrationsRouteWithChildren,
+  AppModulesOverviewRoute: AppModulesOverviewRoute,
   AppModulesIndexRoute: AppModulesIndexRoute,
   AppModulesLeadsLeadIdRoute: AppModulesLeadsLeadIdRoute,
   AppModulesQuotesQuoteIdRoute: AppModulesQuotesQuoteIdRoute,

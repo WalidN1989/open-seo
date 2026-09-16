@@ -15,6 +15,7 @@ import { ModuleSwitcher } from "@/client/components/ModuleSwitcher";
 import { getModuleNavGroups } from "@/client/navigation/moduleItems";
 import {
   connectNavGroup,
+  demoOverviewNavItem,
   getProjectNavGroups,
 } from "@/client/navigation/items";
 import { ProjectSwitcher } from "@/client/features/projects/ProjectSwitcher";
@@ -99,7 +100,10 @@ export function Sidebar({ projectId, onNavigate, onClose }: SidebarProps) {
   const connectGroup = access?.isClientLogin
     ? {
         ...connectNavGroup,
-        items: connectNavGroup.items.filter((item) => item.to !== "/ai"),
+        items: [
+          ...(access.demoData ? [demoOverviewNavItem] : []),
+          ...connectNavGroup.items.filter((item) => item.to !== "/ai"),
+        ],
       }
     : connectNavGroup;
 

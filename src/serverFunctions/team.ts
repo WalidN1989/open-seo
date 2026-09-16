@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { ClientLifecycleService } from "@/server/features/team/services/ClientLifecycleService";
 import { ClientLoginService } from "@/server/features/team/services/ClientLoginService";
+import { DemoOverviewService } from "@/server/features/team/services/DemoOverviewService";
 import {
   createClientLoginSchema,
   setClientDemoDataSchema,
@@ -58,4 +59,14 @@ export const setClientDemoData = createServerFn({ method: "POST" })
       data.userId,
       data.demoData,
     ),
+  );
+
+/**
+ * The sample business a client is shown while their own workspace is empty.
+ * Generated on read, stored nowhere.
+ */
+export const getDemoOverview = createServerFn({ method: "POST" })
+  .middleware(requireAuthenticatedContext)
+  .handler(({ context }) =>
+    DemoOverviewService.getOverview(context.organizationId, context.userId),
   );

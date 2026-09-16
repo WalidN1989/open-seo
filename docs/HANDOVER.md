@@ -154,6 +154,11 @@ settings form.
   idle, cron `team.nudgeQuietLogins`, working hours, reset by any sign-in) and
   the sample-data switch. No row means staff, so nothing about the workspaces
   that predate it changed. A client login does not see AI & MCP.
+- **Sample data** (`team/demoBusiness.ts`, `/modules/overview`): a worked
+  example of the client's own trade, generated from the organization id and
+  never written anywhere, so turning it off restores the workspace exactly.
+  The client's modules still read their real (empty) data — the sample lives
+  only on the overview, which is where a demo client lands.
 - **Agent tools (MCP)**: `get_business_briefing`, `list_client_logins`,
   WhatsApp and SMS surfaces.
   Outreach rules live in `communications/outreachRules.ts` (STOP, 24-hour
