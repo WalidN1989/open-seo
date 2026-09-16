@@ -1,6 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import { db } from "@/db";
 import {
+  clientLogins,
   member,
   memberModulePermissions,
   organizationModuleEntitlements,
@@ -16,6 +17,25 @@ async function listEntitlements(organizationId: string) {
     .select()
     .from(organizationModuleEntitlements)
     .where(eq(organizationModuleEntitlements.organizationId, organizationId));
+}
+
+/**
+ * Whether this member is a client of the workspace rather than agency staff.
+ * A client's access follows what the agency switched on, not a row somebody
+ * remembered to add for them.
+ */
+async function isClientLogin(organizationId: string, userId: string) {
+  const [row] = await db
+    .select({ id: clientLogins.id })
+    .from(clientLogins)
+    .where(
+      and(
+        eq(clientLogins.organizationId, organizationId),
+        eq(clientLogins.userId, userId),
+      ),
+    )
+    .limit(1);
+  return Boolean(row);
 }
 
 async function findMembership(organizationId: string, userId: string) {
@@ -160,6 +180,7 @@ export const BusinessModuleRepository = {
   deleteMemberPermission,
   findMemberById,
   findMembership,
+  isClientLogin,
   listEntitlements,
   listMemberPermissions,
   listMembers,

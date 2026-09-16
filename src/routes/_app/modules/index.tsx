@@ -27,6 +27,8 @@ import {
   type BusinessModuleKey,
 } from "@/shared/business-modules";
 import { getStandardErrorMessage } from "@/client/lib/error-messages";
+import { ClientModuleList } from "@/client/features/business-modules/ClientModuleList";
+import { useWorkspaceAccess } from "@/client/features/team/workspaceAccess";
 
 export const Route = createFileRoute("/_app/modules/")({
   component: BusinessModulesPage,
@@ -45,6 +47,22 @@ const icons = {
   clients: ShieldCheck,
   integrations: PlugZap,
 } satisfies Record<BusinessModuleKey, typeof Blocks>;
+
+/** The agency reads a catalogue here; a client reads what they were given. */
+function PageHeading({ isClient }: { isClient: boolean }) {
+  return (
+    <div>
+      <h1 className="text-2xl font-bold tracking-tight">
+        {isClient ? "Your tools" : "Business Access"}
+      </h1>
+      <p className="mt-1 max-w-2xl text-sm text-base-content/60">
+        {isClient
+          ? "What is switched on for your business. Your account manager adds to this as each part of it is connected."
+          : "Add operational tools around Digital Urgency without changing its SEO engine. Owners can activate only the modules included for this organization."}
+      </p>
+    </div>
+  );
+}
 
 function BusinessModulesPage() {
   const navigate = useNavigate();
@@ -68,6 +86,8 @@ function BusinessModulesPage() {
         getStandardErrorMessage(error, "We couldn't update this module."),
       ),
   });
+  const { data: workspace } = useWorkspaceAccess();
+  const isClient = workspace?.isClientLogin ?? false;
   const canManageStaff =
     accessQuery.data?.some((module) => module.canConfigureEntitlement) ?? false;
   const firstAvailableModule = accessQuery.data?.find(
@@ -75,6 +95,9 @@ function BusinessModulesPage() {
   );
 
   useEffect(() => {
+    // A client came here to see what they have, so this page answers that
+    // rather than throwing them into whichever module happens to be first.
+    if (isClient) return;
     if (!accessQuery.isSuccess || canManageStaff || !firstAvailableModule)
       return;
     void navigate(
@@ -88,7 +111,13 @@ function BusinessModulesPage() {
               replace: true,
             },
     );
-  }, [accessQuery.isSuccess, canManageStaff, firstAvailableModule, navigate]);
+  }, [
+    accessQuery.isSuccess,
+    canManageStaff,
+    firstAvailableModule,
+    isClient,
+    navigate,
+  ]);
   const staffQuery = useQuery({
     queryKey: ["business-modules", "staff"],
     queryFn: () => getBusinessModuleStaffAccess(),
@@ -126,17 +155,13 @@ function BusinessModulesPage() {
   return (
     <div className="h-full overflow-auto bg-base-100 px-4 py-8 pb-24 md:px-6 md:py-12 md:pb-8">
       <div className="mx-auto max-w-5xl space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Business Access</h1>
-          <p className="mt-1 max-w-2xl text-sm text-base-content/60">
-            Add operational tools around Digital Urgency without changing its
-            SEO engine. Owners can activate only the modules included for this
-            organization.
-          </p>
-        </div>
+        <PageHeading isClient={isClient} />
 
         {accessQuery.isLoading ||
-        (accessQuery.isSuccess && !canManageStaff && firstAvailableModule) ? (
+        (accessQuery.isSuccess &&
+          !isClient &&
+          !canManageStaff &&
+          firstAvailableModule) ? (
           <div className="flex justify-center py-16">
             <span className="loading loading-spinner loading-md" />
           </div>
@@ -147,6 +172,8 @@ function BusinessModulesPage() {
               "We couldn't load the business modules.",
             )}
           </div>
+        ) : isClient ? (
+          <ClientModuleList modules={accessQuery.data ?? []} icons={icons} />
         ) : !canManageStaff ? (
           <div className="alert alert-info">
             No business capabilities are available for this account. Ask a

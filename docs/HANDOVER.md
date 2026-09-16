@@ -153,7 +153,11 @@ settings form.
   It carries the welcome email, the quiet-account reminders (3, 10 and 14 days
   idle, cron `team.nudgeQuietLogins`, working hours, reset by any sign-in) and
   the sample-data switch. No row means staff, so nothing about the workspaces
-  that predate it changed. A client login does not see AI & MCP.
+  that predate it changed. A client login does not see AI & MCP, never gets
+  the entitlement switches whatever its role says, and is granted "manage" on
+  every module the agency enabled — switching a module on for a client is the
+  whole grant, with no per-member permission row to remember. Modules they do
+  not have are hidden rather than shown locked.
 - **Sample data** (`team/demoBusiness.ts`, `/modules/overview`): a worked
   example of the client's own trade, generated from the organization id and
   never written anywhere, so turning it off restores the workspace exactly.
