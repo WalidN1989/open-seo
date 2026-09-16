@@ -42,8 +42,11 @@ export const booleanSearchParamSchema = z
   .union([z.boolean(), z.enum(["true", "false"])])
   .transform((value) => value === true || value === "true");
 
+// The address bar carries the project's slug, and ensureUserMiddleware
+// resolves a slug or an id; demanding a uuid here refused every search made
+// from a project's own page.
 export const domainOverviewSchema = z.object({
-  projectId: z.string().uuid(),
+  projectId: z.string().min(1),
   domain: z.string().min(1, "Domain is required").max(2048),
   scope: researchScopeSchema.optional(),
   locationCode: z.number().int().positive().optional(),
@@ -59,7 +62,7 @@ const domainSortOrders = ["asc", "desc"] as const;
 const domainTabs = ["keywords", "pages"] as const;
 
 export const domainKeywordSuggestionsSchema = z.object({
-  projectId: z.string().uuid(),
+  projectId: z.string().min(1),
   domain: z.string().min(1, "Domain is required").max(2048),
   scope: researchScopeSchema.optional(),
   locationCode: z.number().int().positive().optional(),
@@ -104,7 +107,7 @@ const domainKeywordsFiltersSchema = z.object({
 export type DomainKeywordsFilters = z.infer<typeof domainKeywordsFiltersSchema>;
 
 export const domainKeywordsPageRequestSchema = z.object({
-  projectId: z.string().uuid(),
+  projectId: z.string().min(1),
   domain: z.string().min(1).max(2048),
   scope: researchScopeSchema.optional(),
   locationCode: z.number().int().positive().optional(),
@@ -126,7 +129,7 @@ export const domainKeywordsPageRequestSchema = z.object({
 const domainPagesSortModes = ["traffic", "keywords"] as const;
 
 export const domainPagesPageRequestSchema = z.object({
-  projectId: z.string().uuid(),
+  projectId: z.string().min(1),
   domain: z.string().min(1).max(2048),
   scope: researchScopeSchema.optional(),
   locationCode: z.number().int().positive().optional(),
