@@ -24,35 +24,16 @@ import { CommerceRepository } from "../repositories/CommerceRepository";
 
 const MAX_ROWS = 1000;
 
-async function writeRow(
-  organizationId: string,
-  row: ProductCsvRow,
-): Promise<"created" | "updated"> {
-  const existing = await CommerceRepository.findProductBySku(
-    organizationId,
-    row.sku,
-  );
-  const values = {
+const BATCH = 50;
+
+function valuesFor(row: ProductCsvRow) {
+  return {
     name: row.name,
     category: row.category || undefined,
     productUrl: row.productUrl || undefined,
     description: row.description || undefined,
     salePriceMinor: priceToMinorUnits(row.price),
   };
-  if (existing) {
-    await CommerceRepository.updateProduct(organizationId, {
-      id: existing.id,
-      ...values,
-    });
-    return "updated";
-  }
-  await CommerceRepository.createProduct(organizationId, {
-    sku: row.sku,
-    reorderThreshold: 0,
-    status: "active",
-    ...values,
-  });
-  return "created";
 }
 
 async function importProducts(
@@ -80,16 +61,48 @@ async function importProducts(
     );
   }
 
-  let created = 0;
-  let updated = 0;
+  // One query for every SKU in the file rather than one per row. A round trip
+  // per product is what made a catalogue of two hundred time out before it
+  // wrote anything.
+  const existing = await CommerceRepository.findProductIdsBySkus(
+    organizationId,
+    rows.map((row) => row.sku),
+  );
+
   const failed = [...problems];
-  for (const row of rows) {
+  const fresh = rows.filter((row) => !existing.has(row.sku));
+  const known = rows.filter((row) => existing.has(row.sku));
+
+  let created = 0;
+  for (let at = 0; at < fresh.length; at += BATCH) {
+    const batch = fresh.slice(at, at + BATCH);
     try {
-      // One at a time on purpose. A catalogue import that half-succeeds and
-      // reports nothing is worse than a slow one that says which line broke.
-      const outcome = await writeRow(organizationId, row);
-      if (outcome === "created") created += 1;
-      else updated += 1;
+      created += await CommerceRepository.createProducts(
+        organizationId,
+        batch.map((row) => ({
+          sku: row.sku,
+          reorderThreshold: 0,
+          status: "active" as const,
+          ...valuesFor(row),
+        })),
+      );
+    } catch (error) {
+      failed.push(
+        `${batch.length} products from ${batch[0]?.sku} onwards: ${
+          error instanceof Error ? error.message : "could not be saved"
+        }`,
+      );
+    }
+  }
+
+  let updated = 0;
+  for (const row of known) {
+    try {
+      await CommerceRepository.updateProduct(organizationId, {
+        id: existing.get(row.sku) ?? "",
+        ...valuesFor(row),
+      });
+      updated += 1;
     } catch (error) {
       failed.push(
         `${row.sku}: ${error instanceof Error ? error.message : "could not be saved"}`,
