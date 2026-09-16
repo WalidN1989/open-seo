@@ -376,6 +376,7 @@ export const integrationCatalogue: readonly IntegrationCatalogueEntry[] = [
       "In ElevenLabs, open your agent → Security → post-call webhook override, choose the new webhook and tick Transcript. Use the agent override, not the workspace default, so other agents' calls don't land in this business.",
       "Optionally add an approved WhatsApp template so first-time callers get a welcome.",
       "Optionally, to greet returning callers by name: click Generate beside the Caller recognition secret and save, then in ElevenLabs set the conversation initiation webhook to the caller recognition address on this page with header x-openseo-secret set to that value, and turn on fetching initiation data in the agent's Security tab.",
+      "If you turn that on, also switch on the First message override in the same Security tab. A recognised caller is greeted by name, which replaces the agent's opening line, and ElevenLabs ends the call at zero seconds — \"Override for field 'first_message' is not allowed by config\" — if the agent does not allow it.",
     ],
   },
   {

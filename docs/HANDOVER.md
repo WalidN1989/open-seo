@@ -137,7 +137,12 @@ settings form.
 
 - **Returning callers**: `/api/voice/elevenlabs-caller/<connection>` (shared
   secret header) greets known callers by name; phone calls get
-  `caller_channel=phone`, website widget calls ask for a mobile.
+  `caller_channel=phone`, website widget calls ask for a mobile. The reply
+  overrides `first_message`, so the agent must have the **First message
+  override switched on** in its Security tab or ElevenLabs ends every call at
+  zero seconds with "Override for field 'first_message' is not allowed by
+  config". Nothing in the transcript says why; the reason is only on the
+  conversation's own page.
 - **Quote from a call**: `voice-calls/services/CallQuoteService.ts` matches the
   caller's `quote_request` to catalogue ids only and emails the quote when the
   match is certain; otherwise a draft plus an owner reminder.
