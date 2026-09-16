@@ -153,6 +153,11 @@ settings form.
   in working hours, stops when the customer engages, then reminds the owner.
 - **SMS module** (`sms` key): Twilio webhook `/api/sms/twilio/<connection>`,
   inbox under CRM > SMS, texts on the lead journal, STOP honoured.
+- **Catalogue import**: Products > Import takes a CSV (name and sku required,
+  category/price/productUrl/description optional, headings matched by meaning).
+  SKU is the identity, so re-running a file updates instead of duplicating.
+  `shared/product-csv.ts` does the parsing and is where a new heading synonym
+  goes.
 - **Client logins** (`client_logins`): a row exists only for someone the
   agency created a login for, which is how the app tells a client from staff.
   It carries the welcome email, the quiet-account reminders (3, 10 and 14 days
