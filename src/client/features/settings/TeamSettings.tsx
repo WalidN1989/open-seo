@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Copy, Trash2, UserPlus, Users } from "lucide-react";
 import { authClient, useSession } from "@/lib/auth-client";
+import { ClientLoginPanel } from "./ClientLoginPanel";
 
 const MEMBERS_KEY = ["organization", "members"];
 const INVITATIONS_KEY = ["organization", "invitations"];
@@ -134,45 +135,56 @@ export function TeamSettings() {
         </p>
       </div>
 
-      <form
-        className="flex flex-wrap items-end gap-2 rounded-lg border border-base-300 p-4"
-        onSubmit={(event) => {
-          event.preventDefault();
-          invite.mutate();
-        }}
-      >
-        <label className="form-control flex-1">
-          <span className="label-text text-xs">Email</span>
-          <input
-            type="email"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-            placeholder="person@example.com"
-            className="input input-bordered input-sm w-full"
-            required
-          />
-        </label>
-        <label className="form-control">
-          <span className="label-text text-xs">Role</span>
-          <select
-            value={role}
-            onChange={(event) => setRole(toRole(event.target.value))}
-            className="select select-bordered select-sm"
-          >
-            {ROLES.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <button
-          className="btn btn-primary btn-sm"
-          disabled={invite.isPending || !email.trim()}
+      <ClientLoginPanel />
+
+      <details className="rounded-lg border border-base-300 p-4">
+        <summary className="cursor-pointer text-sm font-medium">
+          Invite someone who already has an account
+        </summary>
+        <p className="mt-1 text-xs text-base-content/60">
+          Sends nothing by email: copy the link from the list below and pass it
+          on. Someone with no account yet needs a login created above.
+        </p>
+        <form
+          className="mt-3 flex flex-wrap items-end gap-2"
+          onSubmit={(event) => {
+            event.preventDefault();
+            invite.mutate();
+          }}
         >
-          <UserPlus className="size-4" /> Invite
-        </button>
-      </form>
+          <label className="form-control flex-1">
+            <span className="label-text text-xs">Email</span>
+            <input
+              type="email"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              placeholder="person@example.com"
+              className="input input-bordered input-sm w-full"
+              required
+            />
+          </label>
+          <label className="form-control">
+            <span className="label-text text-xs">Role</span>
+            <select
+              value={role}
+              onChange={(event) => setRole(toRole(event.target.value))}
+              className="select select-bordered select-sm"
+            >
+              {ROLES.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button
+            className="btn btn-primary btn-sm"
+            disabled={invite.isPending || !email.trim()}
+          >
+            <UserPlus className="size-4" /> Invite
+          </button>
+        </form>
+      </details>
 
       {invitations.data?.length ? (
         <div className="rounded-lg border border-base-300">
