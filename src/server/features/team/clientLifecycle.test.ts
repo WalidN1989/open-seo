@@ -63,16 +63,24 @@ describe("dueStage", () => {
 });
 
 describe("what is said", () => {
-  it("never puts credentials in the welcome", () => {
-    const email = welcomeEmail("Bestrends");
+  it("never puts credentials in the welcome, and speaks the trade's words", () => {
+    const email = welcomeEmail(
+      "Bestrends",
+      "the orders coming in, the styles and sizes customers ask for",
+    );
+    const body = email.body.join(" ").toLowerCase();
     expect(email.subject).toContain("Bestrends");
-    expect(email.body.toLowerCase()).toContain("not in this email");
-    expect(email.body.toLowerCase()).not.toContain("password");
+    expect(email.body.length).toBeGreaterThan(1);
+    expect(body).toContain("not in this email");
+    expect(body).not.toContain("password");
+    // A shop that never sends a quotation is never told it can read its own.
+    expect(body).not.toContain("quote");
+    expect(body).toContain("styles and sizes");
   });
 
   it("writes one email per stage and nothing outside them", () => {
     expect(nudgeEmail(1, "Bestrends")?.heading).toMatch(/getting started/i);
-    expect(nudgeEmail(3, "Bestrends")?.body).toMatch(/close/i);
+    expect(nudgeEmail(3, "Bestrends")?.body.join(" ")).toMatch(/close/i);
     expect(nudgeEmail(4, "Bestrends")).toBeNull();
     expect(nudgeEmail(0, "Bestrends")).toBeNull();
   });

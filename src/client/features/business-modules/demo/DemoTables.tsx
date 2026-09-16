@@ -139,7 +139,15 @@ export function MeetingsList({ rows }: { rows: Meeting[] }) {
   );
 }
 
-type Message = { from: string; text: string; channel: string; at: string };
+type Message = {
+  from: string;
+  text: string;
+  /** Set when the customer wrote in their own language, with the gloss below. */
+  language: string | null;
+  meaning: string | null;
+  channel: string;
+  at: string;
+};
 
 export function MessagesList({ rows }: { rows: Message[] }) {
   return (
@@ -152,7 +160,12 @@ export function MessagesList({ rows }: { rows: Message[] }) {
               {row.channel} · {day(row.at)}
             </span>
           </div>
-          <p className="text-xs text-base-content/70">{row.text}</p>
+          <p className="text-sm text-base-content/80">{row.text}</p>
+          {row.meaning ? (
+            <p className="text-xs text-base-content/50">
+              {row.language} · {row.meaning}
+            </p>
+          ) : null}
         </li>
       ))}
     </ul>
@@ -200,6 +213,8 @@ type Order = {
   customer: string;
   total: string;
   status: string;
+  /** How it reached the business — voice, WhatsApp, the website or in store. */
+  placedVia: string;
   placedAt: string;
 };
 
@@ -212,7 +227,12 @@ export function OrdersTable({ rows }: { rows: Order[] }) {
             <td className="whitespace-nowrap font-mono text-xs">
               {row.number}
             </td>
-            <td>{row.customer}</td>
+            <td>
+              <div>{row.customer}</div>
+              <div className="text-xs text-base-content/60">
+                via {row.placedVia}
+              </div>
+            </td>
             <td className="whitespace-nowrap text-right">{row.total}</td>
             <td className="whitespace-nowrap">
               <span className="badge badge-ghost badge-sm">{row.status}</span>

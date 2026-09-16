@@ -97,7 +97,7 @@ export async function sendClientActionEmail(input: {
   email: string;
   subject: string;
   heading: string;
-  body: string;
+  body: string | string[];
   buttonLabel: string;
   actionUrl: string;
   footer: string;

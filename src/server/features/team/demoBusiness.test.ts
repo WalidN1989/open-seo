@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { buildDemoOverview } from "./demoBusiness";
 import { demoProfileFor } from "./demoProfiles";
+import { demoRegionFor } from "./demoRegions";
 
 const now = new Date("2026-09-16T00:00:00.000Z");
 
@@ -17,7 +18,46 @@ describe("demoProfileFor", () => {
   });
 });
 
+describe("demoRegionFor", () => {
+  it("reads the country from the domain and writes its phone numbers", () => {
+    expect(demoRegionFor("bestrends.lk").dialCode).toBe("+94");
+    expect(demoRegionFor("digitalurgency.com.au").currency).toBe("AUD");
+    expect(demoRegionFor(null).dialCode).toBe("+61");
+  });
+});
+
 describe("buildDemoOverview", () => {
+  it("uses the local country code, money and language", () => {
+    const overview = buildDemoOverview({
+      seed: "org-lk",
+      workspace: "Bestrends",
+      domain: "bestrends.lk",
+      now,
+    });
+    expect(overview.country).toBe("Sri Lanka");
+    expect(overview.currency).toBe("LKR");
+    for (const contact of overview.contacts) {
+      expect(contact.phone.startsWith("+94")).toBe(true);
+    }
+    const written = overview.messages.filter((message) => message.language);
+    expect(written.length).toBeGreaterThan(0);
+    for (const message of written) {
+      expect(["Sinhala", "Tamil"]).toContain(message.language);
+      expect(message.meaning).toBeTruthy();
+    }
+  });
+
+  it("keeps Australian workspaces on +61 and English", () => {
+    const overview = buildDemoOverview({
+      seed: "org-au",
+      workspace: "Southside Fencing",
+      domain: "southsidefencing.com.au",
+      now,
+    });
+    expect(overview.contacts[0]?.phone.startsWith("+61")).toBe(true);
+    expect(overview.messages.every((message) => !message.language)).toBe(true);
+  });
+
   it("shows the same business every time for one workspace", () => {
     const first = buildDemoOverview({
       seed: "org-1",
@@ -73,16 +113,34 @@ describe("buildDemoOverview", () => {
     );
   });
 
-  it("counts the headline numbers off the rows it lists", () => {
+  it("reports the month in the headline, not the size of the sample table", () => {
     const overview = buildDemoOverview({
       seed: "org-3",
       workspace: "Acme",
       now,
     });
-    expect(overview.headline[0]?.value).toBe(String(overview.leads.length));
-    expect(overview.headline[3]?.value).toBe(String(overview.orders.length));
+    // The tables below show a handful of recent rows; the tiles above them
+    // are the month, which is the figure a business owner recognises.
+    expect(Number(overview.headline[0]?.value)).toBeGreaterThanOrEqual(38);
+    expect(Number(overview.headline[3]?.value)).toBeGreaterThanOrEqual(120);
     expect(overview.headline[4]?.value).toBe(
       String(overview.traffic.totalSessions),
     );
+  });
+
+  it("counts the communication tiles off the days the chart plots", () => {
+    const overview = buildDemoOverview({
+      seed: "org-4",
+      workspace: "Acme",
+      now,
+    });
+    const days = overview.communicationDays;
+    expect(days).toHaveLength(14);
+    const calls = days.reduce((sum, day) => sum + day.calls, 0);
+    const voiceOrders = days.reduce((sum, day) => sum + day.voiceOrders, 0);
+    expect(overview.communication[0]?.value).toBe(String(calls));
+    expect(overview.communication[1]?.value).toBe(String(voiceOrders));
+    expect(overview.restockQueue.length).toBeGreaterThan(0);
+    expect(overview.locations.length).toBeGreaterThan(0);
   });
 });

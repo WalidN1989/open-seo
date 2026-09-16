@@ -5,6 +5,7 @@ import { sendClientActionEmail } from "@/server/email/transactional";
 import { BusinessAuditRepository } from "@/server/features/business-modules/repositories/BusinessAuditRepository";
 import { getOptionalEnvValue } from "@/server/lib/runtime-env";
 import { inWorkingHours } from "@/server/lib/working-hours";
+import { demoProfileFor } from "../demoProfiles";
 import {
   dueStage,
   LAST_STAGE,
@@ -88,10 +89,13 @@ async function onLoginCreated(input: {
   if (!row) return "skipped: login row not created";
   if (row.welcomeStatus === "sent") return "skipped: already welcomed";
 
+  // What this business will actually find inside, in the words of its trade.
+  const domain = await Logins.domainOf(input.organizationId);
+  const shows = demoProfileFor(input.workspace, domain).workspaceShows;
   const status = await send(
     input.email,
     input.workspace,
-    welcomeEmail(input.workspace),
+    welcomeEmail(input.workspace, shows),
     await emailOf(input.createdByUserId),
   );
   await Logins.update(row.id, {

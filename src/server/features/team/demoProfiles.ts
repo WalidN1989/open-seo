@@ -20,7 +20,14 @@ export type DemoProfile = {
   enquiries: string[];
   /** Where the customers come from, for the sample traffic breakdown. */
   channels: string[];
-  currency: string;
+  /** What people ring the voice agent about. */
+  voiceIntents: string[];
+  /**
+   * What this trade will actually find in its workspace, in its own words.
+   * A footwear shop does not send quotations, and telling one it can see its
+   * quotes is the first sentence of the relationship being wrong.
+   */
+  workspaceShows: string;
 };
 
 const FASHION: DemoProfile = {
@@ -41,7 +48,15 @@ const FASHION: DemoProfile = {
     "Do you do wholesale pricing for 20 pairs?",
   ],
   channels: ["Google search", "Instagram", "Direct", "Facebook", "Referral"],
-  currency: "LKR",
+  workspaceShows:
+    "the orders coming in, the styles and sizes customers ask for, and every call and WhatsApp message your shop receives",
+  voiceIntents: [
+    "Checking a size before coming in",
+    "Placing a repeat order",
+    "Asking about delivery",
+    "Asking if a style is back in stock",
+    "Booking a fitting",
+  ],
 };
 
 const BOOKS: DemoProfile = {
@@ -62,7 +77,15 @@ const BOOKS: DemoProfile = {
     "What time do you close on Sunday?",
   ],
   channels: ["Google search", "Direct", "Facebook", "Referral", "Instagram"],
-  currency: "LKR",
+  workspaceShows:
+    "the orders coming in, the titles customers ask for, and every call and WhatsApp message your shop receives",
+  voiceIntents: [
+    "Asking whether a title is in stock",
+    "Ordering a title to be brought in",
+    "Asking about opening hours",
+    "Placing a school order",
+    "Asking about delivery",
+  ],
 };
 
 const TRADES: DemoProfile = {
@@ -83,7 +106,15 @@ const TRADES: DemoProfile = {
     "Do you cover the northern suburbs?",
   ],
   channels: ["Google search", "Google Maps", "Referral", "Direct", "Facebook"],
-  currency: "AUD",
+  workspaceShows:
+    "your enquiries and quotes, the jobs you have booked, and every call and WhatsApp message that comes in",
+  voiceIntents: [
+    "Asking for a quote",
+    "Booking a site measure",
+    "Asking when work could start",
+    "Checking on a job already booked",
+    "Asking about materials",
+  ],
 };
 
 const SERVICES: DemoProfile = {
@@ -104,7 +135,15 @@ const SERVICES: DemoProfile = {
     "Can you send a quote by email?",
   ],
   channels: ["Google search", "Referral", "Direct", "LinkedIn", "Facebook"],
-  currency: "AUD",
+  workspaceShows:
+    "your leads and quotes, your customers, and every call and message that comes in",
+  voiceIntents: [
+    "Asking what a package includes",
+    "Asking for a quote",
+    "Booking a consultation",
+    "Chasing an existing job",
+    "Asking about payment terms",
+  ],
 };
 
 const PROFILES = [FASHION, BOOKS, TRADES, SERVICES];

@@ -1,6 +1,12 @@
-import { and, desc, eq, inArray, lt, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, isNotNull, lt, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { clientLogins, organization, session, user } from "@/db/schema";
+import {
+  clientLogins,
+  organization,
+  projects,
+  session,
+  user,
+} from "@/db/schema";
 
 /**
  * Rows for the logins the agency created for people outside it.
@@ -97,7 +103,23 @@ async function lastSeen(userIds: string[]) {
   );
 }
 
+/** The workspace's own website, which says what trade it is in. */
+async function domainOf(organizationId: string) {
+  const [row] = await db
+    .select({ domain: projects.domain })
+    .from(projects)
+    .where(
+      and(
+        eq(projects.organizationId, organizationId),
+        isNotNull(projects.domain),
+      ),
+    )
+    .limit(1);
+  return row?.domain ?? null;
+}
+
 export const ClientLoginRepository = {
+  domainOf,
   create,
   find,
   update,

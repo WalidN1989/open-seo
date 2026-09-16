@@ -29,7 +29,8 @@ export type ClientEmail = {
   stage: number;
   subject: string;
   heading: string;
-  body: string;
+  /** Paragraphs. Four sentences in one block is a wall of text in Gmail. */
+  body: string[];
   buttonLabel: string;
 };
 
@@ -66,12 +67,21 @@ export function dueStage(now: Date, state: ClientLifecycleState) {
   return idleDays >= STAGE_DAYS[stage] ? stage + 1 : null;
 }
 
-export function welcomeEmail(workspace: string): ClientEmail {
+/**
+ * `shows` is what this particular business will find inside, in the words of
+ * its own trade — see `demoProfiles.ts`. A shoe shop told it can review its
+ * quotations has been sent somebody else's welcome.
+ */
+export function welcomeEmail(workspace: string, shows: string): ClientEmail {
   return {
     stage: 0,
     subject: `Your ${workspace} account is ready`,
     heading: "Your account has been set up",
-    body: `Welcome aboard. An account has been created for you on the ${workspace} workspace, where you'll be able to see your leads, quotes, messages and how the site is performing. Your sign-in details are not in this email — one of our team will send them to you shortly. There is nothing you need to do until then.`,
+    body: [
+      `Welcome aboard. Your account on the ${workspace} workspace is ready.`,
+      `Once you are in, you will find ${shows} — all in one place, rather than spread across a phone, an inbox and a notebook.`,
+      "Your sign-in details are not in this email. One of our team will send them to you shortly, so there is nothing you need to do until then.",
+    ],
     buttonLabel: "Open the sign-in page",
   };
 }
@@ -86,7 +96,10 @@ export function nudgeEmail(
       stage,
       subject: "How are you finding it so far?",
       heading: "Everything okay getting started?",
-      body: `We noticed your ${workspace} workspace has been quiet since we set it up. If anything is in the way — signing in, finding your way around, or something that isn't doing what you expected — reply to this email and we'll sort it out.`,
+      body: [
+        `We noticed your ${workspace} workspace has been quiet since we set it up.`,
+        "If anything is in the way — signing in, finding your way around, or something not doing what you expected — reply to this email and we'll sort it out.",
+      ],
       buttonLabel: "Sign in",
     };
   }
@@ -95,7 +108,10 @@ export function nudgeEmail(
       stage,
       subject: "Still here if you need a hand",
       heading: "We haven't seen you in a while",
-      body: `Your ${workspace} workspace is still set up and waiting. If now isn't the right time, that's completely fine — just let us know. If you'd like a quick walkthrough instead, reply and we'll book ten minutes.`,
+      body: [
+        `Your ${workspace} workspace is still set up and waiting for you.`,
+        "If now isn't the right time, that's completely fine — just let us know. If you'd like a quick walkthrough instead, reply and we'll book ten minutes.",
+      ],
       buttonLabel: "Sign in",
     };
   }
@@ -104,7 +120,10 @@ export function nudgeEmail(
       stage,
       subject: `About your ${workspace} workspace`,
       heading: "We'll close this workspace unless we hear from you",
-      body: `There has been no activity on your ${workspace} workspace for two weeks, so we're planning to close it and free up the space. Nothing has been deleted yet. Sign in, or reply to this email, and we'll keep it open — otherwise it will be removed.`,
+      body: [
+        `There has been no activity on your ${workspace} workspace for two weeks, so we are planning to close it and free up the space.`,
+        "Nothing has been deleted yet. Sign in, or reply to this email, and we'll keep it open — otherwise it will be removed.",
+      ],
       buttonLabel: "Keep my workspace open",
     };
   }

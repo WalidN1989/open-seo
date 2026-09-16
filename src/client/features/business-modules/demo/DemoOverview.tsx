@@ -2,6 +2,13 @@ import { useQuery } from "@tanstack/react-query";
 import { FlaskConical } from "lucide-react";
 import { getDemoOverview } from "@/serverFunctions/team";
 import {
+  CommunicationChart,
+  CommunicationTiles,
+  LocationsTable,
+  RestockTable,
+  VoiceCallsTable,
+} from "./DemoCommunication";
+import {
   ContactsTable,
   LeadsTable,
   MeetingsList,
@@ -40,7 +47,8 @@ export function DemoOverview() {
         <FlaskConical className="size-4 shrink-0" />
         <div>
           <p className="font-medium">
-            Sample data — an example of a {overview.trade} business
+            Sample data — an example of a {overview.trade} business in{" "}
+            {overview.country}
           </p>
           <p className="text-xs text-base-content/70">
             {preview
@@ -49,6 +57,35 @@ export function DemoOverview() {
           </p>
         </div>
       </div>
+
+      <div>
+        <h2 className="mb-2 text-sm font-semibold">
+          Centralised communication
+        </h2>
+        <CommunicationTiles tiles={overview.communication} />
+      </div>
+
+      <CommunicationChart days={overview.communicationDays} />
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Panel title="Calls the agent took" note="recent">
+          <VoiceCallsTable rows={overview.voiceCalls} />
+        </Panel>
+        <Panel
+          title="Out of stock, caught on the phone"
+          note="sent to purchasing"
+        >
+          <RestockTable rows={overview.restockQueue} />
+        </Panel>
+        <Panel title="Locations" note="where the calls land">
+          <LocationsTable rows={overview.locations} />
+        </Panel>
+        <Panel title="Messages" note="WhatsApp and SMS">
+          <MessagesList rows={overview.messages} />
+        </Panel>
+      </div>
+
+      <h2 className="pt-2 text-sm font-semibold">The rest of the business</h2>
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
         {overview.headline.map((tile) => (
@@ -74,9 +111,6 @@ export function DemoOverview() {
         </Panel>
         <Panel title="Meetings & call-backs" note="what is booked">
           <MeetingsList rows={overview.meetings} />
-        </Panel>
-        <Panel title="Messages" note="SMS and WhatsApp">
-          <MessagesList rows={overview.messages} />
         </Panel>
         <Panel title="Inquiries" note="what customers ask most">
           <ul className="space-y-2 text-sm text-base-content/80">
