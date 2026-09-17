@@ -234,58 +234,101 @@ export function AuthPageShell({
  * flips, and React keeps the two in step through the ref.
  */
 /**
- * The panel beside the form: digitalurgency.com.au itself.
+ * The clip beside the form, with a way through to the site.
  *
- * A screenshot goes stale the week the site changes, so this frames the live
- * page and scales it down like a poster. It is deliberately inert — nobody
- * signing in wants to find themselves scrolling a marketing site inside a
- * login form — so pointer events are off and the whole panel is one link out
- * to the real thing.
+ * This slot held a live frame of digitalurgency.com.au for a while. A sandbox
+ * strict enough to satisfy the linter left the page unstyled, and the site
+ * scaled into a 416px panel read as a thumbnail of unreadable text, so the
+ * clip is back and the site is a link instead.
+ *
+ * Muted by default and it starts that way on every visit: browsers refuse to
+ * autoplay with sound, and a login page that talks unprompted would be worse
+ * than one that plays nothing. The `muted` attribute is the initial state;
+ * the property is what the toggle flips.
  */
-const FRAME_WIDTH = 1280;
-const FRAME_HEIGHT = 2160;
-const PANEL_WIDTH = 416;
-
 function AuthShowcase() {
-  const scale = PANEL_WIDTH / FRAME_WIDTH;
+  const videoRef = React.useRef<HTMLVideoElement>(null);
+  const [muted, setMuted] = React.useState(true);
+
+  const toggleSound = () => {
+    const video = videoRef.current;
+    if (!video) return;
+    video.muted = !video.muted;
+    setMuted(video.muted);
+  };
 
   return (
     <div className="relative hidden lg:block">
+      <video
+        ref={videoRef}
+        className="max-h-[min(78dvh,44rem)] w-[26rem] max-w-full rounded-2xl object-contain"
+        src="/login-hero.mp4"
+        poster="/login-hero-poster.jpg"
+        autoPlay
+        muted
+        loop
+        // iOS refuses to autoplay without this and opens fullscreen instead.
+        playsInline
+        preload="metadata"
+        aria-hidden
+        tabIndex={-1}
+      />
       <a
         href="https://digitalurgency.com.au/"
         target="_blank"
         rel="noreferrer"
-        className="group block overflow-hidden rounded-2xl border border-base-300 bg-base-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-        // Capped against the viewport as well as in pixels, so on a short
-        // laptop screen the panel shrinks instead of pushing the form off the
-        // bottom of the page.
-        style={{
-          width: PANEL_WIDTH,
-          height: `min(${Math.min(FRAME_HEIGHT * scale, 704)}px, 78dvh)`,
-        }}
-        aria-label="Open digitalurgency.com.au"
+        className="absolute bottom-3 left-3 rounded-full bg-black/55 px-3 py-1.5 text-xs text-white backdrop-blur-sm transition hover:bg-black/75 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
       >
-        <iframe
-          src="https://digitalurgency.com.au/"
-          title="digitalurgency.com.au"
-          // Scripts only. Adding allow-same-origin alongside them would hand
-          // a frame on our own origin the keys to this page; the marketing
-          // site is a different origin and renders without it.
-          sandbox="allow-scripts"
-          loading="lazy"
-          tabIndex={-1}
-          className="pointer-events-none border-0"
-          style={{
-            width: FRAME_WIDTH,
-            height: FRAME_HEIGHT,
-            transform: `scale(${scale})`,
-            transformOrigin: "top left",
-          }}
-        />
-        <span className="pointer-events-none absolute right-3 bottom-3 rounded-full bg-black/55 px-3 py-1.5 text-xs text-white backdrop-blur-sm transition group-hover:bg-black/75">
-          digitalurgency.com.au
-        </span>
+        digitalurgency.com.au
       </a>
+      <button
+        type="button"
+        onClick={toggleSound}
+        aria-pressed={!muted}
+        aria-label={muted ? "Turn sound on" : "Turn sound off"}
+        title={muted ? "Turn sound on" : "Turn sound off"}
+        className="absolute right-3 bottom-3 flex size-9 items-center justify-center rounded-full bg-black/55 text-white backdrop-blur-sm transition hover:bg-black/75 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
+      >
+        {muted ? <SoundOffIcon /> : <SoundOnIcon />}
+      </button>
     </div>
+  );
+}
+
+function SoundOffIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      className="size-4"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M11 5 6 9H2v6h4l5 4V5z" />
+      <path d="m23 9-6 6" />
+      <path d="m17 9 6 6" />
+    </svg>
+  );
+}
+
+function SoundOnIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      className="size-4"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M11 5 6 9H2v6h4l5 4V5z" />
+      <path d="M15.5 8.5a5 5 0 0 1 0 7" />
+      <path d="M19 5.5a9 9 0 0 1 0 13" />
+    </svg>
   );
 }
