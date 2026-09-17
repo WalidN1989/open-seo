@@ -174,7 +174,10 @@ export function AuthPageShell({
         // The form column is capped and the video column sizes to the video, and
         // the pair is centred as one piece. Splitting the viewport in half left
         // the clip stranded in the far corner of a wide screen.
-        className="min-h-[100dvh] bg-base-200 text-base-content lg:grid lg:grid-cols-[minmax(0,34rem)_auto] lg:items-center lg:justify-center lg:gap-10 lg:p-5"
+        // overflow-x-hidden because nothing on a sign-in page should be
+        // reachable sideways: a stray horizontal scrollbar here reads as a
+        // broken page before anyone has typed anything.
+        className="min-h-[100dvh] overflow-x-hidden bg-base-200 text-base-content lg:grid lg:grid-cols-[minmax(0,34rem)_auto] lg:items-center lg:justify-center lg:gap-10 lg:p-5"
       >
         {/* The form column is its own scroll container so a tall form stays
             reachable without the panel beside it scrolling away. */}
@@ -253,9 +256,12 @@ function AuthShowcase() {
         target="_blank"
         rel="noreferrer"
         className="group block overflow-hidden rounded-2xl border border-base-300 bg-base-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+        // Capped against the viewport as well as in pixels, so on a short
+        // laptop screen the panel shrinks instead of pushing the form off the
+        // bottom of the page.
         style={{
           width: PANEL_WIDTH,
-          height: Math.min(FRAME_HEIGHT * scale, 704),
+          height: `min(${Math.min(FRAME_HEIGHT * scale, 704)}px, 78dvh)`,
         }}
         aria-label="Open digitalurgency.com.au"
       >
