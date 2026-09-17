@@ -212,8 +212,18 @@ export function AuthPageShell({
               </p>
             </div>
 
-            <div className="auth-rise auth-rise-3 flex w-full flex-col items-center rounded-2xl border border-base-300 bg-base-100 px-6 py-8 shadow-[0_1px_0_0_oklch(100%_0_0/0.04)_inset]">
-              {children}
+            <div className="auth-rise auth-rise-3 flex w-full flex-col items-center gap-5">
+              <div className="flex w-full flex-col items-center rounded-2xl border border-base-300 bg-base-100 px-6 py-8 shadow-[0_1px_0_0_oklch(100%_0_0/0.04)_inset]">
+                {children}
+              </div>
+              <a
+                href="https://digitalurgency.com.au/"
+                target="_blank"
+                rel="noreferrer"
+                className="text-sm text-base-content/50 underline-offset-4 transition hover:text-base-content hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              >
+                digitalurgency.com.au
+              </a>
             </div>
           </div>
         </div>
@@ -234,12 +244,11 @@ export function AuthPageShell({
  * flips, and React keeps the two in step through the ref.
  */
 /**
- * The clip beside the form, with a way through to the site.
+ * The clip beside the form.
  *
- * This slot held a live frame of digitalurgency.com.au for a while. A sandbox
- * strict enough to satisfy the linter left the page unstyled, and the site
+ * This slot held a live frame of digitalurgency.com.au for a while. The site
  * scaled into a 416px panel read as a thumbnail of unreadable text, so the
- * clip is back and the site is a link instead.
+ * clip is back and the site is a link under the form instead.
  *
  * Muted by default and it starts that way on every visit: browsers refuse to
  * autoplay with sound, and a login page that talks unprompted would be worse
@@ -273,14 +282,6 @@ function AuthShowcase() {
         aria-hidden
         tabIndex={-1}
       />
-      <a
-        href="https://digitalurgency.com.au/"
-        target="_blank"
-        rel="noreferrer"
-        className="absolute bottom-3 left-3 rounded-full bg-black/55 px-3 py-1.5 text-xs text-white backdrop-blur-sm transition hover:bg-black/75 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
-      >
-        digitalurgency.com.au
-      </a>
       <button
         type="button"
         onClick={toggleSound}
