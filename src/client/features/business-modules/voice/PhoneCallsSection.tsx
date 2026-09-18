@@ -21,6 +21,17 @@ function length(seconds: number | null) {
   return minutes ? `${minutes}m ${Math.round(seconds % 60)}s` : `${seconds}s`;
 }
 
+/** Which agent took the call and where: the phone line or the website. */
+function source(call: { provider: string; agentName: string | null }) {
+  const website = call.provider === "deepgram";
+  return {
+    agent:
+      call.agentName?.trim() || (website ? "Website agent" : "Phone agent"),
+    channel: website ? "Website" : "Phone",
+    badge: website ? "badge-secondary" : "badge-primary",
+  };
+}
+
 function label(key: string) {
   return key
     .replace(/^caller_/, "")
@@ -29,8 +40,8 @@ function label(key: string) {
 }
 
 /**
- * Calls answered by the hosted voice agent (ElevenLabs), each already turned
- * into a CRM contact and lead by the post-call webhook.
+ * Calls answered by the voice agents — the phone line (ElevenLabs) and the
+ * website (Deepgram) — each already turned into a CRM contact and lead.
  */
 export function PhoneCallsSection() {
   const query = useQuery({
@@ -46,22 +57,24 @@ export function PhoneCallsSection() {
     <section className="space-y-3 rounded-xl border border-base-300 p-4">
       <div className="flex items-center gap-2">
         <PhoneIncoming className="size-4" />
-        <h2 className="font-semibold">Phone calls</h2>
+        <h2 className="font-semibold">Calls</h2>
         <span className="text-sm text-base-content/55">
-          answered by your voice agent
+          answered by your voice agents
         </span>
       </div>
       {query.isPending ? (
         <span className="loading loading-spinner loading-sm" />
       ) : calls.length === 0 ? (
         <p className="text-sm text-base-content/60">
-          No calls yet. Connect ElevenLabs under Integrations and add its
-          post-call webhook; every call then lands here and in the CRM.
+          No calls yet. Connect ElevenLabs (phone line) or Deepgram (website
+          voice agent) under Integrations; every call then lands here and in the
+          CRM.
         </p>
       ) : (
         <ul className="divide-y divide-base-300">
           {calls.map((call) => {
             const expanded = open === call.id;
+            const from = source(call);
             return (
               <li key={call.id} className="py-3">
                 <button
@@ -69,6 +82,12 @@ export function PhoneCallsSection() {
                   className="flex w-full flex-wrap items-center gap-x-3 gap-y-1 text-left"
                   onClick={() => setOpen(expanded ? null : call.id)}
                 >
+                  <span
+                    className={`badge badge-sm badge-outline ${from.badge}`}
+                    title={`${from.channel} call`}
+                  >
+                    {from.agent} · {from.channel}
+                  </span>
                   <span className="font-medium">
                     {call.contact?.name ?? "Unknown caller"}
                   </span>
@@ -122,7 +141,7 @@ export function PhoneCallsSection() {
                       {call.transcript.map((turn, index) => (
                         <p key={index}>
                           <span className="font-medium">
-                            {turn.role === "agent" ? "Agent" : "Caller"}:
+                            {turn.role === "agent" ? from.agent : "Caller"}:
                           </span>{" "}
                           {turn.message}
                         </p>

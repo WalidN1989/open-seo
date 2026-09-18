@@ -176,6 +176,13 @@ export async function testIntegrationConnection(
         providerKey: connection.providerKey,
         detail: "Webhook secret is stored; calls arrive when ElevenLabs posts",
       };
+    case "deepgram":
+      await credentialValue(connection, "WEBHOOK_SECRET");
+      return {
+        providerKey: connection.providerKey,
+        detail:
+          "Call log secret is stored; calls arrive when the website sends them",
+      };
     case "wordpress": {
       const [siteUrl, username, applicationPassword] = await Promise.all([
         credentialValue(connection, "SITE_URL"),

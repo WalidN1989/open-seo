@@ -380,6 +380,45 @@ export const integrationCatalogue: readonly IntegrationCatalogueEntry[] = [
     ],
   },
   {
+    key: "deepgram",
+    name: "Deepgram",
+    tagline: "Calls to your website voice agent, straight into the CRM",
+    description:
+      "When a visitor finishes a call with the voice agent on your website, the transcript arrives here. The call is summarised, the caller becomes a CRM contact with a lead when they left a name, number or email, and the call appears in the Voice module next to your phone calls, labelled with the website agent's name.",
+    category: "channels",
+    state: "connectable",
+    credentialFields: [
+      {
+        key: "WEBHOOK_SECRET",
+        label: "Call log secret",
+        type: "secret",
+        required: true,
+        generate: true,
+        help: "Click Generate and save. Your website signs every call it sends with this value, so it goes into the website's settings too.",
+      },
+      {
+        key: "WELCOME_TEMPLATE",
+        label: "WhatsApp welcome template (optional)",
+        type: "text",
+        required: false,
+        placeholder: "HX… Content SID, or a Meta template name",
+        help: "Sent once to first-time callers who gave a mobile number. Must be an approved template: Twilio uses the Content SID, Meta the template name.",
+      },
+    ],
+    capabilities: [
+      "website call transcripts",
+      "AI call summary",
+      "CRM contact and lead per caller",
+      "recap email and WhatsApp welcome",
+    ],
+    howToConnect: [
+      "Click Generate beside Call log secret, then Connect. The call log address appears on this page.",
+      "In your website's hosting settings (Lovable → Secrets), add VOICE_LOG_URL set to that address and VOICE_LOG_SECRET set to the same secret.",
+      "Make a short test call on the website. It appears under Voice within a minute of hanging up.",
+      "Calls where the visitor gave no name, number or email are logged but do not create a contact or lead.",
+    ],
+  },
+  {
     key: "wordpress",
     name: "WordPress",
     tagline: "Publish approved articles to your site in one click",

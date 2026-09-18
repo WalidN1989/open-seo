@@ -12,7 +12,11 @@ import { ProviderConnectPanel } from "./ProviderConnectPanel";
 import { CatalogueSyncPanel } from "./CatalogueSyncPanel";
 import { verifyConnection } from "./verifyConnection";
 import { getStandardErrorMessage } from "@/client/lib/error-messages";
-import { ElevenLabsAddresses, SmsWebhookAddress } from "./ElevenLabsAddresses";
+import {
+  DeepgramCallLogAddress,
+  ElevenLabsAddresses,
+  SmsWebhookAddress,
+} from "./ElevenLabsAddresses";
 
 const WORKSPACE_KEY = ["integrations", "workspace"];
 
@@ -172,6 +176,10 @@ export function IntegrationProviderDetailView() {
 
           {entry.key === "elevenlabs" && connection ? (
             <ElevenLabsAddresses connectionId={connection.id} />
+          ) : null}
+
+          {entry.key === "deepgram" && connection ? (
+            <DeepgramCallLogAddress connectionId={connection.id} />
           ) : null}
 
           {showsSync ? (

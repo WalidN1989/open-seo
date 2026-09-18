@@ -10,6 +10,7 @@ import {
   readPostCall,
   verifyElevenLabsSignature,
   type PhoneCallReport,
+  type PhoneRegion,
 } from "../elevenlabsWebhook";
 import { activityNotes, duration, inSentence, splitName } from "../callNotes";
 import { PhoneCallRepository as Repo } from "../repositories/PhoneCallRepository";
@@ -17,9 +18,24 @@ import { CallQuoteService } from "./CallQuoteService";
 import { CallWelcomeService } from "./CallWelcomeService";
 import { CallRecapService } from "./CallRecapService";
 
-const PROVIDER = "elevenlabs";
+/**
+ * Where a call came from: the phone line answered by an ElevenLabs agent, or
+ * the website voice agent running on Deepgram. Stored on every call so the
+ * log can tell the two apart.
+ */
+type CallProvider = "elevenlabs" | "deepgram";
 
-type WebhookResult = { status: number; body: string };
+/** Who took the call, for which business, and how to follow it up. */
+type CallSource = {
+  provider: CallProvider;
+  organizationId: string;
+  integrationId: string;
+  welcomeTemplate: string | undefined;
+  /** A website call has no line to read the country from; the site says it. */
+  region?: PhoneRegion;
+};
+
+export type WebhookResult = { status: number; body: string };
 
 /**
  * Put the WhatsApp and email the call set off into the lead's journal, so
@@ -63,6 +79,7 @@ async function journalOutreach(input: {
 
 /** The call log row; `links` is what the pipeline decided about the caller. */
 function callRow(
+  provider: CallProvider,
   organizationId: string,
   integrationId: string,
   report: PhoneCallReport,
@@ -78,7 +95,7 @@ function callRow(
     id: crypto.randomUUID(),
     organizationId,
     integrationId,
-    provider: PROVIDER,
+    provider,
     externalConversationId: report.conversationId,
     externalAgentId: report.agentId,
     agentName: report.agentName,
@@ -94,19 +111,15 @@ function callRow(
   };
 }
 
-async function recordCall(
-  organizationId: string,
-  integrationId: string,
-  report: PhoneCallReport,
-  welcomeTemplate: string | undefined,
-) {
+async function recordCall(source: CallSource, report: PhoneCallReport) {
+  const { provider, organizationId, integrationId, welcomeTemplate } = source;
   const existing = await Repo.findCall(organizationId, report.conversationId);
   if (existing) return { callId: existing.id, duplicate: true };
 
   const { firstName, lastName } = splitName(report.captured.caller_name);
   // A number said out loud has no country code, and which country it belongs
   // to is only knowable from the line they rang on.
-  const region = phoneRegionOf(report.callerNumber);
+  const region = source.region ?? phoneRegionOf(report.callerNumber);
   // Caller ID first; a web-widget call has none, and then the number the
   // caller gave out loud is the one to use.
   const phone =
@@ -121,7 +134,7 @@ async function recordCall(
   if (!phone && !email && !report.captured.caller_name?.trim()) {
     const skipped = "skipped: nothing captured";
     const call = await Repo.insertCall(
-      callRow(organizationId, integrationId, report, {
+      callRow(provider, organizationId, integrationId, report, {
         callerNumber: null,
         contactId: null,
         leadId: null,
@@ -202,7 +215,7 @@ async function recordCall(
   });
 
   const call = await Repo.insertCall(
-    callRow(organizationId, integrationId, report, {
+    callRow(provider, organizationId, integrationId, report, {
       callerNumber: phone,
       contactId: contact.id,
       leadId: lead.id,
@@ -263,13 +276,13 @@ async function recordCall(
   await BusinessAuditRepository.record({
     organizationId,
     // No member acts on a webhook; the provider is the actor.
-    actorUserId: "system:elevenlabs",
+    actorUserId: `system:${provider}`,
     action: "voice.phone_call.recorded",
     targetType: "lead",
     targetId: lead.id,
     metadata: {
       callId: call.id,
-      provider: PROVIDER,
+      provider,
       firstTimeCaller,
       welcome,
       recapEmail,
@@ -293,7 +306,7 @@ async function processElevenLabsWebhook(
   const connection = await Repo.getIntegrationById(connectionId);
   if (
     !connection ||
-    connection.providerKey !== PROVIDER ||
+    connection.providerKey !== "elevenlabs" ||
     connection.status !== "connected"
   ) {
     return { status: 404, body: "unknown connection" };
@@ -319,10 +332,13 @@ async function processElevenLabsWebhook(
   if (!report) return { status: 200, body: "ignored" };
 
   const result = await recordCall(
-    connection.organizationId,
-    connection.id,
+    {
+      provider: "elevenlabs",
+      organizationId: connection.organizationId,
+      integrationId: connection.id,
+      welcomeTemplate: credentials.WELCOME_TEMPLATE,
+    },
     report,
-    credentials.WELCOME_TEMPLATE,
   );
   return { status: 200, body: result.duplicate ? "duplicate" : "recorded" };
 }
@@ -332,6 +348,7 @@ async function listCalls(organizationId: string, userId: string) {
   const rows = await Repo.listCalls(organizationId);
   return rows.map(({ call, contact, lead }) => ({
     id: call.id,
+    provider: call.provider,
     agentName: call.agentName,
     direction: call.direction,
     callerNumber: call.callerNumber,
@@ -391,4 +408,8 @@ function transcriptFrom(json: string): PhoneCallReport["transcript"] {
   }
 }
 
-export const PhoneCallService = { processElevenLabsWebhook, listCalls };
+export const PhoneCallService = {
+  processElevenLabsWebhook,
+  recordCall,
+  listCalls,
+};

@@ -55,6 +55,7 @@ import { Route as AppModulesIntegrationsIndexRouteImport } from './routes/_app/m
 import { Route as AppModulesCrmIndexRouteImport } from './routes/_app/modules/crm/index'
 import { Route as ApiVoiceElevenlabsConnectionIdRouteImport } from './routes/api/voice/elevenlabs/$connectionId'
 import { Route as ApiVoiceElevenlabsCallerConnectionIdRouteImport } from './routes/api/voice/elevenlabs-caller/$connectionId'
+import { Route as ApiVoiceDeepgramConnectionIdRouteImport } from './routes/api/voice/deepgram/$connectionId'
 import { Route as ApiSmsTwilioConnectionIdRouteImport } from './routes/api/sms/twilio/$connectionId'
 import { Route as ApiQuotesQuoteIdPdfRouteImport } from './routes/api/quotes/$quoteId/pdf'
 import { Route as ApiGscOauthCallbackRouteImport } from './routes/api/gsc/oauth/callback'
@@ -328,6 +329,12 @@ const ApiVoiceElevenlabsCallerConnectionIdRoute =
   ApiVoiceElevenlabsCallerConnectionIdRouteImport.update({
     id: '/api/voice/elevenlabs-caller/$connectionId',
     path: '/api/voice/elevenlabs-caller/$connectionId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiVoiceDeepgramConnectionIdRoute =
+  ApiVoiceDeepgramConnectionIdRouteImport.update({
+    id: '/api/voice/deepgram/$connectionId',
+    path: '/api/voice/deepgram/$connectionId',
     getParentRoute: () => rootRouteImport,
   } as any)
 const ApiSmsTwilioConnectionIdRoute =
@@ -619,6 +626,7 @@ export interface FileRoutesByFullPath {
   '/api/gsc/oauth/callback': typeof ApiGscOauthCallbackRoute
   '/api/quotes/$quoteId/pdf': typeof ApiQuotesQuoteIdPdfRoute
   '/api/sms/twilio/$connectionId': typeof ApiSmsTwilioConnectionIdRoute
+  '/api/voice/deepgram/$connectionId': typeof ApiVoiceDeepgramConnectionIdRoute
   '/api/voice/elevenlabs-caller/$connectionId': typeof ApiVoiceElevenlabsCallerConnectionIdRoute
   '/api/voice/elevenlabs/$connectionId': typeof ApiVoiceElevenlabsConnectionIdRoute
   '/modules/crm/': typeof AppModulesCrmIndexRoute
@@ -696,6 +704,7 @@ export interface FileRoutesByTo {
   '/api/gsc/oauth/callback': typeof ApiGscOauthCallbackRoute
   '/api/quotes/$quoteId/pdf': typeof ApiQuotesQuoteIdPdfRoute
   '/api/sms/twilio/$connectionId': typeof ApiSmsTwilioConnectionIdRoute
+  '/api/voice/deepgram/$connectionId': typeof ApiVoiceDeepgramConnectionIdRoute
   '/api/voice/elevenlabs-caller/$connectionId': typeof ApiVoiceElevenlabsCallerConnectionIdRoute
   '/api/voice/elevenlabs/$connectionId': typeof ApiVoiceElevenlabsConnectionIdRoute
   '/modules/crm': typeof AppModulesCrmIndexRoute
@@ -785,6 +794,7 @@ export interface FileRoutesById {
   '/api/gsc/oauth/callback': typeof ApiGscOauthCallbackRoute
   '/api/quotes/$quoteId/pdf': typeof ApiQuotesQuoteIdPdfRoute
   '/api/sms/twilio/$connectionId': typeof ApiSmsTwilioConnectionIdRoute
+  '/api/voice/deepgram/$connectionId': typeof ApiVoiceDeepgramConnectionIdRoute
   '/api/voice/elevenlabs-caller/$connectionId': typeof ApiVoiceElevenlabsCallerConnectionIdRoute
   '/api/voice/elevenlabs/$connectionId': typeof ApiVoiceElevenlabsConnectionIdRoute
   '/_app/modules/crm/': typeof AppModulesCrmIndexRoute
@@ -871,6 +881,7 @@ export interface FileRouteTypes {
     | '/api/gsc/oauth/callback'
     | '/api/quotes/$quoteId/pdf'
     | '/api/sms/twilio/$connectionId'
+    | '/api/voice/deepgram/$connectionId'
     | '/api/voice/elevenlabs-caller/$connectionId'
     | '/api/voice/elevenlabs/$connectionId'
     | '/modules/crm/'
@@ -948,6 +959,7 @@ export interface FileRouteTypes {
     | '/api/gsc/oauth/callback'
     | '/api/quotes/$quoteId/pdf'
     | '/api/sms/twilio/$connectionId'
+    | '/api/voice/deepgram/$connectionId'
     | '/api/voice/elevenlabs-caller/$connectionId'
     | '/api/voice/elevenlabs/$connectionId'
     | '/modules/crm'
@@ -1036,6 +1048,7 @@ export interface FileRouteTypes {
     | '/api/gsc/oauth/callback'
     | '/api/quotes/$quoteId/pdf'
     | '/api/sms/twilio/$connectionId'
+    | '/api/voice/deepgram/$connectionId'
     | '/api/voice/elevenlabs-caller/$connectionId'
     | '/api/voice/elevenlabs/$connectionId'
     | '/_app/modules/crm/'
@@ -1078,6 +1091,7 @@ export interface RootRouteChildren {
   ApiGscOauthCallbackRoute: typeof ApiGscOauthCallbackRoute
   ApiQuotesQuoteIdPdfRoute: typeof ApiQuotesQuoteIdPdfRoute
   ApiSmsTwilioConnectionIdRoute: typeof ApiSmsTwilioConnectionIdRoute
+  ApiVoiceDeepgramConnectionIdRoute: typeof ApiVoiceDeepgramConnectionIdRoute
   ApiVoiceElevenlabsCallerConnectionIdRoute: typeof ApiVoiceElevenlabsCallerConnectionIdRoute
   ApiVoiceElevenlabsConnectionIdRoute: typeof ApiVoiceElevenlabsConnectionIdRoute
 }
@@ -1404,6 +1418,13 @@ declare module '@tanstack/react-router' {
       path: '/api/voice/elevenlabs-caller/$connectionId'
       fullPath: '/api/voice/elevenlabs-caller/$connectionId'
       preLoaderRoute: typeof ApiVoiceElevenlabsCallerConnectionIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/voice/deepgram/$connectionId': {
+      id: '/api/voice/deepgram/$connectionId'
+      path: '/api/voice/deepgram/$connectionId'
+      fullPath: '/api/voice/deepgram/$connectionId'
+      preLoaderRoute: typeof ApiVoiceDeepgramConnectionIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/sms/twilio/$connectionId': {
@@ -1975,6 +1996,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiGscOauthCallbackRoute: ApiGscOauthCallbackRoute,
   ApiQuotesQuoteIdPdfRoute: ApiQuotesQuoteIdPdfRoute,
   ApiSmsTwilioConnectionIdRoute: ApiSmsTwilioConnectionIdRoute,
+  ApiVoiceDeepgramConnectionIdRoute: ApiVoiceDeepgramConnectionIdRoute,
   ApiVoiceElevenlabsCallerConnectionIdRoute:
     ApiVoiceElevenlabsCallerConnectionIdRoute,
   ApiVoiceElevenlabsConnectionIdRoute: ApiVoiceElevenlabsConnectionIdRoute,

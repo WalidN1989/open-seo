@@ -149,7 +149,7 @@ const PHONE_REGIONS = {
   LK: { dial: "94", nationalStart: /^[1-9]/ },
 } as const;
 
-type PhoneRegion = keyof typeof PHONE_REGIONS;
+export type PhoneRegion = keyof typeof PHONE_REGIONS;
 
 /** The region to read a bare number as, taken from the line they rang on. */
 export function phoneRegionOf(callerNumber: string | null): PhoneRegion {

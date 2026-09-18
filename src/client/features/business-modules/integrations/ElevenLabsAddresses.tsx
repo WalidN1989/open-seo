@@ -66,3 +66,18 @@ export function SmsWebhookAddress({ connectionId }: { connectionId: string }) {
     />
   );
 }
+
+/** Where the website's server sends each finished voice-agent call. */
+export function DeepgramCallLogAddress({
+  connectionId,
+}: {
+  connectionId: string;
+}) {
+  return (
+    <AddressCard
+      title="Call log address"
+      help="Add this to your website's secrets as VOICE_LOG_URL, next to VOICE_LOG_SECRET."
+      url={`${window.location.origin}/api/voice/deepgram/${connectionId}`}
+    />
+  );
+}
