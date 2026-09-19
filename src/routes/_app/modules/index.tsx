@@ -226,7 +226,10 @@ function BusinessModulesPage() {
                                 aria-label={`Open ${module.label}`}
                               />
                             ) : null}
-                            <span className="business-access-icon shrink-0 rounded-lg bg-base-200 p-2">
+                            <span
+                              data-module={module.key}
+                              className="business-access-icon shrink-0 rounded-lg bg-base-200 p-2"
+                            >
                               <Icon className="size-5" />
                             </span>
                             <div>
