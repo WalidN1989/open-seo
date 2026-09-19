@@ -148,13 +148,16 @@ function BusinessModulesPage() {
         getStandardErrorMessage(error, "We couldn't update staff access."),
       ),
   });
-  const leadsModule = accessQuery.data?.find(
-    (module) => module.key === "leads",
-  );
 
   return (
     <div className="business-access h-full overflow-auto bg-base-100 px-4 py-6 pb-24 md:px-6 md:py-8 md:pb-8">
-      <div className="mx-auto max-w-[1500px] space-y-6">
+      <div
+        className={
+          isClient
+            ? "mx-auto max-w-[1500px] space-y-6"
+            : "business-access-layout mx-auto max-w-[1500px]"
+        }
+      >
         {isClient ? <PageHeading isClient={isClient} /> : null}
 
         {accessQuery.isLoading ||
@@ -180,7 +183,7 @@ function BusinessModulesPage() {
             workspace owner or administrator to update your access.
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="business-access-groups">
             {[true, false].map((enabled) => {
               const modules = (accessQuery.data ?? []).filter(
                 (module) =>
@@ -198,7 +201,11 @@ function BusinessModulesPage() {
               return (
                 <Container
                   key={String(enabled)}
-                  className={enabled ? "space-y-3" : "business-access-panel"}
+                  className={
+                    enabled
+                      ? "business-access-active space-y-3"
+                      : "business-access-panel"
+                  }
                 >
                   {enabled ? (
                     <h2 className="text-sm font-semibold">Active modules</h2>
@@ -239,61 +246,20 @@ function BusinessModulesPage() {
                             </div>
                           </div>
 
-                          <details className="business-access-controls">
-                            <summary>Manage access</summary>
-                            <div className="flex items-center justify-between gap-2 pt-3">
-                              <span className="text-xs text-base-content/60">
-                                {module.enabled ? "Enabled" : "Enable module"}
-                              </span>
-                              {module.canConfigureEntitlement ? (
-                                <input
-                                  type="checkbox"
-                                  className="toggle toggle-primary toggle-sm"
-                                  checked={module.enabled}
-                                  disabled={entitlementMutation.isPending}
-                                  aria-label={`${module.enabled ? "Disable" : "Enable"} ${module.label}`}
-                                  onChange={(event) =>
-                                    entitlementMutation.mutate({
-                                      moduleKey: module.key,
-                                      enabled: event.currentTarget.checked,
-                                    })
-                                  }
-                                />
-                              ) : null}
-                            </div>
-                            {module.key === "crm" && leadsModule ? (
-                              <div className="mt-3 flex items-center justify-between gap-3 border-t border-base-300 pt-3">
-                                <div>
-                                  <div className="text-sm font-medium">
-                                    Leads
-                                  </div>
-                                </div>
-                                {leadsModule.canConfigureEntitlement ? (
-                                  <input
-                                    type="checkbox"
-                                    className="toggle toggle-primary toggle-sm"
-                                    checked={leadsModule.enabled}
-                                    disabled={entitlementMutation.isPending}
-                                    aria-label={`${leadsModule.enabled ? "Disable" : "Enable"} Leads`}
-                                    onChange={(event) =>
-                                      entitlementMutation.mutate({
-                                        moduleKey: "leads",
-                                        enabled: event.currentTarget.checked,
-                                      })
-                                    }
-                                  />
-                                ) : (
-                                  <span
-                                    className={`badge badge-sm ${leadsModule.enabled ? "badge-success" : "badge-ghost"}`}
-                                  >
-                                    {leadsModule.enabled
-                                      ? "Active"
-                                      : "Inactive"}
-                                  </span>
-                                )}
-                              </div>
-                            ) : null}
-                          </details>
+                          {!enabled && module.canConfigureEntitlement ? (
+                            <button
+                              className="btn btn-sm btn-outline mt-3"
+                              disabled={entitlementMutation.isPending}
+                              onClick={() =>
+                                entitlementMutation.mutate({
+                                  moduleKey: module.key,
+                                  enabled: true,
+                                })
+                              }
+                            >
+                              Enable
+                            </button>
+                          ) : null}
                         </article>
                       );
                     })}
@@ -314,6 +280,36 @@ function BusinessModulesPage() {
               </p>
             </summary>
             <div className="overflow-x-auto rounded-xl border border-base-300">
+              <div className="p-4 border-b border-base-300">
+                <h3 className="text-sm font-semibold mb-3">Enabled modules</h3>
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {(accessQuery.data ?? [])
+                    .filter(
+                      (module) =>
+                        !module.hidden && module.canConfigureEntitlement,
+                    )
+                    .map((module) => (
+                      <label
+                        key={module.key}
+                        className="flex items-center justify-between gap-3 text-sm"
+                      >
+                        {module.label}
+                        <input
+                          type="checkbox"
+                          className="toggle toggle-primary toggle-sm"
+                          checked={module.enabled}
+                          disabled={entitlementMutation.isPending}
+                          onChange={(event) =>
+                            entitlementMutation.mutate({
+                              moduleKey: module.key,
+                              enabled: event.currentTarget.checked,
+                            })
+                          }
+                        />
+                      </label>
+                    ))}
+                </div>
+              </div>
               <table className="table table-sm">
                 <thead>
                   <tr>

@@ -144,3 +144,58 @@
     transform: none;
   }
 }
+.business-access-layout {
+  min-height: 100%;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-rows: 1fr auto;
+  gap: 20px;
+}
+.business-access-groups {
+  display: contents;
+}
+.business-access-active {
+  grid-column: 1 / -1;
+}
+.business-access-active .business-access-card {
+  padding: 24px;
+}
+.business-access-active .business-access-launcher {
+  min-height: clamp(150px, 23vh, 240px);
+  flex-direction: column;
+  justify-content: center;
+  text-align: center;
+  gap: 18px;
+}
+.business-access-active .business-access-icon {
+  padding: 16px;
+  border-radius: 18px;
+}
+.business-access-active .business-access-icon svg {
+  width: 32px;
+  height: 32px;
+}
+.business-access-active h3 {
+  font-size: 16px;
+}
+.business-access-layout > .business-access-panel,
+.business-access-groups > .business-access-panel {
+  align-self: end;
+}
+.business-access-layout .business-access-panel:not([open]) > summary p {
+  display: none;
+}
+.business-access-layout .business-access-panel[open] {
+  grid-column: 1 / -1;
+}
+@media (max-width: 700px) {
+  .business-access-layout {
+    grid-template-columns: 1fr;
+  }
+  .business-access-active .business-access-card {
+    padding: 16px;
+  }
+  .business-access-active .business-access-launcher {
+    min-height: 120px;
+  }
+}
