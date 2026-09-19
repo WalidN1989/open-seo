@@ -54,7 +54,9 @@ function parseJson(text: string) {
   return minedLessonsSchema.parse(parsed);
 }
 
-async function mineAgent(agent: typeof voiceAgentConfigs.$inferSelect) {
+type VoiceAgent = typeof voiceAgentConfigs.$inferSelect;
+
+async function mineAgent(agent: VoiceAgent) {
   const since =
     agent.lastLearnedAt ??
     new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
@@ -83,6 +85,18 @@ async function mineAgent(agent: typeof voiceAgentConfigs.$inferSelect) {
       );
     return;
   }
+  await mineConversations(
+    agent,
+    conversations.map((row) => row.id),
+  );
+}
+
+/**
+ * Reads the given conversations against what the agent already knows and
+ * keeps what is worth remembering: confirming, adding and retracting lessons.
+ */
+async function mineConversations(agent: VoiceAgent, conversationIds: string[]) {
+  const now = new Date().toISOString();
   const messages = await db
     .select({
       conversationId: voiceConversationMessages.conversationId,
@@ -94,10 +108,7 @@ async function mineAgent(agent: typeof voiceAgentConfigs.$inferSelect) {
     .where(
       and(
         eq(voiceConversationMessages.organizationId, agent.organizationId),
-        inArray(
-          voiceConversationMessages.conversationId,
-          conversations.map((row) => row.id),
-        ),
+        inArray(voiceConversationMessages.conversationId, conversationIds),
       ),
     )
     .orderBy(asc(voiceConversationMessages.createdAt))
@@ -128,7 +139,7 @@ async function mineAgent(agent: typeof voiceAgentConfigs.$inferSelect) {
   const transcript = messages
     .map(
       (message) =>
-        `${message.speaker === "user" ? "CUSTOMER" : "AGENT"}: ${message.transcript.slice(0, 800)}`,
+        `${message.speaker === "user" ? "PERSON" : "AGENT"}: ${message.transcript.slice(0, 800)}`,
     )
     .join("\n")
     .slice(0, MAX_TRANSCRIPT_CHARS);
@@ -145,9 +156,10 @@ async function mineAgent(agent: typeof voiceAgentConfigs.$inferSelect) {
         "claude-haiku-4-5-20251001",
       max_tokens: 2500,
       system: [
-        "Mine voice conversations for durable lessons useful in future customer conversations.",
-        "Keep only customer-stated facts, vocabulary, stable preferences, recurring questions, and explicit corrections.",
-        "Never memorize an agent answer, a transient stock level, a temporary price, credentials, payment details, or sensitive personal data.",
+        "Mine voice conversations for durable lessons that make the agent better at talking with this person next time. The PERSON may be a customer, a business owner, or agency staff asking the agent to analyse their projects.",
+        "Keep only what the PERSON said or made clear: corrections of the agent, how they want answers given (length, tone, what to lead with), names and nicknames (what they call a project, a competitor, themselves), stable facts about their businesses, and questions they keep asking.",
+        "Never memorize an agent answer, a number that comes from live data (rankings, counts, traffic, stock, prices), credentials, payment details, or sensitive personal data.",
+        "If a PERSON asked the agent to remember something, keep it. Merge duplicates, and retract a known lesson the PERSON has since contradicted.",
         "Each lesson must be one self-contained sentence of at most 300 characters. Return JSON only.",
       ].join("\n"),
       messages: [
@@ -264,4 +276,87 @@ export async function runDueVoiceLearning() {
       console.error(`[voice-learning] Agent ${agent.id} failed:`, error);
     }
   }
+}
+
+/**
+ * Studies one conversation as soon as it ends, so what was said today shapes
+ * the next conversation rather than tomorrow's. The overnight run remains the
+ * backstop for conversations nobody ended.
+ */
+export async function learnFromConversation(
+  organizationId: string,
+  conversationId: string,
+) {
+  const [conversation] = await db
+    .select({ agentConfigId: voiceConversations.agentConfigId })
+    .from(voiceConversations)
+    .where(
+      and(
+        eq(voiceConversations.id, conversationId),
+        eq(voiceConversations.organizationId, organizationId),
+      ),
+    )
+    .limit(1);
+  if (!conversation) return;
+  const [agent] = await db
+    .select()
+    .from(voiceAgentConfigs)
+    .where(
+      and(
+        eq(voiceAgentConfigs.id, conversation.agentConfigId),
+        eq(voiceAgentConfigs.organizationId, organizationId),
+      ),
+    )
+    .limit(1);
+  if (agent) await mineConversations(agent, [conversationId]);
+}
+
+/**
+ * Keeps what the person asked to be remembered, word for word, the moment
+ * they say it. The next mining pass tidies it into a proper lesson or merges
+ * it with one already known.
+ */
+export async function rememberNow(
+  organizationId: string,
+  agentConfigId: string,
+  transcript: string,
+) {
+  const lesson = transcript.trim().slice(0, 300);
+  if (!lesson) return;
+  await db.insert(voiceAgentLessons).values({
+    id: crypto.randomUUID(),
+    organizationId,
+    agentConfigId,
+    kind: "preference",
+    lesson,
+  });
+}
+
+/** Everything the workspace's voice agents have learned, most-used first. */
+export async function listLessons(organizationId: string) {
+  return db
+    .select({
+      id: voiceAgentLessons.id,
+      kind: voiceAgentLessons.kind,
+      lesson: voiceAgentLessons.lesson,
+      seenCount: voiceAgentLessons.seenCount,
+      updatedAt: voiceAgentLessons.updatedAt,
+    })
+    .from(voiceAgentLessons)
+    .where(eq(voiceAgentLessons.organizationId, organizationId))
+    .orderBy(
+      desc(voiceAgentLessons.seenCount),
+      desc(voiceAgentLessons.updatedAt),
+    );
+}
+
+export async function forgetLesson(organizationId: string, lessonId: string) {
+  await db
+    .delete(voiceAgentLessons)
+    .where(
+      and(
+        eq(voiceAgentLessons.id, lessonId),
+        eq(voiceAgentLessons.organizationId, organizationId),
+      ),
+    );
 }

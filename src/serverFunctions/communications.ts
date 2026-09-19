@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { createServerFn } from "@tanstack/react-start";
+import { VoiceLessonsService } from "@/server/features/voice/services/VoiceLessonsService";
 import { VoiceGreetingService } from "@/server/features/voice/services/VoiceGreetingService";
 import { CommunicationsService } from "@/server/features/communications/services/CommunicationsService";
 import { requireAuthenticatedContext } from "@/serverFunctions/middleware";
@@ -363,4 +364,17 @@ export const setVoiceName = createServerFn({ method: "POST" })
       context.userId,
       data,
     ),
+  );
+
+export const listVoiceLessons = createServerFn({ method: "GET" })
+  .middleware(requireAuthenticatedContext)
+  .handler(({ context }) =>
+    VoiceLessonsService.list(context.organizationId, context.userId),
+  );
+
+export const forgetVoiceLesson = createServerFn({ method: "POST" })
+  .middleware(requireAuthenticatedContext)
+  .validator(z.object({ lessonId: z.string().min(1) }))
+  .handler(({ context, data }) =>
+    VoiceLessonsService.forget(context.organizationId, context.userId, data),
   );

@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import { getVoiceName, setVoiceName } from "@/serverFunctions/communications";
 import { getStandardErrorMessage } from "@/client/lib/error-messages";
+import { VoiceLessons } from "./VoiceLessons";
 
 const VOICE_NAME_KEY = ["voice-name"] as const;
 
@@ -77,6 +78,7 @@ export function VoiceNameSettings() {
           </button>
         </div>
       </div>
+      <VoiceLessons />
     </section>
   );
 }

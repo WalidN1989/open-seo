@@ -1,4 +1,5 @@
 /* oxlint-disable max-lines, max-depth, max-params */
+import { waitUntil } from "cloudflare:workers";
 import type { z } from "zod";
 import { BusinessModuleService } from "@/server/features/business-modules/services/BusinessModuleService";
 import { AppError } from "@/server/lib/errors";
@@ -58,6 +59,8 @@ import {
 import { deliverWebhook, validateWebhookUrl } from "../providers/webhooks";
 import { speakWithDeepgram, transcribeWithDeepgram } from "../providers/voice";
 import { buildVoiceAgentContext } from "./VoiceAgentContext";
+import { learnFromConversation, rememberNow } from "./VoiceLearningService";
+import { asksToRemember } from "@/server/features/voice/remember";
 import {
   runApifyActor,
   scrapeWithFirecrawl,
@@ -686,6 +689,12 @@ async function endVoiceConversation(
   await emitBusinessEvent(organizationId, "voice.conversation.completed", {
     conversationId: input.conversationId,
   });
+  // Learned from while it is fresh; the reply to "end" does not wait for it.
+  waitUntil(
+    learnFromConversation(organizationId, input.conversationId).catch((error) =>
+      console.error("[voice-learning] conversation failed:", error),
+    ),
+  );
   await auditMutation(
     organizationId,
     userId,
@@ -750,6 +759,13 @@ async function transcribeVoiceAudio(
     speaker: "user",
     transcript: result.transcript,
   });
+  // "Remember that…" is kept before the reply is written, so the reply can
+  // already follow it.
+  if (asksToRemember(result.transcript)) {
+    await rememberNow(organizationId, agent.id, result.transcript).catch(
+      (error) => console.error("[voice-learning] remember failed:", error),
+    );
+  }
   if (
     agent.modelProvider === "anthropic" &&
     agent.textToSpeechProvider === "deepgram"
