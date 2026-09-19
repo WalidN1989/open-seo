@@ -70,6 +70,7 @@ export const SOURCE_LABEL: Record<string, string> = {
 export const CMS_LABEL: Record<string, string> = {
   wordpress: "WordPress",
   shopify: "Shopify",
+  lovable: "Lovable site",
   manual: "Publish by hand",
 };
 
@@ -98,6 +99,10 @@ export function useOpportunity(
         data: { projectId, opportunityId: opportunityId! },
       }),
     enabled: Boolean(opportunityId),
+    // A push to a Lovable site runs in the background (images take a minute
+    // or two), so the row is re-read until it settles.
+    refetchInterval: (query) =>
+      query.state.data?.opportunity.status === "publishing" ? 5_000 : false,
   });
 }
 

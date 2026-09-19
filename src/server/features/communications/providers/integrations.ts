@@ -1,4 +1,8 @@
 import {
+  checkRepository,
+  repositoryName,
+} from "@/server/features/optimizations/lovable/githubRepo";
+import {
   siteOrigin,
   wordpressWhoAmI,
 } from "@/server/features/optimizations/wordpress/wordpressClient";
@@ -183,6 +187,24 @@ export async function testIntegrationConnection(
         detail:
           "Call log secret is stored; calls arrive when the website sends them",
       };
+    case "lovable": {
+      const [token, repository, siteUrl] = await Promise.all([
+        credentialValue(connection, "GITHUB_TOKEN"),
+        credentialValue(connection, "REPOSITORY"),
+        credentialValue(connection, "SITE_URL"),
+      ]);
+      const branch =
+        (await credentialValue(connection, "BRANCH").catch(() => ""))?.trim() ||
+        "main";
+      const posts = await checkRepository(
+        { token, repository, branch },
+        fetcher,
+      );
+      return {
+        providerKey: connection.providerKey,
+        detail: `${repositoryName(repository)} (${branch}) reachable for ${new URL(siteUrl).host}; ${posts} files in its blog`,
+      };
+    }
     case "wordpress": {
       const [siteUrl, username, applicationPassword] = await Promise.all([
         credentialValue(connection, "SITE_URL"),

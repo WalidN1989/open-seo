@@ -122,11 +122,11 @@ async function detail(
   userId: string,
 ) {
   const row = await requireOpportunity(organizationId, opportunityId);
-  const [comments, revisions, membership, wordpress] = await Promise.all([
+  const [comments, revisions, membership, destination] = await Promise.all([
     Repo.listComments(organizationId, opportunityId),
     Repo.listRevisions(organizationId, opportunityId),
     BusinessModuleRepository.findMembership(organizationId, userId),
-    OptimizationPublishService.wordpressStatus(organizationId),
+    OptimizationPublishService.destination(organizationId),
   ]);
   // Internal notes are working chatter between the agency and the assistant.
   // A client sees the conversation they are part of and nothing else.
@@ -134,7 +134,7 @@ async function detail(
   return {
     opportunity: publicOpportunity(row),
     canComment: COMMENTABLE.includes(statusOf(row)),
-    wordpress,
+    destination,
     viewerIsStaff: staff,
     comments: visibleComments(comments, staff).map((comment) => ({
       id: comment.id,

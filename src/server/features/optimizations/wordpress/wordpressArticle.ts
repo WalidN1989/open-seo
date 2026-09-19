@@ -20,7 +20,7 @@ function text(value: unknown) {
   return typeof value === "string" && value.trim() ? value.trim() : null;
 }
 
-function field(draft: unknown, ...keys: string[]) {
+export function draftField(draft: unknown, ...keys: string[]) {
   if (!draft || typeof draft !== "object" || Array.isArray(draft)) return null;
   for (const key of keys) {
     const found = text(Reflect.get(draft, key));
@@ -58,7 +58,7 @@ function normalise(value: string) {
  * Themes print the post title above the content, so a body that opens with
  * the same heading shows it twice — which is how the first live post looked.
  */
-function withoutLeadingTitle(body: string, title: string) {
+export function withoutLeadingTitle(body: string, title: string) {
   const match = /^\s*#\s+(.+?)\s*(?:\n|$)/.exec(body);
   if (!match) return body;
   return normalise(match[1] ?? "") === normalise(title)
@@ -71,8 +71,8 @@ export function articleFromDraft(input: {
   keyword: string;
   path: string | null;
 }): WordpressArticle | null {
-  const title = field(input.draft, "title", "h1", "headline");
-  const body = field(input.draft, "body", "content", "markdown");
+  const title = draftField(input.draft, "title", "h1", "headline");
+  const body = draftField(input.draft, "body", "content", "markdown");
   if (!title || !body) return null;
   const markdown = withoutLeadingTitle(body, title).replace(
     IMAGE_PLACEHOLDER,
@@ -80,7 +80,7 @@ export function articleFromDraft(input: {
   );
   return {
     title,
-    excerpt: field(
+    excerpt: draftField(
       input.draft,
       "metaDescription",
       "meta_description",
@@ -91,4 +91,13 @@ export function articleFromDraft(input: {
       createElement(Markdown, { remarkPlugins: [remarkGfm] }, markdown),
     ),
   };
+}
+
+/** Markdown to the HTML fragment a CMS stores, rendered the same way everywhere. */
+export function markdownToHtml(markdown: string) {
+  // React's server renderer hoists a <link rel="preload"> for every image it
+  // meets; in a stored article fragment those are stray tags, not hints.
+  return renderToStaticMarkup(
+    createElement(Markdown, { remarkPlugins: [remarkGfm] }, markdown),
+  ).replace(/<link rel="preload" as="image"[^>]*>/g, "");
 }

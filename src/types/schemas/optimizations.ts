@@ -15,7 +15,12 @@ export const recommendedActionSchema = z.enum([
   "create_new",
 ]);
 
-const optimizationCmsSchema = z.enum(["wordpress", "shopify", "manual"]);
+const optimizationCmsSchema = z.enum([
+  "wordpress",
+  "shopify",
+  "lovable",
+  "manual",
+]);
 
 /**
  * The lifecycle of one opportunity.

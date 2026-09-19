@@ -63,7 +63,7 @@ export function OpportunityDetail({
   }
   if (!query.data) return null;
 
-  const { opportunity, comments } = query.data;
+  const { opportunity, comments, destination } = query.data;
   const status = opportunity.status;
   const busy =
     submit.isPending ||
@@ -181,21 +181,38 @@ export function OpportunityDetail({
               <p className="mt-1 text-sm font-medium">
                 {CMS_LABEL[opportunity.cms] ?? opportunity.cms}
               </p>
-              {query.data.wordpress.connected ? (
+              {destination.kind === "lovable" ? (
                 <p className="mt-2 text-sm text-base-content/70">
-                  WordPress · {query.data.wordpress.siteUrl}. Approving and
-                  publishing puts the article live there.
+                  Lovable site · {destination.siteUrl}. Approving sends the
+                  article and its images to Lovable; it goes live when you click
+                  Publish in Lovable.
+                  {destination.imagesReady
+                    ? ""
+                    : " No image model is set up on the server yet, so sending will fail until one is added."}
+                </p>
+              ) : destination.connected ? (
+                <p className="mt-2 text-sm text-base-content/70">
+                  WordPress · {destination.siteUrl}. Approving and publishing
+                  puts the article live there.
                 </p>
               ) : (
                 // Never claim a publish that did not happen.
                 <p className="mt-2 text-sm text-base-content/70">
-                  No WordPress site is connected for this project yet.{" "}
+                  No website is connected for this project yet.{" "}
+                  <Link
+                    to="/modules/integrations/$providerKey"
+                    params={{ providerKey: "lovable" }}
+                    className="link"
+                  >
+                    Connect a Lovable site
+                  </Link>{" "}
+                  or{" "}
                   <Link
                     to="/modules/integrations/$providerKey"
                     params={{ providerKey: "wordpress" }}
                     className="link"
                   >
-                    Connect WordPress
+                    WordPress
                   </Link>{" "}
                   to publish from here; until then, copy the approved wording
                   across by hand.
@@ -222,16 +239,18 @@ export function OpportunityDetail({
                     onClick={() =>
                       approve.mutate(opportunityId, {
                         onSuccess: () => {
-                          if (query.data.wordpress.connected) {
+                          if (destination.connected) {
                             publish.mutate(opportunityId);
                           }
                         },
                       })
                     }
                   >
-                    {query.data.wordpress.connected
-                      ? "Approve & publish"
-                      : "Approve"}
+                    {destination.kind === "lovable"
+                      ? "Approve & send to Lovable"
+                      : destination.connected
+                        ? "Approve & publish"
+                        : "Approve"}
                   </button>
                   <button
                     className="btn btn-ghost"
@@ -270,7 +289,8 @@ export function OpportunityDetail({
               approvedAt={opportunity.approvedAt}
               publishError={opportunity.publishError}
               cmsTarget={opportunity.cmsTarget}
-              connected={query.data.wordpress.connected}
+              connected={destination.connected}
+              kind={destination.kind}
               busy={busy}
               error={publish.error}
               onPublish={() => publish.mutate(opportunityId)}

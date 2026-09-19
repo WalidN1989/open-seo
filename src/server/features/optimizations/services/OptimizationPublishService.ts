@@ -1,3 +1,4 @@
+import { waitUntil } from "cloudflare:workers";
 import { and, desc, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { integrationConnections } from "@/db/schema";
@@ -7,6 +8,13 @@ import { AppError } from "@/server/lib/errors";
 import { optimizationStatusSchema } from "@/types/schemas/optimizations";
 import { OptimizationRepository as Repo } from "../repositories/OptimizationRepository";
 import { canTransition } from "../stateMachine";
+import { imageModelConfigured } from "../lovable/blogImages";
+import {
+  lovableFor,
+  planForOpportunity,
+  pushToLovable,
+  type LovableSite,
+} from "../lovable/lovablePublisher";
 import { articleFromDraft } from "../wordpress/wordpressArticle";
 import {
   publishToWordpress,
@@ -45,13 +53,70 @@ async function wordpressFor(organizationId: string) {
   } satisfies WordpressCredentials;
 }
 
-/** What the Publish tab needs to know: is there a site to publish to. */
-async function wordpressStatus(organizationId: string) {
+/**
+ * What the Publish tab needs to know: where an approved article goes. A
+ * connected Lovable site wins over WordPress — a project has one website.
+ */
+async function destination(organizationId: string) {
+  const lovable = await lovableFor(organizationId);
+  if (lovable) {
+    return {
+      kind: "lovable" as const,
+      connected: true,
+      siteUrl: new URL(lovable.siteUrl).host,
+      imagesReady: await imageModelConfigured(),
+    };
+  }
   const credentials = await wordpressFor(organizationId);
   return {
+    kind: credentials ? ("wordpress" as const) : null,
     connected: Boolean(credentials),
     siteUrl: credentials ? new URL(siteOrigin(credentials.siteUrl)).host : null,
+    imagesReady: true,
   };
+}
+
+/**
+ * Starts the push to the Lovable site and returns at once: generating images
+ * takes a minute or two, longer than a request should hang. The opportunity
+ * shows "publishing" until the push ends as published or failed.
+ */
+async function publishToLovableSite(
+  organizationId: string,
+  userId: string,
+  row: NonNullable<Awaited<ReturnType<typeof Repo.getById>>>,
+  site: LovableSite,
+) {
+  if (row.type !== "blog") {
+    throw new AppError(
+      "VALIDATION_ERROR",
+      "Only blog posts publish to a Lovable site for now.",
+    );
+  }
+  const plan = planForOpportunity(row, site);
+  if (!plan) {
+    throw new AppError(
+      "VALIDATION_ERROR",
+      "The approved draft has no title or body to publish.",
+    );
+  }
+  await Repo.update(organizationId, row.id, {
+    status: "publishing",
+    cms: "lovable",
+    publishError: null,
+  });
+  waitUntil(
+    pushToLovable({
+      organizationId,
+      userId,
+      opportunityId: row.id,
+      site,
+      plan,
+      keyword: row.keyword,
+      today: new Date().toISOString().slice(0, 10),
+    }),
+  );
+  return { url: `${site.siteUrl}/blog/${plan.slug}`, status: "publishing" };
 }
 
 async function publish(
@@ -68,11 +133,15 @@ async function publish(
       "Only an approved article can be published.",
     );
   }
+  const lovable = await lovableFor(organizationId);
+  if (lovable) {
+    return publishToLovableSite(organizationId, userId, row, lovable);
+  }
   const credentials = await wordpressFor(organizationId);
   if (!credentials) {
     throw new AppError(
       "VALIDATION_ERROR",
-      "Connect this project's WordPress site in Integrations first.",
+      "Connect this project's website (Lovable or WordPress) in Integrations first.",
     );
   }
   let draft: unknown = null;
@@ -132,4 +201,4 @@ async function publish(
   }
 }
 
-export const OptimizationPublishService = { publish, wordpressStatus };
+export const OptimizationPublishService = { publish, destination };
