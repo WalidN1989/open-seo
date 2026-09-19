@@ -1,10 +1,18 @@
-import { Building2, CalendarDays, Inbox, Plus } from "lucide-react";
+import {
+  Building2,
+  CalendarDays,
+  Inbox,
+  Plus,
+  Users,
+  ArrowUpRight,
+} from "lucide-react";
+import { Link } from "@tanstack/react-router";
+import "./overview.css";
 import {
   CompanyRows,
   ContactRows,
   CrmPanel,
   CrmQueryState,
-  CrmStat,
   InlineForm,
   InquiryRows,
   MeetingRows,
@@ -163,34 +171,90 @@ export function CrmOverviewView() {
   );
 
   return (
-    <div className="space-y-5">
+    <div className="crm-overview space-y-5">
       <CrmHeader
         crm={crm}
         title="CRM"
-        description="One organization-wide directory for customers, prospects, and companies."
+        description="Your relationships, conversations and next steps."
       />
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <CrmStat label="Contacts" value={workspace.contacts.length} />
-        <CrmStat label="Companies" value={workspace.companies.length} />
-        <CrmStat label="Open inquiries" value={openInquiries.length} />
-        <CrmStat label="Upcoming meetings" value={upcomingMeetings.length} />
+      <div className="crm-overview-stats">
+        {(
+          [
+            {
+              label: "Contacts",
+              value: workspace.contacts.length,
+              icon: Users,
+              to: "/modules/crm/contacts",
+              tone: "blue",
+            },
+            {
+              label: "Companies",
+              value: workspace.companies.length,
+              icon: Building2,
+              to: "/modules/crm/companies",
+              tone: "teal",
+            },
+            {
+              label: "Open inquiries",
+              value: openInquiries.length,
+              icon: Inbox,
+              to: "/modules/crm/inquiries",
+              tone: "amber",
+            },
+            {
+              label: "Upcoming meetings",
+              value: upcomingMeetings.length,
+              icon: CalendarDays,
+              to: "/modules/crm/meetings",
+              tone: "violet",
+            },
+          ] as const
+        ).map(({ label, value, icon: Icon, to, tone }) => (
+          <Link
+            key={label}
+            to={to}
+            className="crm-overview-stat"
+            data-tone={tone}
+          >
+            <span className="crm-overview-stat-icon">
+              <Icon className="size-5" />
+            </span>
+            <ArrowUpRight className="size-4 opacity-40 ml-auto" />
+            <strong>{value}</strong>
+            <span className="crm-overview-stat-label">{label}</span>
+          </Link>
+        ))}
       </div>
-      <div className="grid gap-4 xl:grid-cols-2">
+      <div className="crm-overview-panels">
         <CrmPanel title="Contacts" count={workspace.contacts.length}>
-          <ContactRows workspace={workspace} />
+          <div className="crm-overview-list">
+            <ContactRows workspace={workspace} />
+          </div>
+          <Link to="/modules/crm/contacts" className="crm-overview-more">
+            View all contacts <ArrowUpRight className="size-4" />
+          </Link>
         </CrmPanel>
         <CrmPanel title="Companies" count={workspace.companies.length}>
-          <CompanyRows workspace={workspace} />
+          <div className="crm-overview-list">
+            <CompanyRows workspace={workspace} />
+          </div>
+          <Link to="/modules/crm/companies" className="crm-overview-more">
+            View all companies <ArrowUpRight className="size-4" />
+          </Link>
         </CrmPanel>
         <CrmPanel title="Inquiries" count={workspace.inquiries.length}>
-          <InquiryRows
-            workspace={workspace}
-            promoting={crm.promoteInquiryMutation.isPending}
-            onPromote={(id) => crm.promoteInquiryMutation.mutate(id)}
-          />
+          <div className="crm-overview-list">
+            <InquiryRows
+              workspace={workspace}
+              promoting={crm.promoteInquiryMutation.isPending}
+              onPromote={(id) => crm.promoteInquiryMutation.mutate(id)}
+            />
+          </div>
         </CrmPanel>
         <CrmPanel title="Meetings" count={workspace.meetings.length}>
-          <MeetingRows workspace={workspace} />
+          <div className="crm-overview-list">
+            <MeetingRows workspace={workspace} />
+          </div>
         </CrmPanel>
       </div>
     </div>
