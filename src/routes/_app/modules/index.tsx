@@ -155,7 +155,7 @@ function BusinessModulesPage() {
   return (
     <div className="business-access h-full overflow-auto bg-base-100 px-4 py-6 pb-24 md:px-6 md:py-8 md:pb-8">
       <div className="mx-auto max-w-[1500px] space-y-6">
-        <PageHeading isClient={isClient} />
+        {isClient ? <PageHeading isClient={isClient} /> : null}
 
         {accessQuery.isLoading ||
         (accessQuery.isSuccess &&
