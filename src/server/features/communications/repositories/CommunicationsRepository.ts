@@ -856,6 +856,37 @@ async function createWhatsappCampaign(
   return row;
 }
 
+/** Whether this workspace already has a campaign by that name, ignoring case. */
+async function whatsappCampaignNameTaken(organizationId: string, name: string) {
+  const [row] = await db
+    .select({ id: whatsappCampaigns.id })
+    .from(whatsappCampaigns)
+    .where(
+      and(
+        eq(whatsappCampaigns.organizationId, organizationId),
+        eq(sql`lower(${whatsappCampaigns.name})`, name.trim().toLowerCase()),
+      ),
+    )
+    .limit(1);
+  return Boolean(row);
+}
+
+async function deleteWhatsappCampaign(
+  organizationId: string,
+  campaignId: string,
+) {
+  const [row] = await db
+    .delete(whatsappCampaigns)
+    .where(
+      and(
+        eq(whatsappCampaigns.id, campaignId),
+        eq(whatsappCampaigns.organizationId, organizationId),
+      ),
+    )
+    .returning({ id: whatsappCampaigns.id, name: whatsappCampaigns.name });
+  return row ?? null;
+}
+
 async function getWhatsappCampaignContext(
   organizationId: string,
   campaignId: string,
@@ -1348,6 +1379,8 @@ export const CommunicationsRepository = {
   updateWhatsappConnection,
   createWhatsappAutomation,
   createWhatsappCampaign,
+  whatsappCampaignNameTaken,
+  deleteWhatsappCampaign,
   createWhatsappOrder,
   createWhatsappTemplate,
   endVoiceConversation,

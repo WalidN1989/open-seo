@@ -17,6 +17,7 @@ import {
   Settings2,
   ArrowLeft,
   X,
+  Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { AssistantConfigSection } from "./whatsapp/AssistantConfigSection";
@@ -42,6 +43,7 @@ import {
   getWhatsappWorkspace,
   getWhatsappOperations,
   launchWhatsappCampaign,
+  deleteWhatsappCampaign,
   retryWebhookDelivery,
   testWebhookEndpoint,
   testIntegration,
@@ -384,6 +386,15 @@ export function WhatsappWorkspace() {
     },
     onError: showError,
   });
+  const deleteCampaign = useMutation({
+    mutationFn: (campaignId: string) =>
+      deleteWhatsappCampaign({ data: { campaignId } }),
+    onSuccess: async () => {
+      await client.invalidateQueries({ queryKey: ["whatsapp"] });
+      toast.success("Campaign deleted");
+    },
+    onError: showError,
+  });
   const launchCampaign = useMutation({
     mutationFn: (campaignId: string) =>
       launchWhatsappCampaign({ data: { campaignId } }),
@@ -674,6 +685,7 @@ export function WhatsappWorkspace() {
           {form === "template" ? (
             <SimpleForm
               stacked
+              isSubmitting={template.isPending}
               fields={["name", "body", "mediaUrl", "externalTemplateId"]}
               meta={{
                 name: { label: "Template name", hint: "For your list only." },
@@ -706,6 +718,7 @@ export function WhatsappWorkspace() {
           ) : null}
           {form === "campaign" ? (
             <SimpleForm
+              isSubmitting={campaign.isPending}
               fields={["name"]}
               select={{
                 name: "template",
@@ -1500,9 +1513,28 @@ export function WhatsappWorkspace() {
                     {item.status === "draft" || item.status === "scheduled" ? (
                       <button
                         className="btn btn-primary btn-xs"
+                        disabled={launchCampaign.isPending}
                         onClick={() => launchCampaign.mutate(item.id)}
                       >
                         Launch
+                      </button>
+                    ) : null}
+                    {item.status !== "running" ? (
+                      <button
+                        className="btn btn-ghost btn-xs text-error"
+                        aria-label={`Delete campaign ${item.name}`}
+                        disabled={deleteCampaign.isPending}
+                        onClick={() => {
+                          if (
+                            window.confirm(
+                              `Delete "${item.name}"? Messages it already sent stay in the chats.`,
+                            )
+                          ) {
+                            deleteCampaign.mutate(item.id);
+                          }
+                        }}
+                      >
+                        <Trash2 className="size-3.5" />
                       </button>
                     ) : null}
                   </div>

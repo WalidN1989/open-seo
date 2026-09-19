@@ -102,6 +102,16 @@ export const launchWhatsappCampaign = createServerFn({ method: "POST" })
       data,
     ),
   );
+export const deleteWhatsappCampaign = createServerFn({ method: "POST" })
+  .middleware(requireAuthenticatedContext)
+  .validator(launchWhatsappCampaignSchema)
+  .handler(({ context, data }) =>
+    CommunicationsService.deleteWhatsappCampaign(
+      context.organizationId,
+      context.userId,
+      data,
+    ),
+  );
 export const createWhatsappAutomation = createServerFn({ method: "POST" })
   .middleware(requireAuthenticatedContext)
   .validator(createWhatsappAutomationSchema)

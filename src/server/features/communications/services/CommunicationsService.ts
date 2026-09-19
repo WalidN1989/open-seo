@@ -391,6 +391,19 @@ async function createWhatsappCampaign(
   if (!connectionValid || !templateValid) {
     throw new Error("WhatsApp connection or template not found.");
   }
+  // One campaign per name: a double-clicked Save used to leave three
+  // identical drafts, each of which could be launched.
+  if (
+    await CommunicationsRepository.whatsappCampaignNameTaken(
+      organizationId,
+      input.name,
+    )
+  ) {
+    throw new AppError(
+      "CONFLICT",
+      `A campaign named "${input.name.trim()}" already exists. Pick another name.`,
+    );
+  }
   const campaign = await CommunicationsRepository.createWhatsappCampaign(
     organizationId,
     input,
@@ -403,6 +416,44 @@ async function createWhatsappCampaign(
     campaign.id,
   );
   return campaign;
+}
+
+/**
+ * Removes a campaign from the list. Messages it already sent stay in each
+ * chat; only a campaign in the middle of sending cannot be removed.
+ */
+async function deleteWhatsappCampaign(
+  organizationId: string,
+  userId: string,
+  input: { campaignId: string },
+) {
+  await BusinessModuleService.requireAccess(
+    organizationId,
+    userId,
+    "whatsapp",
+    "manage",
+  );
+  const context = await CommunicationsRepository.getWhatsappCampaignContext(
+    organizationId,
+    input.campaignId,
+  );
+  if (context?.campaign.status === "running") {
+    throw new AppError("CONFLICT", "This campaign is still sending.");
+  }
+  const removed = await CommunicationsRepository.deleteWhatsappCampaign(
+    organizationId,
+    input.campaignId,
+  );
+  if (!removed) throw new AppError("NOT_FOUND");
+  await auditMutation(
+    organizationId,
+    userId,
+    "whatsapp.campaign.deleted",
+    "whatsapp_campaign",
+    removed.id,
+    { name: removed.name },
+  );
+  return { campaignId: removed.id };
 }
 
 async function launchWhatsappCampaign(
@@ -1695,6 +1746,7 @@ export const CommunicationsService = {
   emitBusinessEvent,
   integrationsWorkspace,
   launchWhatsappCampaign,
+  deleteWhatsappCampaign,
   processWhatsappWebhook,
   processMetaWebhook,
   retryWebhookDelivery,
