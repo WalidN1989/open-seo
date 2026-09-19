@@ -92,7 +92,7 @@ export function ModuleSwitcher({
           if (!hasIcon(key)) return null;
           const Icon = MODULE_ICONS[key];
           const active = key === activeModuleKey;
-          const sharedClass = `relative flex w-full items-center gap-2.5 rounded-md px-3 py-1.5 text-sm transition-colors ${
+          const sharedClass = `sidebar-motion-link relative flex w-full items-center gap-2.5 rounded-md px-3 py-1.5 text-sm transition-colors ${
             active
               ? "bg-base-300/50 font-medium text-base-content"
               : "text-base-content/70 hover:bg-base-300/30 hover:text-base-content"

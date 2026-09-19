@@ -64,7 +64,7 @@ function SidebarNavLink({
       onClick={onNavigate}
       activeOptions={{ exact: false, includeSearch: false }}
       {...linkProps}
-      className={navItemClass}
+      className={`sidebar-motion-link ${navItemClass}`}
       activeProps={navItemActiveProps}
     >
       {({ isActive }: { isActive: boolean }) => (
