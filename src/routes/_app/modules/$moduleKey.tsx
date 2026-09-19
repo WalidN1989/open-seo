@@ -121,7 +121,9 @@ function BusinessModulePage() {
         className={
           moduleKey === "whatsapp" || moduleKey === "social"
             ? "mx-auto h-full min-h-0 w-full max-w-[1600px]"
-            : "mx-auto w-full max-w-[1500px] space-y-4"
+            : moduleKey === "leads"
+              ? "leads-page mx-auto w-full max-w-[1500px]"
+              : "mx-auto w-full max-w-[1500px] space-y-4"
         }
       >
         {moduleKey !== "whatsapp" && moduleKey !== "social" ? (
