@@ -27,6 +27,8 @@ const ORGANIZATION_SCOPED_QUERY_ROOTS = [
   "client-accounts",
   "client-reports",
   "voice",
+  "voice-greeting",
+  "voice-name",
   "whatsapp",
 ] as const;
 

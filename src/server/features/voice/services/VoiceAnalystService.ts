@@ -5,7 +5,7 @@ import { BacklinkSnapshotRepository } from "@/server/features/dashboard/reposito
 import { ProjectContextService } from "@/server/features/project-context/services/ProjectContextService";
 import { ProjectService } from "@/server/features/projects/services/ProjectService";
 import { RankTrackingService } from "@/server/features/rank-tracking/services/RankTrackingService";
-import { greetingName } from "../greeting";
+import { VoiceGreetingService } from "./VoiceGreetingService";
 import { moduleBrief } from "./moduleBrief";
 import { resolveProject, type VoiceProject } from "../projectResolution";
 import {
@@ -131,16 +131,15 @@ async function cachedBrief(
  * The analyst's context for this turn: who is speaking, and the chosen
  * project's brief or the list to choose from when none is named yet.
  */
-async function contextForTurn(userId: string, userTurns: string[]) {
-  const [projects, user, organizations] = await Promise.all([
+async function contextForTurn(
+  organizationId: string,
+  userId: string,
+  userTurns: string[],
+) {
+  const [projects, speaker] = await Promise.all([
     accessibleProjects(userId),
-    orNull(AuthRepository.getHostedUser(userId)),
-    orNull(AuthRepository.listOrganizationsForUser(userId)),
+    orNull(VoiceGreetingService.speakerName(organizationId, userId)),
   ]);
-  const speaker = greetingName(
-    user?.name,
-    (organizations ?? []).map((row) => row.name),
-  );
   const who = speaker ? `You are speaking with ${speaker}.\n` : "";
   const chosen = resolveProject(projects, userTurns);
   if (!chosen) return who + renderProjectChoice(projects);

@@ -1,6 +1,7 @@
 import { AuthRepository } from "@/server/auth/repositories/AuthRepository";
 import { BusinessModuleService } from "@/server/features/business-modules/services/BusinessModuleService";
 import { speakWithDeepgram } from "@/server/features/communications/providers/voice";
+import { BusinessSettingsRepository } from "@/server/features/business-modules/repositories/BusinessSettingsRepository";
 import { CommunicationsRepository } from "@/server/features/communications/repositories/CommunicationsRepository";
 import { greetingName, greetingText } from "../greeting";
 
@@ -14,6 +15,50 @@ const spoken = new Map<
   string,
   { at: number; text: string; audioBase64: string; mimeType: string }
 >();
+
+/**
+ * The name the voice uses for whoever is speaking in this workspace: the one
+ * set for the business, or else the login's name when it reads as a person's.
+ */
+async function speakerName(organizationId: string, userId: string) {
+  const [settings, user, organizations] = await Promise.all([
+    BusinessSettingsRepository.getOrCreate(organizationId),
+    AuthRepository.getHostedUser(userId),
+    AuthRepository.listOrganizationsForUser(userId),
+  ]);
+  const set = settings?.voiceName?.trim();
+  if (set) return set;
+  return greetingName(
+    user?.name,
+    organizations.map((row) => row.name),
+  );
+}
+
+async function getVoiceName(organizationId: string, userId: string) {
+  await BusinessModuleService.requireAccess(organizationId, userId, "voice");
+  const settings = await BusinessSettingsRepository.getOrCreate(organizationId);
+  return { voiceName: settings?.voiceName ?? "" };
+}
+
+async function setVoiceName(
+  organizationId: string,
+  userId: string,
+  input: { voiceName: string },
+) {
+  await BusinessModuleService.requireAccess(
+    organizationId,
+    userId,
+    "voice",
+    "manage",
+  );
+  const voiceName = input.voiceName.trim() || null;
+  await BusinessSettingsRepository.setVoiceName(organizationId, voiceName);
+  // Greetings made with the old name are dropped for this workspace.
+  for (const key of spoken.keys()) {
+    if (key.startsWith(`${organizationId}:`)) spoken.delete(key);
+  }
+  return { voiceName: voiceName ?? "" };
+}
 
 async function greeting(organizationId: string, userId: string) {
   await BusinessModuleService.requireAccess(
@@ -31,17 +76,11 @@ async function greeting(organizationId: string, userId: string) {
       mimeType: kept.mimeType,
     };
   }
-  const [user, organizations, workspace] = await Promise.all([
-    AuthRepository.getHostedUser(userId),
-    AuthRepository.listOrganizationsForUser(userId),
+  const [name, workspace] = await Promise.all([
+    speakerName(organizationId, userId),
     CommunicationsRepository.getVoiceWorkspace(organizationId),
   ]);
-  const text = greetingText(
-    greetingName(
-      user?.name,
-      organizations.map((row) => row.name),
-    ),
-  );
+  const text = greetingText(name);
   // The launcher talks through the newest agent, or creates one on this key.
   const credential =
     workspace.agents[0]?.credentialReference ?? "OPENSEO_VOICE";
@@ -51,4 +90,9 @@ async function greeting(organizationId: string, userId: string) {
   return { text, ...audio };
 }
 
-export const VoiceGreetingService = { greeting } as const;
+export const VoiceGreetingService = {
+  greeting,
+  speakerName,
+  getVoiceName,
+  setVoiceName,
+} as const;

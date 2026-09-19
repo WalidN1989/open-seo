@@ -498,6 +498,13 @@
       "when": 1789584454688,
       "tag": "0070_regular_nomad",
       "breakpoints": true
+    },
+    {
+      "idx": 71,
+      "version": "7",
+      "when": 1789831233694,
+      "tag": "0071_huge_marvel_boy",
+      "breakpoints": true
     }
   ]
 }

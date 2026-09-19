@@ -51,6 +51,9 @@ export const businessSettings = sqliteTable(
     // Every stored amount is an integer in this currency's smallest unit.
     // Changing it relabels existing figures; it does not convert them.
     currency: text("currency").notNull().default("AUD"),
+    // What the in-app voice calls the person it greets in this workspace.
+    // Per business, not per login: one agency login answers for many.
+    voiceName: text("voice_name"),
     createdAt: createdAt(),
     updatedAt: text("updated_at")
       .notNull()

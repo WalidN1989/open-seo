@@ -41,4 +41,18 @@ async function setCurrency(organizationId: string, currency: string) {
   return row;
 }
 
-export const BusinessSettingsRepository = { getOrCreate, setCurrency };
+async function setVoiceName(organizationId: string, voiceName: string | null) {
+  await getOrCreate(organizationId);
+  const [row] = await db
+    .update(businessSettings)
+    .set({ voiceName, updatedAt: new Date().toISOString() })
+    .where(eq(businessSettings.organizationId, organizationId))
+    .returning();
+  return row;
+}
+
+export const BusinessSettingsRepository = {
+  getOrCreate,
+  setCurrency,
+  setVoiceName,
+};

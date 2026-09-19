@@ -1,0 +1,1 @@
+ALTER TABLE "business_settings" ADD COLUMN "voice_name" text;

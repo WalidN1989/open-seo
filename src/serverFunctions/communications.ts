@@ -1,3 +1,4 @@
+import { z } from "zod";
 import { createServerFn } from "@tanstack/react-start";
 import { VoiceGreetingService } from "@/server/features/voice/services/VoiceGreetingService";
 import { CommunicationsService } from "@/server/features/communications/services/CommunicationsService";
@@ -345,4 +346,21 @@ export const getVoiceGreeting = createServerFn({ method: "GET" })
   .middleware(requireAuthenticatedContext)
   .handler(({ context }) =>
     VoiceGreetingService.greeting(context.organizationId, context.userId),
+  );
+
+export const getVoiceName = createServerFn({ method: "GET" })
+  .middleware(requireAuthenticatedContext)
+  .handler(({ context }) =>
+    VoiceGreetingService.getVoiceName(context.organizationId, context.userId),
+  );
+
+export const setVoiceName = createServerFn({ method: "POST" })
+  .middleware(requireAuthenticatedContext)
+  .validator(z.object({ voiceName: z.string().max(60) }))
+  .handler(({ context, data }) =>
+    VoiceGreetingService.setVoiceName(
+      context.organizationId,
+      context.userId,
+      data,
+    ),
   );

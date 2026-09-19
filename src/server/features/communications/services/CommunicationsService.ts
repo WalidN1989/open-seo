@@ -767,6 +767,7 @@ async function transcribeVoiceAudio(
         // The in-app voice is a teammate's, never a customer's: it answers
         // about the projects that teammate can see.
         VoiceAnalystService.contextForTurn(
+          organizationId,
           userId,
           history
             .filter((turn) => turn.speaker === "user")
