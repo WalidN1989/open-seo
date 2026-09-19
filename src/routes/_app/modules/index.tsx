@@ -215,9 +215,17 @@ function BusinessModulesPage() {
                       return (
                         <article
                           key={module.key}
-                          className="business-access-card rounded-xl border border-base-300 bg-base-100 p-4"
+                          className="business-access-card"
                         >
-                          <div className="flex flex-col items-center gap-2 text-center">
+                          <div className="business-access-launcher">
+                            {module.enabled && module.permission ? (
+                              <Link
+                                to="/modules/$moduleKey"
+                                params={{ moduleKey: module.key }}
+                                className="business-access-launch-link"
+                                aria-label={`Open ${module.label}`}
+                              />
+                            ) : null}
                             <span className="business-access-icon shrink-0 rounded-lg bg-base-200 p-2">
                               <Icon className="size-5" />
                             </span>
@@ -228,64 +236,61 @@ function BusinessModulesPage() {
                             </div>
                           </div>
 
-                          <div className="mt-auto flex items-center justify-between gap-2 pt-3">
-                            {module.enabled && module.permission ? (
-                              <Link
-                                to="/modules/$moduleKey"
-                                params={{ moduleKey: module.key }}
-                                className="btn btn-outline btn-sm"
-                              >
-                                Open
-                              </Link>
-                            ) : (
-                              <span className="text-xs text-base-content/50">
-                                {module.enabled ? "No access" : "Inactive"}
+                          <details className="business-access-controls">
+                            <summary>Manage access</summary>
+                            <div className="flex items-center justify-between gap-2 pt-3">
+                              <span className="text-xs text-base-content/60">
+                                {module.enabled ? "Enabled" : "Enable module"}
                               </span>
-                            )}
-                            {module.canConfigureEntitlement ? (
-                              <input
-                                type="checkbox"
-                                className="toggle toggle-primary toggle-sm"
-                                checked={module.enabled}
-                                disabled={entitlementMutation.isPending}
-                                aria-label={`${module.enabled ? "Disable" : "Enable"} ${module.label}`}
-                                onChange={(event) =>
-                                  entitlementMutation.mutate({
-                                    moduleKey: module.key,
-                                    enabled: event.currentTarget.checked,
-                                  })
-                                }
-                              />
-                            ) : null}
-                          </div>
-                          {module.key === "crm" && leadsModule ? (
-                            <div className="mt-3 flex items-center justify-between gap-3 border-t border-base-300 pt-3">
-                              <div>
-                                <div className="text-sm font-medium">Leads</div>
-                              </div>
-                              {leadsModule.canConfigureEntitlement ? (
+                              {module.canConfigureEntitlement ? (
                                 <input
                                   type="checkbox"
                                   className="toggle toggle-primary toggle-sm"
-                                  checked={leadsModule.enabled}
+                                  checked={module.enabled}
                                   disabled={entitlementMutation.isPending}
-                                  aria-label={`${leadsModule.enabled ? "Disable" : "Enable"} Leads`}
+                                  aria-label={`${module.enabled ? "Disable" : "Enable"} ${module.label}`}
                                   onChange={(event) =>
                                     entitlementMutation.mutate({
-                                      moduleKey: "leads",
+                                      moduleKey: module.key,
                                       enabled: event.currentTarget.checked,
                                     })
                                   }
                                 />
-                              ) : (
-                                <span
-                                  className={`badge badge-sm ${leadsModule.enabled ? "badge-success" : "badge-ghost"}`}
-                                >
-                                  {leadsModule.enabled ? "Active" : "Inactive"}
-                                </span>
-                              )}
+                              ) : null}
                             </div>
-                          ) : null}
+                            {module.key === "crm" && leadsModule ? (
+                              <div className="mt-3 flex items-center justify-between gap-3 border-t border-base-300 pt-3">
+                                <div>
+                                  <div className="text-sm font-medium">
+                                    Leads
+                                  </div>
+                                </div>
+                                {leadsModule.canConfigureEntitlement ? (
+                                  <input
+                                    type="checkbox"
+                                    className="toggle toggle-primary toggle-sm"
+                                    checked={leadsModule.enabled}
+                                    disabled={entitlementMutation.isPending}
+                                    aria-label={`${leadsModule.enabled ? "Disable" : "Enable"} Leads`}
+                                    onChange={(event) =>
+                                      entitlementMutation.mutate({
+                                        moduleKey: "leads",
+                                        enabled: event.currentTarget.checked,
+                                      })
+                                    }
+                                  />
+                                ) : (
+                                  <span
+                                    className={`badge badge-sm ${leadsModule.enabled ? "badge-success" : "badge-ghost"}`}
+                                  >
+                                    {leadsModule.enabled
+                                      ? "Active"
+                                      : "Inactive"}
+                                  </span>
+                                )}
+                              </div>
+                            ) : null}
+                          </details>
                         </article>
                       );
                     })}

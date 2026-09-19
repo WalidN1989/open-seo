@@ -1,17 +1,55 @@
 .business-access-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 140px), 1fr));
-  gap: 10px;
-  align-items: stretch;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 16px;
+  align-items: start;
 }
 .business-access-card {
   display: flex;
   flex-direction: column;
   min-width: 0;
+  border-radius: 16px;
+  background: color-mix(in srgb, #65c7d6 5%, var(--color-base-100));
+  padding: 12px;
   transition:
     transform 200ms ease,
     border-color 200ms ease,
     box-shadow 200ms ease;
+}
+.business-access-launcher {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 64px;
+}
+.business-access-launch-link {
+  position: absolute;
+  inset: -8px;
+  border-radius: 12px;
+}
+.business-access-launch-link:focus-visible {
+  outline: 2px solid #128495;
+  outline-offset: 2px;
+}
+.business-access-controls {
+  font-size: 11px;
+  color: var(--color-base-content);
+}
+.business-access-controls > summary {
+  cursor: pointer;
+  opacity: 0.55;
+  padding: 6px 0 0;
+}
+@media (max-width: 700px) {
+  .business-access-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 420px) {
+  .business-access-grid {
+    grid-template-columns: 1fr;
+  }
 }
 .business-access-icon {
   transition:
