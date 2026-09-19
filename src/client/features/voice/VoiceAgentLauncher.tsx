@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { History, LoaderCircle, Mic, PhoneOff, X } from "lucide-react";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { toast } from "sonner";
+import { useRouterState } from "@tanstack/react-router";
 import {
   createVoiceAgent,
   appendVoiceTranscript,
@@ -422,6 +423,18 @@ export function VoiceAgentLauncher() {
     [],
   );
 
+  // Moving to another page fades the panel away so the page can be used; the
+  // conversation carries on, and the orb brings the panel back.
+  const pathname = useRouterState({
+    select: (state) => state.location.pathname,
+  });
+  const pathnameRef = useRef(pathname);
+  useEffect(() => {
+    if (pathnameRef.current === pathname) return;
+    pathnameRef.current = pathname;
+    if (conversationRef.current) setOpen(false);
+  }, [pathname]);
+
   const messages = workspace.data?.messages
     .filter((message) => message.conversationId === conversationId)
     .toSorted(byTime)
@@ -449,13 +462,16 @@ export function VoiceAgentLauncher() {
 
   return (
     <>
-      {open ? (
+      {open || conversationId ? (
         <section
           aria-label="Voice Agent conversation"
+          aria-hidden={!open}
+          inert={!open}
           /* Translucent over the app rather than a flat card: the panel floats
              above whatever you were reading, so it should not look like it
-             replaced it. */
-          className="fixed right-4 bottom-24 z-50 flex h-[min(34rem,calc(100vh-9rem))] w-[min(25rem,calc(100vw-2rem))] flex-col overflow-hidden rounded-3xl border border-base-content/10 bg-base-100/80 shadow-2xl ring-1 ring-base-content/5 backdrop-blur-xl md:right-6"
+             replaced it. While a conversation is running it stays mounted and
+             fades out of the way instead, so hiding it never ends the call. */
+          className={`fixed right-4 bottom-24 z-50 flex h-[min(34rem,calc(100vh-9rem))] w-[min(25rem,calc(100vw-2rem))] flex-col overflow-hidden rounded-3xl border border-base-content/10 bg-base-100/80 shadow-2xl ring-1 ring-base-content/5 backdrop-blur-xl transition-[opacity,transform] duration-500 ease-out motion-reduce:transition-none md:right-6 ${open ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-3 opacity-0"}`}
         >
           <header className="flex items-center gap-3 px-4 pt-4 pb-3">
             <VoiceOrb state={orbState} level={level} size="sm" />
@@ -559,11 +575,27 @@ export function VoiceAgentLauncher() {
       <button
         type="button"
         onClick={toggle}
-        aria-label="Open Voice Agent"
+        aria-label={
+          conversationId
+            ? "Voice Agent — conversation live"
+            : "Open Voice Agent"
+        }
         aria-expanded={open}
         title="Voice Agent · Ctrl+Space or \u2318\u21e7Space"
         className="group fixed right-4 bottom-5 z-50 grid size-14 place-items-center rounded-full transition hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary md:right-6 md:bottom-6"
       >
+        {/* While a conversation is live the orb keeps glowing, so it is plain
+            the agent is still with you after the panel fades away. */}
+        {conversationId ? (
+          <span
+            aria-hidden="true"
+            className="voice-orb-halo pointer-events-none absolute -inset-3 rounded-full blur-xl"
+            style={{
+              backgroundImage: RING_GRADIENT,
+              opacity: speaking || listening ? 0.75 : 0.45,
+            }}
+          />
+        ) : null}
         <VoiceOrb state={orbState} level={level} size="md" />
         <span className="pointer-events-none absolute right-full mr-3 rounded-full bg-base-content px-2.5 py-1 text-xs font-medium whitespace-nowrap text-base-100 opacity-0 transition group-hover:opacity-100 group-focus-visible:opacity-100">
           Voice Agent

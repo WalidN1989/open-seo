@@ -530,6 +530,23 @@ html[data-theme="openseo-dark"] .alert-error {
   }
 }
 
+/* The live-conversation glow behind the orb: a slow swell, so it reads as
+   "still here" rather than as an alert. */
+@keyframes voice-orb-halo {
+  0%,
+  100% {
+    transform: scale(0.92);
+  }
+  50% {
+    transform: scale(1.08);
+  }
+}
+
+.voice-orb-halo {
+  animation: voice-orb-halo 2.8s ease-in-out infinite;
+  transition: opacity 400ms ease-out;
+}
+
 @keyframes voice-orb-breathe {
   0%,
   100% {
@@ -555,7 +572,8 @@ html[data-theme="openseo-dark"] .alert-error {
 @media (prefers-reduced-motion: reduce) {
   .voice-orb-turn,
   .voice-orb-counter,
-  .voice-orb-breathe {
+  .voice-orb-breathe,
+  .voice-orb-halo {
     animation: none;
   }
 }

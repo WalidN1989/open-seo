@@ -3,6 +3,7 @@ import {
   ClientOnly,
   HeadContent,
   Outlet,
+  useMatches,
   Scripts,
   createRootRoute,
 } from "@tanstack/react-router";
@@ -25,6 +26,7 @@ import appCss from "@/client/styles/app.css?url";
 import { useSession } from "@/lib/auth-client";
 import { isHostedClientAuthMode } from "@/lib/auth-mode";
 import { Toaster } from "sonner";
+import { VoiceAgentLauncher } from "@/client/features/voice/VoiceAgentLauncher";
 import { queryClient } from "@/client/tanstack-db";
 import { getActiveOrganizationId } from "@/lib/auth-session";
 
@@ -89,7 +91,31 @@ export const Route = createRootRoute({
 });
 
 function AppLayout() {
-  return <Outlet />;
+  return (
+    <>
+      <Outlet />
+      <PersistentVoiceAgent />
+    </>
+  );
+}
+
+/**
+ * The voice agent lives here, above every page layout, rather than inside the
+ * app shell. The Business pages and the project pages each render their own
+ * shell, so moving between them unmounted the agent mid-conversation and the
+ * next tap on the orb started a new one. Mounted once, it keeps talking and
+ * listening wherever you go. Shown only on pages that have the app shell.
+ */
+function PersistentVoiceAgent() {
+  const inApp = useMatches({
+    select: (matches) =>
+      matches.some(
+        (match) =>
+          match.routeId.startsWith("/_app") ||
+          match.routeId.startsWith("/_project"),
+      ),
+  });
+  return inApp ? <VoiceAgentLauncher /> : null;
 }
 
 function PostHogBootstrap() {

@@ -14,7 +14,6 @@ import { BILLING_ROUTE } from "@/shared/billing";
 import { getSeoApiKeyStatus } from "@/serverFunctions/config";
 import { getProjects } from "@/serverFunctions/projects";
 import { getLastProjectId, projectAddress } from "@/client/lib/active-project";
-import { VoiceAgentLauncher } from "@/client/features/voice/VoiceAgentLauncher";
 
 const DATAFORSEO_HELP_PATH = "/help/dataforseo-api-key";
 
@@ -172,7 +171,6 @@ export function AuthenticatedAppLayout({
         suppressed={shouldShowMissingSeoApiKeyModal}
       />
 
-      <VoiceAgentLauncher />
       <ReminderPopup />
     </div>
   );
