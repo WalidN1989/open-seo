@@ -1,5 +1,7 @@
 # Integration marks
 
+Deepgram: Simple Icons (develop/icons/deepgram.svg), retrieved 2026-09-19.
+
 The SVG brand marks are served locally; opening the catalogue does not send
 requests to a logo CDN. Retrieved 2026-09-06.
 

@@ -17,6 +17,7 @@ const logos: Record<string, string> = {
   shopify: "shopify",
   claude_haiku: "claude",
   elevenlabs: "elevenlabs",
+  deepgram: "deepgram",
   twilio_sms: "twilio",
   wordpress: "wordpress",
   instagram: "instagram",
