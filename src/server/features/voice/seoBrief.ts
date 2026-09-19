@@ -270,7 +270,7 @@ export function renderProjectChoice(
 ) {
   if (projects.length === 0) return "This person has no projects yet.";
   return [
-    "No project has been chosen yet. Projects this person can see:",
+    "No project has been chosen yet. Projects this person can see (do not read this list out unless asked which projects there are):",
     ...projects.map(
       (project) =>
         `- ${project.name}${project.domain ? ` (${hostOf(project.domain)})` : ""}`,

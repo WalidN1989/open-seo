@@ -100,21 +100,53 @@ async function projectBrief(project: VoiceProject) {
 }
 
 /**
- * The analyst's context for this turn: the chosen project's brief, or the list
- * to choose from when the conversation has not named one yet.
+ * A project's brief is read once and reused for a few minutes. A spoken
+ * conversation asks follow-up after follow-up about the same project, and
+ * re-reading every audit page between two sentences is what made the agent
+ * slow to answer. Audits and rank checks change on a scale of hours.
+ */
+const BRIEF_TTL_MS = 5 * 60_000;
+const briefs = new Map<string, { at: number; text: string }>();
+
+async function cachedBrief(
+  userId: string,
+  project: VoiceProject,
+  organizationId: string,
+) {
+  const key = `${userId}:${project.id}`;
+  const hit = briefs.get(key);
+  if (hit && Date.now() - hit.at < BRIEF_TTL_MS) return hit.text;
+  const [seo, modules] = await Promise.all([
+    projectBrief(project),
+    orNull(moduleBrief(organizationId)),
+  ]);
+  const text = modules ? `${seo}\n\nBusiness:\n${modules}` : seo;
+  if (briefs.size > 200) briefs.clear();
+  briefs.set(key, { at: Date.now(), text });
+  return text;
+}
+
+function firstName(name: string | null | undefined) {
+  return name?.trim().split(/\s+/)[0] ?? "";
+}
+
+/**
+ * The analyst's context for this turn: who is speaking, and the chosen
+ * project's brief or the list to choose from when none is named yet.
  */
 async function contextForTurn(userId: string, userTurns: string[]) {
-  const projects = await accessibleProjects(userId);
+  const [projects, user] = await Promise.all([
+    accessibleProjects(userId),
+    orNull(AuthRepository.getHostedUser(userId)),
+  ]);
+  const speaker = firstName(user?.name);
+  const who = speaker ? `You are speaking with ${speaker}.\n` : "";
   const chosen = resolveProject(projects, userTurns);
-  if (!chosen) return renderProjectChoice(projects);
+  if (!chosen) return who + renderProjectChoice(projects);
   // Re-checked through the membership gate, not trusted from the list above.
   const allowed = await ProjectService.getProjectForMember(userId, chosen.id);
-  if (!allowed) return renderProjectChoice(projects);
-  const [seo, modules] = await Promise.all([
-    projectBrief(chosen),
-    orNull(moduleBrief(allowed.organizationId)),
-  ]);
-  return modules ? `${seo}\n\nBusiness:\n${modules}` : seo;
+  if (!allowed) return who + renderProjectChoice(projects);
+  return who + (await cachedBrief(userId, chosen, allowed.organizationId));
 }
 
 export const VoiceAnalystService = { contextForTurn } as const;

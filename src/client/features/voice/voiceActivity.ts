@@ -8,7 +8,9 @@ type VoiceActivityConfig = {
 
 export const VOICE_ACTIVITY_DEFAULTS: VoiceActivityConfig = {
   speechThreshold: 0.018,
-  silenceMs: 1_400,
+  // How long a pause ends a turn. Shorter feels like a conversation; much
+  // shorter cuts people off mid-thought.
+  silenceMs: 900,
   patienceMs: 60_000,
   maxMs: 300_000,
   minSpeechMs: 250,
@@ -65,4 +67,32 @@ export function stepVoiceActivity(
 
 export function voiceDisplayLevel(level: number) {
   return Math.min(1, Math.cbrt(Math.min(level, 0.3) / 0.3));
+}
+
+/**
+ * Hearing the person start to talk while the agent is speaking. Louder than
+ * ordinary speech detection and it must last, because the agent's own voice
+ * leaks back into the microphone and a cough is not an interruption.
+ */
+const BARGE_IN = { threshold: 0.05, sustainMs: 220 } as const;
+
+type BargeInState = { speechMs: number; lastAt: number };
+
+export function startBargeIn(now: number): BargeInState {
+  return { speechMs: 0, lastAt: now };
+}
+
+export function stepBargeIn(
+  state: BargeInState,
+  level: number,
+  now: number,
+): { state: BargeInState; interrupted: boolean } {
+  const speechMs =
+    level >= BARGE_IN.threshold
+      ? state.speechMs + Math.max(0, now - state.lastAt)
+      : 0;
+  return {
+    state: { speechMs, lastAt: now },
+    interrupted: speechMs >= BARGE_IN.sustainMs,
+  };
 }

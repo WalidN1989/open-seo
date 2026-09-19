@@ -12,10 +12,76 @@ import {
 } from "@/serverFunctions/communications";
 import { getStandardErrorMessage } from "@/client/lib/error-messages";
 import {
+  startBargeIn,
   startVoiceActivity,
+  stepBargeIn,
   stepVoiceActivity,
   voiceDisplayLevel,
 } from "./voiceActivity";
+
+const MICROPHONE: MediaTrackConstraints = {
+  echoCancellation: true,
+  noiseSuppression: true,
+  autoGainControl: true,
+};
+
+/**
+ * Listens while the agent speaks and calls `onInterrupt` with the open
+ * microphone the moment the person starts talking over it, so the reply can
+ * stop and their words can be recorded without asking for the mic again.
+ * Returns a stop function that releases everything if nobody interrupts.
+ */
+function watchForBargeIn(onInterrupt: (stream: MediaStream) => void) {
+  let stopped = false;
+  let frame: number | null = null;
+  let stream: MediaStream | null = null;
+  let context: AudioContext | null = null;
+  const release = (keepStream: boolean) => {
+    stopped = true;
+    if (frame !== null) cancelAnimationFrame(frame);
+    void context?.close().catch(() => undefined);
+    if (!keepStream) stream?.getTracks().forEach((track) => track.stop());
+  };
+  void navigator.mediaDevices
+    .getUserMedia({ audio: MICROPHONE })
+    .then((opened) => {
+      stream = opened;
+      if (stopped) {
+        release(false);
+        return;
+      }
+      context = new AudioContext();
+      const analyser = context.createAnalyser();
+      analyser.fftSize = 512;
+      context.createMediaStreamSource(opened).connect(analyser);
+      const samples = new Uint8Array(analyser.frequencyBinCount);
+      let state = startBargeIn(performance.now());
+      const watch = () => {
+        if (stopped) return;
+        analyser.getByteTimeDomainData(samples);
+        let sum = 0;
+        for (const sample of samples) {
+          const deviation = (sample - 128) / 128;
+          sum += deviation * deviation;
+        }
+        const next = stepBargeIn(
+          state,
+          Math.sqrt(sum / samples.length),
+          performance.now(),
+        );
+        state = next.state;
+        if (next.interrupted) {
+          release(true);
+          onInterrupt(opened);
+          return;
+        }
+        frame = requestAnimationFrame(watch);
+      };
+      watch();
+    })
+    .catch(() => undefined);
+  return () => release(false);
+}
 
 /**
  * The workspace returns newest first, which put every answer above the question
@@ -47,6 +113,9 @@ export function VoiceAgentLauncher() {
   const audioContextRef = useRef<AudioContext | null>(null);
   const animationFrameRef = useRef<number | null>(null);
   const continuousRef = useRef(false);
+  const replyRef = useRef<{ audio: HTMLAudioElement; stop: () => void } | null>(
+    null,
+  );
   const conversationRef = useRef<string | null>(null);
   const [showHistory, setShowHistory] = useState(false);
 
@@ -55,6 +124,15 @@ export function VoiceAgentLauncher() {
     queryFn: () => getVoiceWorkspace(),
     enabled: open,
   });
+
+  // Silences the reply being spoken, if any, and stops listening for an
+  // interruption to it.
+  const stopReply = () => {
+    replyRef.current?.stop();
+    replyRef.current?.audio.pause();
+    replyRef.current = null;
+    setSpeaking(false);
+  };
 
   const releaseMicrophone = () => {
     if (animationFrameRef.current !== null) {
@@ -103,13 +181,26 @@ export function VoiceAgentLauncher() {
         const audio = new Audio(
           `data:${result.mimeType};base64,${result.audioBase64}`,
         );
+        stopReply();
         setSpeaking(true);
+        // Talking over the agent stops it at once and becomes the next turn.
+        const stop = watchForBargeIn((stream) => {
+          if (replyRef.current?.audio !== audio) {
+            stream.getTracks().forEach((track) => track.stop());
+            return;
+          }
+          stopReply();
+          if (continuousRef.current) void beginListening(stream);
+          else stream.getTracks().forEach((track) => track.stop());
+        });
+        replyRef.current = { audio, stop };
         audio.addEventListener("ended", () => {
-          setSpeaking(false);
+          if (replyRef.current?.audio !== audio) return;
+          stopReply();
           if (continuousRef.current) void beginListening();
         });
         await audio.play().catch(() => {
-          setSpeaking(false);
+          stopReply();
           setStatus("Reply ready — tap the microphone to continue");
           continuousRef.current = false;
         });
@@ -123,18 +214,16 @@ export function VoiceAgentLauncher() {
     },
   });
 
-  const beginListening = async () => {
+  const beginListening = async (openStream?: MediaStream) => {
     const activeConversationId = conversationRef.current;
-    if (!activeConversationId || recorderRef.current?.state === "recording")
+    if (!activeConversationId || recorderRef.current?.state === "recording") {
+      openStream?.getTracks().forEach((track) => track.stop());
       return;
+    }
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
-        },
-      });
+      const stream =
+        openStream ??
+        (await navigator.mediaDevices.getUserMedia({ audio: MICROPHONE }));
       const recorder = new MediaRecorder(stream);
       const chunks: Blob[] = [];
       recorderRef.current = recorder;
@@ -226,6 +315,7 @@ export function VoiceAgentLauncher() {
   });
 
   const endConversation = async () => {
+    stopReply();
     stopListening(false);
     const activeConversationId = conversationRef.current;
     conversationRef.current = null;
@@ -270,6 +360,8 @@ export function VoiceAgentLauncher() {
   useEffect(
     () => () => {
       continuousRef.current = false;
+      replyRef.current?.stop();
+      replyRef.current?.audio.pause();
       if (animationFrameRef.current !== null)
         cancelAnimationFrame(animationFrameRef.current);
       streamRef.current?.getTracks().forEach((track) => track.stop());

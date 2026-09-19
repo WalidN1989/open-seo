@@ -760,23 +760,25 @@ async function transcribeVoiceAudio(
           organizationId,
           input.conversationId,
         );
-      const generated = await generateVoiceAgentReply({
-        agentName: agent.name,
-        credentialReference: agent.credentialReference,
-        history,
-        businessContext: await buildVoiceAgentContext(
-          organizationId,
-          agent.id,
-          result.transcript,
-        ),
+      // Both contexts are independent reads; waiting on one before starting
+      // the other added their latencies to every spoken turn.
+      const [businessContext, analystContext] = await Promise.all([
+        buildVoiceAgentContext(organizationId, agent.id, result.transcript),
         // The in-app voice is a teammate's, never a customer's: it answers
         // about the projects that teammate can see.
-        analystContext: await VoiceAnalystService.contextForTurn(
+        VoiceAnalystService.contextForTurn(
           userId,
           history
             .filter((turn) => turn.speaker === "user")
             .map((turn) => turn.transcript),
         ),
+      ]);
+      const generated = await generateVoiceAgentReply({
+        agentName: agent.name,
+        credentialReference: agent.credentialReference,
+        history,
+        businessContext,
+        analystContext,
       });
       const speech = await speakWithDeepgram(
         agent.credentialReference,
