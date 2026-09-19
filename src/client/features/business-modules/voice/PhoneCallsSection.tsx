@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import { PhoneIncoming } from "lucide-react";
+import { PhoneIncoming, Globe, Clock, ChevronDown } from "lucide-react";
+import "./calls.css";
 import { listPhoneCalls } from "@/serverFunctions/voiceCalls";
 
 function when(value: string) {
@@ -54,16 +55,52 @@ export function PhoneCallsSection() {
   const calls = query.data ?? [];
 
   return (
-    <section className="space-y-3 rounded-xl border border-base-300 p-4">
+    <section className="voice-calls space-y-4">
+      {query.isSuccess ? (
+        <div className="voice-call-stats">
+          {[
+            { label: "Recent calls", value: calls.length, Icon: PhoneIncoming },
+            {
+              label: "Website calls",
+              value: calls.filter((call) => call.provider === "deepgram")
+                .length,
+              Icon: Globe,
+            },
+            {
+              label: "Recorded duration",
+              value:
+                length(
+                  calls.reduce(
+                    (total, call) => total + (call.durationSeconds ?? 0),
+                    0,
+                  ),
+                ) || "0s",
+              Icon: Clock,
+            },
+          ].map(({ label, value, Icon }) => (
+            <div key={label} className="voice-call-stat">
+              <span>
+                <Icon className="size-5" />
+              </span>
+              <strong>{value}</strong>
+              <p>{label}</p>
+            </div>
+          ))}
+        </div>
+      ) : null}
       <div className="flex items-center gap-2">
         <PhoneIncoming className="size-4" />
-        <h2 className="font-semibold">Calls</h2>
+        <h2 className="font-semibold">Call activity</h2>
         <span className="text-sm text-base-content/55">
-          answered by your voice agents
+          Select a call to view its transcript
         </span>
       </div>
       {query.isPending ? (
         <span className="loading loading-spinner loading-sm" />
+      ) : query.isError ? (
+        <p role="alert" className="alert alert-error">
+          Calls could not be loaded. Please try again.
+        </p>
       ) : calls.length === 0 ? (
         <p className="text-sm text-base-content/60">
           No calls yet. Connect ElevenLabs (phone line) or Deepgram (website
@@ -71,16 +108,21 @@ export function PhoneCallsSection() {
           CRM.
         </p>
       ) : (
-        <ul className="divide-y divide-base-300">
+        <ul className="voice-call-grid">
           {calls.map((call) => {
             const expanded = open === call.id;
             const from = source(call);
             return (
-              <li key={call.id} className="py-3">
+              <li
+                key={call.id}
+                className="voice-call-card"
+                data-expanded={expanded}
+              >
                 <button
                   type="button"
                   className="flex w-full flex-wrap items-center gap-x-3 gap-y-1 text-left"
                   onClick={() => setOpen(expanded ? null : call.id)}
+                  aria-expanded={expanded}
                 >
                   <span
                     className={`badge badge-sm badge-outline ${from.badge}`}
@@ -95,16 +137,21 @@ export function PhoneCallsSection() {
                     {call.callerNumber ?? "no number"}
                   </span>
                   {call.captured.service_interest ? (
-                    <span className="badge badge-ghost badge-sm">
+                    <span className="voice-call-interest badge badge-ghost badge-sm">
                       {call.captured.service_interest}
                     </span>
                   ) : null}
                   <span className="ml-auto text-xs text-base-content/55">
                     {when(call.startedAt)} {length(call.durationSeconds)}
                   </span>
+                  <ChevronDown
+                    className={`size-4 shrink-0 ${expanded ? "rotate-180" : ""}`}
+                  />
                 </button>
                 {call.summary ? (
-                  <p className="mt-1 text-sm text-base-content/75">
+                  <p
+                    className={`voice-call-summary mt-3 text-sm text-base-content/75 ${expanded ? "" : "line-clamp-2"}`}
+                  >
                     {call.summary}
                   </p>
                 ) : null}
@@ -137,7 +184,12 @@ export function PhoneCallsSection() {
                         <dd>{call.recapEmailStatus ?? "not attempted"}</dd>
                       </div>
                     </dl>
-                    <div className="max-h-80 space-y-1 overflow-auto rounded-lg bg-base-200/60 p-3">
+                    <div className="voice-call-transcript max-h-80 space-y-1 overflow-auto rounded-lg bg-base-200/60 p-3">
+                      {call.transcript.length === 0 ? (
+                        <p className="text-base-content/60">
+                          No transcript available for this call.
+                        </p>
+                      ) : null}
                       {call.transcript.map((turn, index) => (
                         <p key={index}>
                           <span className="font-medium">
