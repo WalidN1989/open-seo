@@ -83,7 +83,9 @@
   .integration-tile:hover {
     transform: translateY(-4px);
     border-color: #27aebe;
-    box-shadow: 0 10px 24px #15384718, 0 2px 6px #1538470a;
+    box-shadow:
+      0 10px 24px #15384718,
+      0 2px 6px #1538470a;
   }
   .integration-tile:hover::before {
     opacity: 1;
