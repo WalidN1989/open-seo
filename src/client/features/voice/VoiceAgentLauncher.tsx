@@ -5,7 +5,9 @@ import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { toast } from "sonner";
 import {
   createVoiceAgent,
+  appendVoiceTranscript,
   endVoiceConversation,
+  getVoiceGreeting,
   getVoiceWorkspace,
   startVoiceConversation,
   transcribeVoiceAudio,
@@ -156,6 +158,61 @@ export function VoiceAgentLauncher() {
     releaseMicrophone();
   };
 
+  // Plays one spoken reply. Talking over it stops it at once and becomes the
+  // next turn; when it finishes, the microphone opens again.
+  const speak = async (audioBase64: string, mimeType: string) => {
+    const audio = new Audio(`data:${mimeType};base64,${audioBase64}`);
+    stopReply();
+    setSpeaking(true);
+    const stop = watchForBargeIn((stream) => {
+      if (replyRef.current?.audio !== audio) {
+        stream.getTracks().forEach((track) => track.stop());
+        return;
+      }
+      stopReply();
+      if (continuousRef.current) void beginListening(stream);
+      else stream.getTracks().forEach((track) => track.stop());
+    });
+    replyRef.current = { audio, stop };
+    audio.addEventListener("ended", () => {
+      if (replyRef.current?.audio !== audio) return;
+      stopReply();
+      if (continuousRef.current) void beginListening();
+    });
+    await audio.play().catch(() => {
+      stopReply();
+      setStatus("Reply ready — tap the microphone to continue");
+      continuousRef.current = false;
+    });
+  };
+
+  // Made once and kept, so the greeting plays the instant the orb is tapped
+  // instead of after a round trip to the speech service.
+  const greeting = useQuery({
+    queryKey: ["voice-greeting"],
+    queryFn: () => getVoiceGreeting(),
+    staleTime: Infinity,
+    gcTime: Infinity,
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
+  const greetingSaidRef = useRef<string | null>(null);
+
+  const greet = () => {
+    const line = greeting.data;
+    if (!line) return;
+    greetingSaidRef.current = line.text;
+    setStatus("Speaking…");
+    void speak(line.audioBase64, line.mimeType);
+  };
+
+  // The keyboard shortcut is registered once; it reaches the latest greeting
+  // through this rather than re-registering on every render.
+  const greetRef = useRef(greet);
+  useEffect(() => {
+    greetRef.current = greet;
+  });
+
   const transcribe = useMutation({
     mutationFn: (data: {
       conversationId: string;
@@ -178,32 +235,7 @@ export function VoiceAgentLauncher() {
       }
       setStatus("Speaking…");
       if ("audioBase64" in result && result.audioBase64) {
-        const audio = new Audio(
-          `data:${result.mimeType};base64,${result.audioBase64}`,
-        );
-        stopReply();
-        setSpeaking(true);
-        // Talking over the agent stops it at once and becomes the next turn.
-        const stop = watchForBargeIn((stream) => {
-          if (replyRef.current?.audio !== audio) {
-            stream.getTracks().forEach((track) => track.stop());
-            return;
-          }
-          stopReply();
-          if (continuousRef.current) void beginListening(stream);
-          else stream.getTracks().forEach((track) => track.stop());
-        });
-        replyRef.current = { audio, stop };
-        audio.addEventListener("ended", () => {
-          if (replyRef.current?.audio !== audio) return;
-          stopReply();
-          if (continuousRef.current) void beginListening();
-        });
-        await audio.play().catch(() => {
-          stopReply();
-          setStatus("Reply ready — tap the microphone to continue");
-          continuousRef.current = false;
-        });
+        await speak(result.audioBase64, result.mimeType);
       } else if (continuousRef.current) {
         void beginListening();
       }
@@ -308,8 +340,22 @@ export function VoiceAgentLauncher() {
       conversationRef.current = conversation.id;
       setConversationId(conversation.id);
       continuousRef.current = true;
-      await client.invalidateQueries({ queryKey: ["voice"] });
-      await beginListening();
+      // The greeting is part of the conversation, so the agent knows it has
+      // already said hello.
+      const said = greetingSaidRef.current;
+      greetingSaidRef.current = null;
+      const saved = said
+        ? appendVoiceTranscript({
+            data: {
+              conversationId: conversation.id,
+              speaker: "agent",
+              transcript: said,
+            },
+          }).catch(() => undefined)
+        : Promise.resolve();
+      void saved.then(() => client.invalidateQueries({ queryKey: ["voice"] }));
+      // While the greeting is still playing, its end opens the microphone.
+      if (!replyRef.current) await beginListening();
     },
     onError: (error) => setStatus(getStandardErrorMessage(error)),
   });
@@ -335,8 +381,11 @@ export function VoiceAgentLauncher() {
       return;
     }
     setOpen(true);
-    if (!conversationRef.current && !start.isPending) start.mutate();
-    else if (!listening && !transcribe.isPending) {
+    if (!conversationRef.current && !start.isPending) {
+      continuousRef.current = true;
+      greet();
+      start.mutate();
+    } else if (!listening && !transcribe.isPending) {
       continuousRef.current = true;
       void beginListening();
     }
@@ -351,7 +400,11 @@ export function VoiceAgentLauncher() {
         return;
       event.preventDefault();
       setOpen(true);
-      if (!conversationRef.current && !start.isPending) start.mutate();
+      if (!conversationRef.current && !start.isPending) {
+        continuousRef.current = true;
+        greetRef.current();
+        start.mutate();
+      }
     };
     window.addEventListener("keydown", shortcut);
     return () => window.removeEventListener("keydown", shortcut);

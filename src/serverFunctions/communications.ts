@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { VoiceGreetingService } from "@/server/features/voice/services/VoiceGreetingService";
 import { CommunicationsService } from "@/server/features/communications/services/CommunicationsService";
 import { requireAuthenticatedContext } from "@/serverFunctions/middleware";
 import {
@@ -338,4 +339,10 @@ export const retryWebhookDelivery = createServerFn({ method: "POST" })
       context.userId,
       data,
     ),
+  );
+/** The spoken greeting the voice plays the moment it is opened. */
+export const getVoiceGreeting = createServerFn({ method: "GET" })
+  .middleware(requireAuthenticatedContext)
+  .handler(({ context }) =>
+    VoiceGreetingService.greeting(context.organizationId, context.userId),
   );
