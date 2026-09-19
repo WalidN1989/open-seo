@@ -1,4 +1,4 @@
-import { Link } from "@tanstack/react-router";
+import { ModuleLauncher } from "./ModuleLauncher";
 import type { ComponentType } from "react";
 import type { BusinessModuleKey } from "@/shared/business-modules";
 
@@ -41,43 +41,20 @@ export function ClientModuleList({
   }
 
   return (
-    <div className="grid gap-4 md:grid-cols-2">
-      {available.map((module) => {
-        const Icon = icons[module.key];
-        return (
-          <article
-            key={module.key}
-            className="rounded-xl border border-base-300 bg-base-100 p-5"
-          >
-            <div className="flex min-w-0 gap-3">
-              <span className="rounded-lg bg-base-200 p-2">
-                <Icon className="size-5" />
-              </span>
-              <div className="min-w-0">
-                <h2 className="font-semibold">{module.label}</h2>
-                <p className="mt-1 text-sm text-base-content/70">
-                  {module.description}
-                </p>
-              </div>
-            </div>
-            <div className="mt-5">
-              <Link
-                to={
-                  module.key === "crm"
-                    ? "/modules/crm"
-                    : module.key === "integrations"
-                      ? "/modules/integrations"
-                      : "/modules/$moduleKey"
-                }
-                params={{ moduleKey: module.key }}
-                className="btn btn-primary btn-sm"
-              >
-                Open
-              </Link>
-            </div>
+    <section className="business-access-active space-y-3">
+      <h2 className="text-sm font-semibold">Active modules</h2>
+      <div className="business-access-grid">
+        {available.map((module) => (
+          <article key={module.key} className="business-access-card">
+            <ModuleLauncher
+              moduleKey={module.key}
+              label={module.label}
+              Icon={icons[module.key]}
+              accessible={true}
+            />
           </article>
-        );
-      })}
-    </div>
+        ))}
+      </div>
+    </section>
   );
 }

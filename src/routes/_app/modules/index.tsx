@@ -1,4 +1,5 @@
-import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
+import { ModuleLauncher } from "@/client/features/business-modules/ModuleLauncher";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 import {
@@ -49,21 +50,6 @@ const icons = {
 } satisfies Record<BusinessModuleKey, typeof Blocks>;
 
 /** The agency reads a catalogue here; a client reads what they were given. */
-function PageHeading({ isClient }: { isClient: boolean }) {
-  return (
-    <div>
-      <h1 className="text-2xl font-bold tracking-tight">
-        {isClient ? "Your tools" : "Business Access"}
-      </h1>
-      <p className="mt-1 max-w-2xl text-sm text-base-content/60">
-        {isClient
-          ? "What is switched on for your business. Your account manager adds to this as each part of it is connected."
-          : "Add operational tools around Digital Urgency without changing its SEO engine. Owners can activate only the modules included for this organization."}
-      </p>
-    </div>
-  );
-}
-
 function BusinessModulesPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -158,8 +144,6 @@ function BusinessModulesPage() {
             : "business-access-layout mx-auto max-w-[1500px]"
         }
       >
-        {isClient ? <PageHeading isClient={isClient} /> : null}
-
         {accessQuery.isLoading ||
         (accessQuery.isSuccess &&
           !isClient &&
@@ -224,27 +208,14 @@ function BusinessModulesPage() {
                           key={module.key}
                           className="business-access-card"
                         >
-                          <div className="business-access-launcher">
-                            {module.enabled && module.permission ? (
-                              <Link
-                                to="/modules/$moduleKey"
-                                params={{ moduleKey: module.key }}
-                                className="business-access-launch-link"
-                                aria-label={`Open ${module.label}`}
-                              />
-                            ) : null}
-                            <span
-                              data-module={module.key}
-                              className="business-access-icon shrink-0 rounded-lg bg-base-200 p-2"
-                            >
-                              <Icon className="size-5" />
-                            </span>
-                            <div>
-                              <h3 className="text-sm font-semibold">
-                                {module.label}
-                              </h3>
-                            </div>
-                          </div>
+                          <ModuleLauncher
+                            moduleKey={module.key}
+                            label={module.label}
+                            Icon={Icon}
+                            accessible={Boolean(
+                              module.enabled && module.permission,
+                            )}
+                          />
 
                           {!enabled && module.canConfigureEntitlement ? (
                             <button
