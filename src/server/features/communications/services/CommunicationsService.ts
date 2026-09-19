@@ -64,6 +64,7 @@ import {
   testIntegrationConnection,
 } from "../providers/integrations";
 import { generateVoiceAgentReply } from "../providers/voice-ai";
+import { VoiceAnalystService } from "@/server/features/voice/services/VoiceAnalystService";
 import { BusinessAuditRepository } from "@/server/features/business-modules/repositories/BusinessAuditRepository";
 import { isUniqueViolation } from "@/server/lib/db-errors";
 import { replyToInbound } from "./WhatsappAssistantReplyService";
@@ -767,6 +768,14 @@ async function transcribeVoiceAudio(
           organizationId,
           agent.id,
           result.transcript,
+        ),
+        // The in-app voice is a teammate's, never a customer's: it answers
+        // about the projects that teammate can see.
+        analystContext: await VoiceAnalystService.contextForTurn(
+          userId,
+          history
+            .filter((turn) => turn.speaker === "user")
+            .map((turn) => turn.transcript),
         ),
       });
       const speech = await speakWithDeepgram(
