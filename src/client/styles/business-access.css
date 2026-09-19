@@ -1,0 +1,66 @@
+.business-access-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
+  gap: 14px;
+  align-items: stretch;
+}
+.business-access-card {
+  min-width: 0;
+  transition:
+    transform 200ms ease,
+    border-color 200ms ease,
+    box-shadow 200ms ease;
+}
+.business-access-icon {
+  transition:
+    transform 200ms ease,
+    background-color 200ms ease;
+}
+.business-access-panel {
+  padding: 16px;
+  border: 1px solid var(--color-base-300);
+  border-radius: 14px;
+  background: var(--color-base-100);
+}
+.business-access-panel > summary {
+  cursor: pointer;
+  list-style-position: outside;
+  margin-left: 18px;
+}
+.business-access-panel > summary h2 {
+  display: inline;
+  font-size: 15px;
+}
+.business-access-panel > summary p {
+  margin-top: 4px;
+  font-size: 12px;
+}
+.business-access-panel[open] > summary {
+  margin-bottom: 16px;
+}
+.business-access-panel > summary:focus-visible {
+  outline: 2px solid #128495;
+  outline-offset: 4px;
+}
+@media (hover: hover) and (pointer: fine) {
+  .business-access-card:hover {
+    transform: translateY(-3px);
+    border-color: #65c7d6;
+    box-shadow: 0 8px 22px #15384712;
+    background-image: linear-gradient(130deg, #65c7d60d, transparent);
+  }
+  .business-access-card:hover .business-access-icon {
+    transform: scale(1.08);
+    background-color: color-mix(in srgb, #65c7d6 16%, var(--color-base-100));
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .business-access-card,
+  .business-access-icon {
+    transition: none;
+  }
+  .business-access-card:hover,
+  .business-access-card:hover .business-access-icon {
+    transform: none;
+  }
+}

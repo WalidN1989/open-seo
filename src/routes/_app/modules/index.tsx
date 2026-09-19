@@ -153,8 +153,8 @@ function BusinessModulesPage() {
   );
 
   return (
-    <div className="h-full overflow-auto bg-base-100 px-4 py-8 pb-24 md:px-6 md:py-12 md:pb-8">
-      <div className="mx-auto max-w-5xl space-y-6">
+    <div className="business-access h-full overflow-auto bg-base-100 px-4 py-6 pb-24 md:px-6 md:py-8 md:pb-8">
+      <div className="mx-auto max-w-[1500px] space-y-6">
         <PageHeading isClient={isClient} />
 
         {accessQuery.isLoading ||
@@ -180,7 +180,7 @@ function BusinessModulesPage() {
             workspace owner or administrator to update your access.
           </div>
         ) : (
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="business-access-grid">
             {(accessQuery.data ?? [])
               .filter((module) => module.key !== "leads" && !module.hidden)
               .map((module) => {
@@ -188,16 +188,16 @@ function BusinessModulesPage() {
                 return (
                   <article
                     key={module.key}
-                    className="rounded-xl border border-base-300 bg-base-100 p-5"
+                    className="business-access-card rounded-xl border border-base-300 bg-base-100 p-4"
                   >
-                    <div className="flex items-start justify-between gap-4">
+                    <div className="flex items-start justify-between gap-2">
                       <div className="flex min-w-0 gap-3">
-                        <span className="rounded-lg bg-base-200 p-2">
+                        <span className="business-access-icon shrink-0 self-start rounded-lg bg-base-200 p-2">
                           <Icon className="size-5" />
                         </span>
                         <div>
                           <h2 className="font-semibold">{module.label}</h2>
-                          <p className="mt-1 text-sm text-base-content/60">
+                          <p className="mt-1 text-xs leading-5 text-base-content/60">
                             {module.description}
                           </p>
                         </div>
@@ -209,12 +209,12 @@ function BusinessModulesPage() {
                       </span>
                     </div>
 
-                    <div className="mt-5 flex items-center justify-between gap-3">
+                    <div className="mt-4 flex items-center justify-between gap-3">
                       {module.enabled && module.permission ? (
                         <Link
                           to="/modules/$moduleKey"
                           params={{ moduleKey: module.key }}
-                          className="btn btn-primary btn-sm"
+                          className="btn btn-outline btn-sm"
                         >
                           Open
                         </Link>
@@ -240,7 +240,7 @@ function BusinessModulesPage() {
                       ) : null}
                     </div>
                     {module.key === "crm" && leadsModule ? (
-                      <div className="mt-4 flex items-center justify-between gap-3 border-t border-base-300 pt-4">
+                      <div className="mt-3 flex items-center justify-between gap-3 border-t border-base-300 pt-3">
                         <div>
                           <div className="text-sm font-medium">Leads</div>
                           <div className="text-xs text-base-content/50">
@@ -277,14 +277,14 @@ function BusinessModulesPage() {
         )}
 
         {canManageStaff && staffQuery.data ? (
-          <section className="space-y-3 pt-4">
-            <div>
+          <details className="business-access-panel">
+            <summary>
               <h2 className="text-lg font-semibold">Staff access</h2>
               <p className="text-sm text-base-content/60">
                 Owners and admins inherit access. Set the highest permission
                 each staff member needs for an active module.
               </p>
-            </div>
+            </summary>
             <div className="overflow-x-auto rounded-xl border border-base-300">
               <table className="table table-sm">
                 <thead>
@@ -320,7 +320,7 @@ function BusinessModulesPage() {
                           return (
                             <td key={module.key}>
                               <select
-                                className="select select-bordered select-sm"
+                                className="select select-bordered select-sm min-w-28"
                                 value={current ?? ""}
                                 disabled={
                                   inherited || staffPermissionMutation.isPending
@@ -356,17 +356,17 @@ function BusinessModulesPage() {
                 </tbody>
               </table>
             </div>
-          </section>
+          </details>
         ) : null}
         {canManageStaff && auditQuery.data?.length ? (
-          <section className="space-y-3 pt-4">
-            <div>
+          <details className="business-access-panel">
+            <summary>
               <h2 className="text-lg font-semibold">Audit trail</h2>
               <p className="text-sm text-base-content/60">
                 Recent module and staff-access changes for this organization.
               </p>
-            </div>
-            <div className="divide-y divide-base-300 overflow-hidden rounded-xl border border-base-300">
+            </summary>
+            <div className="max-h-80 divide-y divide-base-300 overflow-auto rounded-xl border border-base-300">
               {auditQuery.data.slice(0, 20).map((event) => (
                 <div
                   key={event.id}
@@ -385,7 +385,7 @@ function BusinessModulesPage() {
                 </div>
               ))}
             </div>
-          </section>
+          </details>
         ) : null}
       </div>
     </div>
