@@ -1,0 +1,1 @@
+ALTER TABLE `whatsapp_templates` ADD `media_url` text;

@@ -811,6 +811,9 @@ export const whatsappTemplates = pgTable(
     languageCode: text("language_code").notNull().default("en"),
     category: text("category").notNull().default("marketing"),
     body: text("body").notNull(),
+    // A public https image sent with the text. On the sandbox it goes out as
+    // a media message; an approved template carries its own media.
+    mediaUrl: text("media_url"),
     externalTemplateId: text("external_template_id"),
     status: text("status").notNull().default("draft"),
     createdAt: createdAt(),

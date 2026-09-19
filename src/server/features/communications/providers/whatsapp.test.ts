@@ -106,6 +106,33 @@ describe("WhatsApp provider boundaries", () => {
     delete process.env.TEST_META_ACCESS_TOKEN;
   });
 
+  it("sends an image with the text on Twilio", async () => {
+    process.env.TEST_TWILIO_AUTH_TOKEN = "private-token";
+    const captured: { body?: URLSearchParams } = {};
+    const fetcher = async (_input: RequestInfo | URL, init?: RequestInit) => {
+      if (init?.body instanceof URLSearchParams) captured.body = init.body;
+      return Response.json({ sid: "SM1", status: "queued" });
+    };
+    await sendWhatsappText(
+      {
+        id: "connection",
+        provider: "twilio",
+        displayPhoneNumber: "+14155238886",
+        externalAccountId: "AC123",
+        credentialReference: "TEST_TWILIO",
+      },
+      "+971504863547",
+      "Weekend sale",
+      fetcher,
+      "https://www.bestrends.lk/slides.jpg",
+    );
+    expect(captured.body?.get("Body")).toBe("Weekend sale");
+    expect(captured.body?.get("MediaUrl")).toBe(
+      "https://www.bestrends.lk/slides.jpg",
+    );
+    delete process.env.TEST_TWILIO_AUTH_TOKEN;
+  });
+
   it("sends provider-approved Meta templates for campaigns", async () => {
     process.env.TEST_META_ACCESS_TOKEN = "private-token";
     const fetcher = async (_input: RequestInfo | URL, init?: RequestInit) => {

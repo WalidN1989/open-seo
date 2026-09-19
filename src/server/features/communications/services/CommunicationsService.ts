@@ -46,6 +46,7 @@ import type {
   WhatsappDeliveryUpdate,
 } from "../providers/whatsapp";
 import {
+  isWhatsappSandbox,
   parseMetaPayload,
   parseTwilioPayload,
   resolveCredential,
@@ -426,7 +427,11 @@ async function launchWhatsappCampaign(
   ) {
     throw new Error("Only draft or scheduled campaigns can be launched.");
   }
-  if (context.template.status !== "approved") {
+  // The sandbox can hold no approved templates, but everyone who has joined
+  // it has an open session, and a plain message with the template's text and
+  // image reaches them. A real sender still needs the approved template.
+  const sandbox = isWhatsappSandbox(context.connection);
+  if (!sandbox && context.template.status !== "approved") {
     throw new Error("Campaigns require a provider-approved WhatsApp template.");
   }
   const startedAt = new Date().toISOString();
@@ -445,11 +450,19 @@ async function launchWhatsappCampaign(
       context.template.body,
     );
     try {
-      const result = await sendWhatsappTemplate(
-        context.connection,
-        conversation.externalConversationId,
-        context.template,
-      );
+      const result = sandbox
+        ? await sendWhatsappText(
+            context.connection,
+            conversation.externalConversationId,
+            context.template.body,
+            undefined,
+            context.template.mediaUrl,
+          )
+        : await sendWhatsappTemplate(
+            context.connection,
+            conversation.externalConversationId,
+            context.template,
+          );
       await CommunicationsRepository.completeWhatsappMessage(
         organizationId,
         queued.id,

@@ -205,6 +205,8 @@ export async function sendWhatsappText(
   recipient: string,
   body: string,
   fetcher: typeof fetch = fetch,
+  /** A public https image sent with the text, shown above it as a caption. */
+  mediaUrl?: string | null,
 ): Promise<WhatsappSendResult> {
   if (connection.provider === "twilio") {
     if (!connection.externalAccountId || !connection.displayPhoneNumber) {
@@ -216,6 +218,7 @@ export async function sendWhatsappText(
       To: `whatsapp:${recipient}`,
       Body: body,
     });
+    if (mediaUrl) params.append("MediaUrl", mediaUrl);
     const response = await fetcher(
       `https://api.twilio.com/2010-04-01/Accounts/${encodeURIComponent(connection.externalAccountId)}/Messages.json`,
       {
@@ -256,8 +259,9 @@ export async function sendWhatsappText(
           messaging_product: "whatsapp",
           recipient_type: "individual",
           to: recipient,
-          type: "text",
-          text: { body },
+          ...(mediaUrl
+            ? { type: "image", image: { link: mediaUrl, caption: body } }
+            : { type: "text", text: { body } }),
         }),
       },
     );

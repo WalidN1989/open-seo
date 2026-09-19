@@ -295,6 +295,7 @@ export function WhatsappWorkspace() {
     mutationFn: (data: {
       name: string;
       body: string;
+      mediaUrl?: string;
       languageCode: string;
       category: "marketing";
       connectionId?: string;
@@ -672,14 +673,31 @@ export function WhatsappWorkspace() {
           ) : null}
           {form === "template" ? (
             <SimpleForm
-              fields={["name", "body", "connectionId", "externalTemplateId"]}
+              stacked
+              fields={["name", "body", "mediaUrl", "externalTemplateId"]}
+              meta={{
+                name: { label: "Template name", hint: "For your list only." },
+                body: {
+                  label: "Message",
+                  hint: "What the customer reads. *bold* and emojis work.",
+                },
+                mediaUrl: {
+                  label: "Image link (optional)",
+                  hint: "A public https image, such as a product photo from your website.",
+                },
+                externalTemplateId: {
+                  label: "Approved template ID (optional)",
+                  hint: "Leave empty on the sandbox — it sends without approval.",
+                },
+              }}
               onSubmit={(values) =>
                 template.mutate({
                   name: values.name,
                   body: values.body,
+                  mediaUrl: values.mediaUrl.trim() || undefined,
                   languageCode: "en",
                   category: "marketing",
-                  connectionId: values.connectionId || undefined,
+                  connectionId: data.connections[0]?.id,
                   externalTemplateId: values.externalTemplateId || undefined,
                   status: values.externalTemplateId ? "approved" : "draft",
                 })
@@ -688,14 +706,29 @@ export function WhatsappWorkspace() {
           ) : null}
           {form === "campaign" ? (
             <SimpleForm
-              fields={["name", "connectionId", "templateId"]}
-              onSubmit={(values) =>
+              fields={["name"]}
+              select={{
+                name: "template",
+                options: (ops?.templates ?? []).map((item) => item.name),
+              }}
+              onSubmit={(values) => {
+                // Picked by name; the connection is the workspace's own.
+                const picked = (ops?.templates ?? []).find(
+                  (item) => item.name === values.template,
+                );
+                const connectionId = data.connections[0]?.id;
+                if (!picked || !connectionId) {
+                  toast.error(
+                    "Create a template and a WhatsApp connection first.",
+                  );
+                  return;
+                }
                 campaign.mutate({
                   name: values.name,
-                  connectionId: values.connectionId,
-                  templateId: values.templateId,
-                })
-              }
+                  connectionId,
+                  templateId: picked.id,
+                });
+              }}
             />
           ) : null}
           {form === "automation" ? (
@@ -1440,7 +1473,7 @@ export function WhatsappWorkspace() {
                   <Row
                     key={item.id}
                     title={item.name}
-                    detail={`${item.languageCode} · ${item.status}`}
+                    detail={`${item.languageCode} · ${item.status}${item.mediaUrl ? " · image" : ""}`}
                   />
                 ))
               ) : (
