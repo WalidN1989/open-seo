@@ -180,99 +180,119 @@ function BusinessModulesPage() {
             workspace owner or administrator to update your access.
           </div>
         ) : (
-          <div className="business-access-grid">
-            {(accessQuery.data ?? [])
-              .filter((module) => module.key !== "leads" && !module.hidden)
-              .map((module) => {
-                const Icon = icons[module.key];
-                return (
-                  <article
-                    key={module.key}
-                    className="business-access-card rounded-xl border border-base-300 bg-base-100 p-4"
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex min-w-0 gap-3">
-                        <span className="business-access-icon shrink-0 self-start rounded-lg bg-base-200 p-2">
-                          <Icon className="size-5" />
-                        </span>
-                        <div>
-                          <h2 className="font-semibold">{module.label}</h2>
-                          <p className="mt-1 text-xs leading-5 text-base-content/60">
-                            {module.description}
-                          </p>
-                        </div>
-                      </div>
-                      <span
-                        className={`badge badge-sm ${module.enabled ? "badge-success" : "badge-ghost"}`}
-                      >
-                        {module.enabled ? "Active" : "Inactive"}
-                      </span>
-                    </div>
-
-                    <div className="mt-4 flex items-center justify-between gap-3">
-                      {module.enabled && module.permission ? (
-                        <Link
-                          to="/modules/$moduleKey"
-                          params={{ moduleKey: module.key }}
-                          className="btn btn-outline btn-sm"
+          <div className="space-y-4">
+            {[true, false].map((enabled) => {
+              const modules = (accessQuery.data ?? []).filter(
+                (module) =>
+                  module.key !== "leads" &&
+                  !module.hidden &&
+                  module.enabled === enabled,
+              );
+              const Container = enabled ? "section" : "details";
+              if (!modules.length)
+                return enabled ? (
+                  <p key="empty" className="text-sm text-base-content/60">
+                    No active modules. Expand inactive modules to enable one.
+                  </p>
+                ) : null;
+              return (
+                <Container
+                  key={String(enabled)}
+                  className={enabled ? "space-y-3" : "business-access-panel"}
+                >
+                  {enabled ? (
+                    <h2 className="text-sm font-semibold">Active modules</h2>
+                  ) : (
+                    <summary>
+                      <h2 className="font-semibold">
+                        Inactive modules ({modules.length})
+                      </h2>
+                    </summary>
+                  )}
+                  <div className="business-access-grid">
+                    {modules.map((module) => {
+                      const Icon = icons[module.key];
+                      return (
+                        <article
+                          key={module.key}
+                          className="business-access-card rounded-xl border border-base-300 bg-base-100 p-4"
                         >
-                          Open
-                        </Link>
-                      ) : (
-                        <span className="text-xs text-base-content/50">
-                          Not available to this staff member
-                        </span>
-                      )}
-                      {module.canConfigureEntitlement ? (
-                        <input
-                          type="checkbox"
-                          className="toggle toggle-primary toggle-sm"
-                          checked={module.enabled}
-                          disabled={entitlementMutation.isPending}
-                          aria-label={`${module.enabled ? "Disable" : "Enable"} ${module.label}`}
-                          onChange={(event) =>
-                            entitlementMutation.mutate({
-                              moduleKey: module.key,
-                              enabled: event.currentTarget.checked,
-                            })
-                          }
-                        />
-                      ) : null}
-                    </div>
-                    {module.key === "crm" && leadsModule ? (
-                      <div className="mt-3 flex items-center justify-between gap-3 border-t border-base-300 pt-3">
-                        <div>
-                          <div className="text-sm font-medium">Leads</div>
-                          <div className="text-xs text-base-content/50">
-                            Capture, qualify, assign, and track prospects.
+                          <div className="flex flex-col items-center gap-2 text-center">
+                            <span className="business-access-icon shrink-0 rounded-lg bg-base-200 p-2">
+                              <Icon className="size-5" />
+                            </span>
+                            <div>
+                              <h3 className="text-sm font-semibold">
+                                {module.label}
+                              </h3>
+                            </div>
                           </div>
-                        </div>
-                        {leadsModule.canConfigureEntitlement ? (
-                          <input
-                            type="checkbox"
-                            className="toggle toggle-primary toggle-sm"
-                            checked={leadsModule.enabled}
-                            disabled={entitlementMutation.isPending}
-                            aria-label={`${leadsModule.enabled ? "Disable" : "Enable"} Leads`}
-                            onChange={(event) =>
-                              entitlementMutation.mutate({
-                                moduleKey: "leads",
-                                enabled: event.currentTarget.checked,
-                              })
-                            }
-                          />
-                        ) : (
-                          <span
-                            className={`badge badge-sm ${leadsModule.enabled ? "badge-success" : "badge-ghost"}`}
-                          >
-                            {leadsModule.enabled ? "Active" : "Inactive"}
-                          </span>
-                        )}
-                      </div>
-                    ) : null}
-                  </article>
-                );
-              })}
+
+                          <div className="mt-auto flex items-center justify-between gap-2 pt-3">
+                            {module.enabled && module.permission ? (
+                              <Link
+                                to="/modules/$moduleKey"
+                                params={{ moduleKey: module.key }}
+                                className="btn btn-outline btn-sm"
+                              >
+                                Open
+                              </Link>
+                            ) : (
+                              <span className="text-xs text-base-content/50">
+                                {module.enabled ? "No access" : "Inactive"}
+                              </span>
+                            )}
+                            {module.canConfigureEntitlement ? (
+                              <input
+                                type="checkbox"
+                                className="toggle toggle-primary toggle-sm"
+                                checked={module.enabled}
+                                disabled={entitlementMutation.isPending}
+                                aria-label={`${module.enabled ? "Disable" : "Enable"} ${module.label}`}
+                                onChange={(event) =>
+                                  entitlementMutation.mutate({
+                                    moduleKey: module.key,
+                                    enabled: event.currentTarget.checked,
+                                  })
+                                }
+                              />
+                            ) : null}
+                          </div>
+                          {module.key === "crm" && leadsModule ? (
+                            <div className="mt-3 flex items-center justify-between gap-3 border-t border-base-300 pt-3">
+                              <div>
+                                <div className="text-sm font-medium">Leads</div>
+                              </div>
+                              {leadsModule.canConfigureEntitlement ? (
+                                <input
+                                  type="checkbox"
+                                  className="toggle toggle-primary toggle-sm"
+                                  checked={leadsModule.enabled}
+                                  disabled={entitlementMutation.isPending}
+                                  aria-label={`${leadsModule.enabled ? "Disable" : "Enable"} Leads`}
+                                  onChange={(event) =>
+                                    entitlementMutation.mutate({
+                                      moduleKey: "leads",
+                                      enabled: event.currentTarget.checked,
+                                    })
+                                  }
+                                />
+                              ) : (
+                                <span
+                                  className={`badge badge-sm ${leadsModule.enabled ? "badge-success" : "badge-ghost"}`}
+                                >
+                                  {leadsModule.enabled ? "Active" : "Inactive"}
+                                </span>
+                              )}
+                            </div>
+                          ) : null}
+                        </article>
+                      );
+                    })}
+                  </div>
+                </Container>
+              );
+            })}
           </div>
         )}
 
