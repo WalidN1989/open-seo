@@ -1,7 +1,7 @@
 /* oxlint-disable max-lines-per-function */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { History, LoaderCircle, Mic, PhoneOff, X } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { toast } from "sonner";
 import {
   createVoiceAgent,
@@ -452,12 +452,40 @@ const ORB_SIZES = {
 } as const;
 
 /**
- * The agent, drawn rather than iconified.
+ * The hues the ring cycles through — magenta into pink, a warm peach, then
+ * blue and violet back round to magenta, as on Deepgram's orb. Written as one
+ * conic gradient so the colours flow into each other instead of meeting at
+ * seams.
+ */
+const RING_GRADIENT =
+  "conic-gradient(from 0deg, #ff2fb4, #ff6ec7, #ffb089, #7a8bff, #3b6bff, #a24bff, #ff2fb4)";
+
+/** Cuts the gradient disc down to a ring: clear in the middle, solid at the rim. */
+const RING_MASK =
+  "radial-gradient(closest-side, transparent 74%, #000 79%, #000 95%, transparent 100%)";
+
+/** The same palette started a third of the way round, for the second ring. */
+const COUNTER_GRADIENT =
+  "conic-gradient(from 120deg, #ff2fb4, #ff6ec7, #ffb089, #7a8bff, #3b6bff, #a24bff, #ff2fb4)";
+
+function ringStyle(gradient: string) {
+  return {
+    backgroundImage: gradient,
+    maskImage: RING_MASK,
+    WebkitMaskImage: RING_MASK,
+  } as const;
+}
+
+/**
+ * The agent, drawn rather than iconified: a neon ring that moves like liquid.
  *
- * Concentric rings that widen with what the microphone is actually hearing,
- * and a colour that says whose turn it is: green while it listens to you, red
- * while it is speaking. Someone glancing at the orb should know whether to
- * talk or wait without reading the status line.
+ * Transparent all the way through — the page shows in the middle, so the orb
+ * sits on whatever is behind it instead of punching a dark hole in it.
+ *
+ * Two elliptical rings turn in opposite directions and keep crossing, so the
+ * outline ripples and reshapes instead of simply spinning. Whose turn it is
+ * used to be a colour; now it is motion: slow and quiet while it waits,
+ * swelling with your voice while it listens, fast and bright while it talks.
  */
 function VoiceOrb({
   state,
@@ -470,52 +498,54 @@ function VoiceOrb({
 }) {
   const listening = state === "listening";
   const speaking = state === "speaking";
-  // Semantic tokens, not literals, so the orb follows the theme in both modes.
-  const tone = speaking
-    ? {
-        halo: "bg-error/20",
-        inner: "bg-error/30",
-        core: "from-error to-error/70",
-        ring: "ring-error/40",
-        glow: "shadow-error/30",
-      }
-    : listening
-      ? {
-          halo: "bg-success/20",
-          inner: "bg-success/30",
-          core: "from-success to-success/70",
-          ring: "ring-success/40",
-          glow: "shadow-success/30",
-        }
-      : {
-          halo: "bg-primary/20",
-          inner: "bg-primary/15",
-          core: "from-primary to-primary/70",
-          ring: "ring-primary/40",
-          glow: "shadow-primary/30",
-        };
+  const active = listening || speaking;
+  // The measured level while listening, so a still orb means the microphone
+  // genuinely hears nothing. Speaking has nothing to measure, so it runs
+  // brighter and faster on its own.
+  const swell = listening ? level : speaking ? 0.4 : 0;
+  // Custom properties the stylesheet reads, typed as such rather than cast:
+  // React's CSSProperties does not know about "--" names on its own.
+  const tempo: CSSProperties & Record<`--${string}`, string> = {
+    "--orb-spin": speaking ? "2.6s" : active ? "4.5s" : "8s",
+    "--orb-counter": speaking ? "3.6s" : active ? "6s" : "11s",
+    "--orb-breath": speaking ? "1.1s" : "3.2s",
+  };
 
   return (
     <span
-      className={`relative grid ${ORB_SIZES[size]} shrink-0 place-items-center`}
+      className={`voice-orb-breathe relative grid ${ORB_SIZES[size]} shrink-0 place-items-center`}
+      style={tempo}
       aria-hidden="true"
     >
-      {/* Driven by the measured level, not a fixed animation: a still ring
-          means the microphone is genuinely hearing nothing. While speaking
-          there is no input to measure, so it breathes on its own instead. */}
-      <span
-        className={`absolute inset-0 rounded-full ${tone.halo} transition-transform duration-100 ${speaking ? "animate-ping [animation-duration:1.6s]" : ""}`}
-        style={{ transform: `scale(${1 + (listening ? level * 0.55 : 0)})` }}
-      />
-      <span
-        className={`absolute inset-[15%] rounded-full ${tone.inner} transition-transform duration-150`}
-        style={{ transform: `scale(${1 + (listening ? level * 0.3 : 0)})` }}
-      />
-      <span
-        className={`relative grid size-1/2 place-items-center rounded-full bg-gradient-to-br ${tone.core} shadow-lg ${tone.glow} ${state === "idle" ? "" : `ring-2 ${tone.ring}`}`}
-      >
+      {/* Glow: the ring again, blurred, brightening with activity. */}
+      <span className="voice-orb-turn absolute inset-0">
         <span
-          className={`size-1/3 rounded-full bg-base-100 ${listening || speaking ? "animate-pulse" : ""}`}
+          className="absolute inset-0 rounded-full blur-md transition-opacity duration-300"
+          style={{
+            ...ringStyle(RING_GRADIENT),
+            opacity: 0.45 + swell * 0.5 + (active ? 0.15 : 0),
+          }}
+        />
+      </span>
+      {/* First ring: squashed a little, turning clockwise. The squash turns
+          with it, which is what makes the outline wobble. */}
+      <span className="voice-orb-turn absolute inset-0">
+        <span
+          className="absolute inset-0 rounded-full transition-transform duration-100"
+          style={{
+            ...ringStyle(RING_GRADIENT),
+            transform: `scale(${1 + swell * 0.1}, ${0.9 + swell * 0.1})`,
+          }}
+        />
+      </span>
+      {/* Second ring: squashed the other way, turning back against the first. */}
+      <span className="voice-orb-counter absolute inset-0">
+        <span
+          className="absolute inset-0 rounded-full opacity-80 transition-transform duration-100"
+          style={{
+            ...ringStyle(COUNTER_GRADIENT),
+            transform: `scale(${0.9 + swell * 0.1}, ${1 + swell * 0.1})`,
+          }}
         />
       </span>
     </span>
