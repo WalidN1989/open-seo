@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "./business-access.css";
+@import "./connections.css";
 @import "./sidebar-motion.css";
 @import "../features/business-modules/whatsapp/workspace.css";
 @import "../features/business-modules/integrations/catalogue.css";

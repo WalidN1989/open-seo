@@ -2117,8 +2117,9 @@ export function IntegrationsWorkspace() {
   if (query.isError) return <ErrorBox error={query.error} />;
   return (
     <Workspace
-      title="Integrations"
-      subtitle="Provider-neutral connections and signed webhook delivery infrastructure."
+      className="connections-workspace"
+      title="Connections"
+      subtitle="Your connected services and webhook activity."
       actions={
         <>
           <button
@@ -2136,6 +2137,29 @@ export function IntegrationsWorkspace() {
         </>
       }
     >
+      <div className="connections-summary">
+        <div>
+          <Cable className="size-5" />
+          <strong>
+            {
+              query.data!.connections.filter(
+                (item) => item.status === "connected",
+              ).length
+            }
+          </strong>
+          <span>Connected services</span>
+        </div>
+        <div>
+          <Webhook className="size-5" />
+          <strong>{query.data!.webhooks.length}</strong>
+          <span>Webhook endpoints</span>
+        </div>
+        <div>
+          <FileText className="size-5" />
+          <strong>{query.data!.deliveries.length}</strong>
+          <span>Recent deliveries</span>
+        </div>
+      </div>
       {adding === "integration" ? (
         <SimpleForm
           fields={["displayName", "providerKey", "credentialReference"]}
@@ -2170,11 +2194,13 @@ export function IntegrationsWorkspace() {
             query.data!.connections.map((item) => (
               <div key={item.id} className="flex items-center gap-2 pr-4">
                 <div className="min-w-0 flex-1">
-                  <Row
-                    title={item.displayName}
-                    detail={`${item.providerKey} · ${item.status}`}
-                  />
+                  <Row title={item.displayName} detail={item.providerKey} />
                 </div>
+                <span
+                  className={`badge badge-sm ${item.status === "connected" ? "badge-success badge-outline" : "badge-ghost"}`}
+                >
+                  {item.status}
+                </span>
                 <button
                   className="btn btn-ghost btn-xs"
                   disabled={integrationTest.isPending}
@@ -2265,13 +2291,15 @@ export function IntegrationsWorkspace() {
         </Panel>
       ) : null}
       <Panel title="Available provider adapters" icon={Cable}>
-        {integrationProviders.map((provider) => (
-          <Row
-            key={provider.key}
-            title={provider.name}
-            detail={provider.capabilities.join(" · ")}
-          />
-        ))}
+        <div className="connections-adapters">
+          {integrationProviders.map((provider) => (
+            <Row
+              key={provider.key}
+              title={provider.name}
+              detail={provider.capabilities.join(" · ")}
+            />
+          ))}
+        </div>
       </Panel>
       <Panel title="Recent webhook deliveries" icon={Webhook}>
         {query.data!.deliveries.length ? (
@@ -2307,15 +2335,17 @@ function Workspace({
   actions,
   children,
   compact = false,
+  className = "",
 }: {
   title: string;
   subtitle: string;
   actions: React.ReactNode;
   children: React.ReactNode;
   compact?: boolean;
+  className?: string;
 }) {
   return (
-    <div className={compact ? "space-y-2" : "space-y-5"}>
+    <div className={`${compact ? "space-y-2" : "space-y-5"} ${className}`}>
       {!compact ? (
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
