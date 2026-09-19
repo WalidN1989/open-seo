@@ -70,33 +70,32 @@ function isSameSearch(
 }
 
 export function useBacklinksSearchHistory(projectId: string) {
-  const { history, isLoaded, addItem, removeItem } = useLocalHistoryStore<
-    BacklinksSearchHistoryItem,
-    AddBacklinksSearchInput
-  >({
-    storageKey: `backlinks-search-history:${projectId}`,
-    sync: {
-      projectId,
-      module: "backlinks",
-      itemKey: (item) => `${item.target}|${item.scope}`,
-    },
-    maxItems: MAX_HISTORY,
-    parse: (raw) => {
-      const parsed = backlinksSearchHistoryCodec.safeParse(raw);
-      return parsed.success ? parsed.data : null;
-    },
-    isSameItem: isSameSearch,
-    createItem: (item) => ({
-      ...item,
-      timestamp: Date.now(),
-      scopeVersion: SCOPE_VERSION,
-    }),
-    getItemKey: (item) => item.timestamp,
-  });
+  const { history, isLoaded, isSynced, addItem, removeItem } =
+    useLocalHistoryStore<BacklinksSearchHistoryItem, AddBacklinksSearchInput>({
+      storageKey: `backlinks-search-history:${projectId}`,
+      sync: {
+        projectId,
+        module: "backlinks",
+        itemKey: (item) => `${item.target}|${item.scope}`,
+      },
+      maxItems: MAX_HISTORY,
+      parse: (raw) => {
+        const parsed = backlinksSearchHistoryCodec.safeParse(raw);
+        return parsed.success ? parsed.data : null;
+      },
+      isSameItem: isSameSearch,
+      createItem: (item) => ({
+        ...item,
+        timestamp: Date.now(),
+        scopeVersion: SCOPE_VERSION,
+      }),
+      getItemKey: (item) => item.timestamp,
+    });
 
   return {
     history,
     isLoaded,
+    isSynced,
     addSearch: addItem,
     removeHistoryItem: removeItem,
   };

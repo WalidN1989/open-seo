@@ -82,6 +82,7 @@ export function useKeywordResearchController(
   const {
     history,
     isLoaded: historyLoaded,
+    isSynced: historySynced,
     addSearch,
     removeHistoryItem,
   } = useSearchHistory(input.projectId);
@@ -247,6 +248,7 @@ export function useKeywordResearchController(
     hasSearched,
     history,
     historyLoaded,
+    historySynced,
     isLoading,
     lastResultSource,
     lastSearchError,

@@ -1,6 +1,8 @@
 import { createMiddleware } from "@tanstack/react-start";
 import { z } from "zod";
 import { AppError } from "@/server/lib/errors";
+import { isCacheOnlyWindowOpen } from "@/client/lib/cacheOnlyWindow";
+import { CACHE_ONLY_HEADER } from "@/shared/cache-only";
 import { errorHandlingMiddleware } from "@/middleware/errorHandling";
 import type { EnsuredUserContext } from "@/middleware/ensure-user/types";
 import { ensureUserMiddleware } from "@/middleware/ensureUser";
@@ -141,6 +143,14 @@ export const requireSignedQuoteToken = [
 ] as const;
 
 export const requireProjectContext = [
+  // Runs in the browser: while a page is showing a result it opened by
+  // itself, its research requests are marked cache-only, and the server
+  // refuses any that would reach a paid provider.
+  createMiddleware({ type: "function" }).client(async ({ next }) =>
+    isCacheOnlyWindowOpen()
+      ? next({ headers: { [CACHE_ONLY_HEADER]: "1" } })
+      : next(),
+  ),
   createMiddleware({ type: "function" }).server(async ({ next, context }) => {
     const authenticatedContext = getAuthenticatedContext(context);
 
