@@ -9,6 +9,7 @@ import { readDraftImages, readStringList, readText, type Json } from "./read";
  */
 export function PublishStatus({
   status,
+  type,
   approvedAt,
   publishError,
   cmsTarget,
@@ -20,6 +21,8 @@ export function PublishStatus({
   onAddImages,
 }: {
   status: string;
+  /** Only a blog post has a file of its own on a Lovable site. */
+  type: string;
   approvedAt: string | null;
   publishError: string | null;
   cmsTarget: Json;
@@ -68,11 +71,25 @@ export function PublishStatus({
     );
   }
   if (status !== "approved" && status !== "failed") return null;
+  // A Lovable site keeps each article as its own file and every service page
+  // inside one shared data file, so only the article can be sent. Said here,
+  // before the button is pressed, rather than as a refusal afterwards.
+  const sendable = !lovable || type === "blog";
   return (
     <div className="space-y-3">
       <p className="text-sm text-base-content/70">
         Approved{approvedAt ? ` on ${approvedAt.slice(0, 10)}` : ""}.
       </p>
+      {!sendable ? (
+        <div className="alert alert-warning text-sm">
+          <span>
+            This is a {type === "page" ? "page" : type}, not a blog post.
+            Sending to Lovable writes blog articles only, because a service or
+            landing page lives inside the site&rsquo;s own shared data file.
+            Copy the draft above into Lovable to put this one live.
+          </span>
+        </div>
+      ) : null}
       {status === "failed" && publishError ? (
         <div className="alert alert-error text-sm">{publishError}</div>
       ) : null}
@@ -81,7 +98,7 @@ export function PublishStatus({
           {getStandardErrorMessage(error, "Publishing failed.")}
         </div>
       ) : null}
-      {connected ? (
+      {connected && sendable ? (
         <button
           type="button"
           className="btn btn-primary"
