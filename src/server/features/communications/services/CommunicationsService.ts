@@ -46,6 +46,11 @@ import type {
   WhatsappDeliveryUpdate,
 } from "../providers/whatsapp";
 import {
+  createContentTemplate,
+  fetchApproval,
+  submitForApproval,
+} from "../providers/twilioContent";
+import {
   isWhatsappSandbox,
   parseMetaPayload,
   parseTwilioPayload,
@@ -207,15 +212,100 @@ async function createWhatsappTemplate(
     organizationId,
     input,
   );
+  // A real WhatsApp number cannot message anyone out of the blue until Meta
+  // has approved the wording, so a new template is written at Twilio and put
+  // to Meta straight away. An already-approved id is left alone.
+  const submitted = input.externalTemplateId
+    ? null
+    : await submitTemplateForApproval(organizationId, template).catch(
+        (error: unknown) => {
+          console.error("WhatsApp template submission failed", error);
+          return null;
+        },
+      );
   await auditMutation(
     organizationId,
     userId,
     "whatsapp.template.created",
     "whatsapp_template",
     template.id,
-    { status: template.status },
+    { status: submitted?.status ?? template.status },
   );
+  return submitted ?? template;
   return template;
+}
+
+/**
+ * Writes one template at Twilio and asks Meta to approve it. Returns the row
+ * as it now stands: pending while Meta decides.
+ */
+async function submitTemplateForApproval(
+  organizationId: string,
+  template: {
+    id: string;
+    name: string;
+    languageCode: string;
+    category: string;
+    body: string;
+    mediaUrl: string | null;
+  },
+) {
+  const connection =
+    await CommunicationsRepository.firstWhatsappConnection(organizationId);
+  if (!connection || connection.provider !== "twilio") return null;
+  const draft = {
+    name: template.name,
+    languageCode: template.languageCode,
+    body: template.body,
+    mediaUrl: template.mediaUrl,
+    category:
+      template.category === "utility"
+        ? ("UTILITY" as const)
+        : template.category === "authentication"
+          ? ("AUTHENTICATION" as const)
+          : ("MARKETING" as const),
+  };
+  const contentSid = await createContentTemplate(connection, draft);
+  const approval = await submitForApproval(connection, contentSid, draft);
+  return CommunicationsRepository.updateWhatsappTemplate(
+    organizationId,
+    template.id,
+    { externalTemplateId: contentSid, status: approval.status },
+  );
+}
+
+/**
+ * Where a submitted template stands with Meta. Approval takes minutes to a
+ * day, so this is asked for rather than waited on.
+ */
+async function refreshWhatsappTemplate(
+  organizationId: string,
+  userId: string,
+  input: { templateId: string },
+) {
+  await BusinessModuleService.requireAccess(
+    organizationId,
+    userId,
+    "whatsapp",
+    "manage",
+  );
+  const template = await CommunicationsRepository.getWhatsappTemplate(
+    organizationId,
+    input.templateId,
+  );
+  if (!template) throw new AppError("NOT_FOUND", "Template not found.");
+  const connection =
+    await CommunicationsRepository.firstWhatsappConnection(organizationId);
+  if (!template.externalTemplateId || connection?.provider !== "twilio") {
+    return { status: template.status, reason: null };
+  }
+  const approval = await fetchApproval(connection, template.externalTemplateId);
+  await CommunicationsRepository.updateWhatsappTemplate(
+    organizationId,
+    template.id,
+    { status: approval.status },
+  );
+  return approval;
 }
 
 async function updateWhatsappConversation(
@@ -1794,6 +1884,7 @@ export const CommunicationsService = {
   createWhatsappCampaign,
   createWhatsappOrder,
   createWhatsappTemplate,
+  refreshWhatsappTemplate,
   createWebhookEndpoint,
   endVoiceConversation,
   deleteVoiceHistory,

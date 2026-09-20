@@ -57,6 +57,7 @@ import {
   createWhatsappInternalNote,
   runIntegrationAction,
 } from "@/serverFunctions/communications";
+import { refreshWhatsappTemplate } from "@/serverFunctions/communications-admin";
 import { createCrmContact } from "@/serverFunctions/crm";
 import { convertWhatsappOrderRequest } from "@/serverFunctions/commerce";
 import { getStandardErrorMessage } from "@/client/lib/error-messages";
@@ -299,7 +300,7 @@ export function WhatsappWorkspace() {
       body: string;
       mediaUrl?: string;
       languageCode: string;
-      category: "marketing";
+      category: "marketing" | "utility" | "authentication";
       connectionId?: string;
       externalTemplateId?: string;
       status?: "draft" | "approved";
@@ -307,7 +308,9 @@ export function WhatsappWorkspace() {
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: ["whatsapp"] });
       setForm(null);
-      toast.success("Template created");
+      toast.success(
+        "Template sent to WhatsApp for approval — usually minutes, up to a day",
+      );
     },
     onError: showError,
   });
@@ -370,6 +373,21 @@ export function WhatsappWorkspace() {
     onSuccess: async () => {
       setInternalNote("");
       await client.invalidateQueries({ queryKey: ["whatsapp"] });
+    },
+    onError: showError,
+  });
+  const checkTemplate = useMutation({
+    mutationFn: (templateId: string) =>
+      refreshWhatsappTemplate({ data: { templateId } }),
+    onSuccess: async (result) => {
+      await client.invalidateQueries({ queryKey: ["whatsapp"] });
+      toast.success(
+        result.status === "approved"
+          ? "Approved by WhatsApp — it can be sent now"
+          : result.status === "rejected"
+            ? `WhatsApp rejected it${result.reason ? `: ${result.reason}` : ""}`
+            : "Still with WhatsApp; check again shortly",
+      );
     },
     onError: showError,
   });
@@ -686,6 +704,10 @@ export function WhatsappWorkspace() {
             <SimpleForm
               stacked
               isSubmitting={template.isPending}
+              select={{
+                name: "category",
+                options: ["marketing", "utility", "authentication"],
+              }}
               fields={["name", "body", "mediaUrl", "externalTemplateId"]}
               meta={{
                 name: { label: "Template name", hint: "For your list only." },
@@ -697,9 +719,13 @@ export function WhatsappWorkspace() {
                   label: "Image link (optional)",
                   hint: "A public https image, such as a product photo from your website.",
                 },
+                category: {
+                  label: "What it is for",
+                  hint: "Marketing for offers and news; utility for order or account updates. WhatsApp judges the wording against this.",
+                },
                 externalTemplateId: {
-                  label: "Approved template ID (optional)",
-                  hint: "Leave empty on the sandbox — it sends without approval.",
+                  label: "Existing approved ID (optional)",
+                  hint: "Only if WhatsApp already approved this template elsewhere. Leave empty and it is submitted for you.",
                 },
               }}
               onSubmit={(values) =>
@@ -708,7 +734,12 @@ export function WhatsappWorkspace() {
                   body: values.body,
                   mediaUrl: values.mediaUrl.trim() || undefined,
                   languageCode: "en",
-                  category: "marketing",
+                  category:
+                    values.category === "utility"
+                      ? "utility"
+                      : values.category === "authentication"
+                        ? "authentication"
+                        : "marketing",
                   connectionId: data.connections[0]?.id,
                   externalTemplateId: values.externalTemplateId || undefined,
                   status: values.externalTemplateId ? "approved" : "draft",
@@ -1483,11 +1514,23 @@ export function WhatsappWorkspace() {
               </div>
               {(ops?.templates ?? []).length ? (
                 (ops?.templates ?? []).map((item) => (
-                  <Row
-                    key={item.id}
-                    title={item.name}
-                    detail={`${item.languageCode} · ${item.status}${item.mediaUrl ? " · image" : ""}`}
-                  />
+                  <div key={item.id} className="flex items-center gap-2 pr-4">
+                    <div className="min-w-0 flex-1">
+                      <Row
+                        title={item.name}
+                        detail={`${item.languageCode} · ${TEMPLATE_STATUS[item.status] ?? item.status}${item.mediaUrl ? " · image" : ""}`}
+                      />
+                    </div>
+                    {item.externalTemplateId && item.status !== "approved" ? (
+                      <button
+                        className="btn btn-ghost btn-xs"
+                        disabled={checkTemplate.isPending}
+                        onClick={() => checkTemplate.mutate(item.id)}
+                      >
+                        Check approval
+                      </button>
+                    ) : null}
+                  </div>
                 ))
               ) : (
                 <Empty text="No message templates yet." />
@@ -2475,6 +2518,14 @@ function ErrorBox({ error }: { error: unknown }) {
 function showError(error: unknown) {
   toast.error(getStandardErrorMessage(error));
 }
+/** What a template's stored status means to the person reading it. */
+const TEMPLATE_STATUS: Record<string, string> = {
+  draft: "not submitted",
+  pending: "waiting for WhatsApp",
+  approved: "approved — ready to send",
+  rejected: "rejected by WhatsApp",
+};
+
 const SECRET_FIELDS = new Set(["accessToken"]);
 
 type FieldMeta = { label: string; hint?: string };

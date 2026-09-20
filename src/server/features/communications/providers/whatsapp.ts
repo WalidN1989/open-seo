@@ -15,7 +15,7 @@ export type WhatsappDeliveryUpdate = {
   status: string;
 };
 
-type WhatsappConnectionRecord = {
+export type WhatsappConnectionRecord = {
   id: string;
   provider: string;
   displayPhoneNumber: string | null;

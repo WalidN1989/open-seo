@@ -8,13 +8,13 @@ import { useRouterState } from "@tanstack/react-router";
 import {
   createVoiceAgent,
   appendVoiceTranscript,
-  deleteVoiceHistory,
   endVoiceConversation,
   getVoiceGreeting,
   getVoiceWorkspace,
   startVoiceConversation,
   transcribeVoiceAudio,
 } from "@/serverFunctions/communications";
+import { deleteVoiceHistory } from "@/serverFunctions/communications-admin";
 import { getStandardErrorMessage } from "@/client/lib/error-messages";
 import { SpeechQueue } from "./speechQueue";
 import { streamVoiceTurn, VoiceTurnUnavailable } from "./streamTurn";

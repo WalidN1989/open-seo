@@ -979,6 +979,35 @@ async function listMatchingWhatsappAutomations(
   });
 }
 
+/** The workspace's WhatsApp number, for work that belongs to the account itself. */
+async function firstWhatsappConnection(organizationId: string) {
+  const [row] = await db
+    .select()
+    .from(whatsappConnections)
+    .where(eq(whatsappConnections.organizationId, organizationId))
+    .orderBy(desc(whatsappConnections.createdAt))
+    .limit(1);
+  return row ?? null;
+}
+
+async function updateWhatsappTemplate(
+  organizationId: string,
+  templateId: string,
+  values: { externalTemplateId?: string; status?: string },
+) {
+  const [row] = await db
+    .update(whatsappTemplates)
+    .set({ ...values, updatedAt: new Date().toISOString() })
+    .where(
+      and(
+        eq(whatsappTemplates.id, templateId),
+        eq(whatsappTemplates.organizationId, organizationId),
+      ),
+    )
+    .returning();
+  return row ?? null;
+}
+
 async function getWhatsappTemplate(organizationId: string, templateId: string) {
   const [template] = await db
     .select()
@@ -1421,6 +1450,8 @@ export const CommunicationsRepository = {
   deleteWhatsappCampaign,
   createWhatsappOrder,
   createWhatsappTemplate,
+  updateWhatsappTemplate,
+  firstWhatsappConnection,
   endVoiceConversation,
   deleteVoiceConversations,
   listVoiceConversationIds,
