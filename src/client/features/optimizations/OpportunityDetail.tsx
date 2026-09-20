@@ -289,6 +289,7 @@ export function OpportunityDetail({
             <PublishStatus
               status={status}
               type={opportunity.type}
+              targetUrl={opportunity.targetUrl}
               approvedAt={opportunity.approvedAt}
               publishError={opportunity.publishError}
               cmsTarget={opportunity.cmsTarget}

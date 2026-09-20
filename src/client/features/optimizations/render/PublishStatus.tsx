@@ -1,5 +1,6 @@
 import { ExternalLink, ImagePlus, Send } from "lucide-react";
 import { getStandardErrorMessage } from "@/client/lib/error-messages";
+import { serviceSlugFrom } from "@/shared/site-pages";
 import { readDraftImages, readStringList, readText, type Json } from "./read";
 
 /**
@@ -10,6 +11,7 @@ import { readDraftImages, readStringList, readText, type Json } from "./read";
 export function PublishStatus({
   status,
   type,
+  targetUrl,
   approvedAt,
   publishError,
   cmsTarget,
@@ -23,6 +25,8 @@ export function PublishStatus({
   status: string;
   /** Only a blog post has a file of its own on a Lovable site. */
   type: string;
+  /** Where this work is aimed, which is how a service page is recognised. */
+  targetUrl: string | null;
   approvedAt: string | null;
   publishError: string | null;
   cmsTarget: Json;
@@ -72,9 +76,10 @@ export function PublishStatus({
   }
   if (status !== "approved" && status !== "failed") return null;
   // A Lovable site keeps each article as its own file and every service page
-  // inside one shared data file, so only the article can be sent. Said here,
-  // before the button is pressed, rather than as a refusal afterwards.
-  const sendable = !lovable || type === "blog";
+  // as one entry in a file the site shares. Both can be sent; anything else
+  // is said here, before the button is pressed, not as a refusal afterwards.
+  const service = type !== "blog" ? serviceSlugFrom(targetUrl) : null;
+  const sendable = !lovable || type === "blog" || Boolean(service);
   return (
     <div className="space-y-3">
       <p className="text-sm text-base-content/70">
@@ -83,10 +88,20 @@ export function PublishStatus({
       {!sendable ? (
         <div className="alert alert-warning text-sm">
           <span>
-            This is a {type === "page" ? "page" : type}, not a blog post.
-            Sending to Lovable writes blog articles only, because a service or
-            landing page lives inside the site&rsquo;s own shared data file.
-            Copy the draft above into Lovable to put this one live.
+            This is a {type === "page" ? "page" : type}, not a blog post, and
+            its address is not a service page. Sending writes articles and
+            service pages only. Copy the draft above into Lovable to put this
+            one live.
+          </span>
+        </div>
+      ) : null}
+      {service ? (
+        <div className="alert alert-info text-sm">
+          <span>
+            Updates the <strong>/services/{service}</strong> page: its search
+            title, its description, its keywords, and the article below the
+            page&rsquo;s existing sections. The price, the packages, the
+            guarantee and the FAQs are left as they are.
           </span>
         </div>
       ) : null}
@@ -113,7 +128,9 @@ export function PublishStatus({
           {status === "failed"
             ? "Try publishing again"
             : lovable
-              ? "Send to Lovable"
+              ? service
+                ? "Update the service page"
+                : "Send to Lovable"
               : "Publish to WordPress"}
         </button>
       ) : null}
@@ -138,6 +155,9 @@ function SentToLovable({
   const commitUrl = readText(cmsTarget, "commitUrl");
   const images = readDraftImages(cmsTarget);
   const skipped = readStringList(cmsTarget, "skippedImages").length > 0;
+  // A service page has no pictures of its own to make: the page's images are
+  // the site's, and this only edited its words.
+  const article = readText(cmsTarget, "page") !== "service";
   return (
     <div className="space-y-3">
       <div className="alert alert-info text-sm">
@@ -178,7 +198,7 @@ function SentToLovable({
           ))}
         </div>
       ) : null}
-      {onAddImages && images.length === 0 ? (
+      {onAddImages && article && images.length === 0 ? (
         <div className="space-y-2 rounded-lg border border-base-300 p-3">
           <p className="text-sm">
             This article went out without pictures

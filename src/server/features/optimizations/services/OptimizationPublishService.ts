@@ -19,6 +19,8 @@ import {
 import { repositoryName } from "../lovable/githubRepo";
 import { listSitePosts } from "../lovable/sitePosts";
 import { listSiteServices } from "../lovable/siteServices";
+import { publishServicePage } from "../lovable/servicePublisher";
+import { serviceSlugFrom } from "@/shared/site-pages";
 import { articleFromDraft } from "../wordpress/wordpressArticle";
 import {
   publishToWordpress,
@@ -91,11 +93,38 @@ async function publishToLovableSite(
   row: NonNullable<Awaited<ReturnType<typeof Repo.getById>>>,
   site: LovableSite,
 ) {
+  // A page that names a service is an edit to that service's entry, not a
+  // new file. It is two reads and a commit, so it finishes inside the
+  // request rather than being handed to the background.
   if (row.type !== "blog") {
-    throw new AppError(
-      "VALIDATION_ERROR",
-      "Only blog posts publish to a Lovable site for now.",
-    );
+    const slug = serviceSlugFrom(row.targetUrl ?? row.proposedPath);
+    if (!slug) {
+      throw new AppError(
+        "VALIDATION_ERROR",
+        "A page publishes to a Lovable site only when it is a service page — its address must be /services/<name>.",
+      );
+    }
+    await Repo.update(organizationId, row.id, {
+      status: "publishing",
+      cms: "lovable",
+      publishError: null,
+    });
+    let draft: unknown = null;
+    try {
+      draft = row.draftJson ? JSON.parse(row.draftJson) : null;
+    } catch {
+      draft = null;
+    }
+    const result = await publishServicePage({
+      organizationId,
+      userId,
+      opportunityId: row.id,
+      site,
+      slug,
+      draft,
+      keyword: row.keyword,
+    });
+    return { url: result.url, status: "published" };
   }
   const plan = planForOpportunity(row, site);
   if (!plan) {
