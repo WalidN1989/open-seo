@@ -202,6 +202,44 @@ async function getAudit(organizationId: string, auditId: string) {
   return row ?? null;
 }
 
+/**
+ * Every countable product with its barcode and what stock says it has.
+ *
+ * Read in one go so a stock take can be done with no signal at all: the
+ * scanner matches barcodes against this copy in the browser, and the counts
+ * go up when the connection comes back.
+ */
+async function listCountableProducts(organizationId: string) {
+  const rows = await db
+    .select({
+      id: commerceProducts.id,
+      name: commerceProducts.name,
+      sku: commerceProducts.sku,
+      barcode: commerceProducts.barcode,
+      quantityOnHand: commerceInventoryBalances.quantityOnHand,
+    })
+    .from(commerceProducts)
+    .leftJoin(
+      commerceInventoryBalances,
+      and(
+        eq(commerceInventoryBalances.organizationId, organizationId),
+        eq(commerceInventoryBalances.productId, commerceProducts.id),
+      ),
+    )
+    .where(
+      and(
+        eq(commerceProducts.organizationId, organizationId),
+        eq(commerceProducts.status, "active"),
+      ),
+    )
+    .orderBy(commerceProducts.name)
+    .limit(10_000);
+  return rows.map((row) => ({
+    ...row,
+    quantityOnHand: row.quantityOnHand ?? 0,
+  }));
+}
+
 async function listAuditItems(organizationId: string, auditId: string) {
   return db
     .select({
@@ -300,6 +338,7 @@ export const InventoryRepository = {
   listAudits,
   getAudit,
   listAuditItems,
+  listCountableProducts,
   upsertAuditItem,
   setAuditStatus,
 };

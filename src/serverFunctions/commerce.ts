@@ -276,3 +276,10 @@ export const setIntegrationSyncSchedule = createServerFn({ method: "POST" })
       data,
     ),
   );
+
+/** Everything a stock take scans against, read once and kept in the browser. */
+export const listCountableProducts = createServerFn({ method: "GET" })
+  .middleware(requireAuthenticatedContext)
+  .handler(({ context }) =>
+    InventoryService.countableProducts(context.organizationId, context.userId),
+  );

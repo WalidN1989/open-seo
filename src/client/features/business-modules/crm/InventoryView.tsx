@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { TriangleAlert } from "lucide-react";
 import { getInventoryOverview } from "@/serverFunctions/commerce";
+import { StockTakeTab } from "./StockTakeTab";
 import { AuditsTab } from "./InventoryAuditsTab";
 import {
   ErrorState,
@@ -9,7 +10,7 @@ import {
   Loading,
 } from "./inventoryShared";
 
-type Tab = "stock" | "audits" | "movements";
+type Tab = "stock" | "count" | "audits" | "movements";
 
 export function CrmInventoryView() {
   const [tab, setTab] = useState<Tab>("stock");
@@ -33,6 +34,12 @@ export function CrmInventoryView() {
         </button>
         <button
           role="tab"
+          className={`tab ${tab === "count" ? "tab-active" : ""}`}
+          onClick={() => setTab("count")}
+        >
+          Stock take
+        </button>
+        <button
           className={`tab ${tab === "audits" ? "tab-active" : ""}`}
           onClick={() => setTab("audits")}
         >
@@ -48,6 +55,7 @@ export function CrmInventoryView() {
       </div>
 
       {tab === "stock" ? <StockTab /> : null}
+      {tab === "count" ? <StockTakeTab /> : null}
       {tab === "audits" ? <AuditsTab /> : null}
       {tab === "movements" ? <MovementsTab /> : null}
     </div>

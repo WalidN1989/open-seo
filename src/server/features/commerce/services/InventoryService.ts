@@ -117,6 +117,16 @@ async function getAudit(
 }
 
 /**
+ * The list a stock take scans against: every active product with its
+ * barcode and current stock, handed over once so the counting itself needs
+ * no connection.
+ */
+async function countableProducts(organizationId: string, userId: string) {
+  await BusinessModuleService.requireAccess(organizationId, userId, "crm");
+  return InventoryRepository.listCountableProducts(organizationId);
+}
+
+/**
  * Record a counted quantity. The expected quantity is captured from the
  * balance at the moment of counting, so the variance the auditor saw is the
  * variance that gets published even if stock moves afterwards.
@@ -320,6 +330,7 @@ async function assertWouldNotGoNegative(
 }
 
 export const InventoryService = {
+  countableProducts,
   getStockOverview,
   listMovements,
   adjustStock,
