@@ -773,6 +773,42 @@ async function endVoiceConversation(
   return conversation;
 }
 
+/**
+ * Clears voice history: one conversation, or all of them. The transcripts
+ * are the person's own record of what was said, so removing them is theirs
+ * to decide and takes effect at once.
+ */
+async function deleteVoiceHistory(
+  organizationId: string,
+  userId: string,
+  input: { conversationId?: string; all?: boolean },
+) {
+  await BusinessModuleService.requireAccess(
+    organizationId,
+    userId,
+    "voice",
+    "manage",
+  );
+  const ids = input.all
+    ? await CommunicationsRepository.listVoiceConversationIds(organizationId)
+    : input.conversationId
+      ? [input.conversationId]
+      : [];
+  const removed = await CommunicationsRepository.deleteVoiceConversations(
+    organizationId,
+    ids,
+  );
+  await auditMutation(
+    organizationId,
+    userId,
+    "voice.history.deleted",
+    "voice_conversation",
+    input.conversationId ?? "all",
+    { removed },
+  );
+  return { removed };
+}
+
 async function voiceSessionContext(
   organizationId: string,
   conversationId: string,
@@ -865,7 +901,7 @@ async function transcribeVoiceAudio(
         credentialReference: agent.credentialReference,
         history,
         businessContext,
-        analystContext,
+        analystContext: analystContext.text,
       });
       const answeredAt = Date.now();
       const speech = await speakWithDeepgram(
@@ -1760,6 +1796,7 @@ export const CommunicationsService = {
   createWhatsappTemplate,
   createWebhookEndpoint,
   endVoiceConversation,
+  deleteVoiceHistory,
   emitBusinessEvent,
   integrationsWorkspace,
   launchWhatsappCampaign,

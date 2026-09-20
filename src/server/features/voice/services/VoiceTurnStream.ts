@@ -10,6 +10,8 @@ import { rememberNow } from "@/server/features/communications/services/VoiceLear
 import { asksToRemember, isFarewell } from "../remember";
 import { finalSentence, speakable, takeSentences } from "../sentences";
 import { VoiceAnalystService } from "./VoiceAnalystService";
+import { runVoiceTool } from "../tools/runVoiceTool";
+import { VOICE_TOOLS } from "../tools/voiceTools";
 
 /**
  * One spoken turn, delivered piece by piece.
@@ -137,7 +139,15 @@ export async function* streamVoiceTurn(input: {
     credentialReference: agent.credentialReference,
     history,
     businessContext,
-    analystContext,
+    analystContext: analystContext.text,
+    tools: VOICE_TOOLS,
+    runTool: (call) =>
+      runVoiceTool(call, {
+        organizationId: input.organizationId,
+        userId: input.userId,
+        projectId: analystContext.projectId,
+        lastUserTurn: heard.transcript,
+      }),
   })) {
     buffer += delta;
     const { sentences, rest } = takeSentences(buffer);

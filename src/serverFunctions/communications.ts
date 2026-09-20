@@ -388,3 +388,19 @@ export const forgetVoiceLesson = createServerFn({ method: "POST" })
   .handler(({ context, data }) =>
     VoiceLessonsService.forget(context.organizationId, context.userId, data),
   );
+
+export const deleteVoiceHistory = createServerFn({ method: "POST" })
+  .middleware(requireAuthenticatedContext)
+  .validator(
+    z.object({
+      conversationId: z.string().min(1).optional(),
+      all: z.boolean().optional(),
+    }),
+  )
+  .handler(({ context, data }) =>
+    CommunicationsService.deleteVoiceHistory(
+      context.organizationId,
+      context.userId,
+      data,
+    ),
+  );

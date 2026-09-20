@@ -1,12 +1,13 @@
 /* oxlint-disable max-lines-per-function */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { History, LoaderCircle, Mic, PhoneOff, X } from "lucide-react";
+import { History, LoaderCircle, Mic, PhoneOff, Trash2, X } from "lucide-react";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { toast } from "sonner";
 import { useRouterState } from "@tanstack/react-router";
 import {
   createVoiceAgent,
   appendVoiceTranscript,
+  deleteVoiceHistory,
   endVoiceConversation,
   getVoiceGreeting,
   getVoiceWorkspace,
@@ -207,6 +208,15 @@ export function VoiceAgentLauncher() {
     refetchOnWindowFocus: false,
   });
   const greetingSaidRef = useRef<string | null>(null);
+
+  // Clearing history is the person's own record to remove, so it happens at
+  // once; the bin stays faint until it is wanted.
+  const forget = useMutation({
+    mutationFn: (data: { conversationId?: string; all?: boolean }) =>
+      deleteVoiceHistory({ data }),
+    onSuccess: () => client.invalidateQueries({ queryKey: ["voice"] }),
+    onError: (error) => toast.error(getStandardErrorMessage(error)),
+  });
 
   const greet = () => {
     const line = greeting.data;
@@ -561,6 +571,20 @@ export function VoiceAgentLauncher() {
             >
               <History className="size-4" />
             </button>
+            {showHistory && pastConversations.length ? (
+              <button
+                type="button"
+                aria-label="Delete all past conversations"
+                className="p-1 text-base-content/15 transition-colors hover:text-error focus-visible:text-error"
+                onClick={() => {
+                  if (window.confirm("Delete every past conversation?")) {
+                    forget.mutate({ all: true });
+                  }
+                }}
+              >
+                <Trash2 className="size-3.5" />
+              </button>
+            ) : null}
             <button
               type="button"
               className="btn btn-circle btn-ghost btn-sm"
@@ -577,16 +601,29 @@ export function VoiceAgentLauncher() {
                 pastConversations.map(({ conversation, turns }) => (
                   <details
                     key={conversation.id}
-                    className="rounded-2xl border border-base-content/10 bg-base-200/40 p-3"
+                    className="group/row rounded-2xl border border-base-content/10 bg-base-200/40 p-3"
                   >
-                    <summary className="cursor-pointer list-none text-sm">
-                      <span className="block truncate font-medium">
-                        {turns[0]?.transcript ?? "Conversation"}
+                    <summary className="flex cursor-pointer list-none items-start gap-2 text-sm">
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate font-medium">
+                          {turns[0]?.transcript ?? "Conversation"}
+                        </span>
+                        <span className="text-xs text-base-content/50">
+                          {new Date(conversation.startedAt).toLocaleString()} ·{" "}
+                          {turns.length} turn{turns.length === 1 ? "" : "s"}
+                        </span>
                       </span>
-                      <span className="text-xs text-base-content/50">
-                        {new Date(conversation.startedAt).toLocaleString()} ·{" "}
-                        {turns.length} turn{turns.length === 1 ? "" : "s"}
-                      </span>
+                      <button
+                        type="button"
+                        aria-label="Delete this conversation"
+                        className="mt-0.5 shrink-0 p-1 text-base-content/15 transition-colors hover:text-error focus-visible:text-error group-hover/row:text-base-content/35"
+                        onClick={(event) => {
+                          event.preventDefault();
+                          forget.mutate({ conversationId: conversation.id });
+                        }}
+                      >
+                        <Trash2 className="size-3" />
+                      </button>
                     </summary>
                     <div className="mt-3 space-y-2">
                       {turns.map((turn) => (

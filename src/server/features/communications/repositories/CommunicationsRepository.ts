@@ -1,6 +1,15 @@
 import { optOutChange } from "../outreachRules";
 /* oxlint-disable max-lines */
-import { and, count, desc, eq, isNotNull, lte, sql } from "drizzle-orm";
+import {
+  and,
+  count,
+  desc,
+  eq,
+  inArray,
+  isNotNull,
+  lte,
+  sql,
+} from "drizzle-orm";
 import { db } from "@/db";
 import {
   integrationConnections,
@@ -1157,6 +1166,35 @@ async function appendVoiceTranscript(
   return message;
 }
 
+/**
+ * Removes conversations from the history. Their turns go with them — the
+ * messages row cascades — so nothing is left half-deleted.
+ */
+async function deleteVoiceConversations(
+  organizationId: string,
+  conversationIds: string[],
+) {
+  if (!conversationIds.length) return 0;
+  const removed = await db
+    .delete(voiceConversations)
+    .where(
+      and(
+        eq(voiceConversations.organizationId, organizationId),
+        inArray(voiceConversations.id, conversationIds),
+      ),
+    )
+    .returning({ id: voiceConversations.id });
+  return removed.length;
+}
+
+async function listVoiceConversationIds(organizationId: string) {
+  const rows = await db
+    .select({ id: voiceConversations.id })
+    .from(voiceConversations)
+    .where(eq(voiceConversations.organizationId, organizationId));
+  return rows.map((row) => row.id);
+}
+
 async function endVoiceConversation(
   organizationId: string,
   conversationId: string,
@@ -1384,6 +1422,8 @@ export const CommunicationsRepository = {
   createWhatsappOrder,
   createWhatsappTemplate,
   endVoiceConversation,
+  deleteVoiceConversations,
+  listVoiceConversationIds,
   flagWhatsappConversationForTeam,
   getIntegrationsWorkspace,
   findWhatsappConnectionByPhoneNumberId,

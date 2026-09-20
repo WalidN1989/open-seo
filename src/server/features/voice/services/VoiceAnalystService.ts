@@ -141,11 +141,18 @@ async function contextForTurn(
   ]);
   const who = speaker ? `You are speaking with ${speaker}.\n` : "";
   const chosen = resolveProject(projects, userTurns);
-  if (!chosen) return who + renderProjectChoice(projects);
+  if (!chosen) {
+    return { text: who + renderProjectChoice(projects), projectId: null };
+  }
   // Re-checked through the membership gate, not trusted from the list above.
   const allowed = await ProjectService.getProjectForMember(userId, chosen.id);
-  if (!allowed) return who + renderProjectChoice(projects);
-  return who + (await cachedBrief(chosen, allowed.organizationId));
+  if (!allowed) {
+    return { text: who + renderProjectChoice(projects), projectId: null };
+  }
+  return {
+    text: who + (await cachedBrief(chosen, allowed.organizationId)),
+    projectId: chosen.id,
+  };
 }
 
 /**
