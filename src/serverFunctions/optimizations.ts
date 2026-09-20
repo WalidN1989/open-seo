@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { createServerFn } from "@tanstack/react-start";
 import { OptimizationPublishService } from "@/server/features/optimizations/services/OptimizationPublishService";
+import { SiteCatalogueService } from "@/server/features/commerce/services/SiteCatalogueService";
 import { OptimizationService } from "@/server/features/optimizations/services/OptimizationService";
 import { requireProjectContext } from "@/serverFunctions/middleware";
 import {
@@ -131,4 +132,17 @@ export const listSiteServicePages = createServerFn({ method: "GET" })
   .validator(z.object({ projectId: z.string().min(1) }))
   .handler(({ context }) =>
     OptimizationPublishService.siteServices(context.organizationId),
+  );
+
+/**
+ * Copy the site's service pages into Products.
+ *
+ * A person in the browser asks for this: it writes to the catalogue the
+ * assistant quotes from, so no agent reaches it.
+ */
+export const syncSiteServicesToProducts = createServerFn({ method: "POST" })
+  .middleware(requireProjectContext)
+  .validator(z.object({ projectId: z.string().min(1) }))
+  .handler(({ context }) =>
+    SiteCatalogueService.syncServices(context.organizationId, context.userId),
   );

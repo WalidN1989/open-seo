@@ -1,6 +1,10 @@
-import { useQuery } from "@tanstack/react-query";
-import { CalendarDays, ExternalLink, Tag } from "lucide-react";
-import { listSiteServicePages } from "@/serverFunctions/optimizations";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { CalendarDays, ExternalLink, PackagePlus, Tag } from "lucide-react";
+import {
+  listSiteServicePages,
+  syncSiteServicesToProducts,
+} from "@/serverFunctions/optimizations";
 import { getStandardErrorMessage } from "@/client/lib/error-messages";
 
 /**
@@ -23,10 +27,29 @@ function price(service: {
 }
 
 export function SiteServices({ projectId }: { projectId: string }) {
+  const queryClient = useQueryClient();
   const services = useQuery({
     queryKey: ["optimizations", "site-services", projectId],
     queryFn: () => listSiteServicePages({ data: { projectId } }),
     staleTime: 5 * 60_000,
+  });
+
+  // Copying the site's own answer in, so the price a customer reads online is
+  // the price a quote, an invoice and the assistant all give.
+  const sync = useMutation({
+    mutationFn: () => syncSiteServicesToProducts({ data: { projectId } }),
+    onSuccess: async (result) => {
+      await queryClient.invalidateQueries({
+        queryKey: ["commerce", "products"],
+      });
+      toast.success(
+        `${result.synced} service${result.synced === 1 ? "" : "s"} are now in Products` +
+          (result.unpriced
+            ? `. ${result.unpriced} had no price on the site and came in at zero.`
+            : "."),
+      );
+    },
+    onError: (error) => toast.error(getStandardErrorMessage(error)),
   });
 
   if (services.isLoading) {
@@ -65,12 +88,25 @@ export function SiteServices({ projectId }: { projectId: string }) {
 
   return (
     <div className="space-y-3">
-      <p className="text-sm text-base-content/60">
-        {rows.length} service page{rows.length === 1 ? "" : "s"} live on the
-        site. These rank for the searches that earn money, so improving one
-        usually beats writing an article beside it.
-        {updated ? ` The site's service data last changed on ${updated}.` : ""}
-      </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <p className="max-w-2xl text-sm text-base-content/60">
+          {rows.length} service page{rows.length === 1 ? "" : "s"} live on the
+          site. These rank for the searches that earn money, so improving one
+          usually beats writing an article beside it.
+          {updated
+            ? ` The site's service data last changed on ${updated}.`
+            : ""}
+        </p>
+        <button
+          className="btn btn-outline btn-sm gap-2"
+          disabled={sync.isPending}
+          onClick={() => sync.mutate()}
+          title="Copy these service pages into Products, so quotes and the assistant use the same prices"
+        >
+          <PackagePlus className="size-4" />
+          {sync.isPending ? "Syncing…" : `Sync ${rows.length} into Products`}
+        </button>
+      </div>
       <div className="overflow-x-auto rounded-xl border border-base-300">
         <table className="table">
           <thead>

@@ -198,6 +198,11 @@ async function upsertExternalProduct(
     category: string | null;
     salePriceMinor: number;
     productUrl: string | null;
+    /**
+     * A service has no stock, so it must not be counted like one. Store syncs
+     * leave this alone and keep the "product" default.
+     */
+    itemType?: "product" | "service";
   },
 ) {
   const now = new Date().toISOString();
@@ -228,6 +233,7 @@ async function upsertExternalProduct(
       id: crypto.randomUUID(),
       organizationId,
       ...input,
+      itemType: input.itemType ?? "product",
       sku,
       updatedAt: now,
     })
@@ -244,6 +250,7 @@ async function upsertExternalProduct(
         category: input.category,
         salePriceMinor: input.salePriceMinor,
         productUrl: input.productUrl,
+        itemType: input.itemType ?? "product",
         updatedAt: now,
       },
     })
