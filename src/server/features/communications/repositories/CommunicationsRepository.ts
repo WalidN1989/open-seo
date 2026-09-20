@@ -1008,6 +1008,22 @@ async function updateWhatsappTemplate(
   return row ?? null;
 }
 
+async function deleteWhatsappTemplate(
+  organizationId: string,
+  templateId: string,
+) {
+  const [row] = await db
+    .delete(whatsappTemplates)
+    .where(
+      and(
+        eq(whatsappTemplates.id, templateId),
+        eq(whatsappTemplates.organizationId, organizationId),
+      ),
+    )
+    .returning({ id: whatsappTemplates.id, name: whatsappTemplates.name });
+  return row ?? null;
+}
+
 async function getWhatsappTemplate(organizationId: string, templateId: string) {
   const [template] = await db
     .select()
@@ -1451,6 +1467,7 @@ export const CommunicationsRepository = {
   createWhatsappOrder,
   createWhatsappTemplate,
   updateWhatsappTemplate,
+  deleteWhatsappTemplate,
   firstWhatsappConnection,
   endVoiceConversation,
   deleteVoiceConversations,

@@ -57,7 +57,10 @@ import {
   createWhatsappInternalNote,
   runIntegrationAction,
 } from "@/serverFunctions/communications";
-import { refreshWhatsappTemplate } from "@/serverFunctions/communications-admin";
+import {
+  deleteWhatsappTemplate,
+  refreshWhatsappTemplate,
+} from "@/serverFunctions/communications-admin";
 import { createCrmContact } from "@/serverFunctions/crm";
 import { convertWhatsappOrderRequest } from "@/serverFunctions/commerce";
 import { getStandardErrorMessage } from "@/client/lib/error-messages";
@@ -388,6 +391,15 @@ export function WhatsappWorkspace() {
             ? `WhatsApp rejected it${result.reason ? `: ${result.reason}` : ""}`
             : "Still with WhatsApp; check again shortly",
       );
+    },
+    onError: showError,
+  });
+  const forgetTemplate = useMutation({
+    mutationFn: (templateId: string) =>
+      deleteWhatsappTemplate({ data: { templateId } }),
+    onSuccess: async () => {
+      await client.invalidateQueries({ queryKey: ["whatsapp"] });
+      toast.success("Template deleted");
     },
     onError: showError,
   });
@@ -1530,6 +1542,15 @@ export function WhatsappWorkspace() {
                         Check approval
                       </button>
                     ) : null}
+                    <button
+                      type="button"
+                      aria-label={`Delete template ${item.name}`}
+                      className="p-1 text-base-content/20 transition-colors hover:text-error"
+                      disabled={forgetTemplate.isPending}
+                      onClick={() => forgetTemplate.mutate(item.id)}
+                    >
+                      <Trash2 className="size-3.5" />
+                    </button>
                   </div>
                 ))
               ) : (

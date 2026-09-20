@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   createContentTemplate,
+  withNumberedPlaceholders,
   fetchApproval,
   submitForApproval,
   templateName,
@@ -131,5 +132,28 @@ describe("fetchApproval", () => {
       ),
     ).rejects.toThrow("Template not found");
     delete process.env.TEST_TW_AUTH_TOKEN;
+  });
+});
+
+describe("withNumberedPlaceholders", () => {
+  it("numbers what people write, and keeps the word as the sample", () => {
+    const { text, variables } = withNumberedPlaceholders(
+      "Hi {{name}}, your {{ service }} is ready, {{name}}.",
+    );
+    expect(text).toBe("Hi {{1}}, your {{2}} is ready, {{1}}.");
+    expect(variables).toEqual({ "1": "name", "2": "service" });
+  });
+
+  it("gives an already-numbered slot a sample of its own", () => {
+    // WhatsApp refuses a slot with no example: "BODY is missing (example)".
+    expect(withNumberedPlaceholders("Hi {{1}}").variables).toEqual({
+      "1": "Sample",
+    });
+  });
+
+  it("leaves plain wording alone", () => {
+    const { text, variables } = withNumberedPlaceholders("Hi, how are things?");
+    expect(text).toBe("Hi, how are things?");
+    expect(variables).toEqual({});
   });
 });

@@ -308,6 +308,38 @@ async function refreshWhatsappTemplate(
   return approval;
 }
 
+/**
+ * Removes a template from the list. A rejected one cannot be edited and
+ * resubmitted — WhatsApp wants a fresh submission — so it is deleted and
+ * written again.
+ */
+async function deleteWhatsappTemplate(
+  organizationId: string,
+  userId: string,
+  input: { templateId: string },
+) {
+  await BusinessModuleService.requireAccess(
+    organizationId,
+    userId,
+    "whatsapp",
+    "manage",
+  );
+  const removed = await CommunicationsRepository.deleteWhatsappTemplate(
+    organizationId,
+    input.templateId,
+  );
+  if (!removed) throw new AppError("NOT_FOUND", "Template not found.");
+  await auditMutation(
+    organizationId,
+    userId,
+    "whatsapp.template.deleted",
+    "whatsapp_template",
+    removed.id,
+    { name: removed.name },
+  );
+  return { templateId: removed.id };
+}
+
 async function updateWhatsappConversation(
   organizationId: string,
   userId: string,
@@ -1885,6 +1917,7 @@ export const CommunicationsService = {
   createWhatsappOrder,
   createWhatsappTemplate,
   refreshWhatsappTemplate,
+  deleteWhatsappTemplate,
   createWebhookEndpoint,
   endVoiceConversation,
   deleteVoiceHistory,

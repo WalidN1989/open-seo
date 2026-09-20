@@ -25,6 +25,17 @@ export const deleteVoiceHistory = createServerFn({ method: "POST" })
     ),
   );
 
+export const deleteWhatsappTemplate = createServerFn({ method: "POST" })
+  .middleware(requireAuthenticatedContext)
+  .validator(z.object({ templateId: z.string().min(1) }))
+  .handler(({ context, data }) =>
+    CommunicationsService.deleteWhatsappTemplate(
+      context.organizationId,
+      context.userId,
+      data,
+    ),
+  );
+
 export const refreshWhatsappTemplate = createServerFn({ method: "POST" })
   .middleware(requireAuthenticatedContext)
   .validator(z.object({ templateId: z.string().min(1) }))

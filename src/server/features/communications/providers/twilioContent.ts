@@ -24,6 +24,35 @@ type TemplateDraft = {
   category: "MARKETING" | "UTILITY" | "AUTHENTICATION";
 };
 
+/**
+ * Placeholders, as WhatsApp wants them.
+ *
+ * People write "Hi {{name}}"; WhatsApp only understands numbered slots, and
+ * refuses a template whose slots carry no sample value — "component of type
+ * BODY is missing expected field(s) (example)" is the whole of what it says.
+ * So each placeholder becomes {{1}}, {{2}}… and the word inside it is kept as
+ * the sample Meta reviews the wording with.
+ */
+export function withNumberedPlaceholders(body: string) {
+  const variables: Record<string, string> = {};
+  const seen = new Map<string, string>();
+  const text = body.replaceAll(
+    /\{\{\s*([^}]+?)\s*\}\}/g,
+    (_match, label: string) => {
+      const known = seen.get(label.toLowerCase());
+      if (known) return `{{${known}}}`;
+      const index = String(Object.keys(variables).length + 1);
+      seen.set(label.toLowerCase(), index);
+      // A number on its own is already a slot; anything else is a word to show.
+      variables[index] = /^\d+$/.test(label)
+        ? "Sample"
+        : label.replaceAll(/[_-]+/g, " ");
+      return `{{${index}}}`;
+    },
+  );
+  return { text, variables };
+}
+
 /** Meta's rule for a template name, applied here so the submission is not refused. */
 export function templateName(name: string) {
   return name
@@ -73,16 +102,17 @@ export async function createContentTemplate(
   draft: TemplateDraft,
   fetcher: typeof fetch = fetch,
 ) {
+  const { text, variables } = withNumberedPlaceholders(draft.body);
   const payload = await call(
     connection,
     "/Content",
     {
       friendly_name: templateName(draft.name),
       language: draft.languageCode || "en",
-      variables: {},
+      variables,
       types: draft.mediaUrl
-        ? { "twilio/media": { body: draft.body, media: [draft.mediaUrl] } }
-        : { "twilio/text": { body: draft.body } },
+        ? { "twilio/media": { body: text, media: [draft.mediaUrl] } }
+        : { "twilio/text": { body: text } },
     },
     fetcher,
   );
