@@ -1,3 +1,4 @@
+import { z } from "zod";
 import { createServerFn } from "@tanstack/react-start";
 import { OptimizationPublishService } from "@/server/features/optimizations/services/OptimizationPublishService";
 import { OptimizationService } from "@/server/features/optimizations/services/OptimizationService";
@@ -114,4 +115,12 @@ export const addOptimizationImages = createServerFn({ method: "POST" })
       context.userId,
       data.opportunityId,
     ),
+  );
+
+/** The posts already live on this project's site. */
+export const listSiteBlogPosts = createServerFn({ method: "GET" })
+  .middleware(requireProjectContext)
+  .validator(z.object({ projectId: z.string().min(1) }))
+  .handler(({ context }) =>
+    OptimizationPublishService.sitePosts(context.organizationId),
   );

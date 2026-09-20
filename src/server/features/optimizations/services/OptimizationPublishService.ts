@@ -17,6 +17,7 @@ import {
   type LovableSite,
 } from "../lovable/lovablePublisher";
 import { repositoryName } from "../lovable/githubRepo";
+import { listSitePosts } from "../lovable/sitePosts";
 import { articleFromDraft } from "../wordpress/wordpressArticle";
 import {
   publishToWordpress,
@@ -275,4 +276,24 @@ async function addImages(
   }
 }
 
-export const OptimizationPublishService = { publish, destination, addImages };
+/**
+ * What is already live on the project's site. Read before writing: a
+ * keyword the site already covers is usually better improved than written
+ * about twice, and two articles on one search compete with each other.
+ */
+async function sitePosts(organizationId: string) {
+  const site = await lovableFor(organizationId);
+  if (!site) return { connected: false as const, posts: [] };
+  const posts = await listSitePosts(site).catch((error: unknown) => {
+    console.error("Could not read the site's posts", error);
+    return [];
+  });
+  return { connected: true as const, posts };
+}
+
+export const OptimizationPublishService = {
+  publish,
+  destination,
+  addImages,
+  sitePosts,
+};
