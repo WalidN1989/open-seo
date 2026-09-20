@@ -38,6 +38,7 @@ import { Route as AuthenticatedOnboardingIndexRouteImport } from './routes/_auth
 import { Route as AppModulesIndexRouteImport } from './routes/_app/modules/index'
 import { Route as ApiWhatsappMetaRouteImport } from './routes/api/whatsapp/meta'
 import { Route as ApiWhatsappConnectionIdRouteImport } from './routes/api/whatsapp/$connectionId'
+import { Route as ApiVoiceTurnRouteImport } from './routes/api/voice/turn'
 import { Route as ApiSocialMetaRouteImport } from './routes/api/social/meta'
 import { Route as ApiEmailAccountIdRouteImport } from './routes/api/email/$accountId'
 import { Route as ApiAutumnSplatRouteImport } from './routes/api/autumn/$'
@@ -240,6 +241,11 @@ const ApiWhatsappMetaRoute = ApiWhatsappMetaRouteImport.update({
 const ApiWhatsappConnectionIdRoute = ApiWhatsappConnectionIdRouteImport.update({
   id: '/api/whatsapp/$connectionId',
   path: '/api/whatsapp/$connectionId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiVoiceTurnRoute = ApiVoiceTurnRouteImport.update({
+  id: '/api/voice/turn',
+  path: '/api/voice/turn',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiSocialMetaRoute = ApiSocialMetaRouteImport.update({
@@ -592,6 +598,7 @@ export interface FileRoutesByFullPath {
   '/api/autumn/$': typeof ApiAutumnSplatRoute
   '/api/email/$accountId': typeof ApiEmailAccountIdRoute
   '/api/social/meta': typeof ApiSocialMetaRoute
+  '/api/voice/turn': typeof ApiVoiceTurnRoute
   '/api/whatsapp/$connectionId': typeof ApiWhatsappConnectionIdRoute
   '/api/whatsapp/meta': typeof ApiWhatsappMetaRoute
   '/modules/': typeof AppModulesIndexRoute
@@ -673,6 +680,7 @@ export interface FileRoutesByTo {
   '/api/autumn/$': typeof ApiAutumnSplatRoute
   '/api/email/$accountId': typeof ApiEmailAccountIdRoute
   '/api/social/meta': typeof ApiSocialMetaRoute
+  '/api/voice/turn': typeof ApiVoiceTurnRoute
   '/api/whatsapp/$connectionId': typeof ApiWhatsappConnectionIdRoute
   '/api/whatsapp/meta': typeof ApiWhatsappMetaRoute
   '/modules': typeof AppModulesIndexRoute
@@ -760,6 +768,7 @@ export interface FileRoutesById {
   '/api/autumn/$': typeof ApiAutumnSplatRoute
   '/api/email/$accountId': typeof ApiEmailAccountIdRoute
   '/api/social/meta': typeof ApiSocialMetaRoute
+  '/api/voice/turn': typeof ApiVoiceTurnRoute
   '/api/whatsapp/$connectionId': typeof ApiWhatsappConnectionIdRoute
   '/api/whatsapp/meta': typeof ApiWhatsappMetaRoute
   '/_app/modules/': typeof AppModulesIndexRoute
@@ -847,6 +856,7 @@ export interface FileRouteTypes {
     | '/api/autumn/$'
     | '/api/email/$accountId'
     | '/api/social/meta'
+    | '/api/voice/turn'
     | '/api/whatsapp/$connectionId'
     | '/api/whatsapp/meta'
     | '/modules/'
@@ -928,6 +938,7 @@ export interface FileRouteTypes {
     | '/api/autumn/$'
     | '/api/email/$accountId'
     | '/api/social/meta'
+    | '/api/voice/turn'
     | '/api/whatsapp/$connectionId'
     | '/api/whatsapp/meta'
     | '/modules'
@@ -1014,6 +1025,7 @@ export interface FileRouteTypes {
     | '/api/autumn/$'
     | '/api/email/$accountId'
     | '/api/social/meta'
+    | '/api/voice/turn'
     | '/api/whatsapp/$connectionId'
     | '/api/whatsapp/meta'
     | '/_app/modules/'
@@ -1085,6 +1097,7 @@ export interface RootRouteChildren {
   ApiAutumnSplatRoute: typeof ApiAutumnSplatRoute
   ApiEmailAccountIdRoute: typeof ApiEmailAccountIdRoute
   ApiSocialMetaRoute: typeof ApiSocialMetaRoute
+  ApiVoiceTurnRoute: typeof ApiVoiceTurnRoute
   ApiWhatsappConnectionIdRoute: typeof ApiWhatsappConnectionIdRoute
   ApiWhatsappMetaRoute: typeof ApiWhatsappMetaRoute
   ApiGa4OauthCallbackRoute: typeof ApiGa4OauthCallbackRoute
@@ -1299,6 +1312,13 @@ declare module '@tanstack/react-router' {
       path: '/api/whatsapp/$connectionId'
       fullPath: '/api/whatsapp/$connectionId'
       preLoaderRoute: typeof ApiWhatsappConnectionIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/voice/turn': {
+      id: '/api/voice/turn'
+      path: '/api/voice/turn'
+      fullPath: '/api/voice/turn'
+      preLoaderRoute: typeof ApiVoiceTurnRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/social/meta': {
@@ -1990,6 +2010,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAutumnSplatRoute: ApiAutumnSplatRoute,
   ApiEmailAccountIdRoute: ApiEmailAccountIdRoute,
   ApiSocialMetaRoute: ApiSocialMetaRoute,
+  ApiVoiceTurnRoute: ApiVoiceTurnRoute,
   ApiWhatsappConnectionIdRoute: ApiWhatsappConnectionIdRoute,
   ApiWhatsappMetaRoute: ApiWhatsappMetaRoute,
   ApiGa4OauthCallbackRoute: ApiGa4OauthCallbackRoute,

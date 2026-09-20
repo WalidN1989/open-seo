@@ -31,22 +31,13 @@ function analystRules(agentName: string, analystContext: string) {
   ];
 }
 
-export async function generateVoiceAgentReply(input: {
+/** Everything the agent is told before it answers, in one place. */
+function systemPrompt(input: {
   agentName: string;
-  credentialReference: string | null;
-  history: VoiceHistory[];
   businessContext?: string | null;
-  /** Workspace facts from the analyst: a project's SEO brief, or the list to pick from. */
   analystContext?: string | null;
-  fetcher?: typeof fetch;
 }) {
-  const tenantKey = input.credentialReference
-    ? await getOptionalEnvValue(
-        `${credentialPrefix(input.credentialReference)}_ANTHROPIC_API_KEY`,
-      )
-    : null;
-  const apiKey = tenantKey ?? (await getOptionalEnvValue("ANTHROPIC_API_KEY"));
-  const system = [
+  return [
     ...(input.analystContext?.trim()
       ? analystRules(input.agentName, input.analystContext.trim())
       : [
@@ -62,12 +53,44 @@ export async function generateVoiceAgentReply(input: {
       ? `Trusted platform and organization context:\n${input.businessContext.trim()}`
       : "No trusted organization facts are available.",
   ].join("\n\n");
-  const messages = input.history
+}
+
+function historyMessages(history: VoiceHistory[]) {
+  return history
     .filter((item) => item.transcript.trim())
     .map((item) => ({
       role: item.speaker === "agent" ? "assistant" : "user",
       content: item.transcript,
     }));
+}
+
+type VoiceReplyInput = {
+  agentName: string;
+  credentialReference: string | null;
+  history: VoiceHistory[];
+  businessContext?: string | null;
+  /** Workspace facts from the analyst: a project's SEO brief, or the list to pick from. */
+  analystContext?: string | null;
+  fetcher?: typeof fetch;
+};
+
+export async function generateVoiceAgentReply(input: {
+  agentName: string;
+  credentialReference: string | null;
+  history: VoiceHistory[];
+  businessContext?: string | null;
+  /** Workspace facts from the analyst: a project's SEO brief, or the list to pick from. */
+  analystContext?: string | null;
+  fetcher?: typeof fetch;
+}) {
+  const tenantKey = input.credentialReference
+    ? await getOptionalEnvValue(
+        `${credentialPrefix(input.credentialReference)}_ANTHROPIC_API_KEY`,
+      )
+    : null;
+  const apiKey = tenantKey ?? (await getOptionalEnvValue("ANTHROPIC_API_KEY"));
+  const system = systemPrompt(input);
+  const messages = historyMessages(input.history);
 
   if (!apiKey) {
     const openRouterKey = await getOptionalEnvValue("OPENROUTER_API_KEY");
@@ -132,4 +155,67 @@ export async function generateVoiceAgentReply(input: {
     .trim();
   if (!reply) throw new Error("The voice agent returned no reply.");
   return { reply, model };
+}
+
+const STREAM_EVENT =
+  /"type"\s*:\s*"content_block_delta"[\s\S]*?"text"\s*:\s*("(?:[^"\\]|\\.)*")/;
+
+/**
+ * The same answer, delivered as it is written.
+ *
+ * Anthropic only: the OpenRouter fallback has no streaming here, and the
+ * caller speaks the one-shot reply instead. The words are identical — this
+ * changes when they arrive, not what they say.
+ */
+export async function* streamVoiceAgentReply(input: VoiceReplyInput) {
+  const tenantKey = input.credentialReference
+    ? await getOptionalEnvValue(
+        `${credentialPrefix(input.credentialReference)}_ANTHROPIC_API_KEY`,
+      )
+    : null;
+  const apiKey = tenantKey ?? (await getOptionalEnvValue("ANTHROPIC_API_KEY"));
+  if (!apiKey) throw new Error("The voice answer model is not configured.");
+  const model =
+    (await getOptionalEnvValue("VOICE_AI_MODEL")) ||
+    "claude-haiku-4-5-20251001";
+  const response = await (input.fetcher ?? fetch)(
+    "https://api.anthropic.com/v1/messages",
+    {
+      method: "POST",
+      headers: {
+        "anthropic-version": "2023-06-01",
+        "content-type": "application/json",
+        "x-api-key": apiKey,
+      },
+      body: JSON.stringify({
+        model,
+        max_tokens: input.analystContext ? 220 : 500,
+        system: systemPrompt(input),
+        messages: historyMessages(input.history),
+        stream: true,
+      }),
+      signal: AbortSignal.timeout(45_000),
+    },
+  );
+  if (!response.ok || !response.body) {
+    throw new Error(`Anthropic returned HTTP ${response.status}.`);
+  }
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffered = "";
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffered += decoder.decode(value, { stream: true });
+    // Server-sent events arrive as blank-line separated blocks; a block cut
+    // in half by the network is left for the next read.
+    const blocks = buffered.split("\n\n");
+    buffered = blocks.pop() ?? "";
+    for (const block of blocks) {
+      const match = STREAM_EVENT.exec(block);
+      if (!match?.[1]) continue;
+      const text: unknown = JSON.parse(match[1]);
+      if (typeof text === "string" && text) yield text;
+    }
+  }
 }

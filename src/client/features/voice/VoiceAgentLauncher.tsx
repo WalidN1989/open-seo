@@ -14,6 +14,8 @@ import {
   transcribeVoiceAudio,
 } from "@/serverFunctions/communications";
 import { getStandardErrorMessage } from "@/client/lib/error-messages";
+import { SpeechQueue } from "./speechQueue";
+import { streamVoiceTurn, VoiceTurnUnavailable } from "./streamTurn";
 import {
   startBargeIn,
   startVoiceActivity,
@@ -116,7 +118,7 @@ export function VoiceAgentLauncher() {
   const audioContextRef = useRef<AudioContext | null>(null);
   const animationFrameRef = useRef<number | null>(null);
   const continuousRef = useRef(false);
-  const replyRef = useRef<{ audio: HTMLAudioElement; stop: () => void } | null>(
+  const replyRef = useRef<{ queue: SpeechQueue; stopWatch: () => void } | null>(
     null,
   );
   const conversationRef = useRef<string | null>(null);
@@ -131,8 +133,8 @@ export function VoiceAgentLauncher() {
   // Silences the reply being spoken, if any, and stops listening for an
   // interruption to it.
   const stopReply = () => {
-    replyRef.current?.stop();
-    replyRef.current?.audio.pause();
+    replyRef.current?.queue.stop();
+    replyRef.current?.stopWatch();
     replyRef.current = null;
     setSpeaking(false);
   };
@@ -159,19 +161,17 @@ export function VoiceAgentLauncher() {
     releaseMicrophone();
   };
 
-  // Plays one spoken reply. Talking over it stops it at once and becomes the
-  // next turn; when it finishes, the microphone opens again.
-  const speak = async (
-    audioBase64: string,
-    mimeType: string,
-    /** A goodbye: hang up once it has finished playing. */
-    thenEnd = false,
-  ) => {
-    const audio = new Audio(`data:${mimeType};base64,${audioBase64}`);
+  /**
+   * Opens a reply: sentences are pushed in as they arrive and played back to
+   * back. Talking over it stops the whole reply at once and becomes the next
+   * turn.
+   */
+  const startSpeaking = () => {
     stopReply();
     setSpeaking(true);
-    const stop = watchForBargeIn((stream) => {
-      if (replyRef.current?.audio !== audio) {
+    const queue = new SpeechQueue();
+    const stopWatch = watchForBargeIn((stream) => {
+      if (replyRef.current?.queue !== queue) {
         stream.getTracks().forEach((track) => track.stop());
         return;
       }
@@ -179,20 +179,20 @@ export function VoiceAgentLauncher() {
       if (continuousRef.current) void beginListening(stream);
       else stream.getTracks().forEach((track) => track.stop());
     });
-    replyRef.current = { audio, stop };
-    audio.addEventListener("ended", () => {
-      if (replyRef.current?.audio !== audio) return;
+    replyRef.current = { queue, stopWatch };
+    return queue;
+  };
+
+  /** No more sentences: when the last one has played, listen again — or hang up. */
+  const finishSpeaking = (queue: SpeechQueue, thenEnd = false) => {
+    queue.finish(() => {
+      if (replyRef.current?.queue !== queue) return;
       stopReply();
       if (thenEnd) {
         void endConversation();
         return;
       }
       if (continuousRef.current) void beginListening();
-    });
-    await audio.play().catch(() => {
-      stopReply();
-      setStatus("Reply ready — tap the microphone to continue");
-      continuousRef.current = false;
     });
   };
 
@@ -213,7 +213,9 @@ export function VoiceAgentLauncher() {
     if (!line) return;
     greetingSaidRef.current = line.text;
     setStatus("Speaking…");
-    void speak(line.audioBase64, line.mimeType);
+    const queue = startSpeaking();
+    queue.push(line.audioBase64, line.mimeType);
+    finishSpeaking(queue);
   };
 
   // The keyboard shortcut is registered once; it reaches the latest greeting
@@ -245,9 +247,10 @@ export function VoiceAgentLauncher() {
       }
       setStatus("Speaking…");
       if ("audioBase64" in result && result.audioBase64) {
-        await speak(
-          result.audioBase64,
-          result.mimeType,
+        const queue = startSpeaking();
+        queue.push(result.audioBase64, result.mimeType);
+        finishSpeaking(
+          queue,
           Boolean("endsConversation" in result && result.endsConversation),
         );
       } else if (continuousRef.current) {
@@ -259,6 +262,64 @@ export function VoiceAgentLauncher() {
       setStatus(getStandardErrorMessage(error));
     },
   });
+
+  /**
+   * One turn, spoken as it is written: the first sentence plays while the
+   * rest of the answer is still arriving. If the stream cannot start, the
+   * one-shot reply answers instead, so a turn is never lost.
+   */
+  const runTurn = async (data: {
+    conversationId: string;
+    audioBase64: string;
+    mimeType: string;
+  }) => {
+    setStatus("Thinking…");
+    let queue: SpeechQueue | null = null;
+    try {
+      for await (const event of streamVoiceTurn({
+        ...data,
+        language: "multi",
+      })) {
+        if (event.type === "silence") {
+          // A pause is not a failure: keep the microphone open.
+          setStatus("Listening…");
+          if (continuousRef.current) void beginListening();
+          return;
+        }
+        if (event.type === "error") {
+          if (!queue) throw new VoiceTurnUnavailable(event.message);
+          setStatus(event.message);
+          break;
+        }
+        if (event.type === "speech") {
+          if (!queue) {
+            setStatus("Speaking…");
+            queue = startSpeaking();
+          }
+          queue.push(event.audioBase64, event.mimeType);
+        }
+        if (event.type === "done") {
+          if (queue) finishSpeaking(queue, event.endsConversation);
+          void client.invalidateQueries({ queryKey: ["voice"] });
+          return;
+        }
+      }
+      if (queue) finishSpeaking(queue);
+      void client.invalidateQueries({ queryKey: ["voice"] });
+    } catch (error) {
+      if (queue) {
+        stopReply();
+        setStatus(getStandardErrorMessage(error));
+        return;
+      }
+      // Nothing was spoken yet, so the older path can still answer this turn.
+      console.warn(
+        "Streaming voice turn failed; using the one-shot reply",
+        error,
+      );
+      transcribe.mutate(data);
+    }
+  };
 
   const beginListening = async (openStream?: MediaStream) => {
     const activeConversationId = conversationRef.current;
@@ -283,7 +344,7 @@ export function VoiceAgentLauncher() {
         if (!chunks.length) return;
         setStatus("Thinking…");
         const blob = new Blob(chunks, { type: recorder.mimeType });
-        transcribe.mutate({
+        void runTurn({
           conversationId: activeConversationId,
           audioBase64: await blobToBase64(blob),
           mimeType: blob.type || "audio/webm",
@@ -427,8 +488,8 @@ export function VoiceAgentLauncher() {
   useEffect(
     () => () => {
       continuousRef.current = false;
-      replyRef.current?.stop();
-      replyRef.current?.audio.pause();
+      replyRef.current?.queue.stop();
+      replyRef.current?.stopWatch();
       if (animationFrameRef.current !== null)
         cancelAnimationFrame(animationFrameRef.current);
       streamRef.current?.getTracks().forEach((track) => track.stop());
