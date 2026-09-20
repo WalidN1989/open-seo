@@ -284,3 +284,86 @@ export async function pushToLovable(input: {
     });
   }
 }
+
+/**
+ * Pictures for an article that is already live.
+ *
+ * Writing does not wait for an image model, so posts go out with words
+ * alone. When a key is working, this fills them in: the same plan, the same
+ * slug, the same file — the hero and any in-article images are made,
+ * committed beside the post, and the post is rewritten to use them, keeping
+ * its original date. Alt text comes from the draft, so the pictures say
+ * something to a search engine and to a reader who cannot see them.
+ *
+ * Images already committed are reused, so this is safe to run twice.
+ */
+export async function addImagesToPost(input: {
+  organizationId: string;
+  userId: string;
+  opportunityId: string;
+  site: LovableSite;
+  plan: PostPlan;
+  keyword: string;
+  today: string;
+  fetcher?: typeof fetch;
+}) {
+  const fetcher = input.fetcher ?? fetch;
+  const { plan, site } = input;
+  const [outcomes, previousDate] = await Promise.all([
+    resolveImages(plan, site, fetcher),
+    existingDate(site, plan.slug, fetcher),
+  ]);
+  const made = outcomes.filter((item) => item.source);
+  if (made.length === 0) {
+    const reason = outcomes.find((item) => item.error)?.error;
+    throw new Error(
+      reason ? `No image could be made: ${reason}` : "No image could be made.",
+    );
+  }
+  const imageSources = Object.fromEntries(
+    made.flatMap((item) =>
+      item.source ? [[item.image.key, item.source]] : [],
+    ),
+  );
+  const post = renderPost({
+    plan,
+    siteUrl: site.siteUrl,
+    date: previousDate || input.today,
+    keyword: input.keyword,
+    opportunityId: input.opportunityId,
+    imageSources,
+  });
+  const files: RepoFile[] = [
+    ...outcomes.flatMap((item) => (item.file ? [item.file] : [])),
+    {
+      path: `src/content/blog/${plan.slug}.json`,
+      text: `${JSON.stringify(post, null, 2)}\n`,
+    },
+  ];
+  const commit = await commitFiles(
+    site,
+    files,
+    `content(blog): add images to ${plan.slug} from Open SEO ${input.opportunityId}`,
+    fetcher,
+  );
+  await BusinessAuditRepository.record({
+    organizationId: input.organizationId,
+    actorUserId: input.userId,
+    action: "optimization.images_added",
+    targetType: "optimization_opportunity",
+    targetId: input.opportunityId,
+    metadata: { commit: commit.url, slug: plan.slug, images: made.length },
+  });
+  return {
+    commitUrl: commit.url,
+    url: `${site.siteUrl}/blog/${plan.slug}`,
+    images: made.map((item) => ({
+      key: item.image.key,
+      alt: item.image.alt,
+      url: item.source?.startsWith("/")
+        ? `${site.siteUrl}${item.source}`
+        : (item.source ?? ""),
+      generator: item.generator,
+    })),
+  };
+}

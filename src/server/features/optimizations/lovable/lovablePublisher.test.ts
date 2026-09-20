@@ -32,7 +32,7 @@ vi.mock(
 vi.mock("./blogImages", () => ({ generateBlogImage: generateMock }));
 
 import { planPost } from "./lovablePost";
-import { pushToLovable } from "./lovablePublisher";
+import { addImagesToPost, pushToLovable } from "./lovablePublisher";
 
 const site = {
   token: "t",
@@ -121,5 +121,55 @@ describe("pushToLovable", () => {
       awaitingLovablePublish: true,
       url: `https://digitalurgency.com.au/blog/${plan?.slug}`,
     });
+  });
+});
+
+describe("addImagesToPost", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("writes the pictures and the post that uses them", async () => {
+    if (!plan) throw new Error("plan expected");
+    generateMock.mockResolvedValue({
+      bytes: new Uint8Array([1]),
+      extension: "webp",
+      generator: "openai:gpt-image-1",
+    });
+    const writes: string[] = [];
+    const result = await addImagesToPost({
+      organizationId: "org",
+      userId: "u",
+      opportunityId: "opp",
+      site,
+      plan,
+      keyword: "local seo tradies",
+      today: "2026-09-21",
+      fetcher: github(writes),
+    });
+    // The hero and the post file, in one commit.
+    expect(writes.filter((url) => url.endsWith("/git/blobs"))).toHaveLength(2);
+    expect(result.images[0]).toMatchObject({
+      key: "hero",
+      alt: "Local SEO for Tradies",
+    });
+    expect(result.url).toBe(`https://digitalurgency.com.au/blog/${plan.slug}`);
+  });
+
+  it("says why when no picture could be made, and commits nothing", async () => {
+    if (!plan) throw new Error("plan expected");
+    generateMock.mockRejectedValue(new Error("quota exceeded"));
+    const writes: string[] = [];
+    await expect(
+      addImagesToPost({
+        organizationId: "org",
+        userId: "u",
+        opportunityId: "opp",
+        site,
+        plan,
+        keyword: "local seo tradies",
+        today: "2026-09-21",
+        fetcher: github(writes),
+      }),
+    ).rejects.toThrow("quota exceeded");
+    expect(writes).toEqual([]);
   });
 });

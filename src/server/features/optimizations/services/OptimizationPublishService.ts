@@ -10,11 +10,13 @@ import { OptimizationRepository as Repo } from "../repositories/OptimizationRepo
 import { canTransition } from "../stateMachine";
 import { imageModelConfigured } from "../lovable/blogImages";
 import {
+  addImagesToPost,
   lovableFor,
   planForOpportunity,
   pushToLovable,
   type LovableSite,
 } from "../lovable/lovablePublisher";
+import { repositoryName } from "../lovable/githubRepo";
 import { articleFromDraft } from "../wordpress/wordpressArticle";
 import {
   publishToWordpress,
@@ -201,4 +203,76 @@ async function publish(
   }
 }
 
-export const OptimizationPublishService = { publish, destination };
+/**
+ * Adds pictures to an article that already went out without them, and
+ * rewrites the live post to use them. Only for a published post on a
+ * Lovable site: everything else has nothing to add images to.
+ */
+async function addImages(
+  organizationId: string,
+  userId: string,
+  opportunityId: string,
+) {
+  const row = await Repo.getById(organizationId, opportunityId);
+  if (!row) throw new AppError("NOT_FOUND", "Opportunity not found.");
+  if (row.status !== "published") {
+    throw new AppError(
+      "VALIDATION_ERROR",
+      "Only a published article can have images added to it.",
+    );
+  }
+  const site = await lovableFor(organizationId);
+  if (!site) {
+    throw new AppError(
+      "VALIDATION_ERROR",
+      "Connect this project's Lovable site in Integrations first.",
+    );
+  }
+  if (!(await imageModelConfigured())) {
+    throw new AppError(
+      "VALIDATION_ERROR",
+      "No image model is set up on the server yet. Add OPENAI_API_KEY or GEMINI_API_KEY.",
+    );
+  }
+  const plan = planForOpportunity(row, site);
+  if (!plan) {
+    throw new AppError(
+      "VALIDATION_ERROR",
+      "This article has no draft to read.",
+    );
+  }
+  try {
+    const result = await addImagesToPost({
+      organizationId,
+      userId,
+      opportunityId,
+      site,
+      plan,
+      keyword: row.keyword,
+      today: new Date().toISOString().slice(0, 10),
+    });
+    // What the Publish tab shows is replaced, not appended to: the newest
+    // commit is where this post now stands.
+    await Repo.update(organizationId, opportunityId, {
+      publishError: null,
+      cmsTargetJson: JSON.stringify({
+        kind: "lovable",
+        url: result.url,
+        awaitingLovablePublish: true,
+        repository: repositoryName(site.repository),
+        commitUrl: result.commitUrl,
+        updatedExisting: true,
+        images: result.images,
+        skippedImages: [],
+        imageProblem: null,
+      }),
+    });
+    return result;
+  } catch (error) {
+    const reason =
+      error instanceof Error ? error.message : "The images could not be made.";
+    throw new AppError("VALIDATION_ERROR", reason);
+  }
+}
+
+export const OptimizationPublishService = { publish, destination, addImages };

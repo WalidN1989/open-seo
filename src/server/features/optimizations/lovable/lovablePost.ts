@@ -197,7 +197,12 @@ export function renderPost(input: {
     category: input.category ?? "Insights",
     author: "DigitalUrgency Team",
     ...(hero
-      ? { heroImage: hero.startsWith("/") ? `${origin}${hero}` : hero }
+      ? {
+          heroImage: hero.startsWith("/") ? `${origin}${hero}` : hero,
+          // What the picture shows, for search engines and for anyone whose
+          // browser cannot load it. The site falls back to the title.
+          heroImageAlt: alts.get("hero") ?? plan.title,
+        }
       : {}),
     html: markdownToHtml(markdown),
     keyword: input.keyword,

@@ -1,4 +1,4 @@
-import { ExternalLink, Send } from "lucide-react";
+import { ExternalLink, ImagePlus, Send } from "lucide-react";
 import { getStandardErrorMessage } from "@/client/lib/error-messages";
 import { readDraftImages, readStringList, readText, type Json } from "./read";
 
@@ -17,6 +17,7 @@ export function PublishStatus({
   busy,
   error,
   onPublish,
+  onAddImages,
 }: {
   status: string;
   approvedAt: string | null;
@@ -27,12 +28,20 @@ export function PublishStatus({
   busy: boolean;
   error: unknown;
   onPublish: () => void;
+  /** Make the pictures for an article that went out without them. */
+  onAddImages?: { run: () => void; busy: boolean; error: unknown };
 }) {
   const url = readText(cmsTarget, "url");
   const lovable =
     kind === "lovable" || readText(cmsTarget, "kind") === "lovable";
   if (status === "published" && lovable) {
-    return <SentToLovable cmsTarget={cmsTarget} url={url} />;
+    return (
+      <SentToLovable
+        cmsTarget={cmsTarget}
+        url={url}
+        onAddImages={onAddImages}
+      />
+    );
   }
   if (status === "published") {
     return (
@@ -103,9 +112,11 @@ export function PublishStatus({
 function SentToLovable({
   cmsTarget,
   url,
+  onAddImages,
 }: {
   cmsTarget: Json;
   url: string | null;
+  onAddImages?: { run: () => void; busy: boolean; error: unknown };
 }) {
   const commitUrl = readText(cmsTarget, "commitUrl");
   const images = readDraftImages(cmsTarget);
@@ -148,6 +159,41 @@ function SentToLovable({
               </figcaption>
             </figure>
           ))}
+        </div>
+      ) : null}
+      {onAddImages && images.length === 0 ? (
+        <div className="space-y-2 rounded-lg border border-base-300 p-3">
+          <p className="text-sm">
+            This article went out without pictures
+            {readText(cmsTarget, "imageProblem")
+              ? `: ${readText(cmsTarget, "imageProblem")}`
+              : "."}
+          </p>
+          {onAddImages.error ? (
+            <div className="alert alert-error text-sm">
+              {getStandardErrorMessage(
+                onAddImages.error,
+                "The images could not be made.",
+              )}
+            </div>
+          ) : null}
+          <button
+            type="button"
+            className="btn btn-outline btn-sm"
+            disabled={onAddImages.busy}
+            onClick={onAddImages.run}
+          >
+            {onAddImages.busy ? (
+              <span className="loading loading-spinner loading-xs" />
+            ) : (
+              <ImagePlus className="size-4" />
+            )}
+            Generate images for this post
+          </button>
+          <p className="text-xs text-base-content/50">
+            It writes them into the same post, with alt text, and you publish
+            again in Lovable.
+          </p>
         </div>
       ) : null}
       <p className="text-xs text-base-content/50">

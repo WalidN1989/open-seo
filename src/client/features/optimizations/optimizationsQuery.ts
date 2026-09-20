@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   addOptimizationComment,
   approveOptimizationOpportunity,
+  addOptimizationImages,
   publishOptimizationOpportunity,
   getOptimizationOpportunity,
   listOptimizationOpportunities,
@@ -135,6 +136,13 @@ export function useSubmitForReview(projectId: string) {
 export function useApprove(projectId: string) {
   return useDecision(projectId, (opportunityId: string) =>
     approveOptimizationOpportunity({ data: { projectId, opportunityId } }),
+  );
+}
+
+/** Pictures for an article that is already live. */
+export function useAddImages(projectId: string) {
+  return useDecision<string>(projectId, (opportunityId) =>
+    addOptimizationImages({ data: { projectId, opportunityId } }),
   );
 }
 

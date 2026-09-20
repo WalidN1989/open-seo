@@ -9,6 +9,7 @@ import {
   useAddComment,
   useApprove,
   useOpportunity,
+  useAddImages,
   usePublish,
   useReject,
   useRequestChanges,
@@ -49,6 +50,7 @@ export function OpportunityDetail({
   const requestChanges = useRequestChanges(projectId);
   const addComment = useAddComment(projectId);
   const publish = usePublish(projectId);
+  const addImages = useAddImages(projectId);
   const { data: session } = useSession();
   // Captured once per render rather than per row, so every relative time in
   // the thread is measured from the same instant.
@@ -294,6 +296,11 @@ export function OpportunityDetail({
               busy={busy}
               error={publish.error}
               onPublish={() => publish.mutate(opportunityId)}
+              onAddImages={{
+                run: () => addImages.mutate(opportunityId),
+                busy: addImages.isPending,
+                error: addImages.error,
+              }}
             />
 
             {comments.length ? (

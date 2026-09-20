@@ -99,3 +99,19 @@ export const rejectOptimizationOpportunity = createServerFn({ method: "POST" })
   .handler(({ data, context }) =>
     OptimizationService.reject(context.organizationId, data.opportunityId),
   );
+
+/**
+ * Generates images for an article that is already live and rewrites the post
+ * to use them. A person in the browser asks for this; it spends whatever the
+ * image model costs, so no agent reaches it.
+ */
+export const addOptimizationImages = createServerFn({ method: "POST" })
+  .middleware(requireProjectContext)
+  .validator(decisionSchema)
+  .handler(({ data, context }) =>
+    OptimizationPublishService.addImages(
+      context.organizationId,
+      context.userId,
+      data.opportunityId,
+    ),
+  );
