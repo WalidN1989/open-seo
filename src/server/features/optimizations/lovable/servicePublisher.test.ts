@@ -40,9 +40,21 @@ const site = {
 };
 
 /** GitHub with the services file on it, accepting every write. */
+function urlOf(input: RequestInfo | URL) {
+  return typeof input === "string"
+    ? input
+    : input instanceof URL
+      ? input.href
+      : input.url;
+}
+
+function bodyText(body: BodyInit | null | undefined) {
+  return typeof body === "string" ? body : "{}";
+}
+
 function github(written: string[], file = FILE) {
   return async (input: RequestInfo | URL, init?: RequestInit) => {
-    const url = typeof input === "string" ? input : String(input);
+    const url = urlOf(input);
     if (url.includes("/contents/src/data/services.ts")) {
       return Response.json({ content: btoa(file) });
     }
@@ -51,8 +63,10 @@ function github(written: string[], file = FILE) {
     if (url.endsWith("/git/commits/h"))
       return Response.json({ sha: "h", tree: { sha: "t0" } });
     if (url.endsWith("/git/blobs")) {
-      const body: unknown = JSON.parse(String(init?.body ?? "{}"));
-      written.push(String(Reflect.get(body as object, "content")));
+      const body: unknown = JSON.parse(bodyText(init?.body));
+      const content: unknown =
+        body && typeof body === "object" ? Reflect.get(body, "content") : null;
+      written.push(typeof content === "string" ? content : "");
       return Response.json({ sha: "b" });
     }
     if (url.endsWith("/git/trees")) return Response.json({ sha: "t1" });
