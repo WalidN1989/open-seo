@@ -8,7 +8,9 @@ import {
   listCountableProducts,
   publishInventoryAudit,
   recordInventoryAuditCount,
+  submitInventoryAudit,
 } from "@/serverFunctions/commerce";
+import { getBusinessModuleAccess } from "@/serverFunctions/business-modules";
 import { getStandardErrorMessage } from "@/client/lib/error-messages";
 import {
   countedLines,
@@ -123,6 +125,26 @@ export function StockTakeTab() {
     onError: (error) => toast.error(getStandardErrorMessage(error)),
   });
 
+  // Whoever may publish sees Publish; whoever may only count sees Submit.
+  const access = useQuery({
+    queryKey: ["business-modules", "access"],
+    queryFn: () => getBusinessModuleAccess(),
+    staleTime: 5 * 60_000,
+  });
+  const mayPublish =
+    access.data?.find((module) => module.key === "crm")?.permission === "admin";
+
+  const submit = useMutation({
+    mutationFn: (auditId: string) =>
+      submitInventoryAudit({ data: { auditId } }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["commerce"] });
+      setSession(null);
+      toast.success("Sent to the owner to review");
+    },
+    onError: (error) => toast.error(getStandardErrorMessage(error)),
+  });
+
   const publish = useMutation({
     mutationFn: (auditId: string) =>
       publishInventoryAudit({ data: { auditId } }),
@@ -170,7 +192,7 @@ export function StockTakeTab() {
   if (!session) {
     return (
       <form
-        className="flex flex-wrap items-end gap-2 rounded-xl border border-base-300 p-4"
+        className="space-y-3 rounded-xl border border-base-300 p-4"
         onSubmit={(event) => {
           event.preventDefault();
           const chosen =
@@ -183,21 +205,25 @@ export function StockTakeTab() {
           start.mutate(chosen);
         }}
       >
-        <label className="form-control">
-          <span className="mb-1 text-sm font-medium">Start a stock take</span>
+        <h2 className="flex items-center gap-2 font-semibold">
+          <Barcode className="size-4 text-base-content/60" /> Stock take — scan
+          and count
+        </h2>
+        <div className="flex flex-wrap items-center gap-2">
           <input
-            className="input input-bordered input-sm w-72"
-            placeholder="e.g. September count"
+            className="input input-bordered flex-1 sm:min-w-80"
+            placeholder="Name this count, e.g. September count"
             value={name}
             onChange={(event) => setName(event.target.value)}
           />
-        </label>
-        <button className="btn btn-primary btn-sm" disabled={start.isPending}>
-          <Play className="size-4" /> Start
-        </button>
-        <p className="w-full text-sm text-base-content/60">
-          Scanning works without a connection. Counts are kept on this device
-          and sent when it is back.
+          <button className="btn btn-primary" disabled={start.isPending}>
+            <Play className="size-4" /> Start new
+          </button>
+        </div>
+        <p className="text-sm text-base-content/60">
+          Scanning works without a connection, and a count can be left and
+          picked up later. Counts are kept on this device and sent when it is
+          back online.
         </p>
       </form>
     );
@@ -238,7 +264,10 @@ export function StockTakeTab() {
         <button
           className="btn btn-primary btn-sm"
           disabled={
-            publish.isPending || lines.length === 0 || totals.unsent > 0
+            publish.isPending ||
+            submit.isPending ||
+            lines.length === 0 ||
+            totals.unsent > 0
           }
           title={
             totals.unsent > 0
@@ -246,12 +275,16 @@ export function StockTakeTab() {
               : undefined
           }
           onClick={() => {
+            if (!mayPublish) {
+              submit.mutate(session.auditId);
+              return;
+            }
             if (window.confirm("Update stock to the counted quantities?")) {
               publish.mutate(session.auditId);
             }
           }}
         >
-          Publish &amp; update stock
+          {mayPublish ? "Publish & update stock" : "Submit for review"}
         </button>
       </div>
 

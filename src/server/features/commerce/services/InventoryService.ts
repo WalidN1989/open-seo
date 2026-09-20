@@ -172,13 +172,16 @@ async function publishAudit(
   userId: string,
   auditId: string,
 ) {
+  // Counting is one job and approving the result is another: publishing
+  // moves real stock, so it takes the higher permission — which the
+  // workspace owner has by being the owner.
   await BusinessModuleService.requireAccess(
     organizationId,
     userId,
     "crm",
-    "manage",
+    "admin",
   );
-  const audit = await requireDraftAudit(organizationId, auditId);
+  const audit = await requireCountedAudit(organizationId, auditId);
   const items = await InventoryRepository.listAuditItems(
     organizationId,
     auditId,
@@ -226,11 +229,13 @@ async function revertAudit(
   userId: string,
   auditId: string,
 ) {
+  // Undoing a published count moves stock too, so it takes the same
+  // permission as publishing it did.
   await BusinessModuleService.requireAccess(
     organizationId,
     userId,
     "crm",
-    "manage",
+    "admin",
   );
   const audit = await InventoryRepository.getAudit(organizationId, auditId);
   if (!audit) throw new AppError("NOT_FOUND");
@@ -276,6 +281,101 @@ async function revertAudit(
     "reverted",
   );
   return { audit: reverted, movementCount: movements.length };
+}
+
+/**
+ * Hands a count to whoever may publish it, and tells them it is waiting.
+ *
+ * The person counting cannot change stock; they finish the count and submit
+ * it. If what they counted disagrees with stock, the owner is emailed the
+ * size of the difference, because that is the part worth looking at.
+ */
+async function submitAudit(
+  organizationId: string,
+  userId: string,
+  auditId: string,
+) {
+  await BusinessModuleService.requireAccess(
+    organizationId,
+    userId,
+    "crm",
+    "manage",
+  );
+  const audit = await requireDraftAudit(organizationId, auditId);
+  const items = await InventoryRepository.listAuditItems(
+    organizationId,
+    auditId,
+  );
+  const discrepancies = items.filter(
+    ({ item }) => item.countedQuantity !== item.expectedQuantity,
+  );
+  const submitted = await InventoryRepository.setAuditStatus(
+    organizationId,
+    audit.id,
+    "submitted",
+  );
+  // Awaited, not fired and forgotten: an email the runtime cancels halfway
+  // is an owner who never hears that a count is waiting. A failure to send
+  // does not undo the submission.
+  await tellTheOwner(organizationId, userId, {
+    name: audit.name,
+    counted: items.length,
+    discrepancies: discrepancies.length,
+  }).catch((error: unknown) =>
+    console.error("[inventory] could not tell the owner", error),
+  );
+  return submitted;
+}
+
+async function tellTheOwner(
+  organizationId: string,
+  submittedByUserId: string,
+  count: { name: string; counted: number; discrepancies: number },
+) {
+  // Imported here rather than at the top: the mail and env modules drag the
+  // worker runtime in with them, and counting stock must not depend on it.
+  const [
+    { BusinessModuleRepository },
+    { sendClientActionEmail },
+    { getOptionalEnvValue },
+  ] = await Promise.all([
+    import("@/server/features/business-modules/repositories/BusinessModuleRepository"),
+    import("@/server/email/transactional"),
+    import("@/server/lib/runtime-env"),
+  ]);
+  const members = await BusinessModuleRepository.listMembers(organizationId);
+  const owner = members.find((row) => row.role === "owner") ?? null;
+  // Nobody to tell, or the owner counted it themselves: no email.
+  if (!owner?.email || owner.userId === submittedByUserId) return;
+  const counter = members.find((row) => row.userId === submittedByUserId);
+  const baseUrl = await getOptionalEnvValue("BETTER_AUTH_URL");
+  await sendClientActionEmail({
+    email: owner.email,
+    subject: `Stock count ready to review: ${count.name}`,
+    heading: "A stock count is waiting for you",
+    body: [
+      `${counter?.name ?? "Someone"} finished counting "${count.name}".`,
+      count.discrepancies > 0
+        ? `${count.discrepancies} of ${count.counted} products came out different from what stock says. Nothing has changed yet — stock only moves when you publish it.`
+        : `All ${count.counted} products matched what stock says. Nothing has changed yet — stock only moves when you publish it.`,
+    ],
+    buttonLabel: "Review the count",
+    actionUrl: `${baseUrl ?? "https://seo.digitalurgency.com.au"}/modules/crm/inventory`,
+    footer: "Digital Urgency · Inventory",
+  });
+}
+
+/** A count that may still be published: freshly counted, or submitted for review. */
+async function requireCountedAudit(organizationId: string, auditId: string) {
+  const audit = await InventoryRepository.getAudit(organizationId, auditId);
+  if (!audit) throw new AppError("NOT_FOUND");
+  if (audit.status !== "draft" && audit.status !== "submitted") {
+    throw new AppError(
+      "VALIDATION_ERROR",
+      "This audit has already been published.",
+    );
+  }
+  return audit;
 }
 
 async function requireDraftAudit(organizationId: string, auditId: string) {
@@ -330,6 +430,7 @@ async function assertWouldNotGoNegative(
 }
 
 export const InventoryService = {
+  submitAudit,
   countableProducts,
   getStockOverview,
   listMovements,

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { TriangleAlert } from "lucide-react";
 import { getInventoryOverview } from "@/serverFunctions/commerce";
+import { ArrowLeftRight, Barcode, Boxes, ClipboardList } from "lucide-react";
 import { StockTakeTab } from "./StockTakeTab";
 import { AuditsTab } from "./InventoryAuditsTab";
 import {
@@ -13,7 +14,7 @@ import {
 type Tab = "stock" | "count" | "audits" | "movements";
 
 export function CrmInventoryView() {
-  const [tab, setTab] = useState<Tab>("stock");
+  const [tab, setTab] = useState<Tab>("count");
 
   return (
     <div className="space-y-6">
@@ -27,30 +28,31 @@ export function CrmInventoryView() {
       <div role="tablist" className="tabs tabs-border">
         <button
           role="tab"
-          className={`tab ${tab === "stock" ? "tab-active" : ""}`}
-          onClick={() => setTab("stock")}
-        >
-          Stock
-        </button>
-        <button
-          role="tab"
-          className={`tab ${tab === "count" ? "tab-active" : ""}`}
+          className={`tab gap-2 ${tab === "count" ? "tab-active" : ""}`}
           onClick={() => setTab("count")}
         >
-          Stock take
-        </button>
-        <button
-          className={`tab ${tab === "audits" ? "tab-active" : ""}`}
-          onClick={() => setTab("audits")}
-        >
-          Audits
+          <Barcode className="size-4" /> Stock take
         </button>
         <button
           role="tab"
-          className={`tab ${tab === "movements" ? "tab-active" : ""}`}
+          className={`tab gap-2 ${tab === "audits" ? "tab-active" : ""}`}
+          onClick={() => setTab("audits")}
+        >
+          <ClipboardList className="size-4" /> Inventory audits
+        </button>
+        <button
+          role="tab"
+          className={`tab gap-2 ${tab === "stock" ? "tab-active" : ""}`}
+          onClick={() => setTab("stock")}
+        >
+          <Boxes className="size-4" /> Stock
+        </button>
+        <button
+          role="tab"
+          className={`tab gap-2 ${tab === "movements" ? "tab-active" : ""}`}
           onClick={() => setTab("movements")}
         >
-          Movements
+          <ArrowLeftRight className="size-4" /> Movements
         </button>
       </div>
 

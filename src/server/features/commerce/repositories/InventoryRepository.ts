@@ -288,7 +288,7 @@ async function upsertAuditItem(
 async function setAuditStatus(
   organizationId: string,
   auditId: string,
-  status: "draft" | "published" | "reverted",
+  status: "draft" | "submitted" | "published" | "reverted",
 ) {
   const now = new Date().toISOString();
   const [row] = await db

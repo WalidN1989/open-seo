@@ -1308,7 +1308,11 @@ export const commerceInventoryAudits = pgTable(
     note: text("note"),
     // A published audit has written its movements; reverting writes
     // compensating ones and never deletes them.
-    status: text("status", { enum: ["draft", "published", "reverted"] })
+    // A counted audit waits in "submitted" until whoever may publish has
+    // looked at it: counting and publishing are different jobs.
+    status: text("status", {
+      enum: ["draft", "submitted", "published", "reverted"],
+    })
       .notNull()
       .default("draft"),
     createdByUserId: text("created_by_user_id"),

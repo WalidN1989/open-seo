@@ -8,9 +8,11 @@ import {
   listCommerceProducts,
   listInventoryAudits,
   publishInventoryAudit,
+  submitInventoryAudit,
   recordInventoryAuditCount,
   revertInventoryAudit,
 } from "@/serverFunctions/commerce";
+import { getBusinessModuleAccess } from "@/serverFunctions/business-modules";
 import { getStandardErrorMessage } from "@/client/lib/error-messages";
 import {
   ErrorState,
@@ -128,11 +130,28 @@ export function AuditsTab() {
 
 function AuditDetail({ auditId, status }: { auditId: string; status: string }) {
   const queryClient = useQueryClient();
+  // Publishing moves stock, so it is offered only to whoever may do it.
+  const access = useQuery({
+    queryKey: ["business-modules", "access"],
+    queryFn: () => getBusinessModuleAccess(),
+    staleTime: 5 * 60_000,
+  });
+  const mayPublish =
+    access.data?.find((module) => module.key === "crm")?.permission === "admin";
   const products = useQuery({
     queryKey: ["commerce", "products", ""],
     queryFn: () => listCommerceProducts({ data: { limit: 200 } }),
     // Only needed while counting into a draft.
     enabled: status === "draft",
+  });
+
+  const submit = useMutation({
+    mutationFn: () => submitInventoryAudit({ data: { auditId } }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: AUDITS_KEY });
+      toast.success("Sent to the owner to review");
+    },
+    onError: (error) => toast.error(getStandardErrorMessage(error)),
   });
 
   const detail = useQuery({
@@ -275,7 +294,16 @@ function AuditDetail({ auditId, status }: { auditId: string; status: string }) {
       ) : null}
 
       <div className="flex justify-end gap-2">
-        {status === "draft" ? (
+        {status === "draft" && !mayPublish ? (
+          <button
+            className="btn btn-primary btn-sm"
+            disabled={submit.isPending}
+            onClick={() => submit.mutate()}
+          >
+            Submit for review
+          </button>
+        ) : null}
+        {(status === "draft" || status === "submitted") && mayPublish ? (
           <button
             className="btn btn-primary btn-sm"
             disabled={publish.isPending}
@@ -283,6 +311,11 @@ function AuditDetail({ auditId, status }: { auditId: string; status: string }) {
           >
             Publish audit
           </button>
+        ) : null}
+        {status === "submitted" && !mayPublish ? (
+          <p className="self-center text-sm text-base-content/60">
+            Waiting for the owner to review it.
+          </p>
         ) : null}
         {status === "published" ? (
           <button

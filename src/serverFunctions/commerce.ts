@@ -283,3 +283,15 @@ export const listCountableProducts = createServerFn({ method: "GET" })
   .handler(({ context }) =>
     InventoryService.countableProducts(context.organizationId, context.userId),
   );
+
+/** Hands a finished count to whoever may publish it. */
+export const submitInventoryAudit = createServerFn({ method: "POST" })
+  .middleware(requireAuthenticatedContext)
+  .validator(auditIdSchema)
+  .handler(({ context, data }) =>
+    InventoryService.submitAudit(
+      context.organizationId,
+      context.userId,
+      data.auditId,
+    ),
+  );
