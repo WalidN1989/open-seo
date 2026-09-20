@@ -3,6 +3,7 @@ import { Link, useRouter } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Check,
+  BadgeCheck,
   ChevronsUpDown,
   FolderCog,
   Plus,
@@ -13,6 +14,7 @@ import { getProjects, setActiveProject } from "@/serverFunctions/projects";
 import { resetOrganizationScopedQueries } from "@/client/lib/organization-scoped-queries";
 import {
   isProjectAtAddress,
+  isPreferredAgencyProject,
   projectAddress,
   setLastProjectId,
 } from "@/client/lib/active-project";
@@ -79,7 +81,10 @@ export function ProjectSwitcher({
     queryKey: ["projects"],
     queryFn: () => getProjects(),
   });
-  const projects = projectsQuery.data ?? [];
+  const projects = [...(projectsQuery.data ?? [])].sort(
+    (a, b) =>
+      Number(isPreferredAgencyProject(b)) - Number(isPreferredAgencyProject(a)),
+  );
   const isActiveProject = (project: { id: string; slug?: string | null }) =>
     isProjectAtAddress(project, activeProjectId);
 
@@ -381,7 +386,15 @@ export function ProjectSwitcher({
                       }
                     >
                       <span className="flex min-w-0 flex-1 flex-col">
-                        <span className="truncate">{project.name}</span>
+                        <span className="flex min-w-0 items-center gap-1">
+                          <span className="truncate">{project.name}</span>
+                          {isPreferredAgencyProject(project) ? (
+                            <BadgeCheck
+                              aria-label="Preferred project"
+                              className="size-4 shrink-0 text-sky-500"
+                            />
+                          ) : null}
+                        </span>
                         {project.domain ? (
                           <span className="truncate text-xs text-base-content/50">
                             {project.domain}

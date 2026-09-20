@@ -6,6 +6,7 @@ import {
   clearLastProjectId,
   getLastProjectId,
   projectAddress,
+  isPreferredAgencyProject,
 } from "@/client/lib/active-project";
 import {
   getErrorCode,
@@ -51,7 +52,11 @@ function IndexRedirect() {
 
     void navigate({
       to: "/p/$projectId",
-      params: { projectId: projectAddress(target ?? data[0]) },
+      params: {
+        projectId: projectAddress(
+          data.find(isPreferredAgencyProject) ?? target ?? data[0],
+        ),
+      },
     });
   }, [access, accessLoading, data, navigate]);
 
