@@ -62,6 +62,7 @@ import { speakWithDeepgram, transcribeWithDeepgram } from "../providers/voice";
 import { buildVoiceAgentContext } from "./VoiceAgentContext";
 import { learnFromConversation, rememberNow } from "./VoiceLearningService";
 import { asksToRemember } from "@/server/features/voice/remember";
+import { isFarewell } from "@/server/features/voice/remember";
 import {
   runApifyActor,
   scrapeWithFirecrawl,
@@ -694,6 +695,9 @@ async function startVoiceConversation(
     organizationId,
     input,
   );
+  // While the greeting plays, wake the database and read the workspace, so
+  // the first question is answered instead of waited on.
+  waitUntil(VoiceAnalystService.prewarm(organizationId, userId));
   await emitBusinessEvent(organizationId, "voice.conversation.started", {
     conversationId: conversation.id,
     agentConfigId: conversation.agentConfigId,
@@ -808,12 +812,14 @@ async function transcribeVoiceAudio(
       "This voice agent is not configured for Deepgram transcription.",
     );
   }
+  const startedAt = Date.now();
   const result = await transcribeWithDeepgram(
     agent.credentialReference,
     input.audioBase64,
     input.mimeType,
     input.language,
   );
+  const heardAt = Date.now();
   // Nothing was said. Save no turn and generate no reply: an empty message
   // would pollute the transcript and the history the agent learns from.
   if (!result.transcript) return { ...result, heardNothing: true as const };
@@ -861,6 +867,7 @@ async function transcribeVoiceAudio(
         businessContext,
         analystContext,
       });
+      const answeredAt = Date.now();
       const speech = await speakWithDeepgram(
         agent.credentialReference,
         generated.reply
@@ -873,7 +880,17 @@ async function transcribeVoiceAudio(
         speaker: "agent",
         transcript: generated.reply,
       });
-      return { ...result, ...speech, reply: generated.reply };
+      // One line per turn, so a slow reply can be blamed on the right step.
+      console.info(
+        `[voice] turn: heard ${heardAt - startedAt}ms, answered ${answeredAt - heardAt}ms, spoke ${Date.now() - answeredAt}ms`,
+      );
+      // "Thanks, that's all" ends the conversation once the reply has played.
+      return {
+        ...result,
+        ...speech,
+        reply: generated.reply,
+        endsConversation: isFarewell(result.transcript),
+      };
     } catch (error) {
       console.error("Voice agent response failed after transcription", error);
       return {

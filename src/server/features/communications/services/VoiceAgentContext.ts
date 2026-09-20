@@ -1,3 +1,4 @@
+import { cached } from "@/server/features/voice/cache";
 import { and, count, desc, eq, like, or, sql } from "drizzle-orm";
 import { db } from "@/db";
 import {
@@ -18,6 +19,25 @@ const platformKnowledge = [
 ].join("\n");
 
 export async function buildVoiceAgentContext(
+  organizationId: string,
+  agentConfigId: string,
+  question: string,
+) {
+  const terms = question
+    .toLowerCase()
+    .split(/[^\p{L}\p{N}]+/u)
+    .filter((term) => term.length >= 3)
+    .slice(0, 8)
+    .toSorted()
+    .join(",");
+  // Two questions about the same things read the workspace once.
+  return cached(
+    `voice:context:${organizationId}:${agentConfigId}:${terms}`,
+    () => readVoiceAgentContext(organizationId, agentConfigId, question),
+  );
+}
+
+async function readVoiceAgentContext(
   organizationId: string,
   agentConfigId: string,
   question: string,

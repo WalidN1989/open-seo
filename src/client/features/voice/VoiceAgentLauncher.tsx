@@ -161,7 +161,12 @@ export function VoiceAgentLauncher() {
 
   // Plays one spoken reply. Talking over it stops it at once and becomes the
   // next turn; when it finishes, the microphone opens again.
-  const speak = async (audioBase64: string, mimeType: string) => {
+  const speak = async (
+    audioBase64: string,
+    mimeType: string,
+    /** A goodbye: hang up once it has finished playing. */
+    thenEnd = false,
+  ) => {
     const audio = new Audio(`data:${mimeType};base64,${audioBase64}`);
     stopReply();
     setSpeaking(true);
@@ -178,6 +183,10 @@ export function VoiceAgentLauncher() {
     audio.addEventListener("ended", () => {
       if (replyRef.current?.audio !== audio) return;
       stopReply();
+      if (thenEnd) {
+        void endConversation();
+        return;
+      }
       if (continuousRef.current) void beginListening();
     });
     await audio.play().catch(() => {
@@ -236,7 +245,11 @@ export function VoiceAgentLauncher() {
       }
       setStatus("Speaking…");
       if ("audioBase64" in result && result.audioBase64) {
-        await speak(result.audioBase64, result.mimeType);
+        await speak(
+          result.audioBase64,
+          result.mimeType,
+          Boolean("endsConversation" in result && result.endsConversation),
+        );
       } else if (continuousRef.current) {
         void beginListening();
       }
