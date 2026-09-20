@@ -5,6 +5,8 @@ import {
   Search,
   ShieldCheck,
   Sparkles,
+  Clock,
+  Globe,
 } from "lucide-react";
 import { OpportunityDetail } from "./OpportunityDetail";
 import {
@@ -53,6 +55,20 @@ function Chip({
   );
 }
 
+/** "20 Sep 2026, 2:45 pm" — the day and the hour, which is what is asked. */
+function when(value: string | null) {
+  if (!value) return null;
+  const at = new Date(value);
+  if (Number.isNaN(at.getTime())) return null;
+  return at.toLocaleString(undefined, {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
 function OpportunityCard({
   opportunity,
   onOpen,
@@ -67,9 +83,17 @@ function OpportunityCard({
       onClick={onOpen}
     >
       <div className="flex flex-wrap items-center gap-2">
-        <span className={`badge badge-sm ${STATUS_TONE[status]}`}>
-          {STATUS_LABEL[status]}
-        </span>
+        {status === "published" ? (
+          // Live on the site: the one state worth spotting from across the
+          // room, because it is the one that is already public.
+          <span className="badge badge-sm badge-error gap-1 font-medium">
+            <Globe className="size-3" /> Published
+          </span>
+        ) : (
+          <span className={`badge badge-sm ${STATUS_TONE[status]}`}>
+            {STATUS_LABEL[status]}
+          </span>
+        )}
         <span className="badge badge-sm badge-ghost">
           {TYPE_LABEL[opportunity.type] ?? opportunity.type}
         </span>
@@ -87,8 +111,15 @@ function OpportunityCard({
       <p className="mt-0.5 truncate text-sm text-base-content/60">
         {opportunity.targetUrl ?? opportunity.proposedPath ?? "New page"}
       </p>
-      <p className="mt-2 text-xs text-base-content/50">
-        {SOURCE_LABEL[opportunity.source] ?? opportunity.source}
+      <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-base-content/50">
+        <span>{SOURCE_LABEL[opportunity.source] ?? opportunity.source}</span>
+        <span aria-hidden="true">·</span>
+        <span className="flex items-center gap-1">
+          <Clock className="size-3" />
+          {opportunity.publishedAt
+            ? `Published ${when(opportunity.publishedAt)}`
+            : `Updated ${when(opportunity.updatedAt) ?? when(opportunity.createdAt)}`}
+        </span>
       </p>
     </button>
   );
