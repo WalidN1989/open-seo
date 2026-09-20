@@ -10,6 +10,7 @@ function urlOf(input: RequestInfo | URL) {
 }
 
 const refusing = async () => new Response("{}", { status: 401 });
+const refusing404 = async () => new Response("{}", { status: 404 });
 
 const target = {
   token: "t",
@@ -85,8 +86,7 @@ describe("checkRepository", () => {
   it("blames the token, not the blog, when GitHub says not found", async () => {
     // GitHub answers 404 for a repository a token may not see, which used to
     // read as "this site has no blog folder".
-    const fetcher = async () => new Response("{}", { status: 404 });
-    await expect(checkRepository(target, fetcher)).rejects.toThrow(
+    await expect(checkRepository(target, refusing404)).rejects.toThrow(
       "cannot see WalidN1989/sprout-reach-studio",
     );
   });
