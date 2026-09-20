@@ -1,5 +1,6 @@
 /* oxlint-disable max-lines-per-function */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import "./conversation-visuals.css";
 import { History, LoaderCircle, Mic, PhoneOff, Trash2, X } from "lucide-react";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { toast } from "sonner";
@@ -642,17 +643,35 @@ export function VoiceAgentLauncher() {
                 <Bubble key={message.id} message={message} />
               ))
             ) : (
-              <div className="grid h-full place-items-center gap-4 px-6 text-center">
-                <VoiceOrb state={orbState} level={level} size="lg" />
-                <p className="text-sm text-base-content/60">
-                  Allow microphone access and speak. Digital Urgency notices
-                  when you finish.
-                </p>
+              <div className="voice-welcome">
+                <div className="voice-welcome-glow">
+                  <VoiceOrb state={orbState} level={level} size="lg" />
+                </div>
+                <div>
+                  <p className="voice-welcome-eyebrow">
+                    DIGITAL URGENCY · VOICE
+                  </p>
+                  <h2>
+                    {speaking
+                      ? "I'm here with you"
+                      : listening
+                        ? "Go ahead, I'm listening"
+                        : "Let's talk"}
+                  </h2>
+                  <p className="voice-welcome-hint">
+                    {conversationId
+                      ? "Speak naturally. There's no need to press send."
+                      : "Tap the microphone to begin. Allow microphone access when prompted."}
+                  </p>
+                </div>
               </div>
             )}
           </div>
 
-          <footer className="flex items-center justify-center gap-3 px-4 pt-2 pb-5">
+          <footer className="voice-conversation-footer flex flex-col items-center justify-center gap-3 px-4 pt-2 pb-5">
+            {!showHistory && conversationId ? (
+              <VoiceWaveform state={orbState} level={level} />
+            ) : null}
             {!conversationId ? (
               <button
                 type="button"
@@ -713,6 +732,32 @@ export function VoiceAgentLauncher() {
         </span>
       </button>
     </>
+  );
+}
+
+function VoiceWaveform({
+  state,
+  level,
+}: {
+  state: "idle" | "live" | "listening" | "speaking";
+  level: number;
+}) {
+  const amplitude = Math.max(0, Math.min(1, level));
+  return (
+    <div className="voice-waveform" data-state={state} aria-hidden="true">
+      {Array.from({ length: 25 }, (_, index) => {
+        const envelope = Math.sin(((index + 1) / 26) * Math.PI);
+        return (
+          <span
+            key={index}
+            style={{
+              height: `${6 + envelope * (state === "speaking" ? 34 : amplitude * 42)}px`,
+              animationDelay: `${index * -0.09}s`,
+            }}
+          />
+        );
+      })}
+    </div>
   );
 }
 
