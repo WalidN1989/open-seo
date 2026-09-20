@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 type Patch = { status?: string; publishError?: string; cmsTargetJson?: string };
 
-const { updateMock, generateMock } = vi.hoisted(() => ({
+const { updateMock, generateMock, configuredMock } = vi.hoisted(() => ({
   updateMock:
     vi.fn<
       (
@@ -15,6 +15,7 @@ const { updateMock, generateMock } = vi.hoisted(() => ({
     vi.fn<
       () => Promise<{ bytes: Uint8Array; extension: string; generator: string }>
     >(),
+  configuredMock: vi.fn<() => Promise<boolean>>(),
 }));
 
 vi.mock("cloudflare:workers", () => ({ env: {}, waitUntil: vi.fn() }));
@@ -29,7 +30,10 @@ vi.mock(
   "@/server/features/business-modules/repositories/BusinessAuditRepository",
   () => ({ BusinessAuditRepository: { record: vi.fn() } }),
 );
-vi.mock("./blogImages", () => ({ generateBlogImage: generateMock }));
+vi.mock("./blogImages", () => ({
+  generateBlogImage: generateMock,
+  imageModelConfigured: configuredMock,
+}));
 
 import { planPost } from "./lovablePost";
 import { pushToLovable } from "./lovablePublisher";
@@ -91,6 +95,7 @@ describe("pushToLovable", () => {
   beforeEach(() => vi.clearAllMocks());
 
   it("sends nothing and marks the article failed when the hero cannot be made", async () => {
+    configuredMock.mockResolvedValue(true);
     generateMock.mockRejectedValue(new Error("quota exceeded"));
     const writes: string[] = [];
     await push(writes);
@@ -100,7 +105,20 @@ describe("pushToLovable", () => {
     expect(failed?.publishError).toContain("hero image");
   });
 
+  it("publishes the words when the deployment has no image model at all", async () => {
+    // Waiting for an image key is not a reason to sit on finished writing.
+    configuredMock.mockResolvedValue(false);
+    generateMock.mockRejectedValue(new Error("No image model is set up."));
+    const writes: string[] = [];
+    await push(writes);
+    const saved = updateMock.mock.calls.at(-1)?.[2];
+    expect(saved?.status).toBe("published");
+    // Just the post file: no image was made, so none was committed.
+    expect(writes.filter((url) => url.endsWith("/git/blobs"))).toHaveLength(1);
+  });
+
   it("commits the post and hero together and records where it went", async () => {
+    configuredMock.mockResolvedValue(true);
     generateMock.mockResolvedValue({
       bytes: new Uint8Array([1]),
       extension: "webp",

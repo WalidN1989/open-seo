@@ -4,7 +4,11 @@ import { integrationConnections } from "@/db/schema";
 import { BusinessAuditRepository } from "@/server/features/business-modules/repositories/BusinessAuditRepository";
 import { decryptCredentials } from "@/server/lib/connection-secrets";
 import { OptimizationRepository as Repo } from "../repositories/OptimizationRepository";
-import { generateBlogImage, type GeneratedImage } from "./blogImages";
+import {
+  generateBlogImage,
+  imageModelConfigured,
+  type GeneratedImage,
+} from "./blogImages";
 import {
   commitFiles,
   existingPaths,
@@ -197,8 +201,11 @@ export async function pushToLovable(input: {
       existingDate(site, plan.slug, fetcher),
     ]);
     const hero = outcomes.find((item) => item.image.key === "hero");
-    // No text-only posts: without its hero the article does not go.
-    if (!hero?.source) {
+    // A hero is wanted, not demanded. When the deployment has no image model
+    // at all, the words are worth more than the wait: the post goes without
+    // a picture and can be sent again once a key exists. A model that is
+    // configured and still fails is a real failure and stops the push.
+    if (!hero?.source && (await imageModelConfigured())) {
       throw new Error(
         `The hero image could not be made: ${hero?.error ?? "unknown error"}`,
       );
