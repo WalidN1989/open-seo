@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { commitFiles, repositoryName } from "./githubRepo";
+import { checkRepository, commitFiles, repositoryName } from "./githubRepo";
 
 function urlOf(input: RequestInfo | URL) {
   return typeof input === "string"
@@ -78,5 +78,34 @@ describe("commitFiles", () => {
     await expect(commitFiles(target, [], "m", refusing)).rejects.toThrow(
       "refused the token",
     );
+  });
+});
+
+describe("checkRepository", () => {
+  it("blames the token, not the blog, when GitHub says not found", async () => {
+    // GitHub answers 404 for a repository a token may not see, which used to
+    // read as "this site has no blog folder".
+    const fetcher = async () => new Response("{}", { status: 404 });
+    await expect(checkRepository(target, fetcher)).rejects.toThrow(
+      "cannot see WalidN1989/sprout-reach-studio",
+    );
+  });
+
+  it("reports a missing blog folder only when the repository is readable", async () => {
+    const fetcher = async (input: RequestInfo | URL) =>
+      urlOf(input).endsWith("/sprout-reach-studio")
+        ? Response.json({ name: "sprout-reach-studio" })
+        : new Response("{}", { status: 404 });
+    await expect(checkRepository(target, fetcher)).rejects.toThrow(
+      "no src/content/blog folder",
+    );
+  });
+
+  it("counts the posts already there", async () => {
+    const fetcher = async (input: RequestInfo | URL) =>
+      urlOf(input).endsWith("/sprout-reach-studio")
+        ? Response.json({ name: "sprout-reach-studio" })
+        : Response.json([{ path: "a.json" }, { path: "b.json" }]);
+    await expect(checkRepository(target, fetcher)).resolves.toBe(2);
   });
 });

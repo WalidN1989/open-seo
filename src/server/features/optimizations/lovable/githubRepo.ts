@@ -112,11 +112,26 @@ export async function existingPaths(
   return new Set(parsed.data.map((item) => item.path));
 }
 
-/** A cheap check that the token can see the repository and its blog. */
+/**
+ * A cheap check that the token can see the repository and its blog.
+ *
+ * The repository is asked for first, deliberately: GitHub answers "not
+ * found" both for a repository a token may not see and for a folder that is
+ * not there, and telling someone their blog folder is missing when the real
+ * problem is the token sends them looking in the wrong place.
+ */
 export async function checkRepository(
   target: RepoTarget,
   fetcher: typeof fetch = fetch,
 ) {
+  const { response } = await call(target, "", fetcher);
+  if (response.status === 404) {
+    throw new Error(
+      `The token cannot see ${repositoryName(target.repository)}. On GitHub, edit the token: under Repository access pick this repository, and under Permissions set Contents to Read and write.`,
+    );
+  }
+  if (!response.ok) throw refused(response.status, "read the repository");
+
   const blog = await existingPaths(target, "src/content/blog", fetcher);
   if (!blog.size) {
     throw new Error(
