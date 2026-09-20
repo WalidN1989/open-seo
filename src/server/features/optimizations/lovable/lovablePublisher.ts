@@ -4,11 +4,7 @@ import { integrationConnections } from "@/db/schema";
 import { BusinessAuditRepository } from "@/server/features/business-modules/repositories/BusinessAuditRepository";
 import { decryptCredentials } from "@/server/lib/connection-secrets";
 import { OptimizationRepository as Repo } from "../repositories/OptimizationRepository";
-import {
-  generateBlogImage,
-  imageModelConfigured,
-  type GeneratedImage,
-} from "./blogImages";
+import { generateBlogImage, type GeneratedImage } from "./blogImages";
 import {
   commitFiles,
   existingPaths,
@@ -200,16 +196,10 @@ export async function pushToLovable(input: {
       resolveImages(plan, site, fetcher),
       existingDate(site, plan.slug, fetcher),
     ]);
-    const hero = outcomes.find((item) => item.image.key === "hero");
-    // A hero is wanted, not demanded. When the deployment has no image model
-    // at all, the words are worth more than the wait: the post goes without
-    // a picture and can be sent again once a key exists. A model that is
-    // configured and still fails is a real failure and stops the push.
-    if (!hero?.source && (await imageModelConfigured())) {
-      throw new Error(
-        `The hero image could not be made: ${hero?.error ?? "unknown error"}`,
-      );
-    }
+    // A hero is wanted, never demanded. A quota-limited key, a model having
+    // a bad day, no key at all — none of that is a reason to sit on finished
+    // writing. The post goes, the reason is recorded, and sending it again
+    // once the key works adds the picture to the same post.
     const imageSources = Object.fromEntries(
       outcomes.flatMap((item) =>
         item.source ? [[item.image.key, item.source]] : [],
@@ -237,9 +227,8 @@ export async function pushToLovable(input: {
       `content(blog): ${updatedExisting ? "update" : "add"} ${plan.slug} from Open SEO ${input.opportunityId}`,
       fetcher,
     );
-    const skipped = outcomes
-      .filter((item) => !item.source)
-      .map((item) => item.image.key);
+    const skipped = outcomes.filter((item) => !item.source);
+    const imageProblem = skipped.find((item) => item.error)?.error ?? null;
     await Repo.update(input.organizationId, input.opportunityId, {
       status: "published",
       publishedAt: new Date().toISOString(),
@@ -265,12 +254,17 @@ export async function pushToLovable(input: {
               ]
             : [],
         ),
-        skippedImages: skipped,
+        skippedImages: skipped.map((item) => item.image.key),
+        // Why a picture is missing, in the model's own words, so "send again"
+        // is an informed decision rather than a guess.
+        imageProblem,
       }),
     });
     if (skipped.length) {
       console.warn(
-        `[lovable] ${plan.slug}: pushed without ${skipped.join(", ")}`,
+        `[lovable] ${plan.slug}: pushed without ${skipped
+          .map((item) => item.image.key)
+          .join(", ")}${imageProblem ? ` — ${imageProblem}` : ""}`,
       );
     }
     await BusinessAuditRepository.record({
