@@ -19,6 +19,8 @@ describe("discarding the previous client's cached answers", () => {
       [["voice", "workspace"], { messages: 11 }],
       [["crm", "workspace"], { contacts: 1 }],
       [["business-modules", "crm", "access"], { permission: "admin" }],
+      // Every screen that shows money reads this one.
+      [["business", "settings", "currency"], { currency: "AUD" }],
     ]);
 
     await resetOrganizationScopedQueries(queryClient);
@@ -30,6 +32,7 @@ describe("discarding the previous client's cached answers", () => {
       ["voice", "workspace"],
       ["crm", "workspace"],
       ["business-modules", "crm", "access"],
+      ["business", "settings", "currency"],
     ]) {
       expect(queryClient.getQueryData(key)).toBeUndefined();
     }
@@ -92,17 +95,19 @@ function sourceFiles(dir: string): string[] {
  * module cannot forget.
  */
 describe("every business module resets on a workspace switch", () => {
-  const dir = join(
-    process.cwd(),
-    "src",
-    "client",
-    "features",
-    "business-modules",
-  );
+  // The hooks folder is read too: the workspace currency is declared there,
+  // as a shared constant rather than inline, and it was missed on both counts
+  // — which is how one workspace's currency labelled another's prices.
+  const directories = [
+    join(process.cwd(), "src", "client", "features", "business-modules"),
+    join(process.cwd(), "src", "client", "hooks"),
+  ];
   const roots = new Set<string>();
-  for (const file of sourceFiles(dir)) {
+  for (const file of directories.flatMap(sourceFiles)) {
     const source = readFileSync(file, "utf8");
-    for (const match of source.matchAll(/queryKey: \["([a-z-]+)"/g)) {
+    for (const match of source.matchAll(
+      /(?:queryKey: |_KEY(?::[^=]+)? = )\["([a-z-]+)"/g,
+    )) {
       if (match[1]) roots.add(match[1]);
     }
   }
