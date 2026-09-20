@@ -10,6 +10,9 @@ import { rememberNow } from "@/server/features/communications/services/VoiceLear
 import { asksToRemember, isFarewell } from "../remember";
 import { finalSentence, speakable, takeSentences } from "../sentences";
 import { VoiceAnalystService } from "./VoiceAnalystService";
+import { AuthRepository } from "@/server/auth/repositories/AuthRepository";
+import { cached } from "../cache";
+import { runMcpTool, voiceMcpTools } from "../tools/mcpBridge";
 import { runVoiceTool } from "../tools/runVoiceTool";
 import { VOICE_TOOLS } from "../tools/voiceTools";
 
@@ -55,6 +58,8 @@ export async function* streamVoiceTurn(input: {
   audioBase64: string;
   mimeType: string;
   language?: string;
+  /** Where this workspace lives, for tools that mint links. */
+  baseUrl: string;
 }): AsyncGenerator<VoiceTurnEvent> {
   await BusinessModuleService.requireAccess(
     input.organizationId,
@@ -104,7 +109,7 @@ export async function* streamVoiceTurn(input: {
     input.organizationId,
     input.conversationId,
   );
-  const [businessContext, analystContext] = await Promise.all([
+  const [businessContext, analystContext, modules, user] = await Promise.all([
     buildVoiceAgentContext(input.organizationId, agent.id, heard.transcript),
     VoiceAnalystService.contextForTurn(
       input.organizationId,
@@ -112,6 +117,19 @@ export async function* streamVoiceTurn(input: {
       history
         .filter((turn) => turn.speaker === "user")
         .map((turn) => turn.transcript),
+    ),
+    cached(`voice:enabled:${input.organizationId}:${input.userId}`, async () =>
+      (
+        await BusinessModuleService.getAccess(
+          input.organizationId,
+          input.userId,
+        )
+      )
+        .filter((module) => module.enabled)
+        .map((module) => module.key),
+    ),
+    cached(`voice:user:${input.userId}`, () =>
+      AuthRepository.getHostedUser(input.userId),
     ),
   ]);
   const readyAt = Date.now();
@@ -140,14 +158,26 @@ export async function* streamVoiceTurn(input: {
     history,
     businessContext,
     analystContext: analystContext.text,
-    tools: VOICE_TOOLS,
-    runTool: (call) =>
-      runVoiceTool(call, {
+    // Its own spoken-first tools, then everything the app itself offers.
+    tools: [...VOICE_TOOLS, ...voiceMcpTools(new Set(modules))],
+    runTool: async (call) => {
+      const handled = await runVoiceTool(call, {
         organizationId: input.organizationId,
         userId: input.userId,
         projectId: analystContext.projectId,
         lastUserTurn: heard.transcript,
-      }),
+      });
+      if (handled !== "That is not something I can do.") return handled;
+      const done = await runMcpTool(call, {
+        organizationId: input.organizationId,
+        userId: input.userId,
+        userEmail: user?.email ?? "",
+        projectId: analystContext.projectId,
+        baseUrl: input.baseUrl,
+        lastUserTurn: heard.transcript,
+      });
+      return done ?? "That is not something I can do from here.";
+    },
   })) {
     buffer += delta;
     const { sentences, rest } = takeSentences(buffer);

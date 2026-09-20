@@ -52,6 +52,7 @@ export const Route = createFileRoute("/api/voice/turn")({
               for await (const event of streamVoiceTurn({
                 organizationId: context.organizationId,
                 userId: context.userId,
+                baseUrl: new URL(request.url).origin,
                 ...parsed.data,
               })) {
                 controller.enqueue(encoder.encode(line(event)));

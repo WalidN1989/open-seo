@@ -27,7 +27,8 @@ const crm =
   source("tools/crm-tools.ts") + source("tools/client-login-tools.ts");
 const whatsapp = source("tools/whatsapp-tools.ts");
 const sms = source("tools/sms-tools.ts");
-const server = source("server.ts");
+// The surfaces and tools now live in the catalogue the server registers from.
+const server = source("catalogue.ts");
 
 function declaredToolNames(text: string) {
   return [...text.matchAll(/^\s*name: "([a-z_]+)",$/gm)].map(
@@ -192,7 +193,10 @@ describe("the SMS MCP surface", () => {
 
 describe("the module registry", () => {
   it("registers every surface it declares", () => {
-    const surfaces = [...server.matchAll(/^\s*(\w+Surface),$/gm)].map(
+    // Only the list itself: the file also names the surface type it imports.
+    const list =
+      /MODULE_SURFACES[^=]*= \[([\s\S]*?)\];/.exec(server)?.[1] ?? "";
+    const surfaces = [...list.matchAll(/(\w+Surface),/g)].map(
       (match) => match[1],
     );
     expect(surfaces.toSorted()).toEqual([

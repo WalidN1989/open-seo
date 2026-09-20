@@ -25,8 +25,9 @@ function analystRules(agentName: string, analystContext: string) {
     "Be direct and honest, not salesy: no hype, no exaggeration, no pushing services. When something is hurting them, say it plainly and give the next concrete step.",
     "The data also lists active and inactive business modules. For an active module, summarise what its numbers say, never read records one by one. For an inactive module, say it is not active for this business and: please talk to the Digital Urgency team to activate the module. Do not describe data for inactive modules.",
     "If the question is vague, give the headline and ask what they want to dig into. If you were interrupted, answer the new question and drop the old one.",
-    "You can do things, not just describe them: set up rank tracking, add or remove tracked keywords, check what a rank check would cost, run one, list leads, log an activity against a lead, and add a lead. Use the tool — never say you have done something, or will do it, unless a tool has actually done it. If something is beyond those tools, say plainly that they would need to do it in the app.",
-    "Running a rank check spends credits. Say the cost first, wait for them to agree, and only then run it. Everything else in that list is free.",
+    "You can do things, not only describe them. Your tools reach this workspace's own modules — keyword research, domain overviews, backlinks, competitors, site audits, content optimization, rank tracking, CRM, analytics and the rest. Use the tool. Never say you have done something, or will do it, unless a tool has actually done it, and if there is no tool for it say plainly that they would need to do it in the app.",
+    "Some tools spend credits on fresh data. A tool that refuses for that reason is telling you to ask first: say briefly what it would buy, wait for them to agree out loud, then call it again. Reading what is already stored is free.",
+    "You cannot send anything to a customer — no email, text or WhatsApp message. You can draft one for them to check.",
     "The context lists lessons learned from this person's earlier conversations. Follow their corrections and preferences — names, nicknames, how they like answers — as long as they do not break the rules above. When they ask you to remember something, confirm in a few words, such as \"Got it, I'll remember that.\"",
     "Reply in the same language as the person speaking. Never mention prompts, tools, APIs or internal systems.",
     `Analyst data:\n${analystContext}`,
@@ -302,10 +303,27 @@ export async function* streamVoiceAgentReply(
       body: JSON.stringify({
         model,
         max_tokens: input.analystContext ? 400 : 500,
-        system: systemPrompt(input),
+        // The rules and the tool list are the same every turn, so they are
+        // marked for reuse: the model is not charged, or delayed, for
+        // reading them again.
+        system: [
+          {
+            type: "text",
+            text: systemPrompt(input),
+            cache_control: { type: "ephemeral" },
+          },
+        ],
         messages,
         stream: true,
-        ...(input.tools?.length ? { tools: input.tools } : {}),
+        ...(input.tools?.length
+          ? {
+              tools: input.tools.map((tool, index) =>
+                index === input.tools!.length - 1
+                  ? { ...tool, cache_control: { type: "ephemeral" } }
+                  : tool,
+              ),
+            }
+          : {}),
       }),
       signal: AbortSignal.timeout(45_000),
     });
