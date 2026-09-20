@@ -1,7 +1,14 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { ClipboardList, Plus } from "lucide-react";
+import {
+  CalendarDays,
+  ClipboardList,
+  Eye,
+  FileText,
+  Plus,
+  X,
+} from "lucide-react";
 import {
   createInventoryAudit,
   getInventoryAudit,
@@ -46,6 +53,7 @@ export function AuditsTab() {
   if (audits.isError) return <ErrorState error={audits.error} />;
 
   const rows = audits.data ?? [];
+  const openAudit = rows.find((audit) => audit.id === openAuditId) ?? null;
 
   return (
     <div className="space-y-4">
@@ -84,46 +92,112 @@ export function AuditsTab() {
         </form>
       ) : null}
 
-      <section className="rounded-xl border border-base-300">
-        <div className="border-b border-base-300 p-4">
+      <section className="overflow-hidden rounded-xl border border-base-300">
+        <div className="flex items-center justify-between gap-3 border-b border-base-300 p-4">
           <h2 className="flex items-center gap-2 font-semibold">
             <ClipboardList className="size-4" /> Inventory audits
-            <span className="badge badge-sm ml-1">{rows.length}</span>
           </h2>
+          <span className="text-sm text-base-content/50">
+            {rows.length} audit{rows.length === 1 ? "" : "s"}
+          </span>
         </div>
         {rows.length === 0 ? (
           <p className="p-8 text-center text-sm text-base-content/50">
             No inventory audits yet
           </p>
         ) : (
-          <div className="divide-y divide-base-300">
-            {rows.map((audit) => (
-              <div key={audit.id} className="p-4">
-                <button
-                  type="button"
-                  className="flex w-full items-center justify-between gap-3 text-left"
-                  onClick={() =>
-                    setOpenAuditId((open) =>
-                      open === audit.id ? null : audit.id,
-                    )
-                  }
-                >
-                  <div className="min-w-0">
-                    <p className="truncate font-medium">{audit.name}</p>
-                    <p className="text-xs text-base-content/50">
-                      {new Date(audit.createdAt).toLocaleString()}
-                    </p>
-                  </div>
-                  <StatusBadge status={audit.status} />
-                </button>
-                {openAuditId === audit.id ? (
-                  <AuditDetail auditId={audit.id} status={audit.status} />
-                ) : null}
-              </div>
-            ))}
+          <div className="overflow-x-auto">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Audit name</th>
+                  <th>Date</th>
+                  <th>Status</th>
+                  <th>Notes</th>
+                  <th className="text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((audit) => (
+                  <tr key={audit.id}>
+                    <td className="max-w-xs">
+                      <span className="flex items-center gap-2">
+                        <FileText className="size-4 shrink-0 text-base-content/40" />
+                        <span className="truncate font-medium">
+                          {audit.name}
+                        </span>
+                      </span>
+                    </td>
+                    <td className="whitespace-nowrap text-base-content/70">
+                      <span className="flex items-center gap-2">
+                        <CalendarDays className="size-4 text-base-content/40" />
+                        {new Date(audit.createdAt).toLocaleDateString(
+                          undefined,
+                          { day: "numeric", month: "short", year: "numeric" },
+                        )}
+                      </span>
+                    </td>
+                    <td>
+                      <StatusBadge status={audit.status} />
+                    </td>
+                    <td className="max-w-sm">
+                      <span className="block truncate text-base-content/60">
+                        {audit.note ?? "—"}
+                      </span>
+                    </td>
+                    <td className="text-right">
+                      <button
+                        className="btn btn-ghost btn-xs gap-1"
+                        onClick={() => setOpenAuditId(audit.id)}
+                      >
+                        <Eye className="size-3.5" /> View
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
       </section>
+
+      {openAudit ? (
+        <div className="modal modal-open">
+          <div className="modal-box max-w-3xl">
+            <div className="mb-3 flex items-start justify-between gap-3">
+              <div>
+                <h3 className="flex items-center gap-2 text-lg font-semibold">
+                  <FileText className="size-4 text-base-content/40" />
+                  {openAudit.name}
+                </h3>
+                <p className="mt-1 text-sm text-base-content/60">
+                  {new Date(openAudit.createdAt).toLocaleDateString(undefined, {
+                    day: "numeric",
+                    month: "long",
+                    year: "numeric",
+                  })}
+                  {openAudit.note ? ` · ${openAudit.note}` : ""}
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <StatusBadge status={openAudit.status} />
+                <button
+                  className="btn btn-circle btn-ghost btn-sm"
+                  aria-label="Close"
+                  onClick={() => setOpenAuditId(null)}
+                >
+                  <X className="size-4" />
+                </button>
+              </div>
+            </div>
+            <AuditDetail auditId={openAudit.id} status={openAudit.status} />
+          </div>
+          <div
+            className="modal-backdrop"
+            onClick={() => setOpenAuditId(null)}
+          />
+        </div>
+      ) : null}
     </div>
   );
 }

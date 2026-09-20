@@ -240,6 +240,54 @@ async function listCountableProducts(organizationId: string) {
   }));
 }
 
+/**
+ * What was on hand at the end of a given day.
+ *
+ * Worked out from the ledger rather than stored: today's balance, less
+ * everything that has moved since. Accounts ask this question months later,
+ * and the answer has to be the same every time it is asked.
+ */
+async function stockAsOf(organizationId: string, endOfDay: string) {
+  const since = sql<number>`coalesce((
+    select sum(${commerceStockMovements.quantityDelta})
+    from ${commerceStockMovements}
+    where ${commerceStockMovements.organizationId} = ${organizationId}
+      and ${commerceStockMovements.productId} = ${commerceProducts.id}
+      and ${commerceStockMovements.createdAt} > ${endOfDay}
+  ), 0)`;
+  const rows = await db
+    .select({
+      id: commerceProducts.id,
+      name: commerceProducts.name,
+      sku: commerceProducts.sku,
+      quantityNow: commerceInventoryBalances.quantityOnHand,
+      movedSince: since,
+    })
+    .from(commerceProducts)
+    .leftJoin(
+      commerceInventoryBalances,
+      and(
+        eq(commerceInventoryBalances.organizationId, organizationId),
+        eq(commerceInventoryBalances.productId, commerceProducts.id),
+      ),
+    )
+    .where(eq(commerceProducts.organizationId, organizationId))
+    .orderBy(commerceProducts.name)
+    .limit(10_000);
+  return rows.map((row) => {
+    const now = row.quantityNow ?? 0;
+    const moved = Number(row.movedSince ?? 0);
+    return {
+      id: row.id,
+      name: row.name,
+      sku: row.sku,
+      quantityNow: now,
+      quantityThen: now - moved,
+      movedSince: moved,
+    };
+  });
+}
+
 async function listAuditItems(organizationId: string, auditId: string) {
   return db
     .select({
@@ -339,6 +387,7 @@ export const InventoryRepository = {
   getAudit,
   listAuditItems,
   listCountableProducts,
+  stockAsOf,
   upsertAuditItem,
   setAuditStatus,
 };

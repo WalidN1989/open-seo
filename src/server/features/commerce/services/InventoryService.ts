@@ -127,6 +127,16 @@ async function countableProducts(organizationId: string, userId: string) {
 }
 
 /**
+ * Stock as it stood at the end of a chosen day — for an audit, or a year's
+ * accounts. Read-only: it changes nothing, it only looks back.
+ */
+async function stockAsOf(organizationId: string, userId: string, day: string) {
+  await BusinessModuleService.requireAccess(organizationId, userId, "crm");
+  // The whole of that day counts, so the line is drawn at midnight after it.
+  return InventoryRepository.stockAsOf(organizationId, `${day}T23:59:59.999Z`);
+}
+
+/**
  * Record a counted quantity. The expected quantity is captured from the
  * balance at the moment of counting, so the variance the auditor saw is the
  * variance that gets published even if stock moves afterwards.
@@ -430,6 +440,7 @@ async function assertWouldNotGoNegative(
 }
 
 export const InventoryService = {
+  stockAsOf,
   submitAudit,
   countableProducts,
   getStockOverview,

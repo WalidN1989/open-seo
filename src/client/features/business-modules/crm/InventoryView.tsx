@@ -2,7 +2,16 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { TriangleAlert } from "lucide-react";
 import { getInventoryOverview } from "@/serverFunctions/commerce";
-import { ArrowLeftRight, Barcode, Boxes, ClipboardList } from "lucide-react";
+import {
+  ArrowDownUp,
+  CalendarClock,
+  ArrowLeftRight,
+  Barcode,
+  Boxes,
+  ClipboardList,
+} from "lucide-react";
+import { StockAsOfTab } from "./StockAsOfTab";
+import { StockTransferTab } from "./StockTransferTab";
 import { StockTakeTab } from "./StockTakeTab";
 import { AuditsTab } from "./InventoryAuditsTab";
 import {
@@ -11,7 +20,7 @@ import {
   Loading,
 } from "./inventoryShared";
 
-type Tab = "stock" | "count" | "audits" | "movements";
+type Tab = "count" | "audits" | "transfer" | "asOf" | "stock" | "movements";
 
 export function CrmInventoryView() {
   const [tab, setTab] = useState<Tab>("count");
@@ -42,6 +51,20 @@ export function CrmInventoryView() {
         </button>
         <button
           role="tab"
+          className={`tab gap-2 ${tab === "transfer" ? "tab-active" : ""}`}
+          onClick={() => setTab("transfer")}
+        >
+          <ArrowDownUp className="size-4" /> Export / import
+        </button>
+        <button
+          role="tab"
+          className={`tab gap-2 ${tab === "asOf" ? "tab-active" : ""}`}
+          onClick={() => setTab("asOf")}
+        >
+          <CalendarClock className="size-4" /> Stock as of date
+        </button>
+        <button
+          role="tab"
           className={`tab gap-2 ${tab === "stock" ? "tab-active" : ""}`}
           onClick={() => setTab("stock")}
         >
@@ -59,6 +82,8 @@ export function CrmInventoryView() {
       {tab === "stock" ? <StockTab /> : null}
       {tab === "count" ? <StockTakeTab /> : null}
       {tab === "audits" ? <AuditsTab /> : null}
+      {tab === "transfer" ? <StockTransferTab /> : null}
+      {tab === "asOf" ? <StockAsOfTab /> : null}
       {tab === "movements" ? <MovementsTab /> : null}
     </div>
   );

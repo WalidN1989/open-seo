@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
 import { CommerceService } from "@/server/features/commerce/services/CommerceService";
 import { InventoryService } from "@/server/features/commerce/services/InventoryService";
 import { OrderService } from "@/server/features/commerce/services/OrderService";
@@ -293,5 +294,17 @@ export const submitInventoryAudit = createServerFn({ method: "POST" })
       context.organizationId,
       context.userId,
       data.auditId,
+    ),
+  );
+
+/** What was on hand at the end of a given day. */
+export const getStockAsOf = createServerFn({ method: "GET" })
+  .middleware(requireAuthenticatedContext)
+  .validator(z.object({ day: z.string().regex(/^\d{4}-\d{2}-\d{2}$/) }))
+  .handler(({ context, data }) =>
+    InventoryService.stockAsOf(
+      context.organizationId,
+      context.userId,
+      data.day,
     ),
   );
