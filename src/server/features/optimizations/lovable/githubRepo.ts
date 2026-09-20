@@ -226,3 +226,34 @@ export async function commitFiles(
     url: `https://github.com/${repositoryName(target.repository)}/commit/${created.data.sha}`,
   };
 }
+
+/**
+ * When the branch last changed this path, as GitHub records it.
+ *
+ * Used to date content that lives in one shared file, where the file's own
+ * history is the only honest answer. Null when GitHub will not say.
+ */
+export async function lastChangedAt(
+  target: RepoTarget,
+  path: string,
+  fetcher: typeof fetch = fetch,
+) {
+  const { response, payload } = await call(
+    target,
+    `/commits?path=${encodeURIComponent(path)}&sha=${encodeURIComponent(target.branch)}&per_page=1`,
+    fetcher,
+  );
+  if (!response.ok) return null;
+  const parsed = z
+    .array(
+      z.object({
+        commit: z.object({
+          committer: z.object({ date: z.string() }).nullish(),
+        }),
+      }),
+    )
+    .safeParse(payload);
+  return parsed.success
+    ? (parsed.data[0]?.commit.committer?.date ?? null)
+    : null;
+}

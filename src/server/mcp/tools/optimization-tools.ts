@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { listSitePostsTool } from "./site-posts-tool";
+import { listSiteServicesTool } from "./site-services-tool";
 import { OptimizationService } from "@/server/features/optimizations/services/OptimizationService";
 import { mcpResponse } from "@/server/mcp/formatters";
 import { buildProjectMeta } from "@/server/mcp/context";
@@ -360,6 +361,7 @@ export const optimizationsSurface: McpModuleSurface = {
     "Propose content opportunities, brief them, and draft them. Approving and publishing stay with a person.",
   tools: [
     listSitePostsTool,
+    listSiteServicesTool,
     listOptimizationOpportunitiesTool,
     createOptimizationOpportunityTool,
     attachOptimizationBriefTool,

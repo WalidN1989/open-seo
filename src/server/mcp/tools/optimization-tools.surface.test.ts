@@ -18,7 +18,9 @@ function source(file: string) {
 // The surface spans two files: the opportunity tools, and the one that
 // reads what the site already publishes.
 const optimizations =
-  source("tools/optimization-tools.ts") + source("tools/site-posts-tool.ts");
+  source("tools/optimization-tools.ts") +
+  source("tools/site-posts-tool.ts") +
+  source("tools/site-services-tool.ts");
 const invoices = source("tools/invoice-tools.ts");
 const reports = source("tools/report-tools.ts");
 const email = source("tools/email-tools.ts");
@@ -51,6 +53,8 @@ describe("the optimization MCP surface", () => {
       // Reading what the site already publishes, so a keyword it covers is
       // improved rather than written about twice.
       "list_site_posts",
+      // And the service pages, which rank for the searches that earn money.
+      "list_site_services",
     ]);
   });
 

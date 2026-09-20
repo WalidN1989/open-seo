@@ -124,3 +124,11 @@ export const listSiteBlogPosts = createServerFn({ method: "GET" })
   .handler(({ context }) =>
     OptimizationPublishService.sitePosts(context.organizationId),
   );
+
+/** The service pages already live on this project's site. */
+export const listSiteServicePages = createServerFn({ method: "GET" })
+  .middleware(requireProjectContext)
+  .validator(z.object({ projectId: z.string().min(1) }))
+  .handler(({ context }) =>
+    OptimizationPublishService.siteServices(context.organizationId),
+  );

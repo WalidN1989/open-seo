@@ -18,6 +18,7 @@ import {
 } from "../lovable/lovablePublisher";
 import { repositoryName } from "../lovable/githubRepo";
 import { listSitePosts } from "../lovable/sitePosts";
+import { listSiteServices } from "../lovable/siteServices";
 import { articleFromDraft } from "../wordpress/wordpressArticle";
 import {
   publishToWordpress,
@@ -291,9 +292,26 @@ async function sitePosts(organizationId: string) {
   return { connected: true as const, posts };
 }
 
+/**
+ * The service pages the site already has.
+ *
+ * A service page and an article about the same search compete, so this is
+ * read before either is proposed.
+ */
+async function siteServices(organizationId: string) {
+  const site = await lovableFor(organizationId);
+  if (!site) return { connected: false as const, services: [] };
+  const services = await listSiteServices(site).catch((error: unknown) => {
+    console.error("Could not read the site's services", error);
+    return [];
+  });
+  return { connected: true as const, services };
+}
+
 export const OptimizationPublishService = {
   publish,
   destination,
   addImages,
   sitePosts,
+  siteServices,
 };

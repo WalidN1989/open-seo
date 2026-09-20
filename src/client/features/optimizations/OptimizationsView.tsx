@@ -7,9 +7,11 @@ import {
   Sparkles,
   Clock,
   Globe,
+  Store,
 } from "lucide-react";
 import { OpportunityDetail } from "./OpportunityDetail";
 import { SitePosts } from "./SitePosts";
+import { SiteServices } from "./SiteServices";
 import {
   CMS_LABEL,
   SOURCE_LABEL,
@@ -85,7 +87,7 @@ function OpportunityCard({
     >
       <div className="flex flex-wrap items-center gap-2">
         {status === "published" ? (
-          // Live on the site: the one state worth spotting from across the
+          // Live blogs: the one state worth spotting from across the
           // room, because it is the one that is already public.
           <span className="badge badge-sm badge-error gap-1 font-medium">
             <Globe className="size-3" /> Published
@@ -130,7 +132,7 @@ export function OptimizationsView({ projectId }: { projectId: string }) {
   const [type, setType] = useState<OptimizationType | undefined>();
   const [status, setStatus] = useState<OptimizationStatus | undefined>();
   const [selected, setSelected] = useState<string | null>(null);
-  const [tab, setTab] = useState<"queue" | "live">("queue");
+  const [tab, setTab] = useState<"queue" | "live" | "services">("queue");
   const query = useOpportunities(projectId, { type, status });
 
   if (selected) {
@@ -171,11 +173,20 @@ export function OptimizationsView({ projectId }: { projectId: string }) {
           className={`tab gap-2 ${tab === "live" ? "tab-active" : ""}`}
           onClick={() => setTab("live")}
         >
-          <Globe className="size-4" /> Live on the site
+          <Globe className="size-4" /> Live blogs
+        </button>
+        <button
+          role="tab"
+          className={`tab gap-2 ${tab === "services" ? "tab-active" : ""}`}
+          onClick={() => setTab("services")}
+        >
+          <Store className="size-4" /> Live services
         </button>
       </div>
 
       {tab === "live" ? <SitePosts projectId={projectId} /> : null}
+
+      {tab === "services" ? <SiteServices projectId={projectId} /> : null}
 
       {tab === "queue" ? (
         <section className="overflow-hidden rounded-2xl border border-base-300 bg-base-100">
