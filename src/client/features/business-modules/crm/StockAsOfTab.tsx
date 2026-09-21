@@ -35,12 +35,12 @@ function csv(
   ].join("\n");
 }
 
-export function StockAsOfTab() {
+export function StockAsOfTab({ branchId }: { branchId: string }) {
   const [day, setDay] = useState(today);
 
   const stock = useQuery({
-    queryKey: ["commerce", "inventory", "as-of", day],
-    queryFn: () => getStockAsOf({ data: { day } }),
+    queryKey: ["commerce", "inventory", "as-of", day, branchId],
+    queryFn: () => getStockAsOf({ data: { day, branchId } }),
   });
 
   const rows = stock.data ?? [];

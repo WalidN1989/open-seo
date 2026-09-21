@@ -184,6 +184,14 @@ async function seed(db: TestDb) {
     ]);
 
   await db
+    .insert(schema.commerceBranches)
+    .values([
+      { id: `default:${ORG_A}`, organizationId: ORG_A, name: "Alpha branch" },
+      { id: `default:${ORG_B}`, organizationId: ORG_B, name: "Beta branch" },
+    ])
+    .onConflictDoNothing();
+
+  await db
     .insert(schema.commerceInventoryBalances)
     .values([
       balance("bal_a", ORG_A, PRODUCT_A, 40),
@@ -320,7 +328,14 @@ function balance(
   productId: string,
   quantityOnHand: number,
 ) {
-  return { id, organizationId, productId, quantityOnHand, updatedAt: NOW };
+  return {
+    id,
+    organizationId,
+    branchId: `default:${organizationId}`,
+    productId,
+    quantityOnHand,
+    updatedAt: NOW,
+  };
 }
 function order(
   id: string,
@@ -332,6 +347,7 @@ function order(
   return {
     id,
     organizationId,
+    branchId: `default:${organizationId}`,
     contactId,
     orderNumber,
     status: "confirmed" as const,

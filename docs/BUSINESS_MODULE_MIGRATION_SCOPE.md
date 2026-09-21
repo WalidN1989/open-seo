@@ -1107,3 +1107,57 @@ unauthenticated bridge requests. The direct Vite launcher also served the built
 application's health endpoint successfully. Local memory savings are not a
 production billing guarantee; compare Railway runtime measurements after rollout.
 Rollback is a revert of the entrypoint change; there are no schema changes.
+
+### 2026-09-22: branch inventory
+
+Branch `codex/branch-inventory` adds `commerce_branches` with address, city,
+state, postcode, country, phone and opening hours. Products remain one shared
+organization catalogue. Balances, stock movements, audits and orders now carry
+an explicit branch ID. Inventory has branch selection and branch management;
+product detail shows all branch quantities and supports atomic transfers.
+The products route now has an index child and an Outlet, so product detail
+renders instead of silently continuing to show the catalogue.
+
+Migrations `drizzle/0094_massive_klaw.sql` and
+`drizzle-pg/0073_moaning_sugar_man.sql` assign all existing balances, movements,
+audits and orders to exactly one `default:<organizationId>` branch. SQLite
+preserves audit/order child rows during table rebuilding with foreign keys
+still enabled, including D1's transactional migration case. New organizations
+get their default branch lazily. Branches are editable, not deletable.
+
+Counts, CSV count imports/exports, historical stock and movement views use the
+selected branch. Browser stock-take storage is keyed by branch (globally unique
+and tenant-owned). The previous unscoped saved count can be explicitly resumed
+only after its server audit is verified to belong to the default branch and
+remain a draft. Publishing a zero variance also records a zero movement,
+allowing a counted zero to be distinguished from untracked stock.
+
+Orders deduct and return stock in their original branch; duplicate product
+lines are combined into one idempotent movement. A transfer uses one request
+ID and writes both legs and balances in one transaction/batch. The balance
+update rejects a negative result inside SQL, protecting against concurrent
+overselling. Unknown balances are not silently presented as available or zero.
+
+Connected-store quantities are treated as business-wide product totals. Sync
+compares the sum across branches and applies only the remaining delta to the
+default branch, so allocating stock elsewhere does not duplicate it on the
+next sync. A reduction exceeding stock in the default branch is refused rather
+than silently consuming another branch's allocation; resolve the allocation
+before retrying that sync. Imports reporting zero establish a tracked balance.
+
+MCP `find_branch_stock` is a read-only CRM surface offered to CRM-enabled voice
+sessions. It returns live stock and addresses, matches Australian state names
+and abbreviations, and explicitly distinguishes unknown from out of stock.
+The cached voice catalogue no longer contains stale stock quantities. No new
+provider credentials, paid calls, or telephone-provider configuration are added.
+The legacy non-streaming voice reply path has no tool execution loop and cannot
+perform this lookup; the streaming voice agent and MCP clients can.
+
+Verification includes the full Vitest suite, real SQLite tenant/stock tests,
+populated SQLite and Postgres migration checks, local Postgres UI flows, MCP
+protocol cases and an independent consumer probe. Production rollout must take
+a database backup first and run migrations before the new app starts. This is
+not a code-only rollback: the old app expects a single balance per product and
+its old conflict target is incompatible with branch balances. Preserve the new
+schema for a forward fix, or restore the pre-rollout database together with the
+old app during a controlled rollback; never collapse allocated branch data.

@@ -1,3 +1,4 @@
+import { BranchRepository } from "../repositories/BranchRepository";
 import { BusinessModuleService } from "@/server/features/business-modules/services/BusinessModuleService";
 import { AppError } from "@/server/lib/errors";
 import type {
@@ -155,6 +156,8 @@ async function createOrder(
     organizationId,
     {
       id,
+      branchId: (await BranchRepository.resolve(organizationId, input.branchId))
+        .id,
       contactId: input.contactId ?? null,
       orderNumber: `ORD-${String(count + 1).padStart(5, "0")}`,
       note: input.note ?? null,
@@ -272,20 +275,28 @@ async function transition(
 
   const lines = await OrderRepository.listLines(organizationId, orderId);
   const movements: StockMovementDraft[] = [];
+  const quantities = new Map<string, number>();
   for (const line of lines) {
-    // A free-text line moves no stock.
-    if (!line.productId) continue;
+    if (line.productId)
+      quantities.set(
+        line.productId,
+        (quantities.get(line.productId) ?? 0) + line.quantity,
+      );
+  }
+  for (const [productId, quantity] of quantities) {
     const already = await InventoryRepository.findMovementByReference(
       organizationId,
       spec.reference,
       orderId,
-      line.productId,
+      productId,
+      order.branchId,
     );
     if (already) continue;
     movements.push({
-      productId: line.productId,
+      branchId: order.branchId,
+      productId: productId,
       movementType: spec.movementType,
-      quantityDelta: spec.direction * line.quantity,
+      quantityDelta: spec.direction * quantity,
       reason: `Order ${order.orderNumber}`,
       referenceType: spec.reference,
       referenceId: orderId,

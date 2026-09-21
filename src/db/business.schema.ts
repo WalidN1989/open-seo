@@ -1286,10 +1286,34 @@ export const commerceProducts = sqliteTable(
  * count can always be explained and a mistake is corrected by a compensating
  * movement rather than by editing history.
  */
+/** Physical locations share the catalogue but keep separate stock. */
+export const commerceBranches = sqliteTable(
+  "commerce_branches",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    address: text("address"),
+    city: text("city"),
+    state: text("state"),
+    postcode: text("postcode"),
+    country: text("country"),
+    phone: text("phone"),
+    openingHours: text("opening_hours"),
+    createdAt: createdAt(),
+  },
+  (table) => [index("commerce_branches_org_idx").on(table.organizationId)],
+);
+
 export const commerceInventoryBalances = sqliteTable(
   "commerce_inventory_balances",
   {
     id: text("id").primaryKey(),
+    branchId: text("branch_id")
+      .notNull()
+      .references(() => commerceBranches.id, { onDelete: "no action" }),
     organizationId: text("organization_id")
       .notNull()
       .references(() => organization.id, { onDelete: "cascade" }),
@@ -1302,9 +1326,10 @@ export const commerceInventoryBalances = sqliteTable(
       .default(sql`(current_timestamp)`),
   },
   (table) => [
-    // One balance per product per tenant; the ledger carries the history.
+    // One balance per product per branch; the ledger carries the history.
     uniqueIndex("commerce_inventory_balances_org_product_idx").on(
       table.organizationId,
+      table.branchId,
       table.productId,
     ),
   ],
@@ -1314,6 +1339,9 @@ export const commerceStockMovements = sqliteTable(
   "commerce_stock_movements",
   {
     id: text("id").primaryKey(),
+    branchId: text("branch_id")
+      .notNull()
+      .references(() => commerceBranches.id, { onDelete: "no action" }),
     organizationId: text("organization_id")
       .notNull()
       .references(() => organization.id, { onDelete: "cascade" }),
@@ -1342,6 +1370,7 @@ export const commerceStockMovements = sqliteTable(
     ),
     uniqueIndex("commerce_stock_movements_reference_idx").on(
       table.organizationId,
+      table.branchId,
       table.referenceType,
       table.referenceId,
       table.productId,
@@ -1353,6 +1382,9 @@ export const commerceInventoryAudits = sqliteTable(
   "commerce_inventory_audits",
   {
     id: text("id").primaryKey(),
+    branchId: text("branch_id")
+      .notNull()
+      .references(() => commerceBranches.id, { onDelete: "no action" }),
     organizationId: text("organization_id")
       .notNull()
       .references(() => organization.id, { onDelete: "cascade" }),
@@ -1426,6 +1458,9 @@ export const commerceOrders = sqliteTable(
   "commerce_orders",
   {
     id: text("id").primaryKey(),
+    branchId: text("branch_id")
+      .notNull()
+      .references(() => commerceBranches.id, { onDelete: "no action" }),
     organizationId: text("organization_id")
       .notNull()
       .references(() => organization.id, { onDelete: "cascade" }),

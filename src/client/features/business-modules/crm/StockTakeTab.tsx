@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { Barcode, CloudOff, Play, Trash2 } from "lucide-react";
 import {
   createInventoryAudit,
+  getInventoryAudit,
   listCountableProducts,
   publishInventoryAudit,
   recordInventoryAuditCount,
@@ -58,9 +59,9 @@ const savedSessionSchema = z.object({
   unknown: z.array(z.string()),
 });
 
-function readSaved(): StockTakeState | null {
+function readSaved(storageKey: string): StockTakeState | null {
   try {
-    const raw = localStorage.getItem(SAVED_SESSION);
+    const raw = localStorage.getItem(storageKey);
     if (!raw) return null;
     const parsed = savedSessionSchema.safeParse(JSON.parse(raw));
     return parsed.success ? parsed.data : null;
@@ -69,19 +70,35 @@ function readSaved(): StockTakeState | null {
   }
 }
 
-function save(state: StockTakeState | null) {
+function save(state: StockTakeState | null, storageKey: string) {
   try {
-    if (state) localStorage.setItem(SAVED_SESSION, JSON.stringify(state));
-    else localStorage.removeItem(SAVED_SESSION);
+    if (state) localStorage.setItem(storageKey, JSON.stringify(state));
+    else localStorage.removeItem(storageKey);
   } catch {
     // A browser refusing storage still counts; it just cannot be resumed.
   }
 }
 
-export function StockTakeTab() {
+async function validateLegacyCount(legacy: StockTakeState, branchId: string) {
+  const result = await getInventoryAudit({
+    data: { auditId: legacy.auditId },
+  });
+  if (result.audit.branchId !== branchId || result.audit.status !== "draft")
+    throw new Error(
+      "This saved count belongs to another branch or has already been submitted.",
+    );
+}
+
+export function StockTakeTab({ branchId }: { branchId: string }) {
+  const storageKey = `${SAVED_SESSION}:${branchId}`;
   const queryClient = useQueryClient();
   const [session, setSession] = useState<StockTakeState | null>(() =>
-    typeof window === "undefined" ? null : readSaved(),
+    typeof window === "undefined" ? null : readSaved(storageKey),
+  );
+  const [legacy, setLegacy] = useState(() =>
+    typeof window !== "undefined" && branchId.startsWith("default:")
+      ? readSaved(SAVED_SESSION)
+      : null,
   );
   const [online, setOnline] = useState(true);
   const [name, setName] = useState("");
@@ -89,14 +106,14 @@ export function StockTakeTab() {
 
   // The catalogue is read once and kept, so scanning works with no signal.
   const catalogue = useQuery({
-    queryKey: CATALOGUE_KEY,
-    queryFn: () => listCountableProducts(),
+    queryKey: [...CATALOGUE_KEY, branchId],
+    queryFn: () => listCountableProducts({ data: { branchId } }),
     staleTime: 10 * 60_000,
     gcTime: 60 * 60_000,
   });
   const products = catalogue.data ?? [];
 
-  useEffect(() => save(session), [session]);
+  useEffect(() => save(session, storageKey), [session, storageKey]);
 
   useEffect(() => {
     const update = () => setOnline(navigator.onLine);
@@ -109,10 +126,23 @@ export function StockTakeTab() {
     };
   }, []);
 
+  const resumeLegacy = useMutation({
+    mutationFn: async () => {
+      if (!legacy) return;
+      await validateLegacyCount(legacy, branchId);
+      setSession(legacy);
+      save(legacy, storageKey);
+      localStorage.removeItem(SAVED_SESSION);
+      setLegacy(null);
+    },
+    onError: (error) => toast.error(getStandardErrorMessage(error)),
+  });
+
   const start = useMutation({
     mutationFn: (sessionName: string) =>
       createInventoryAudit({
         data: {
+          branchId,
           name: sessionName,
           note: "Counted with a scanner",
         },
@@ -209,6 +239,16 @@ export function StockTakeTab() {
           <Barcode className="size-4 text-base-content/60" /> Stock take — scan
           and count
         </h2>
+        {legacy ? (
+          <button
+            type="button"
+            className="btn btn-outline btn-sm"
+            disabled={resumeLegacy.isPending}
+            onClick={() => resumeLegacy.mutate()}
+          >
+            Resume previous count
+          </button>
+        ) : null}
         <div className="flex flex-wrap items-center gap-2">
           <input
             className="input input-bordered flex-1 sm:min-w-80"

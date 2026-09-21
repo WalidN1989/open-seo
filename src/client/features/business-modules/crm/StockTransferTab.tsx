@@ -35,14 +35,14 @@ function download(name: string, text: string) {
   URL.revokeObjectURL(url);
 }
 
-export function StockTransferTab() {
+export function StockTransferTab({ branchId }: { branchId: string }) {
   const queryClient = useQueryClient();
   const fileBox = useRef<HTMLInputElement>(null);
   const [progress, setProgress] = useState<string | null>(null);
 
   const catalogue = useQuery({
-    queryKey: ["commerce", "countable-products"],
-    queryFn: () => listCountableProducts(),
+    queryKey: ["commerce", "countable-products", branchId],
+    queryFn: () => listCountableProducts({ data: { branchId } }),
     staleTime: 10 * 60_000,
   });
 
@@ -59,6 +59,7 @@ export function StockTransferTab() {
       }
       const audit = await createInventoryAudit({
         data: {
+          branchId,
           name: `Counted sheet ${new Date().toLocaleDateString(undefined, {
             day: "numeric",
             month: "short",

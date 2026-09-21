@@ -1,3 +1,4 @@
+import { BranchPicker, useBranchSelection } from "./BranchPicker";
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -19,6 +20,7 @@ const ORDERS_KEY = ["commerce", "orders"];
 export function CrmOrdersView() {
   const money = useWorkspaceCurrency();
   const queryClient = useQueryClient();
+  const selection = useBranchSelection();
   const [creating, setCreating] = useState(false);
   const [openOrderId, setOpenOrderId] = useState<string | null>(null);
 
@@ -35,6 +37,7 @@ export function CrmOrdersView() {
     }) =>
       createCommerceOrder({
         data: {
+          branchId: selection.branchId,
           discountMinor: 0,
           deliveryMinor: 0,
           taxMinor: 0,
@@ -98,6 +101,7 @@ export function CrmOrdersView() {
             });
           }}
         >
+          <BranchPicker selection={selection} />
           <input
             name="description"
             placeholder="what was ordered"
@@ -122,7 +126,7 @@ export function CrmOrdersView() {
           />
           <button
             className="btn btn-primary btn-sm"
-            disabled={create.isPending}
+            disabled={create.isPending || !selection.branchId}
           >
             Save draft
           </button>
@@ -180,6 +184,7 @@ export function CrmOrdersView() {
 }
 
 function OrderDetail({ orderId, status }: { orderId: string; status: string }) {
+  const { branches } = useBranchSelection();
   const money = useWorkspaceCurrency();
   const queryClient = useQueryClient();
   const detail = useQuery({
@@ -188,15 +193,7 @@ function OrderDetail({ orderId, status }: { orderId: string; status: string }) {
   });
 
   const refresh = async () => {
-    await Promise.all([
-      queryClient.invalidateQueries({ queryKey: ORDERS_KEY }),
-      queryClient.invalidateQueries({
-        queryKey: ["commerce", "order", orderId],
-      }),
-      queryClient.invalidateQueries({
-        queryKey: ["commerce", "inventory", "overview"],
-      }),
-    ]);
+    await queryClient.invalidateQueries({ queryKey: ["commerce"] });
   };
 
   const settled = (message: string) => ({
@@ -228,6 +225,11 @@ function OrderDetail({ orderId, status }: { orderId: string; status: string }) {
 
   return (
     <div className="mt-4 space-y-3 rounded-lg border border-base-300 p-3">
+      <p className="text-sm">
+        Stock branch:{" "}
+        {branches.find((branch) => branch.id === order?.branchId)?.name ??
+          "Loading…"}
+      </p>
       <div className="overflow-x-auto">
         <table className="table table-sm">
           <thead>

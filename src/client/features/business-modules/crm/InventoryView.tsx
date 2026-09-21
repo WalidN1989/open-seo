@@ -1,3 +1,5 @@
+import { BranchPicker, useBranchSelection } from "./BranchPicker";
+import { BranchesTab } from "./BranchesTab";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { TriangleAlert } from "lucide-react";
@@ -20,9 +22,18 @@ import {
   Loading,
 } from "./inventoryShared";
 
-type Tab = "count" | "audits" | "transfer" | "asOf" | "stock" | "movements";
+type Tab =
+  | "branches"
+  | "count"
+  | "audits"
+  | "transfer"
+  | "asOf"
+  | "stock"
+  | "movements";
 
 export function CrmInventoryView() {
+  const selection = useBranchSelection();
+  const { branchId } = selection;
   const [tab, setTab] = useState<Tab>("count");
 
   return (
@@ -34,65 +45,86 @@ export function CrmInventoryView() {
         </p>
       </div>
 
+      <BranchPicker selection={selection} />
       <div role="tablist" className="tabs tabs-border">
         <button
           role="tab"
-          className={`tab gap-2 ${tab === "count" ? "tab-active" : ""}`}
+          className={`tab gap-2 ${branchId && tab === "count" ? "tab-active" : ""}`}
           onClick={() => setTab("count")}
         >
           <Barcode className="size-4" /> Stock take
         </button>
         <button
           role="tab"
-          className={`tab gap-2 ${tab === "audits" ? "tab-active" : ""}`}
+          className={`tab gap-2 ${branchId && tab === "audits" ? "tab-active" : ""}`}
           onClick={() => setTab("audits")}
         >
           <ClipboardList className="size-4" /> Inventory audits
         </button>
         <button
           role="tab"
-          className={`tab gap-2 ${tab === "transfer" ? "tab-active" : ""}`}
+          className={`tab gap-2 ${branchId && tab === "transfer" ? "tab-active" : ""}`}
           onClick={() => setTab("transfer")}
         >
           <ArrowDownUp className="size-4" /> Export / import
         </button>
         <button
           role="tab"
-          className={`tab gap-2 ${tab === "asOf" ? "tab-active" : ""}`}
+          className={`tab gap-2 ${branchId && tab === "asOf" ? "tab-active" : ""}`}
           onClick={() => setTab("asOf")}
         >
           <CalendarClock className="size-4" /> Stock as of date
         </button>
         <button
           role="tab"
-          className={`tab gap-2 ${tab === "stock" ? "tab-active" : ""}`}
+          className={`tab gap-2 ${branchId && tab === "stock" ? "tab-active" : ""}`}
           onClick={() => setTab("stock")}
         >
           <Boxes className="size-4" /> Stock
         </button>
         <button
           role="tab"
-          className={`tab gap-2 ${tab === "movements" ? "tab-active" : ""}`}
+          className={`tab gap-2 ${branchId && tab === "movements" ? "tab-active" : ""}`}
           onClick={() => setTab("movements")}
         >
           <ArrowLeftRight className="size-4" /> Movements
         </button>
+        <button
+          role="tab"
+          className={`tab ${tab === "branches" ? "tab-active" : ""}`}
+          onClick={() => setTab("branches")}
+        >
+          Branches
+        </button>
       </div>
 
-      {tab === "stock" ? <StockTab /> : null}
-      {tab === "count" ? <StockTakeTab /> : null}
-      {tab === "audits" ? <AuditsTab /> : null}
-      {tab === "transfer" ? <StockTransferTab /> : null}
-      {tab === "asOf" ? <StockAsOfTab /> : null}
-      {tab === "movements" ? <MovementsTab /> : null}
+      {tab === "branches" ? <BranchesTab /> : null}
+      <div key={branchId}>
+        {branchId && tab === "stock" ? <StockTab branchId={branchId} /> : null}
+        {branchId && tab === "count" ? (
+          <StockTakeTab branchId={branchId} />
+        ) : null}
+        {branchId && tab === "audits" ? (
+          <AuditsTab branchId={branchId} />
+        ) : null}
+        {branchId && tab === "transfer" ? (
+          <StockTransferTab branchId={branchId} />
+        ) : null}
+        {branchId && tab === "asOf" ? (
+          <StockAsOfTab branchId={branchId} />
+        ) : null}
+        {branchId && tab === "movements" ? (
+          <MovementsTab branchId={branchId} />
+        ) : null}
+      </div>
     </div>
   );
 }
 
-function StockTab() {
+function StockTab({ branchId }: { branchId: string }) {
   const query = useQuery({
-    queryKey: OVERVIEW_KEY,
-    queryFn: () => getInventoryOverview(),
+    queryKey: [...OVERVIEW_KEY, branchId],
+    queryFn: () => getInventoryOverview({ data: { branchId } }),
   });
 
   if (query.isLoading) return <Loading />;
@@ -139,10 +171,10 @@ function StockTab() {
   );
 }
 
-function MovementsTab() {
+function MovementsTab({ branchId }: { branchId: string }) {
   const query = useQuery({
-    queryKey: OVERVIEW_KEY,
-    queryFn: () => getInventoryOverview(),
+    queryKey: [...OVERVIEW_KEY, branchId],
+    queryFn: () => getInventoryOverview({ data: { branchId } }),
   });
 
   if (query.isLoading) return <Loading />;

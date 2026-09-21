@@ -13,6 +13,7 @@ import type {
 import { addRankTrackingKeywordsTool } from "@/server/mcp/tools/add-rank-tracking-keywords";
 import { createProjectTool } from "@/server/mcp/tools/create-project";
 import { createRankTrackerTool } from "@/server/mcp/tools/create-rank-tracker";
+import { commerceSurface } from "@/server/mcp/tools/branch-stock-tools";
 import { crmSurface } from "@/server/mcp/tools/crm-tools";
 import { emailSurface } from "@/server/mcp/tools/email-tools";
 import { estimateRankTrackerCostTool } from "@/server/mcp/tools/estimate-rank-tracker-cost";
@@ -82,6 +83,7 @@ export const MODULE_SURFACES: readonly McpModuleSurface[] = [
   invoiceSurface,
   quoteSurface,
   crmSurface,
+  commerceSurface,
   reportSurface,
   emailSurface,
   smsSurface,

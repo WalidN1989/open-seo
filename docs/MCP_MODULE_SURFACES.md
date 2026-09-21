@@ -101,6 +101,20 @@ one. `draft_invoice` on a sent invoice returns an error saying so.
 Invoice rows in Digital Urgency are the record. This is not a view onto Xero or
 QuickBooks, and there is no proxy to either.
 
+### Branch inventory — organization-scoped CRM
+
+`find_branch_stock(search, location?, organizationId?)` returns live product
+availability and branch addresses. Search accepts a product name or SKU;
+location matches a branch name, address, city, postcode or state. Australian
+state names and abbreviations are equivalent. A null quantity means unknown;
+zero means confirmed out of stock. A location with no matches is not evidence
+of unavailability: retry without the location. Narrow the query if the totals
+exceed the five-product/twenty-branch response limits.
+
+This tool requires CRM view permission and is offered to CRM-enabled voice
+sessions. It does not spend credits, reserve stock, calculate distances or
+change inventory. Stock adjustment, transfer and reservation tools are withheld.
+
 ## Adding a module
 
 1. Write the tools. Use the wrapper matching the scope.

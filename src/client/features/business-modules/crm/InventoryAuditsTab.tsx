@@ -24,23 +24,23 @@ import { getStandardErrorMessage } from "@/client/lib/error-messages";
 import {
   ErrorState,
   INVENTORY_AUDITS_KEY as AUDITS_KEY,
-  INVENTORY_OVERVIEW_KEY as OVERVIEW_KEY,
   Loading,
   StatusBadge,
 } from "./inventoryShared";
 
-export function AuditsTab() {
+export function AuditsTab({ branchId }: { branchId: string }) {
   const queryClient = useQueryClient();
   const [creating, setCreating] = useState(false);
   const [openAuditId, setOpenAuditId] = useState<string | null>(null);
 
   const audits = useQuery({
-    queryKey: AUDITS_KEY,
-    queryFn: () => listInventoryAudits(),
+    queryKey: [...AUDITS_KEY, branchId],
+    queryFn: () => listInventoryAudits({ data: { branchId } }),
   });
 
   const create = useMutation({
-    mutationFn: (name: string) => createInventoryAudit({ data: { name } }),
+    mutationFn: (name: string) =>
+      createInventoryAudit({ data: { name, branchId } }),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: AUDITS_KEY });
       setCreating(false);
@@ -236,7 +236,7 @@ function AuditDetail({ auditId, status }: { auditId: string; status: string }) {
   const refresh = async () => {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: AUDITS_KEY }),
-      queryClient.invalidateQueries({ queryKey: OVERVIEW_KEY }),
+      queryClient.invalidateQueries({ queryKey: ["commerce"] }),
       queryClient.invalidateQueries({
         queryKey: ["commerce", "inventory", "audit", auditId],
       }),

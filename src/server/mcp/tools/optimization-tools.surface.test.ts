@@ -31,6 +31,7 @@ const quotes = source("tools/quote-tools.ts");
 const crm =
   source("tools/crm-tools.ts") + source("tools/client-login-tools.ts");
 const whatsapp = source("tools/whatsapp-tools.ts");
+const commerce = source("tools/branch-stock-tools.ts");
 const sms = source("tools/sms-tools.ts");
 // The surfaces and tools now live in the catalogue the server registers from.
 const server = source("catalogue.ts");
@@ -201,6 +202,15 @@ describe("the SMS MCP surface", () => {
   });
 });
 
+describe("the inventory MCP surface", () => {
+  it("offers read-only branch availability without inventory mutations", () => {
+    expect(declaredToolNames(commerce)).toEqual(["find_branch_stock"]);
+    expect(commerce).toContain("readOnlyHint: true");
+    expect(commerce).not.toContain("BranchService.transfer");
+    expect(commerce).not.toContain("InventoryService.adjustStock");
+  });
+});
+
 describe("the module registry", () => {
   it("registers every surface it declares", () => {
     // Only the list itself: the file also names the surface type it imports.
@@ -210,6 +220,7 @@ describe("the module registry", () => {
       (match) => match[1],
     );
     expect(surfaces.toSorted()).toEqual([
+      "commerceSurface",
       "crmSurface",
       "emailSurface",
       "invoiceSurface",
@@ -229,6 +240,7 @@ describe("the module registry", () => {
       email,
       quotes,
       crm,
+      commerce,
       whatsapp,
       sms,
     ]) {
