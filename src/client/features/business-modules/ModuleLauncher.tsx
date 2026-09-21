@@ -8,22 +8,26 @@ export function ModuleLauncher({
   label,
   Icon,
   accessible,
+  inventory = false,
 }: {
   moduleKey: BusinessModuleKey;
   label: string;
   Icon: ComponentType<{ className?: string }>;
   accessible: boolean;
+  inventory?: boolean;
 }) {
   return (
     <div className="business-access-launcher">
       {accessible ? (
         <Link
           to={
-            moduleKey === "crm"
-              ? "/modules/crm"
-              : moduleKey === "integrations"
-                ? "/modules/integrations"
-                : "/modules/$moduleKey"
+            inventory
+              ? "/modules/crm/inventory"
+              : moduleKey === "crm"
+                ? "/modules/crm"
+                : moduleKey === "integrations"
+                  ? "/modules/integrations"
+                  : "/modules/$moduleKey"
           }
           params={{ moduleKey }}
           className="business-access-launch-link"
@@ -31,7 +35,7 @@ export function ModuleLauncher({
         />
       ) : null}
       <span
-        data-module={moduleKey}
+        data-module={inventory ? "inventory" : moduleKey}
         className="business-access-icon shrink-0 rounded-lg bg-base-200 p-2"
       >
         <Icon className="size-5" />

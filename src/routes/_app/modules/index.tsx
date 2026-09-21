@@ -1,4 +1,5 @@
 import { ModuleLauncher } from "@/client/features/business-modules/ModuleLauncher";
+import { InventoryLauncher } from "@/client/features/business-modules/InventoryLauncher";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
@@ -201,6 +202,12 @@ function BusinessModulesPage() {
                     </summary>
                   )}
                   <div className="business-access-grid">
+                    {enabled &&
+                    modules.some(
+                      (module) => module.key === "crm" && module.permission,
+                    ) ? (
+                      <InventoryLauncher />
+                    ) : null}
                     {modules.map((module) => {
                       const Icon = icons[module.key];
                       return (

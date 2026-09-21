@@ -1,4 +1,5 @@
 import { ModuleLauncher } from "./ModuleLauncher";
+import { InventoryLauncher } from "./InventoryLauncher";
 import type { ComponentType } from "react";
 import type { BusinessModuleKey } from "@/shared/business-modules";
 
@@ -54,6 +55,9 @@ export function ClientModuleList({
             />
           </article>
         ))}
+        {available.some((module) => module.key === "crm") ? (
+          <InventoryLauncher />
+        ) : null}
       </div>
     </section>
   );

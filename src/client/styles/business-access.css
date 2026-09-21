@@ -199,3 +199,6 @@
     min-height: 120px;
   }
 }
+.business-access-icon[data-module="inventory"] {
+  --module-color: #d97706;
+}
