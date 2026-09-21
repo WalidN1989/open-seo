@@ -1091,3 +1091,19 @@ a second recording or provider pipeline. `Ctrl+Space` opens it on Windows/Linux;
 macOS uses `Command+Shift+Space` because `Command+Space` is reserved by
 Spotlight. A shared Railway `DEEPGRAM_API_KEY` is supported directly, while a
 credential-reference-specific key remains an optional tenant override.
+
+### 2026-09-22: reduce resident launcher memory
+
+The Railway entrypoint now starts the long-running Vite server with Node and
+starts the ticker and mailbox bridge with `node --import tsx`. Previously,
+`pnpm exec` and the tsx CLI stayed resident alongside the actual workers.
+The programs, arguments, provider configuration, cron intervals, migrations,
+runtime-variable allowlist and Node base image are unchanged. Keep `tsx` and
+Vite installed: both are runtime dependencies of this deployment.
+
+A local comparison with synthetic mailbox accounts and a mock internal server
+verified both launch paths, scheduled calls, mailbox discovery and rejection of
+unauthenticated bridge requests. The direct Vite launcher also served the built
+application's health endpoint successfully. Local memory savings are not a
+production billing guarantee; compare Railway runtime measurements after rollout.
+Rollback is a revert of the entrypoint change; there are no schema changes.
