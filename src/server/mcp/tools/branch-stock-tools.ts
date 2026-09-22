@@ -87,7 +87,16 @@ export const branchStockTool = {
           id: z.string(),
           name: z.string(),
           sku: z.string(),
+          inventoryMode: z.enum(["single", "multi"]),
           totalBranches: z.number(),
+          availabilitySummary: z.enum([
+            "unknown",
+            "out_of_stock",
+            "default_location",
+            "some_branches",
+            "all_branches",
+          ]),
+          availableBranchNames: z.array(z.string()),
           branches: z.array(stockOutputSchema),
         }),
       ),
@@ -129,11 +138,30 @@ export const branchStockTool = {
                 branch.country,
               ].some((value) => value?.toLowerCase().includes(location)),
           );
+          const available = matching.filter(
+            ({ quantityOnHand }) => (quantityOnHand ?? 0) > 0,
+          );
+          const hasUnknown = matching.some(
+            ({ quantityOnHand }) => quantityOnHand === null,
+          );
+          const availabilitySummary =
+            matching.length === 0 || (available.length === 0 && hasUnknown)
+              ? "unknown"
+              : available.length === 0
+                ? "out_of_stock"
+                : product.inventoryMode === "single"
+                  ? "default_location"
+                  : available.length === matching.length
+                    ? "all_branches"
+                    : "some_branches";
           return {
             id: product.id,
             name: product.name,
             sku: product.sku,
+            inventoryMode: product.inventoryMode,
             totalBranches: matching.length,
+            availabilitySummary,
+            availableBranchNames: available.map(({ branch }) => branch.name),
             branches: matching
               .slice(0, 20)
               .map(({ branch, quantityOnHand, updatedAt }) => ({

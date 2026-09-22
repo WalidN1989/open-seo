@@ -68,6 +68,10 @@ it("backfills one default branch without losing stock, audit lines or order line
       (await client.execute("SELECT id FROM commerce_order_lines")).rows,
     ).toEqual([{ id: "ol" }]);
     expect(
+      (await client.execute("SELECT inventory_mode FROM commerce_products"))
+        .rows,
+    ).toEqual([{ inventory_mode: "single" }]);
+    expect(
       (await client.execute("SELECT count(*) AS n FROM commerce_branches"))
         .rows[0]?.n,
     ).toBe(1);

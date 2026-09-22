@@ -1,6 +1,17 @@
-import { and, asc, count, eq, inArray, like, or, sql } from "drizzle-orm";
+import {
+  and,
+  asc,
+  count,
+  eq,
+  gt,
+  inArray,
+  like,
+  ne,
+  or,
+  sql,
+} from "drizzle-orm";
 import { db } from "@/db";
-import { commerceProducts } from "@/db/schema";
+import { commerceInventoryBalances, commerceProducts } from "@/db/schema";
 import type {
   CreateProductInput,
   ListProductsInput,
@@ -181,6 +192,25 @@ async function listVariants(organizationId: string, parentProductId: string) {
     .orderBy(asc(commerceProducts.name));
 }
 
+async function hasStockOutsideDefault(
+  organizationId: string,
+  productId: string,
+) {
+  const [row] = await db
+    .select({ id: commerceInventoryBalances.id })
+    .from(commerceInventoryBalances)
+    .where(
+      and(
+        eq(commerceInventoryBalances.organizationId, organizationId),
+        eq(commerceInventoryBalances.productId, productId),
+        ne(commerceInventoryBalances.branchId, `default:${organizationId}`),
+        gt(commerceInventoryBalances.quantityOnHand, 0),
+      ),
+    )
+    .limit(1);
+  return Boolean(row);
+}
+
 /**
  * Upsert a product the provider owns. The external id is the identity, so a
  * repeated sync updates the same row instead of adding another. Fields a
@@ -291,5 +321,6 @@ export const CommerceRepository = {
   createProduct,
   updateProduct,
   listVariants,
+  hasStockOutsideDefault,
   rewriteExternalProductUrlOrigin,
 };

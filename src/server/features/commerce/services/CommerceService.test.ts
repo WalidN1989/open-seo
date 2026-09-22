@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   createProduct: vi.fn(),
   updateProduct: vi.fn(),
   listVariants: vi.fn(),
+  hasStockOutsideDefault: vi.fn(),
 }));
 
 vi.mock(
@@ -24,6 +25,7 @@ vi.mock("../repositories/CommerceRepository", () => ({
     createProduct: mocks.createProduct,
     updateProduct: mocks.updateProduct,
     listVariants: mocks.listVariants,
+    hasStockOutsideDefault: mocks.hasStockOutsideDefault,
   },
 }));
 
@@ -48,6 +50,7 @@ describe("CommerceService authorization", () => {
     for (const mock of Object.values(mocks)) mock.mockReset();
     mocks.requireAccess.mockResolvedValue(undefined);
     mocks.listVariants.mockResolvedValue([]);
+    mocks.hasStockOutsideDefault.mockResolvedValue(false);
   });
 
   it("requires only view access to read", async () => {
@@ -95,6 +98,7 @@ describe("CommerceService organization isolation", () => {
     for (const mock of Object.values(mocks)) mock.mockReset();
     mocks.requireAccess.mockResolvedValue(undefined);
     mocks.listVariants.mockResolvedValue([]);
+    mocks.hasStockOutsideDefault.mockResolvedValue(false);
   });
 
   it("passes the caller's organization to every lookup", async () => {
@@ -145,6 +149,7 @@ describe("CommerceService product rules", () => {
     for (const mock of Object.values(mocks)) mock.mockReset();
     mocks.requireAccess.mockResolvedValue(undefined);
     mocks.listVariants.mockResolvedValue([]);
+    mocks.hasStockOutsideDefault.mockResolvedValue(false);
   });
 
   it("refuses a duplicate SKU within the organization", async () => {
@@ -179,6 +184,17 @@ describe("CommerceService product rules", () => {
         parentProductId: "product_1",
       }),
     ).rejects.toThrow("A product cannot be its own variant.");
+    expect(mocks.updateProduct).not.toHaveBeenCalled();
+  });
+
+  it("keeps branch stock visible before switching back to one location", async () => {
+    mocks.hasStockOutsideDefault.mockResolvedValue(true);
+    await expect(
+      CommerceService.updateProduct(ORG, USER, {
+        id: "product_1",
+        inventoryMode: "single",
+      }),
+    ).rejects.toThrow("Move stock from the other branches");
     expect(mocks.updateProduct).not.toHaveBeenCalled();
   });
 });

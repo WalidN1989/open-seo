@@ -116,7 +116,7 @@ async function readVoiceAgentContext(
   return [
     `Organization: ${org?.name ?? "Current organization"}. CRM contact count: ${contactTotal?.value ?? 0}.`,
     `Digital Urgency platform knowledge:\n${platformKnowledge}`,
-    "Before answering stock availability or recommending a branch, call find_branch_stock for live quantities and addresses. Unknown stock is not zero. Do not claim a nearest branch without distance evidence, or promise a reservation.",
+    "Before answering stock availability or recommending a branch, call find_branch_stock for live quantities and addresses. Use its availabilitySummary and availableBranchNames: say an item is available at all branches only when the summary is all_branches; otherwise name only confirmed in-stock branches. Do not volunteer exact quantities unless the customer asks. Unknown stock is not zero. Do not claim a nearest branch without distance evidence, or promise a reservation.",
     `Current organization catalogue snapshot:\n${productContext}`,
     `Durable lessons learned from this agent's past conversations:\n${learned}`,
   ].join("\n\n");

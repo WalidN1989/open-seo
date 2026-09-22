@@ -1237,6 +1237,12 @@ export const commerceProducts = sqliteTable(
     itemType: text("item_type", { enum: ["product", "service"] })
       .notNull()
       .default("product"),
+    // Existing catalogues stay simple. A product must be deliberately opted
+    // into branch stock before it can be counted or adjusted away from the
+    // default location.
+    inventoryMode: text("inventory_mode", { enum: ["single", "multi"] })
+      .notNull()
+      .default("single"),
     salePriceMinor: integer("sale_price_minor").notNull().default(0),
     costPriceMinor: integer("cost_price_minor"),
     reorderThreshold: integer("reorder_threshold").notNull().default(0),

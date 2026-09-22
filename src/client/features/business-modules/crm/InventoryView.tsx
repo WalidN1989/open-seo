@@ -35,6 +35,10 @@ export function CrmInventoryView() {
   const selection = useBranchSelection();
   const { branchId } = selection;
   const [tab, setTab] = useState<Tab>("count");
+  const [countLocked, setCountLocked] = useState(false);
+  const branchName = selection.branches.find(
+    (branch) => branch.id === branchId,
+  )?.name;
 
   return (
     <div className="space-y-6">
@@ -45,7 +49,10 @@ export function CrmInventoryView() {
         </p>
       </div>
 
-      <BranchPicker selection={selection} />
+      <BranchPicker
+        selection={selection}
+        locked={tab === "count" && countLocked}
+      />
       <div role="tablist" className="tabs tabs-border">
         <button
           role="tab"
@@ -102,7 +109,11 @@ export function CrmInventoryView() {
       <div key={branchId}>
         {branchId && tab === "stock" ? <StockTab branchId={branchId} /> : null}
         {branchId && tab === "count" ? (
-          <StockTakeTab branchId={branchId} />
+          <StockTakeTab
+            branchId={branchId}
+            branchName={branchName ?? "Selected location"}
+            onActiveChange={setCountLocked}
+          />
         ) : null}
         {branchId && tab === "audits" ? (
           <AuditsTab branchId={branchId} />

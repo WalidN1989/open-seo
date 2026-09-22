@@ -14,6 +14,7 @@ import {
 } from "../repositories/InventoryRepository";
 
 import { BranchRepository } from "../repositories/BranchRepository";
+import { assertProductCanUseBranch } from "./inventoryMode";
 
 const AUDIT_REFERENCE = "inventory_audit";
 const AUDIT_REVERT_REFERENCE = "inventory_audit_revert";
@@ -74,6 +75,7 @@ async function adjustStock(
     input.productId,
   );
   if (!product) throw new AppError("NOT_FOUND", "Product not found.");
+  assertProductCanUseBranch(organizationId, product, branchId);
 
   await assertWouldNotGoNegative(
     organizationId,
@@ -204,6 +206,7 @@ async function recordAuditCount(
     input.productId,
   );
   if (!product) throw new AppError("NOT_FOUND", "Product not found.");
+  assertProductCanUseBranch(organizationId, product, audit.branchId);
 
   const balance = await InventoryRepository.getBalance(
     organizationId,

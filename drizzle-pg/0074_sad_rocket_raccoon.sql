@@ -1,0 +1,1 @@
+ALTER TABLE "commerce_products" ADD COLUMN "inventory_mode" text DEFAULT 'single' NOT NULL;

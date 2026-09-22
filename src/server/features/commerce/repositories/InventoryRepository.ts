@@ -216,6 +216,14 @@ async function listCountableProducts(
   organizationId: string,
   branchId = BranchRepository.defaultId(organizationId),
 ) {
+  const filters = [
+    eq(commerceProducts.organizationId, organizationId),
+    eq(commerceProducts.status, "active"),
+    eq(commerceProducts.itemType, "product"),
+  ];
+  if (branchId !== BranchRepository.defaultId(organizationId)) {
+    filters.push(eq(commerceProducts.inventoryMode, "multi"));
+  }
   const rows = await db
     .select({
       id: commerceProducts.id,
@@ -233,12 +241,7 @@ async function listCountableProducts(
         eq(commerceInventoryBalances.productId, commerceProducts.id),
       ),
     )
-    .where(
-      and(
-        eq(commerceProducts.organizationId, organizationId),
-        eq(commerceProducts.status, "active"),
-      ),
-    )
+    .where(and(...filters))
     .orderBy(commerceProducts.name)
     .limit(10_000);
   return rows.map((row) => ({
