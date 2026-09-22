@@ -87,12 +87,14 @@ const signedQuantity = z
   .refine((value) => value !== 0, "A movement must change the quantity.");
 
 export const adjustStockSchema = z.object({
+  branchId: z.string().min(1).optional(),
   productId: z.string().min(1),
   quantityDelta: signedQuantity,
   reason: z.string().trim().max(500).optional(),
 });
 
 export const createAuditSchema = z.object({
+  branchId: z.string().min(1).optional(),
   name: z.string().trim().min(1).max(200),
   note: z.string().trim().max(2000).optional(),
 });
@@ -106,6 +108,7 @@ export const recordAuditCountSchema = z.object({
 });
 
 export const listMovementsSchema = z.object({
+  branchId: z.string().min(1).optional(),
   productId: z.string().min(1).optional(),
   limit: z.number().int().min(1).max(200).default(50),
 });
@@ -125,6 +128,7 @@ export const orderLineSchema = z.object({
 });
 
 export const createOrderSchema = z.object({
+  branchId: z.string().min(1).optional(),
   contactId: z.string().min(1).optional(),
   note: z.string().trim().max(2000).optional(),
   discountMinor: minorUnits.default(0),
@@ -160,3 +164,32 @@ export const setSyncScheduleSchema = z.object({
   // anything beyond a day is indistinguishable from off.
   syncIntervalMinutes: z.number().int().min(15).max(1440),
 });
+
+// An omitted branch preserves the default-branch behaviour of older clients.
+export const branchSelectionSchema = z.object({
+  branchId: z.string().min(1).optional(),
+});
+export const branchSchema = z.object({
+  id: z.string().min(1).optional(),
+  name: z.string().trim().min(1).max(120),
+  address: z.string().trim().max(500).nullable().optional(),
+  city: z.string().trim().max(120).nullable().optional(),
+  state: z.string().trim().max(120).nullable().optional(),
+  postcode: z.string().trim().max(30).nullable().optional(),
+  country: z.string().trim().max(120).nullable().optional(),
+  phone: z.string().trim().max(60).nullable().optional(),
+  openingHours: z.string().trim().max(1000).nullable().optional(),
+});
+export type BranchInput = z.infer<typeof branchSchema>;
+export const transferStockSchema = z
+  .object({
+    productId: z.string().min(1),
+    fromBranchId: z.string().min(1),
+    toBranchId: z.string().min(1),
+    quantity: z.number().int().min(1).max(10_000_000),
+    requestId: z.string().uuid(),
+  })
+  .refine((input) => input.fromBranchId !== input.toBranchId, {
+    message: "Choose two different branches.",
+  });
+export type TransferStockInput = z.infer<typeof transferStockSchema>;

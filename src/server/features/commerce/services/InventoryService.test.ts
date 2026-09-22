@@ -43,6 +43,14 @@ vi.mock("../repositories/InventoryRepository", () => ({
   },
 }));
 
+vi.mock("../repositories/BranchRepository", () => ({
+  BranchRepository: {
+    resolve: async (organizationId: string, branchId?: string) => ({
+      id: branchId ?? `default:${organizationId}`,
+    }),
+  },
+}));
+
 const { InventoryService } = await import("./InventoryService");
 
 const ORG = "org_1";
@@ -141,10 +149,11 @@ describe("audit lifecycle", () => {
       auditItem(4, 4, "p2"),
     ]);
     const result = await InventoryService.publishAudit(ORG, USER, "a1");
-    // The unchanged line writes nothing.
-    expect(result.movementCount).toBe(1);
+    // A zero movement records that the unchanged line was counted too.
+    expect(result.movementCount).toBe(2);
     expect(mocks.applyMovements).toHaveBeenCalledWith(ORG, [
       expect.objectContaining({ productId: "p1", quantityDelta: 2 }),
+      expect.objectContaining({ productId: "p2", quantityDelta: 0 }),
     ]);
   });
 

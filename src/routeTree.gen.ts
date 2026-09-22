@@ -92,6 +92,7 @@ import { Route as ProjectPProjectIdRankTrackingIndexRouteImport } from './routes
 import { Route as ProjectPProjectIdOptimizationsIndexRouteImport } from './routes/_project/p/$projectId/optimizations/index'
 import { Route as ProjectPProjectIdCompetitorsIndexRouteImport } from './routes/_project/p/$projectId/competitors/index'
 import { Route as ProjectPProjectIdAuditIndexRouteImport } from './routes/_project/p/$projectId/audit/index'
+import { Route as AppModulesCrmProductsIndexRouteImport } from './routes/_app/modules/crm/products.index'
 import { Route as ProjectPProjectIdSettingsIntegrationsRouteImport } from './routes/_project/p/$projectId/settings/integrations'
 import { Route as ProjectPProjectIdSettingsContextRouteImport } from './routes/_project/p/$projectId/settings/context'
 import { Route as ProjectPProjectIdRankTrackingConfigIdRouteImport } from './routes/_project/p/$projectId/rank-tracking/$configId'
@@ -533,6 +534,12 @@ const ProjectPProjectIdAuditIndexRoute =
     path: '/',
     getParentRoute: () => ProjectPProjectIdAuditRoute,
   } as any)
+const AppModulesCrmProductsIndexRoute =
+  AppModulesCrmProductsIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AppModulesCrmProductsRoute,
+  } as any)
 const ProjectPProjectIdSettingsIntegrationsRoute =
   ProjectPProjectIdSettingsIntegrationsRouteImport.update({
     id: '/integrations',
@@ -643,6 +650,7 @@ export interface FileRoutesByFullPath {
   '/p/$projectId/rank-tracking/$configId': typeof ProjectPProjectIdRankTrackingConfigIdRoute
   '/p/$projectId/settings/context': typeof ProjectPProjectIdSettingsContextRoute
   '/p/$projectId/settings/integrations': typeof ProjectPProjectIdSettingsIntegrationsRoute
+  '/modules/crm/products/': typeof AppModulesCrmProductsIndexRoute
   '/p/$projectId/audit/': typeof ProjectPProjectIdAuditIndexRoute
   '/p/$projectId/competitors/': typeof ProjectPProjectIdCompetitorsIndexRoute
   '/p/$projectId/optimizations/': typeof ProjectPProjectIdOptimizationsIndexRoute
@@ -692,7 +700,6 @@ export interface FileRoutesByTo {
   '/modules/crm/inventory': typeof AppModulesCrmInventoryRoute
   '/modules/crm/meetings': typeof AppModulesCrmMeetingsRoute
   '/modules/crm/orders': typeof AppModulesCrmOrdersRoute
-  '/modules/crm/products': typeof AppModulesCrmProductsRouteWithChildren
   '/modules/crm/quotations': typeof AppModulesCrmQuotationsRoute
   '/modules/crm/sms': typeof AppModulesCrmSmsRoute
   '/modules/crm/sources': typeof AppModulesCrmSourcesRoute
@@ -722,6 +729,7 @@ export interface FileRoutesByTo {
   '/p/$projectId/rank-tracking/$configId': typeof ProjectPProjectIdRankTrackingConfigIdRoute
   '/p/$projectId/settings/context': typeof ProjectPProjectIdSettingsContextRoute
   '/p/$projectId/settings/integrations': typeof ProjectPProjectIdSettingsIntegrationsRoute
+  '/modules/crm/products': typeof AppModulesCrmProductsIndexRoute
   '/p/$projectId/audit': typeof ProjectPProjectIdAuditIndexRoute
   '/p/$projectId/competitors': typeof ProjectPProjectIdCompetitorsIndexRoute
   '/p/$projectId/optimizations': typeof ProjectPProjectIdOptimizationsIndexRoute
@@ -813,6 +821,7 @@ export interface FileRoutesById {
   '/_project/p/$projectId/rank-tracking/$configId': typeof ProjectPProjectIdRankTrackingConfigIdRoute
   '/_project/p/$projectId/settings/context': typeof ProjectPProjectIdSettingsContextRoute
   '/_project/p/$projectId/settings/integrations': typeof ProjectPProjectIdSettingsIntegrationsRoute
+  '/_app/modules/crm/products/': typeof AppModulesCrmProductsIndexRoute
   '/_project/p/$projectId/audit/': typeof ProjectPProjectIdAuditIndexRoute
   '/_project/p/$projectId/competitors/': typeof ProjectPProjectIdCompetitorsIndexRoute
   '/_project/p/$projectId/optimizations/': typeof ProjectPProjectIdOptimizationsIndexRoute
@@ -901,6 +910,7 @@ export interface FileRouteTypes {
     | '/p/$projectId/rank-tracking/$configId'
     | '/p/$projectId/settings/context'
     | '/p/$projectId/settings/integrations'
+    | '/modules/crm/products/'
     | '/p/$projectId/audit/'
     | '/p/$projectId/competitors/'
     | '/p/$projectId/optimizations/'
@@ -950,7 +960,6 @@ export interface FileRouteTypes {
     | '/modules/crm/inventory'
     | '/modules/crm/meetings'
     | '/modules/crm/orders'
-    | '/modules/crm/products'
     | '/modules/crm/quotations'
     | '/modules/crm/sms'
     | '/modules/crm/sources'
@@ -980,6 +989,7 @@ export interface FileRouteTypes {
     | '/p/$projectId/rank-tracking/$configId'
     | '/p/$projectId/settings/context'
     | '/p/$projectId/settings/integrations'
+    | '/modules/crm/products'
     | '/p/$projectId/audit'
     | '/p/$projectId/competitors'
     | '/p/$projectId/optimizations'
@@ -1070,6 +1080,7 @@ export interface FileRouteTypes {
     | '/_project/p/$projectId/rank-tracking/$configId'
     | '/_project/p/$projectId/settings/context'
     | '/_project/p/$projectId/settings/integrations'
+    | '/_app/modules/crm/products/'
     | '/_project/p/$projectId/audit/'
     | '/_project/p/$projectId/competitors/'
     | '/_project/p/$projectId/optimizations/'
@@ -1692,6 +1703,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProjectPProjectIdAuditIndexRouteImport
       parentRoute: typeof ProjectPProjectIdAuditRoute
     }
+    '/_app/modules/crm/products/': {
+      id: '/_app/modules/crm/products/'
+      path: '/'
+      fullPath: '/modules/crm/products/'
+      preLoaderRoute: typeof AppModulesCrmProductsIndexRouteImport
+      parentRoute: typeof AppModulesCrmProductsRoute
+    }
     '/_project/p/$projectId/settings/integrations': {
       id: '/_project/p/$projectId/settings/integrations'
       path: '/integrations'
@@ -1732,10 +1750,12 @@ declare module '@tanstack/react-router' {
 
 interface AppModulesCrmProductsRouteChildren {
   AppModulesCrmProductsProductIdRoute: typeof AppModulesCrmProductsProductIdRoute
+  AppModulesCrmProductsIndexRoute: typeof AppModulesCrmProductsIndexRoute
 }
 
 const AppModulesCrmProductsRouteChildren: AppModulesCrmProductsRouteChildren = {
   AppModulesCrmProductsProductIdRoute: AppModulesCrmProductsProductIdRoute,
+  AppModulesCrmProductsIndexRoute: AppModulesCrmProductsIndexRoute,
 }
 
 const AppModulesCrmProductsRouteWithChildren =

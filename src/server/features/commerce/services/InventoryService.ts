@@ -1,3 +1,4 @@
+import { tellTheOwner } from "./inventoryNotification";
 import { BusinessModuleService } from "@/server/features/business-modules/services/BusinessModuleService";
 import { AppError } from "@/server/lib/errors";
 import type {
@@ -12,6 +13,8 @@ import {
   type StockMovementDraft,
 } from "../repositories/InventoryRepository";
 
+import { BranchRepository } from "../repositories/BranchRepository";
+
 const AUDIT_REFERENCE = "inventory_audit";
 const AUDIT_REVERT_REFERENCE = "inventory_audit_revert";
 
@@ -19,11 +22,16 @@ async function getStockOverview(
   organizationId: string,
   userId: string,
   limit = 100,
+  selectedBranchId?: string,
 ) {
   await BusinessModuleService.requireAccess(organizationId, userId, "crm");
+  const { id: branchId } = await BranchRepository.resolve(
+    organizationId,
+    selectedBranchId,
+  );
   const [lowStock, movements] = await Promise.all([
-    InventoryRepository.listLowStock(organizationId, limit),
-    InventoryRepository.listMovements(organizationId, undefined, 25),
+    InventoryRepository.listLowStock(organizationId, limit, branchId),
+    InventoryRepository.listMovements(organizationId, undefined, 25, branchId),
   ]);
   return { lowStock, movements };
 }
@@ -38,6 +46,7 @@ async function listMovements(
     organizationId,
     input.productId,
     input.limit,
+    (await BranchRepository.resolve(organizationId, input.branchId)).id,
   );
 }
 
@@ -56,18 +65,25 @@ async function adjustStock(
     "crm",
     "manage",
   );
+  const { id: branchId } = await BranchRepository.resolve(
+    organizationId,
+    input.branchId,
+  );
   const product = await CommerceRepository.getProduct(
     organizationId,
     input.productId,
   );
   if (!product) throw new AppError("NOT_FOUND", "Product not found.");
 
-  await assertWouldNotGoNegative(organizationId, [
-    { productId: input.productId, quantityDelta: input.quantityDelta },
-  ]);
+  await assertWouldNotGoNegative(
+    organizationId,
+    [{ productId: input.productId, quantityDelta: input.quantityDelta }],
+    branchId,
+  );
 
   await InventoryRepository.applyMovements(organizationId, [
     {
+      branchId,
       productId: input.productId,
       movementType: "adjustment",
       quantityDelta: input.quantityDelta,
@@ -75,7 +91,11 @@ async function adjustStock(
       actorUserId: userId,
     },
   ]);
-  return InventoryRepository.getBalance(organizationId, input.productId);
+  return InventoryRepository.getBalance(
+    organizationId,
+    input.productId,
+    branchId,
+  );
 }
 
 async function createAudit(
@@ -90,15 +110,25 @@ async function createAudit(
     "manage",
   );
   return InventoryRepository.createAudit(organizationId, {
+    branchId: input.branchId,
     name: input.name,
     note: input.note ?? null,
     createdByUserId: userId,
   });
 }
 
-async function listAudits(organizationId: string, userId: string, limit = 50) {
+async function listAudits(
+  organizationId: string,
+  userId: string,
+  limit = 50,
+  branchId?: string,
+) {
   await BusinessModuleService.requireAccess(organizationId, userId, "crm");
-  return InventoryRepository.listAudits(organizationId, limit);
+  return InventoryRepository.listAudits(
+    organizationId,
+    limit,
+    (await BranchRepository.resolve(organizationId, branchId)).id,
+  );
 }
 
 async function getAudit(
@@ -121,19 +151,35 @@ async function getAudit(
  * barcode and current stock, handed over once so the counting itself needs
  * no connection.
  */
-async function countableProducts(organizationId: string, userId: string) {
+async function countableProducts(
+  organizationId: string,
+  userId: string,
+  branchId?: string,
+) {
   await BusinessModuleService.requireAccess(organizationId, userId, "crm");
-  return InventoryRepository.listCountableProducts(organizationId);
+  return InventoryRepository.listCountableProducts(
+    organizationId,
+    (await BranchRepository.resolve(organizationId, branchId)).id,
+  );
 }
 
 /**
  * Stock as it stood at the end of a chosen day — for an audit, or a year's
  * accounts. Read-only: it changes nothing, it only looks back.
  */
-async function stockAsOf(organizationId: string, userId: string, day: string) {
+async function stockAsOf(
+  organizationId: string,
+  userId: string,
+  day: string,
+  branchId?: string,
+) {
   await BusinessModuleService.requireAccess(organizationId, userId, "crm");
   // The whole of that day counts, so the line is drawn at midnight after it.
-  return InventoryRepository.stockAsOf(organizationId, `${day}T23:59:59.999Z`);
+  return InventoryRepository.stockAsOf(
+    organizationId,
+    `${day}T23:59:59.999Z`,
+    (await BranchRepository.resolve(organizationId, branchId)).id,
+  );
 }
 
 /**
@@ -162,6 +208,7 @@ async function recordAuditCount(
   const balance = await InventoryRepository.getBalance(
     organizationId,
     input.productId,
+    audit.branchId,
   );
   return InventoryRepository.upsertAuditItem(organizationId, {
     auditId: audit.id,
@@ -200,15 +247,17 @@ async function publishAudit(
   const movements: StockMovementDraft[] = [];
   for (const { item } of items) {
     const variance = item.countedQuantity - item.expectedQuantity;
-    if (variance === 0) continue;
+
     const existing = await InventoryRepository.findMovementByReference(
       organizationId,
       AUDIT_REFERENCE,
       auditId,
       item.productId,
+      audit.branchId,
     );
     if (existing) continue;
     movements.push({
+      branchId: audit.branchId,
       productId: item.productId,
       movementType: "audit",
       quantityDelta: variance,
@@ -219,7 +268,7 @@ async function publishAudit(
     });
   }
 
-  await assertWouldNotGoNegative(organizationId, movements);
+  await assertWouldNotGoNegative(organizationId, movements, audit.branchId);
   await InventoryRepository.applyMovements(organizationId, movements);
 
   const published = await InventoryRepository.setAuditStatus(
@@ -263,15 +312,17 @@ async function revertAudit(
   const movements: StockMovementDraft[] = [];
   for (const { item } of items) {
     const variance = item.countedQuantity - item.expectedQuantity;
-    if (variance === 0) continue;
+
     const alreadyReverted = await InventoryRepository.findMovementByReference(
       organizationId,
       AUDIT_REVERT_REFERENCE,
       auditId,
       item.productId,
+      audit.branchId,
     );
     if (alreadyReverted) continue;
     movements.push({
+      branchId: audit.branchId,
       productId: item.productId,
       movementType: "audit",
       quantityDelta: -variance,
@@ -282,7 +333,7 @@ async function revertAudit(
     });
   }
 
-  await assertWouldNotGoNegative(organizationId, movements);
+  await assertWouldNotGoNegative(organizationId, movements, audit.branchId);
   await InventoryRepository.applyMovements(organizationId, movements);
 
   const reverted = await InventoryRepository.setAuditStatus(
@@ -337,44 +388,6 @@ async function submitAudit(
   return submitted;
 }
 
-async function tellTheOwner(
-  organizationId: string,
-  submittedByUserId: string,
-  count: { name: string; counted: number; discrepancies: number },
-) {
-  // Imported here rather than at the top: the mail and env modules drag the
-  // worker runtime in with them, and counting stock must not depend on it.
-  const [
-    { BusinessModuleRepository },
-    { sendClientActionEmail },
-    { getOptionalEnvValue },
-  ] = await Promise.all([
-    import("@/server/features/business-modules/repositories/BusinessModuleRepository"),
-    import("@/server/email/transactional"),
-    import("@/server/lib/runtime-env"),
-  ]);
-  const members = await BusinessModuleRepository.listMembers(organizationId);
-  const owner = members.find((row) => row.role === "owner") ?? null;
-  // Nobody to tell, or the owner counted it themselves: no email.
-  if (!owner?.email || owner.userId === submittedByUserId) return;
-  const counter = members.find((row) => row.userId === submittedByUserId);
-  const baseUrl = await getOptionalEnvValue("BETTER_AUTH_URL");
-  await sendClientActionEmail({
-    email: owner.email,
-    subject: `Stock count ready to review: ${count.name}`,
-    heading: "A stock count is waiting for you",
-    body: [
-      `${counter?.name ?? "Someone"} finished counting "${count.name}".`,
-      count.discrepancies > 0
-        ? `${count.discrepancies} of ${count.counted} products came out different from what stock says. Nothing has changed yet — stock only moves when you publish it.`
-        : `All ${count.counted} products matched what stock says. Nothing has changed yet — stock only moves when you publish it.`,
-    ],
-    buttonLabel: "Review the count",
-    actionUrl: `${baseUrl ?? "https://seo.digitalurgency.com.au"}/modules/crm/inventory`,
-    footer: "Digital Urgency · Inventory",
-  });
-}
-
 /** A count that may still be published: freshly counted, or submitted for review. */
 async function requireCountedAudit(organizationId: string, auditId: string) {
   const audit = await InventoryRepository.getAudit(organizationId, auditId);
@@ -407,6 +420,7 @@ async function requireDraftAudit(organizationId: string, auditId: string) {
 async function assertWouldNotGoNegative(
   organizationId: string,
   movements: { productId: string; quantityDelta: number }[],
+  branchId?: string,
 ) {
   const decreasing = movements.filter((movement) => movement.quantityDelta < 0);
   if (decreasing.length === 0) return;
@@ -415,6 +429,7 @@ async function assertWouldNotGoNegative(
   const balances = await InventoryRepository.listBalances(
     organizationId,
     productIds,
+    branchId,
   );
   const onHand = new Map(
     balances.map((balance) => [balance.productId, balance.quantityOnHand]),

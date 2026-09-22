@@ -94,6 +94,7 @@ async function createOrderWithLines(
   organizationId: string,
   order: {
     id: string;
+    branchId: string;
     contactId: string | null;
     orderNumber: string;
     note: string | null;

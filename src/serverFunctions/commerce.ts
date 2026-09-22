@@ -1,3 +1,9 @@
+import { BranchService } from "@/server/features/commerce/services/BranchService";
+import {
+  branchSelectionSchema,
+  branchSchema,
+  transferStockSchema,
+} from "@/types/schemas/commerce";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { CommerceService } from "@/server/features/commerce/services/CommerceService";
@@ -95,8 +101,14 @@ export const updateCommerceProduct = createServerFn({ method: "POST" })
 
 export const getInventoryOverview = createServerFn({ method: "GET" })
   .middleware(requireAuthenticatedContext)
-  .handler(({ context }) =>
-    InventoryService.getStockOverview(context.organizationId, context.userId),
+  .validator(branchSelectionSchema.optional())
+  .handler(({ context, data }) =>
+    InventoryService.getStockOverview(
+      context.organizationId,
+      context.userId,
+      100,
+      data?.branchId,
+    ),
   );
 
 export const listStockMovements = createServerFn({ method: "GET" })
@@ -119,8 +131,14 @@ export const adjustProductStock = createServerFn({ method: "POST" })
 
 export const listInventoryAudits = createServerFn({ method: "GET" })
   .middleware(requireAuthenticatedContext)
-  .handler(({ context }) =>
-    InventoryService.listAudits(context.organizationId, context.userId),
+  .validator(branchSelectionSchema.optional())
+  .handler(({ context, data }) =>
+    InventoryService.listAudits(
+      context.organizationId,
+      context.userId,
+      50,
+      data?.branchId,
+    ),
   );
 
 export const getInventoryAudit = createServerFn({ method: "GET" })
@@ -281,8 +299,13 @@ export const setIntegrationSyncSchedule = createServerFn({ method: "POST" })
 /** Everything a stock take scans against, read once and kept in the browser. */
 export const listCountableProducts = createServerFn({ method: "GET" })
   .middleware(requireAuthenticatedContext)
-  .handler(({ context }) =>
-    InventoryService.countableProducts(context.organizationId, context.userId),
+  .validator(branchSelectionSchema.optional())
+  .handler(({ context, data }) =>
+    InventoryService.countableProducts(
+      context.organizationId,
+      context.userId,
+      data?.branchId,
+    ),
   );
 
 /** Hands a finished count to whoever may publish it. */
@@ -300,11 +323,45 @@ export const submitInventoryAudit = createServerFn({ method: "POST" })
 /** What was on hand at the end of a given day. */
 export const getStockAsOf = createServerFn({ method: "GET" })
   .middleware(requireAuthenticatedContext)
-  .validator(z.object({ day: z.string().regex(/^\d{4}-\d{2}-\d{2}$/) }))
+  .validator(
+    z.object({
+      branchId: z.string().min(1).optional(),
+      day: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    }),
+  )
   .handler(({ context, data }) =>
     InventoryService.stockAsOf(
       context.organizationId,
       context.userId,
       data.day,
+      data.branchId,
     ),
+  );
+
+export const listCommerceBranches = createServerFn({ method: "GET" })
+  .middleware(requireAuthenticatedContext)
+  .handler(({ context }) =>
+    BranchService.list(context.organizationId, context.userId),
+  );
+export const saveCommerceBranch = createServerFn({ method: "POST" })
+  .middleware(requireAuthenticatedContext)
+  .validator(branchSchema)
+  .handler(({ context, data }) =>
+    BranchService.save(context.organizationId, context.userId, data),
+  );
+export const getProductBranchStock = createServerFn({ method: "GET" })
+  .middleware(requireAuthenticatedContext)
+  .validator(z.object({ productId: z.string().min(1) }))
+  .handler(({ context, data }) =>
+    BranchService.productStock(
+      context.organizationId,
+      context.userId,
+      data.productId,
+    ),
+  );
+export const transferBranchStock = createServerFn({ method: "POST" })
+  .middleware(requireAuthenticatedContext)
+  .validator(transferStockSchema)
+  .handler(({ context, data }) =>
+    BranchService.transfer(context.organizationId, context.userId, data),
   );

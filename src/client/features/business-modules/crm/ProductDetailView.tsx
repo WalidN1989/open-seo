@@ -1,3 +1,5 @@
+import { BranchPicker, useBranchSelection } from "./BranchPicker";
+import { ProductBranchStock } from "./ProductBranchStock";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useParams } from "@tanstack/react-router";
 import { toast } from "sonner";
@@ -12,6 +14,8 @@ import { getStandardErrorMessage } from "@/client/lib/error-messages";
 import { useWorkspaceCurrency } from "@/client/hooks/useWorkspaceCurrency";
 
 export function CrmProductDetailView() {
+  const selection = useBranchSelection();
+  const { branchId } = selection;
   const money = useWorkspaceCurrency();
   const { productId } = useParams({
     from: "/_app/modules/crm/products/$productId",
@@ -25,22 +29,16 @@ export function CrmProductDetailView() {
   });
 
   const movements = useQuery({
-    queryKey: ["commerce", "movements", productId],
-    queryFn: () => listStockMovements({ data: { productId, limit: 25 } }),
+    queryKey: ["commerce", "movements", productId, branchId],
+    queryFn: () =>
+      listStockMovements({ data: { productId, limit: 25, branchId } }),
   });
 
   const adjust = useMutation({
     mutationFn: (input: { quantityDelta: number; reason?: string }) =>
-      adjustProductStock({ data: { productId, ...input } }),
+      adjustProductStock({ data: { productId, branchId, ...input } }),
     onSuccess: async () => {
-      await Promise.all([
-        queryClient.invalidateQueries({
-          queryKey: ["commerce", "movements", productId],
-        }),
-        queryClient.invalidateQueries({
-          queryKey: ["commerce", "inventory", "overview"],
-        }),
-      ]);
+      await queryClient.invalidateQueries({ queryKey: ["commerce"] });
       toast.success("Stock adjusted");
     },
     onError: (error) => toast.error(getStandardErrorMessage(error)),
@@ -137,8 +135,14 @@ export function CrmProductDetailView() {
             </section>
           ) : null}
 
+          <BranchPicker selection={selection} />
+          <ProductBranchStock
+            key={branchId}
+            productId={productId}
+            branchId={branchId}
+          />
           <section className="rounded-xl border border-base-300 p-4">
-            <h2 className="font-semibold">Adjust stock</h2>
+            <h2 className="font-semibold">Adjust stock in selected branch</h2>
             <p className="mt-1 text-xs text-base-content/50">
               Recorded as a movement with its reason, never as a silent edit.
             </p>
@@ -179,7 +183,10 @@ export function CrmProductDetailView() {
                 placeholder="reason"
                 className="input input-bordered input-sm flex-1"
               />
-              <button className="btn btn-sm" disabled={adjust.isPending}>
+              <button
+                className="btn btn-sm"
+                disabled={adjust.isPending || !branchId}
+              >
                 Adjust
               </button>
             </form>

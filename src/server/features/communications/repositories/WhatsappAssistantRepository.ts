@@ -264,7 +264,10 @@ async function searchPricedProducts(
     .from(commerceProducts)
     .leftJoin(
       commerceInventoryBalances,
-      eq(commerceInventoryBalances.productId, commerceProducts.id),
+      and(
+        eq(commerceInventoryBalances.productId, commerceProducts.id),
+        eq(commerceInventoryBalances.organizationId, organizationId),
+      ),
     )
     .where(
       and(

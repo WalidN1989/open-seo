@@ -512,6 +512,13 @@
       "when": 1789845754233,
       "tag": "0072_certain_sunfire",
       "breakpoints": true
+    },
+    {
+      "idx": 73,
+      "version": "7",
+      "when": 1790023888872,
+      "tag": "0073_moaning_sugar_man",
+      "breakpoints": true
     }
   ]
 }

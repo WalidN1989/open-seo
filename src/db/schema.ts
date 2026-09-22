@@ -179,6 +179,7 @@ export const {
   webhookSubscriptions,
   webhookDeliveries,
   commerceProducts,
+  commerceBranches,
   commerceInventoryBalances,
   commerceStockMovements,
   commerceInventoryAudits,
