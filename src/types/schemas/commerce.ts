@@ -10,12 +10,14 @@ const minorUnits = z.number().int().min(0).max(1_000_000_000_000);
 const productStatusSchema = z.enum(["active", "archived"]);
 
 export const productItemTypeSchema = z.enum(["product", "service"]);
+const productInventoryModeSchema = z.enum(["single", "multi"]);
 
 export const createProductSchema = z.object({
   name: z.string().trim().min(1).max(200),
   // Optional with no default so an update that leaves it out keeps it; the
   // column itself defaults to "product".
   itemType: productItemTypeSchema.optional(),
+  inventoryMode: productInventoryModeSchema.optional(),
   // Trimmed and required: a SKU is the tenant-scoped identity of the product,
   // and " ABC " and "ABC" must not become two different products.
   sku: z.string().trim().min(1).max(100),

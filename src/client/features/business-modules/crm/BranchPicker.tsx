@@ -12,15 +12,16 @@ export function useBranchSelection() {
   const branches = query.data ?? [];
   const branchId =
     branches.find((b) => b.id === selected)?.id ??
-    branches.find((b) => b.id.startsWith("default:"))?.id ??
-    branches[0]?.id;
+    (branches.length === 1 ? branches[0]?.id : undefined);
   return { query, branches, branchId, setSelected };
 }
 
 export function BranchPicker({
   selection,
+  locked = false,
 }: {
   selection: ReturnType<typeof useBranchSelection>;
+  locked?: boolean;
 }) {
   if (selection.query.isError)
     return (
@@ -35,11 +36,17 @@ export function BranchPicker({
         aria-label="Branch"
         className="select select-bordered min-w-56"
         value={selection.branchId ?? ""}
-        disabled={!selection.branchId}
+        disabled={
+          selection.query.isLoading || selection.branches.length === 0 || locked
+        }
         onChange={(event) => selection.setSelected(event.target.value)}
       >
         {!selection.branchId ? (
-          <option value="">Loading branches…</option>
+          <option value="">
+            {selection.query.isLoading
+              ? "Loading locations…"
+              : "Choose location"}
+          </option>
         ) : null}
         {selection.branches.map((branch) => (
           <option key={branch.id} value={branch.id}>
@@ -48,6 +55,11 @@ export function BranchPicker({
           </option>
         ))}
       </select>
+      {locked ? (
+        <span className="text-xs text-base-content/60">
+          Finish this stock take to change location.
+        </span>
+      ) : null}
     </label>
   );
 }

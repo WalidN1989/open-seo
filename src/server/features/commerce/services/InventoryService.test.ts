@@ -66,7 +66,12 @@ function auditItem(expected: number, counted: number, productId = "p1") {
 beforeEach(() => {
   for (const mock of Object.values(mocks)) mock.mockReset();
   mocks.requireAccess.mockResolvedValue(undefined);
-  mocks.getProduct.mockResolvedValue({ id: "p1", organizationId: ORG });
+  mocks.getProduct.mockResolvedValue({
+    id: "p1",
+    organizationId: ORG,
+    itemType: "product",
+    inventoryMode: "multi",
+  });
   mocks.applyMovements.mockResolvedValue(undefined);
   mocks.findMovementByReference.mockResolvedValue(null);
   mocks.listBalances.mockResolvedValue([]);

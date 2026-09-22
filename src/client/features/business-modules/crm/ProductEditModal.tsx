@@ -136,6 +136,7 @@ type ProductRow = {
   description: string | null;
   category: string | null;
   itemType: "product" | "service";
+  inventoryMode: "single" | "multi";
   productUrl: string | null;
   salePriceMinor: number;
   costPriceMinor: number | null;
@@ -170,6 +171,10 @@ function DetailsTab({
           isbn: text("isbn") || undefined,
           category: text("category") || undefined,
           itemType: text("itemType") === "service" ? "service" : "product",
+          inventoryMode:
+            text("itemType") === "service" || text("inventoryMode") !== "multi"
+              ? "single"
+              : "multi",
           description: text("description") || undefined,
           // An empty string clears the link; the schema accepts it explicitly
           // so "no page" is expressible rather than failing URL validation.
@@ -216,6 +221,27 @@ function DetailsTab({
           className="input input-bordered input-sm w-full"
         />
       </Field>
+
+      {product.itemType === "product" ? (
+        <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-base-300 p-3">
+          <input
+            type="checkbox"
+            name="inventoryMode"
+            value="multi"
+            defaultChecked={product.inventoryMode === "multi"}
+            className="toggle toggle-primary mt-0.5"
+          />
+          <span>
+            <span className="block text-sm font-medium">
+              Track inventory across multiple branches
+            </span>
+            <span className="block text-xs text-base-content/60">
+              Turn this on to count and adjust this product separately at each
+              listed branch. Existing stock stays at the default location.
+            </span>
+          </span>
+        </label>
+      ) : null}
 
       <Field
         label="Product page URL"

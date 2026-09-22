@@ -48,11 +48,15 @@ beforeAll(async () => {
 });
 afterAll(() => fixture?.client.close());
 
-async function product() {
+async function product(inventoryMode: "single" | "multi" = "multi") {
   const id = crypto.randomUUID();
-  await fixture.db
-    .insert(schema.commerceProducts)
-    .values({ id, organizationId: ORG_A, sku: id, name: "Test book" });
+  await fixture.db.insert(schema.commerceProducts).values({
+    id,
+    organizationId: ORG_A,
+    sku: id,
+    name: "Test book",
+    inventoryMode,
+  });
   return id;
 }
 async function quantities(productId: string) {
@@ -65,6 +69,42 @@ async function quantities(productId: string) {
 }
 
 describe("branch inventory on a real migrated database", () => {
+  it("keeps single-location products at the default branch until opted in", async () => {
+    const id = await product("single");
+    await inventory.adjustStock(ORG_A, USER_OWNER_A, {
+      productId: id,
+      branchId: home,
+      quantityDelta: 4,
+    });
+    await expect(
+      inventory.adjustStock(ORG_A, USER_OWNER_A, {
+        productId: id,
+        branchId: second,
+        quantityDelta: 1,
+      }),
+    ).rejects.toThrow("Enable multi-branch inventory");
+    await expect(
+      branches.transfer(ORG_A, USER_OWNER_A, {
+        productId: id,
+        fromBranchId: home,
+        toBranchId: second,
+        quantity: 1,
+        requestId: crypto.randomUUID(),
+      }),
+    ).rejects.toThrow("Enable multi-branch inventory");
+    expect((await quantities(id)).map((row) => row.id)).toEqual([home]);
+    expect(
+      (await repository.listCountableProducts(ORG_A, second)).some(
+        (row) => row.id === id,
+      ),
+    ).toBe(false);
+    expect(
+      (await repository.listCountableProducts(ORG_A, home)).some(
+        (row) => row.id === id,
+      ),
+    ).toBe(true);
+  });
+
   it("keeps branch management and stock isolated between organizations", async () => {
     expect(
       (await branches.list(ORG_B, USER_OWNER_B)).every(
@@ -293,6 +333,13 @@ it("offers the read-only stock tool to CRM-enabled voice sessions and matches st
       availability: "in_stock",
     }),
   ]);
+  expect(parsed.products[0]).toEqual(
+    expect.objectContaining({
+      inventoryMode: "multi",
+      availabilitySummary: "all_branches",
+      availableBranchNames: ["Branch B"],
+    }),
+  );
   await expect(
     branchStockTool.handler({ search: id, organizationId: ORG_B }, context),
   ).rejects.toThrow();

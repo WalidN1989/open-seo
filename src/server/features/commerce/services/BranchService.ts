@@ -5,6 +5,7 @@ import { BranchRepository } from "../repositories/BranchRepository";
 import { CommerceRepository } from "../repositories/CommerceRepository";
 import type { StockMovementDraft } from "../repositories/InventoryRepository";
 import { InventoryRepository } from "../repositories/InventoryRepository";
+import { assertProductCanUseBranch } from "./inventoryMode";
 
 async function list(organizationId: string, userId: string) {
   await BusinessModuleService.requireAccess(organizationId, userId, "crm");
@@ -34,9 +35,16 @@ async function productStock(
     productId,
   );
   if (!product) throw new AppError("NOT_FOUND", "Product not found.");
+  const stock = await BranchRepository.productStock(organizationId, productId);
   return {
     product,
-    branches: await BranchRepository.productStock(organizationId, productId),
+    branches:
+      product.inventoryMode === "multi"
+        ? stock
+        : stock.filter(
+            ({ branch }) =>
+              branch.id === BranchRepository.defaultId(organizationId),
+          ),
   };
 }
 async function transfer(
@@ -58,6 +66,8 @@ async function transfer(
     CommerceRepository.getProduct(organizationId, input.productId),
   ]);
   if (!product) throw new AppError("NOT_FOUND", "Product not found.");
+  assertProductCanUseBranch(organizationId, product, from.id);
+  assertProductCanUseBranch(organizationId, product, to.id);
   const existing = await InventoryRepository.findMovementByReference(
     organizationId,
     "branch_transfer",

@@ -1,8 +1,10 @@
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import {
   adjustProductStock,
+  getProductBranchStock,
   listStockMovements,
 } from "@/serverFunctions/commerce";
 import { getStandardErrorMessage } from "@/client/lib/error-messages";
@@ -44,9 +46,20 @@ export function AdjustStockTab({
   productId: string;
   onAdjusted: () => Promise<void>;
 }) {
+  const [branchId, setBranchId] = useState("");
+  const stock = useQuery({
+    queryKey: ["commerce", "branch-stock", productId],
+    queryFn: () => getProductBranchStock({ data: { productId } }),
+  });
+  const branches = useMemo(() => stock.data?.branches ?? [], [stock.data]);
+  useEffect(() => {
+    if (!branches.some(({ branch }) => branch.id === branchId)) {
+      setBranchId(branches[0]?.branch.id ?? "");
+    }
+  }, [branchId, branches]);
   const adjust = useMutation({
     mutationFn: (input: { quantityDelta: number; reason: string }) =>
-      adjustProductStock({ data: { productId, ...input } }),
+      adjustProductStock({ data: { productId, branchId, ...input } }),
     onSuccess: onAdjusted,
     onError: (error) => toast.error(getStandardErrorMessage(error)),
   });
@@ -73,6 +86,42 @@ export function AdjustStockTab({
         A difference is written to the ledger as a movement, never assigned over
         the top, so the history below always explains the current figure.
       </p>
+      <div className="overflow-x-auto rounded-lg border border-base-300">
+        <table className="table table-sm">
+          <thead>
+            <tr>
+              <th>Location</th>
+              <th className="text-right">On hand</th>
+            </tr>
+          </thead>
+          <tbody>
+            {branches.map(({ branch, quantityOnHand }) => (
+              <tr key={branch.id}>
+                <td>{branch.name}</td>
+                <td className="text-right">
+                  {quantityOnHand ?? "Not counted"}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <Field label="Location">
+        <select
+          required
+          aria-label="Stock adjustment location"
+          className="select select-bordered select-sm w-full"
+          value={branchId}
+          disabled={stock.isLoading || branches.length < 2}
+          onChange={(event) => setBranchId(event.target.value)}
+        >
+          {branches.map(({ branch }) => (
+            <option key={branch.id} value={branch.id}>
+              {branch.name}
+            </option>
+          ))}
+        </select>
+      </Field>
       <div className="grid gap-3 sm:grid-cols-2">
         <Field label="Direction">
           <select
@@ -102,7 +151,10 @@ export function AdjustStockTab({
         />
       </Field>
       <div className="modal-action">
-        <button className="btn btn-primary btn-sm" disabled={adjust.isPending}>
+        <button
+          className="btn btn-primary btn-sm"
+          disabled={adjust.isPending || !branchId}
+        >
           {adjust.isPending ? (
             <Loader2 className="size-4 animate-spin" />
           ) : null}
@@ -114,9 +166,22 @@ export function AdjustStockTab({
 }
 
 export function HistoryTab({ productId }: { productId: string }) {
+  const [branchId, setBranchId] = useState("");
+  const stock = useQuery({
+    queryKey: ["commerce", "branch-stock", productId],
+    queryFn: () => getProductBranchStock({ data: { productId } }),
+  });
+  const branches = useMemo(() => stock.data?.branches ?? [], [stock.data]);
+  useEffect(() => {
+    if (!branches.some(({ branch }) => branch.id === branchId)) {
+      setBranchId(branches[0]?.branch.id ?? "");
+    }
+  }, [branchId, branches]);
   const query = useQuery({
-    queryKey: ["commerce", "movements", productId],
-    queryFn: () => listStockMovements({ data: { productId, limit: 50 } }),
+    queryKey: ["commerce", "movements", productId, branchId],
+    queryFn: () =>
+      listStockMovements({ data: { productId, branchId, limit: 50 } }),
+    enabled: Boolean(branchId),
   });
 
   if (query.isLoading) {
@@ -134,47 +199,63 @@ export function HistoryTab({ productId }: { productId: string }) {
     );
   }
   const movements = query.data ?? [];
-  if (movements.length === 0) {
-    return (
-      <p className="py-10 text-center text-sm text-base-content/50">
-        No stock movements yet.
-      </p>
-    );
-  }
 
   return (
-    <div className="max-h-80 overflow-y-auto">
-      <table className="table table-sm">
-        <thead>
-          <tr>
-            <th>When</th>
-            <th>Type</th>
-            <th className="text-right">Change</th>
-            <th>Reason</th>
-          </tr>
-        </thead>
-        <tbody>
-          {movements.map((movement) => (
-            <tr key={movement.id}>
-              <td className="whitespace-nowrap text-xs">
-                {new Date(movement.createdAt).toLocaleString()}
-              </td>
-              <td className="text-xs">{movement.movementType}</td>
-              <td
-                className={`text-right tabular-nums ${
-                  movement.quantityDelta < 0 ? "text-error" : "text-success"
-                }`}
-              >
-                {movement.quantityDelta > 0 ? "+" : ""}
-                {movement.quantityDelta}
-              </td>
-              <td className="text-xs text-base-content/60">
-                {movement.reason ?? "—"}
-              </td>
-            </tr>
+    <div className="space-y-3">
+      <Field label="Location">
+        <select
+          aria-label="Stock history location"
+          className="select select-bordered select-sm w-full"
+          value={branchId}
+          disabled={stock.isLoading || branches.length < 2}
+          onChange={(event) => setBranchId(event.target.value)}
+        >
+          {branches.map(({ branch }) => (
+            <option key={branch.id} value={branch.id}>
+              {branch.name}
+            </option>
           ))}
-        </tbody>
-      </table>
+        </select>
+      </Field>
+      {movements.length === 0 ? (
+        <p className="py-10 text-center text-sm text-base-content/50">
+          No stock movements yet at this location.
+        </p>
+      ) : (
+        <div className="max-h-80 overflow-y-auto">
+          <table className="table table-sm">
+            <thead>
+              <tr>
+                <th>When</th>
+                <th>Type</th>
+                <th className="text-right">Change</th>
+                <th>Reason</th>
+              </tr>
+            </thead>
+            <tbody>
+              {movements.map((movement) => (
+                <tr key={movement.id}>
+                  <td className="whitespace-nowrap text-xs">
+                    {new Date(movement.createdAt).toLocaleString()}
+                  </td>
+                  <td className="text-xs">{movement.movementType}</td>
+                  <td
+                    className={`text-right tabular-nums ${
+                      movement.quantityDelta < 0 ? "text-error" : "text-success"
+                    }`}
+                  >
+                    {movement.quantityDelta > 0 ? "+" : ""}
+                    {movement.quantityDelta}
+                  </td>
+                  <td className="text-xs text-base-content/60">
+                    {movement.reason ?? "—"}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }

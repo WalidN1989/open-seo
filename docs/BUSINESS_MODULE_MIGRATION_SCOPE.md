@@ -1,5 +1,37 @@
 # OpenSEO business module migration scope
 
+### 2026-09-22: explicit multi-branch products and branch-aware counting
+
+Products now default to single-location inventory and must be explicitly
+switched to multi-branch inventory before stock can be counted, adjusted or
+transferred away from the organization's default branch. The migration only
+adds `commerce_products.inventory_mode` with the safe `single` default; it does
+not move or rewrite any existing product, balance, movement, audit or order.
+
+The product editor shows branch quantities and requires a location for manual
+stock adjustments. Workspaces with more than one branch must choose a location
+before using Inventory, and that selection is locked while a browser stock-take
+session is active. The server independently enforces the same restriction, so
+an old or modified client cannot put a single-location product into another
+branch. Switching a product back to single-location mode is refused while a
+non-default branch still has positive stock.
+
+The read-only `find_branch_stock` tool now returns a clear availability summary
+and confirmed in-stock branch names. Voice-agent context only says "all
+branches" when every applicable branch has confirmed positive stock, names the
+available branches otherwise, treats unknown as unknown, and does not volunteer
+exact quantities unless the customer asks.
+
+Release validation restored the pre-change production backup into disposable
+Postgres 18, applied the full migration chain, and retained 5,216 products, 14
+branches, 2,655 inventory balances, 2,905 movements, and the existing audit.
+All existing products received `single` mode and no invalid values were found.
+The browser flow then verified the single-location restriction, persisted the
+multi-branch toggle, displayed every branch in adjustment and history views,
+required and locked a stock-take location, and resolved a scanned barcode in
+the selected branch. The full Vitest suite (2,558 tests), TypeScript, targeted
+lint, production build, and `git diff --check` also passed.
+
 ### 2026-09-08: Social workspace presentation
 
 Social now uses the available workspace height, a bounded conversation list,
