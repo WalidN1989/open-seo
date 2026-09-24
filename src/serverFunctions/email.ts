@@ -4,6 +4,7 @@ import { z } from "zod";
 import { getPublicOrigin } from "@/server/mcp/public-origin";
 import { microsoftAuthorizationUrl } from "@/server/features/email/services/MicrosoftEmailService";
 import { importExistingMicrosoftMail } from "@/server/features/email/services/MicrosoftMailSyncService";
+import { listMicrosoftAttachments } from "@/server/features/email/services/MicrosoftAttachmentService";
 import { EmailService } from "@/server/features/email/services/EmailService";
 import { EmailAccountService } from "@/server/features/email/services/EmailAccountService";
 import { requireAuthenticatedContext } from "@/serverFunctions/middleware";
@@ -30,6 +31,17 @@ export const getEmailThread = createServerFn({ method: "GET" })
   .validator(emailThreadIdSchema)
   .handler(({ context, data }) =>
     EmailService.thread(context.organizationId, context.userId, data.threadId),
+  );
+
+export const getMicrosoftEmailAttachments = createServerFn({ method: "GET" })
+  .middleware(requireAuthenticatedContext)
+  .validator(emailMessageIdSchema)
+  .handler(({ context, data }) =>
+    listMicrosoftAttachments(
+      context.organizationId,
+      context.userId,
+      data.messageId,
+    ),
   );
 
 export const connectAgentmail = createServerFn({ method: "POST" })

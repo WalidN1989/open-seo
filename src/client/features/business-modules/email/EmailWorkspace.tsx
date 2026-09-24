@@ -109,7 +109,10 @@ export function EmailWorkspace() {
                 from={data.account?.address ?? ""}
               />
             ) : selected ? (
-              <ThreadView threadId={selected} />
+              <ThreadView
+                threadId={selected}
+                microsoft={data.account?.provider === "microsoft"}
+              />
             ) : (
               <p className="p-6 text-center text-sm text-base-content/60">
                 Pick a thread to read it.
@@ -216,7 +219,13 @@ function ThreadRows({
   );
 }
 
-function ThreadView({ threadId }: { threadId: string }) {
+function ThreadView({
+  threadId,
+  microsoft,
+}: {
+  threadId: string;
+  microsoft: boolean;
+}) {
   const query = useEmailThread(threadId);
   const [reply, setReply] = useState("");
   const send = useEmailMutation(
@@ -262,6 +271,7 @@ function ThreadView({ threadId }: { threadId: string }) {
             key={message.id}
             message={message}
             ownAddress={thread.recipients[0] ?? ""}
+            microsoft={microsoft}
           />
         ))}
       </div>

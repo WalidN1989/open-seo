@@ -1,9 +1,11 @@
 import { useState } from "react";
-import { Sparkles } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { Paperclip, Sparkles } from "lucide-react";
 import {
   approveEmailDraft,
   composeEmail,
   discardEmailDraft,
+  getMicrosoftEmailAttachments,
 } from "@/serverFunctions/email";
 import {
   type EmailWorkspace as WorkspaceData,
@@ -22,11 +24,23 @@ type ThreadMessage = NonNullable<
 export function MessageCard({
   message,
   ownAddress,
+  microsoft,
 }: {
   message: ThreadMessage;
   ownAddress: string;
+  microsoft: boolean;
 }) {
   const [showQuoted, setShowQuoted] = useState(false);
+  const attachments = useQuery({
+    queryKey: ["email", "microsoft-attachments", message.id],
+    queryFn: () =>
+      getMicrosoftEmailAttachments({ data: { messageId: message.id } }),
+    enabled:
+      microsoft &&
+      Boolean(message.externalMessageId) &&
+      !message.externalMessageId?.startsWith("microsoft-sent:"),
+    staleTime: 60_000,
+  });
   const { fresh, quoted } = splitQuoted(message.textBody);
   const inbound = message.direction === "inbound";
   const draft = message.direction === "draft";
@@ -103,6 +117,28 @@ export function MessageCard({
               </pre>
             ) : null}
           </div>
+        ) : null}
+        {attachments.data?.length ? (
+          <div className="mt-3 flex flex-wrap gap-2" aria-label="Attachments">
+            {attachments.data.map((file) => (
+              <a
+                key={file.id}
+                className="btn btn-outline btn-xs max-w-full gap-1"
+                href={`/api/email/attachments/${encodeURIComponent(message.id)}/${encodeURIComponent(file.id)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                title={`${file.name} (${Math.ceil(file.size / 1024)} KB)`}
+              >
+                <Paperclip className="size-3" />
+                <span className="truncate">{file.name}</span>
+              </a>
+            ))}
+          </div>
+        ) : null}
+        {attachments.isError ? (
+          <p className="mt-2 text-xs text-error">
+            Attachments could not be loaded.
+          </p>
         ) : null}
       </div>
     </article>
