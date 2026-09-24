@@ -47,8 +47,18 @@ export async function audit(
 /** The account as the browser may see it: everything but the secrets. */
 export function publicAccount(account: EmailAccountRow | null) {
   if (!account) return null;
-  const { credentials, ...rest } = account;
-  return { ...rest, hasCredentials: Boolean(credentials) };
+  const { credentials, syncCursor, ...rest } = account;
+  let historyImport: "idle" | "running" | "complete" = "idle";
+  if (account.provider === "microsoft" && syncCursor) {
+    try {
+      const cursor = JSON.parse(syncCursor) as Record<string, unknown>;
+      if (cursor.historyDone === true) historyImport = "complete";
+      else if (typeof cursor.historyUrl === "string") historyImport = "running";
+    } catch {
+      // The account still appears connected; the sync job reports cursor errors.
+    }
+  }
+  return { ...rest, historyImport, hasCredentials: Boolean(credentials) };
 }
 
 export function providerFailure(error: unknown): never {
