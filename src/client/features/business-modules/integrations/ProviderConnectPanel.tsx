@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Eye, EyeOff, Loader2, Trash2 } from "lucide-react";
+import { Eye, EyeOff, Loader2, Sparkles, Trash2 } from "lucide-react";
+import { randomSecret } from "@/shared/random-secret";
 import {
   createIntegration,
   deleteIntegration,
@@ -262,6 +263,28 @@ export function ProviderConnectPanel({
                   autoComplete="off"
                   spellCheck={false}
                 />
+                {field.generate ? (
+                  <button
+                    type="button"
+                    className="btn btn-outline btn-sm join-item"
+                    title="Generate a new random value"
+                    onClick={() => {
+                      const secret = randomSecret();
+                      setValues((current) => ({
+                        ...current,
+                        [field.key]: secret,
+                      }));
+                      // Shown, not hidden: this one has to be copied into the
+                      // other service to be any use.
+                      setRevealed((current) => ({
+                        ...current,
+                        [field.key]: secret,
+                      }));
+                    }}
+                  >
+                    <Sparkles className="size-4" /> Generate
+                  </button>
+                ) : null}
                 {field.type === "secret" && isSet && connection ? (
                   <button
                     type="button"

@@ -1,6 +1,7 @@
 import {
   Bookmark,
   Bot,
+  Gauge,
   ClipboardCheck,
   FileText,
   Globe,
@@ -86,6 +87,13 @@ const aiNavItem = linkOptions({
   to: "/ai" as const,
   label: "AI & MCP",
   icon: Bot,
+});
+
+/** Where a client on sample data lands: a worked example of their business. */
+export const demoOverviewNavItem = linkOptions({
+  to: "/modules/overview" as const,
+  label: "Overview",
+  icon: Gauge,
 });
 
 const businessModulesNavItem = linkOptions({

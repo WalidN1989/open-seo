@@ -11,12 +11,18 @@ import type { QueryClient } from "@tanstack/react-query";
  * switching project switches organization.
  */
 const ORGANIZATION_SCOPED_QUERY_ROOTS = [
+  // The workspace currency and the rest of the business settings. Every
+  // screen that shows money reads this one answer, so a stale one prices a
+  // Sri Lankan catalogue in Australian dollars.
+  "business",
   "business-modules",
   "commerce",
   "crm",
   "email",
   "integrations",
   "social",
+  "sms",
+  "team",
   "invoicing",
   "invoice",
   "quotes",
@@ -25,6 +31,9 @@ const ORGANIZATION_SCOPED_QUERY_ROOTS = [
   "client-accounts",
   "client-reports",
   "voice",
+  "voice-greeting",
+  "voice-lessons",
+  "voice-name",
   "whatsapp",
 ] as const;
 

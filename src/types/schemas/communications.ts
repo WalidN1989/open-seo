@@ -39,6 +39,15 @@ export const createWhatsappTemplateSchema = z.object({
     .enum(["marketing", "utility", "authentication"])
     .default("marketing"),
   body: z.string().trim().min(1).max(4096),
+  mediaUrl: z
+    .string()
+    .trim()
+    .url()
+    .max(1000)
+    .refine((value) => value.startsWith("https://"), {
+      message: "The image link must start with https://",
+    })
+    .optional(),
   connectionId: z.string().min(1).optional(),
   externalTemplateId: z.string().trim().max(200).optional(),
   status: z.enum(["draft", "pending", "approved", "rejected"]).default("draft"),

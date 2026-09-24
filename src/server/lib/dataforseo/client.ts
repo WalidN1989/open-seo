@@ -19,6 +19,7 @@ import {
 } from "@/server/lib/dataforseo/envelope";
 import { isHostedServerAuthMode } from "@/server/lib/runtime-env";
 import { AppError } from "@/server/lib/errors";
+import { isCacheOnlyRequest } from "./cacheOnly";
 
 export { mapDataforseoPathToCreditFeature };
 
@@ -66,6 +67,11 @@ function meter<I, T>(
 ): (input: I & { creditFeature?: CreditFeature }) => Promise<T> {
   const endpoint = endpointNameOf(pick);
   return async (input) => {
+    // Refused before anything is called or recorded: a cache-only request
+    // that reaches the provider has missed the cache, and must cost nothing.
+    if (isCacheOnlyRequest()) {
+      throw new AppError("NOT_FOUND", "No saved result for this search.");
+    }
     const creditFeature = input.creditFeature ?? defaultFeature;
     const note = (outcome: "ok" | "failed") =>
       recordResearchPurchase({

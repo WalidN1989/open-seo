@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "@tanstack/react-router";
 import { ChevronLeft } from "lucide-react";
 import { useSession } from "@/lib/auth-client";
 import {
@@ -8,6 +9,8 @@ import {
   useAddComment,
   useApprove,
   useOpportunity,
+  useAddImages,
+  usePublish,
   useReject,
   useRequestChanges,
   useSubmitForReview,
@@ -16,6 +19,7 @@ import { BriefTab } from "./render/BriefTab";
 import { DraftTab } from "./render/DraftTab";
 import { WhyTab } from "./render/WhyTab";
 import { CommentsTab } from "./render/CommentsTab";
+import { PublishStatus } from "./render/PublishStatus";
 
 const TABS = ["Why", "Brief", "Draft", "Publish", "Comments"] as const;
 type Tab = (typeof TABS)[number];
@@ -45,6 +49,8 @@ export function OpportunityDetail({
   const reject = useReject(projectId);
   const requestChanges = useRequestChanges(projectId);
   const addComment = useAddComment(projectId);
+  const publish = usePublish(projectId);
+  const addImages = useAddImages(projectId);
   const { data: session } = useSession();
   // Captured once per render rather than per row, so every relative time in
   // the thread is measured from the same instant.
@@ -59,11 +65,12 @@ export function OpportunityDetail({
   }
   if (!query.data) return null;
 
-  const { opportunity, comments } = query.data;
+  const { opportunity, comments, destination } = query.data;
   const status = opportunity.status;
   const busy =
     submit.isPending ||
     approve.isPending ||
+    publish.isPending ||
     reject.isPending ||
     requestChanges.isPending;
 
@@ -176,14 +183,43 @@ export function OpportunityDetail({
               <p className="mt-1 text-sm font-medium">
                 {CMS_LABEL[opportunity.cms] ?? opportunity.cms}
               </p>
-              {opportunity.cms === "manual" ? (
+              {destination.kind === "lovable" ? (
+                <p className="mt-2 text-sm text-base-content/70">
+                  Lovable site · {destination.siteUrl}. Approving sends the
+                  article and its images to Lovable; it goes live when you click
+                  Publish in Lovable.
+                  {destination.imagesReady
+                    ? ""
+                    : " No image model is set up on the server yet, so sending will fail until one is added."}
+                </p>
+              ) : destination.connected ? (
+                <p className="mt-2 text-sm text-base-content/70">
+                  WordPress · {destination.siteUrl}. Approving and publishing
+                  puts the article live there.
+                </p>
+              ) : (
                 // Never claim a publish that did not happen.
                 <p className="mt-2 text-sm text-base-content/70">
-                  No CMS is connected for this project yet. Approving records
-                  your decision and keeps the approved wording here to copy
-                  across by hand — nothing is published automatically.
+                  No website is connected for this project yet.{" "}
+                  <Link
+                    to="/modules/integrations/$providerKey"
+                    params={{ providerKey: "lovable" }}
+                    className="link"
+                  >
+                    Connect a Lovable site
+                  </Link>{" "}
+                  or{" "}
+                  <Link
+                    to="/modules/integrations/$providerKey"
+                    params={{ providerKey: "wordpress" }}
+                    className="link"
+                  >
+                    WordPress
+                  </Link>{" "}
+                  to publish from here; until then, copy the approved wording
+                  across by hand.
                 </p>
-              ) : null}
+              )}
             </div>
 
             {status === "drafted" ? (
@@ -200,11 +236,23 @@ export function OpportunityDetail({
               <div className="space-y-3">
                 <div className="flex flex-wrap gap-2">
                   <button
-                    className="btn btn-success"
+                    className="btn btn-primary"
                     disabled={busy}
-                    onClick={() => approve.mutate(opportunityId)}
+                    onClick={() =>
+                      approve.mutate(opportunityId, {
+                        onSuccess: () => {
+                          if (destination.connected) {
+                            publish.mutate(opportunityId);
+                          }
+                        },
+                      })
+                    }
                   >
-                    Approve
+                    {destination.kind === "lovable"
+                      ? "Approve & send to Lovable"
+                      : destination.connected
+                        ? "Approve & publish"
+                        : "Approve"}
                   </button>
                   <button
                     className="btn btn-ghost"
@@ -223,7 +271,7 @@ export function OpportunityDetail({
                     onChange={(event) => setChangeNote(event.target.value)}
                   />
                   <button
-                    className="btn btn-warning btn-sm"
+                    className="btn btn-outline btn-sm"
                     disabled={busy || !changeNote.trim()}
                     onClick={() => {
                       requestChanges.mutate(
@@ -238,15 +286,24 @@ export function OpportunityDetail({
               </div>
             ) : null}
 
-            {status === "approved" ? (
-              <p className="text-sm text-base-content/70">
-                Approved
-                {opportunity.approvedAt
-                  ? ` on ${opportunity.approvedAt.slice(0, 10)}`
-                  : ""}
-                .
-              </p>
-            ) : null}
+            <PublishStatus
+              status={status}
+              type={opportunity.type}
+              targetUrl={opportunity.targetUrl}
+              approvedAt={opportunity.approvedAt}
+              publishError={opportunity.publishError}
+              cmsTarget={opportunity.cmsTarget}
+              connected={destination.connected}
+              kind={destination.kind}
+              busy={busy}
+              error={publish.error}
+              onPublish={() => publish.mutate(opportunityId)}
+              onAddImages={{
+                run: () => addImages.mutate(opportunityId),
+                busy: addImages.isPending,
+                error: addImages.error,
+              }}
+            />
 
             {comments.length ? (
               <section className="space-y-2">

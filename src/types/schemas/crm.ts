@@ -3,6 +3,7 @@ import { z } from "zod";
 const ACTIVITY_TYPES = [
   "call",
   "whatsapp",
+  "sms",
   "meeting",
   "email",
   "visit",

@@ -22,6 +22,13 @@ const { checkMock, trackMock, getOrCreateMock, isHostedServerAuthModeMock } =
     isHostedServerAuthModeMock: vi.fn(),
   }));
 
+const { isCacheOnlyRequestMock } = vi.hoisted(() => ({
+  isCacheOnlyRequestMock: vi.fn(() => false),
+}));
+vi.mock("@/server/lib/dataforseo/cacheOnly", () => ({
+  isCacheOnlyRequest: isCacheOnlyRequestMock,
+}));
+
 vi.mock("cloudflare:workers", () => ({
   waitUntil: vi.fn(),
 }));
@@ -133,6 +140,28 @@ function mockDataforseoResult(costUsd: number) {
     billing: { costUsd, path: ["backlinks", "summary"] },
   });
 }
+
+describe("cache-only requests", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("are refused before the provider is called or anything is charged", async () => {
+    setupHostedMode();
+    mockBalances(5000, 3000);
+    mockDataforseoResult(0.05);
+    isCacheOnlyRequestMock.mockReturnValueOnce(true);
+
+    const client = createDataforseoClient(billingCustomer);
+    await expect(client.backlinks.summary(backlinksInput)).rejects.toThrow(
+      "No saved result",
+    );
+
+    expect(fetchBacklinksSummary).not.toHaveBeenCalled();
+    expect(checkMock).not.toHaveBeenCalled();
+    expect(trackMock).not.toHaveBeenCalled();
+  });
+});
 
 describe("meterDataforseoCall with split balances", () => {
   beforeEach(() => {

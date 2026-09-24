@@ -1,21 +1,94 @@
 /* oxlint-disable max-lines-per-function */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { History, LoaderCircle, Mic, PhoneOff, X } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import "./conversation-visuals.css";
+import { History, LoaderCircle, Mic, PhoneOff, Trash2, X } from "lucide-react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { toast } from "sonner";
+import { useRouterState } from "@tanstack/react-router";
 import {
   createVoiceAgent,
+  appendVoiceTranscript,
   endVoiceConversation,
+  getVoiceGreeting,
   getVoiceWorkspace,
   startVoiceConversation,
   transcribeVoiceAudio,
 } from "@/serverFunctions/communications";
+import { deleteVoiceHistory } from "@/serverFunctions/communications-admin";
 import { getStandardErrorMessage } from "@/client/lib/error-messages";
+import { SpeechQueue } from "./speechQueue";
+import { streamVoiceTurn, VoiceTurnUnavailable } from "./streamTurn";
 import {
+  startBargeIn,
   startVoiceActivity,
+  stepBargeIn,
   stepVoiceActivity,
   voiceDisplayLevel,
 } from "./voiceActivity";
+
+const MICROPHONE: MediaTrackConstraints = {
+  echoCancellation: true,
+  noiseSuppression: true,
+  autoGainControl: true,
+};
+
+/**
+ * Listens while the agent speaks and calls `onInterrupt` with the open
+ * microphone the moment the person starts talking over it, so the reply can
+ * stop and their words can be recorded without asking for the mic again.
+ * Returns a stop function that releases everything if nobody interrupts.
+ */
+function watchForBargeIn(onInterrupt: (stream: MediaStream) => void) {
+  let stopped = false;
+  let frame: number | null = null;
+  let stream: MediaStream | null = null;
+  let context: AudioContext | null = null;
+  const release = (keepStream: boolean) => {
+    stopped = true;
+    if (frame !== null) cancelAnimationFrame(frame);
+    void context?.close().catch(() => undefined);
+    if (!keepStream) stream?.getTracks().forEach((track) => track.stop());
+  };
+  void navigator.mediaDevices
+    .getUserMedia({ audio: MICROPHONE })
+    .then((opened) => {
+      stream = opened;
+      if (stopped) {
+        release(false);
+        return;
+      }
+      context = new AudioContext();
+      const analyser = context.createAnalyser();
+      analyser.fftSize = 512;
+      context.createMediaStreamSource(opened).connect(analyser);
+      const samples = new Uint8Array(analyser.frequencyBinCount);
+      let state = startBargeIn(performance.now());
+      const watch = () => {
+        if (stopped) return;
+        analyser.getByteTimeDomainData(samples);
+        let sum = 0;
+        for (const sample of samples) {
+          const deviation = (sample - 128) / 128;
+          sum += deviation * deviation;
+        }
+        const next = stepBargeIn(
+          state,
+          Math.sqrt(sum / samples.length),
+          performance.now(),
+        );
+        state = next.state;
+        if (next.interrupted) {
+          release(true);
+          onInterrupt(opened);
+          return;
+        }
+        frame = requestAnimationFrame(watch);
+      };
+      watch();
+    })
+    .catch(() => undefined);
+  return () => release(false);
+}
 
 /**
  * The workspace returns newest first, which put every answer above the question
@@ -47,6 +120,9 @@ export function VoiceAgentLauncher() {
   const audioContextRef = useRef<AudioContext | null>(null);
   const animationFrameRef = useRef<number | null>(null);
   const continuousRef = useRef(false);
+  const replyRef = useRef<{ queue: SpeechQueue; stopWatch: () => void } | null>(
+    null,
+  );
   const conversationRef = useRef<string | null>(null);
   const [showHistory, setShowHistory] = useState(false);
 
@@ -55,6 +131,15 @@ export function VoiceAgentLauncher() {
     queryFn: () => getVoiceWorkspace(),
     enabled: open,
   });
+
+  // Silences the reply being spoken, if any, and stops listening for an
+  // interruption to it.
+  const stopReply = () => {
+    replyRef.current?.queue.stop();
+    replyRef.current?.stopWatch();
+    replyRef.current = null;
+    setSpeaking(false);
+  };
 
   const releaseMicrophone = () => {
     if (animationFrameRef.current !== null) {
@@ -78,6 +163,79 @@ export function VoiceAgentLauncher() {
     releaseMicrophone();
   };
 
+  /**
+   * Opens a reply: sentences are pushed in as they arrive and played back to
+   * back. Talking over it stops the whole reply at once and becomes the next
+   * turn.
+   */
+  const startSpeaking = () => {
+    stopReply();
+    setSpeaking(true);
+    const queue = new SpeechQueue();
+    const stopWatch = watchForBargeIn((stream) => {
+      if (replyRef.current?.queue !== queue) {
+        stream.getTracks().forEach((track) => track.stop());
+        return;
+      }
+      stopReply();
+      if (continuousRef.current) void beginListening(stream);
+      else stream.getTracks().forEach((track) => track.stop());
+    });
+    replyRef.current = { queue, stopWatch };
+    return queue;
+  };
+
+  /** No more sentences: when the last one has played, listen again — or hang up. */
+  const finishSpeaking = (queue: SpeechQueue, thenEnd = false) => {
+    queue.finish(() => {
+      if (replyRef.current?.queue !== queue) return;
+      stopReply();
+      if (thenEnd) {
+        void endConversation();
+        return;
+      }
+      if (continuousRef.current) void beginListening();
+    });
+  };
+
+  // Made once and kept, so the greeting plays the instant the orb is tapped
+  // instead of after a round trip to the speech service.
+  const greeting = useQuery({
+    queryKey: ["voice-greeting"],
+    queryFn: () => getVoiceGreeting(),
+    staleTime: Infinity,
+    gcTime: Infinity,
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
+  const greetingSaidRef = useRef<string | null>(null);
+
+  // Clearing history is the person's own record to remove, so it happens at
+  // once; the bin stays faint until it is wanted.
+  const forget = useMutation({
+    mutationFn: (data: { conversationId?: string; all?: boolean }) =>
+      deleteVoiceHistory({ data }),
+    onSuccess: () => client.invalidateQueries({ queryKey: ["voice"] }),
+    onError: (error) => toast.error(getStandardErrorMessage(error)),
+  });
+
+  const greet = () => {
+    const line = greeting.data;
+    if (!line) return;
+    greetingSaidRef.current = line.text;
+    setStatus("Speaking…");
+    const queue = startSpeaking();
+    queue.push(line.audioBase64, line.mimeType);
+    finishSpeaking(queue);
+  };
+
+  // The keyboard shortcut is registered once; it reaches the latest greeting
+  // through this rather than re-registering on every render.
+  const greetRef = useRef(greet);
+  useEffect(() => {
+    greetRef.current = greet;
+  });
+
   const transcribe = useMutation({
     mutationFn: (data: {
       conversationId: string;
@@ -100,19 +258,12 @@ export function VoiceAgentLauncher() {
       }
       setStatus("Speaking…");
       if ("audioBase64" in result && result.audioBase64) {
-        const audio = new Audio(
-          `data:${result.mimeType};base64,${result.audioBase64}`,
+        const queue = startSpeaking();
+        queue.push(result.audioBase64, result.mimeType);
+        finishSpeaking(
+          queue,
+          Boolean("endsConversation" in result && result.endsConversation),
         );
-        setSpeaking(true);
-        audio.addEventListener("ended", () => {
-          setSpeaking(false);
-          if (continuousRef.current) void beginListening();
-        });
-        await audio.play().catch(() => {
-          setSpeaking(false);
-          setStatus("Reply ready — tap the microphone to continue");
-          continuousRef.current = false;
-        });
       } else if (continuousRef.current) {
         void beginListening();
       }
@@ -123,18 +274,74 @@ export function VoiceAgentLauncher() {
     },
   });
 
-  const beginListening = async () => {
-    const activeConversationId = conversationRef.current;
-    if (!activeConversationId || recorderRef.current?.state === "recording")
-      return;
+  /**
+   * One turn, spoken as it is written: the first sentence plays while the
+   * rest of the answer is still arriving. If the stream cannot start, the
+   * one-shot reply answers instead, so a turn is never lost.
+   */
+  const runTurn = async (data: {
+    conversationId: string;
+    audioBase64: string;
+    mimeType: string;
+  }) => {
+    setStatus("Thinking…");
+    let queue: SpeechQueue | null = null;
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
-        },
-      });
+      for await (const event of streamVoiceTurn({
+        ...data,
+        language: "multi",
+      })) {
+        if (event.type === "silence") {
+          // A pause is not a failure: keep the microphone open.
+          setStatus("Listening…");
+          if (continuousRef.current) void beginListening();
+          return;
+        }
+        if (event.type === "error") {
+          if (!queue) throw new VoiceTurnUnavailable(event.message);
+          setStatus(event.message);
+          break;
+        }
+        if (event.type === "speech") {
+          if (!queue) {
+            setStatus("Speaking…");
+            queue = startSpeaking();
+          }
+          queue.push(event.audioBase64, event.mimeType);
+        }
+        if (event.type === "done") {
+          if (queue) finishSpeaking(queue, event.endsConversation);
+          void client.invalidateQueries({ queryKey: ["voice"] });
+          return;
+        }
+      }
+      if (queue) finishSpeaking(queue);
+      void client.invalidateQueries({ queryKey: ["voice"] });
+    } catch (error) {
+      if (queue) {
+        stopReply();
+        setStatus(getStandardErrorMessage(error));
+        return;
+      }
+      // Nothing was spoken yet, so the older path can still answer this turn.
+      console.warn(
+        "Streaming voice turn failed; using the one-shot reply",
+        error,
+      );
+      transcribe.mutate(data);
+    }
+  };
+
+  const beginListening = async (openStream?: MediaStream) => {
+    const activeConversationId = conversationRef.current;
+    if (!activeConversationId || recorderRef.current?.state === "recording") {
+      openStream?.getTracks().forEach((track) => track.stop());
+      return;
+    }
+    try {
+      const stream =
+        openStream ??
+        (await navigator.mediaDevices.getUserMedia({ audio: MICROPHONE }));
       const recorder = new MediaRecorder(stream);
       const chunks: Blob[] = [];
       recorderRef.current = recorder;
@@ -148,7 +355,7 @@ export function VoiceAgentLauncher() {
         if (!chunks.length) return;
         setStatus("Thinking…");
         const blob = new Blob(chunks, { type: recorder.mimeType });
-        transcribe.mutate({
+        void runTurn({
           conversationId: activeConversationId,
           audioBase64: await blobToBase64(blob),
           mimeType: blob.type || "audio/webm",
@@ -219,13 +426,28 @@ export function VoiceAgentLauncher() {
       conversationRef.current = conversation.id;
       setConversationId(conversation.id);
       continuousRef.current = true;
-      await client.invalidateQueries({ queryKey: ["voice"] });
-      await beginListening();
+      // The greeting is part of the conversation, so the agent knows it has
+      // already said hello.
+      const said = greetingSaidRef.current;
+      greetingSaidRef.current = null;
+      const saved = said
+        ? appendVoiceTranscript({
+            data: {
+              conversationId: conversation.id,
+              speaker: "agent",
+              transcript: said,
+            },
+          }).catch(() => undefined)
+        : Promise.resolve();
+      void saved.then(() => client.invalidateQueries({ queryKey: ["voice"] }));
+      // While the greeting is still playing, its end opens the microphone.
+      if (!replyRef.current) await beginListening();
     },
     onError: (error) => setStatus(getStandardErrorMessage(error)),
   });
 
   const endConversation = async () => {
+    stopReply();
     stopListening(false);
     const activeConversationId = conversationRef.current;
     conversationRef.current = null;
@@ -245,8 +467,11 @@ export function VoiceAgentLauncher() {
       return;
     }
     setOpen(true);
-    if (!conversationRef.current && !start.isPending) start.mutate();
-    else if (!listening && !transcribe.isPending) {
+    if (!conversationRef.current && !start.isPending) {
+      continuousRef.current = true;
+      greet();
+      start.mutate();
+    } else if (!listening && !transcribe.isPending) {
       continuousRef.current = true;
       void beginListening();
     }
@@ -261,7 +486,11 @@ export function VoiceAgentLauncher() {
         return;
       event.preventDefault();
       setOpen(true);
-      if (!conversationRef.current && !start.isPending) start.mutate();
+      if (!conversationRef.current && !start.isPending) {
+        continuousRef.current = true;
+        greetRef.current();
+        start.mutate();
+      }
     };
     window.addEventListener("keydown", shortcut);
     return () => window.removeEventListener("keydown", shortcut);
@@ -270,12 +499,26 @@ export function VoiceAgentLauncher() {
   useEffect(
     () => () => {
       continuousRef.current = false;
+      replyRef.current?.queue.stop();
+      replyRef.current?.stopWatch();
       if (animationFrameRef.current !== null)
         cancelAnimationFrame(animationFrameRef.current);
       streamRef.current?.getTracks().forEach((track) => track.stop());
     },
     [],
   );
+
+  // Moving to another page fades the panel away so the page can be used; the
+  // conversation carries on, and the orb brings the panel back.
+  const pathname = useRouterState({
+    select: (state) => state.location.pathname,
+  });
+  const pathnameRef = useRef(pathname);
+  useEffect(() => {
+    if (pathnameRef.current === pathname) return;
+    pathnameRef.current = pathname;
+    if (conversationRef.current) setOpen(false);
+  }, [pathname]);
 
   const messages = workspace.data?.messages
     .filter((message) => message.conversationId === conversationId)
@@ -304,13 +547,16 @@ export function VoiceAgentLauncher() {
 
   return (
     <>
-      {open ? (
+      {open || conversationId ? (
         <section
           aria-label="Voice Agent conversation"
+          aria-hidden={!open}
+          inert={!open}
           /* Translucent over the app rather than a flat card: the panel floats
              above whatever you were reading, so it should not look like it
-             replaced it. */
-          className="fixed right-4 bottom-24 z-50 flex h-[min(34rem,calc(100vh-9rem))] w-[min(25rem,calc(100vw-2rem))] flex-col overflow-hidden rounded-3xl border border-base-content/10 bg-base-100/80 shadow-2xl ring-1 ring-base-content/5 backdrop-blur-xl md:right-6"
+             replaced it. While a conversation is running it stays mounted and
+             fades out of the way instead, so hiding it never ends the call. */
+          className={`fixed right-4 bottom-24 z-50 flex h-[min(34rem,calc(100vh-9rem))] w-[min(25rem,calc(100vw-2rem))] flex-col overflow-hidden rounded-3xl border border-base-content/10 bg-base-100/80 shadow-2xl ring-1 ring-base-content/5 backdrop-blur-xl transition-[opacity,transform] duration-500 ease-out motion-reduce:transition-none md:right-6 ${open ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-3 opacity-0"}`}
         >
           <header className="flex items-center gap-3 px-4 pt-4 pb-3">
             <VoiceOrb state={orbState} level={level} size="sm" />
@@ -326,6 +572,20 @@ export function VoiceAgentLauncher() {
             >
               <History className="size-4" />
             </button>
+            {showHistory && pastConversations.length ? (
+              <button
+                type="button"
+                aria-label="Delete all past conversations"
+                className="p-1 text-base-content/15 transition-colors hover:text-error focus-visible:text-error"
+                onClick={() => {
+                  if (window.confirm("Delete every past conversation?")) {
+                    forget.mutate({ all: true });
+                  }
+                }}
+              >
+                <Trash2 className="size-3.5" />
+              </button>
+            ) : null}
             <button
               type="button"
               className="btn btn-circle btn-ghost btn-sm"
@@ -342,16 +602,29 @@ export function VoiceAgentLauncher() {
                 pastConversations.map(({ conversation, turns }) => (
                   <details
                     key={conversation.id}
-                    className="rounded-2xl border border-base-content/10 bg-base-200/40 p-3"
+                    className="group/row rounded-2xl border border-base-content/10 bg-base-200/40 p-3"
                   >
-                    <summary className="cursor-pointer list-none text-sm">
-                      <span className="block truncate font-medium">
-                        {turns[0]?.transcript ?? "Conversation"}
+                    <summary className="flex cursor-pointer list-none items-start gap-2 text-sm">
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate font-medium">
+                          {turns[0]?.transcript ?? "Conversation"}
+                        </span>
+                        <span className="text-xs text-base-content/50">
+                          {new Date(conversation.startedAt).toLocaleString()} ·{" "}
+                          {turns.length} turn{turns.length === 1 ? "" : "s"}
+                        </span>
                       </span>
-                      <span className="text-xs text-base-content/50">
-                        {new Date(conversation.startedAt).toLocaleString()} ·{" "}
-                        {turns.length} turn{turns.length === 1 ? "" : "s"}
-                      </span>
+                      <button
+                        type="button"
+                        aria-label="Delete this conversation"
+                        className="mt-0.5 shrink-0 p-1 text-base-content/15 transition-colors hover:text-error focus-visible:text-error group-hover/row:text-base-content/35"
+                        onClick={(event) => {
+                          event.preventDefault();
+                          forget.mutate({ conversationId: conversation.id });
+                        }}
+                      >
+                        <Trash2 className="size-3" />
+                      </button>
                     </summary>
                     <div className="mt-3 space-y-2">
                       {turns.map((turn) => (
@@ -370,17 +643,35 @@ export function VoiceAgentLauncher() {
                 <Bubble key={message.id} message={message} />
               ))
             ) : (
-              <div className="grid h-full place-items-center gap-4 px-6 text-center">
-                <VoiceOrb state={orbState} level={level} size="lg" />
-                <p className="text-sm text-base-content/60">
-                  Allow microphone access and speak. Digital Urgency notices
-                  when you finish.
-                </p>
+              <div className="voice-welcome">
+                <div className="voice-welcome-glow">
+                  <VoiceOrb state={orbState} level={level} size="lg" />
+                </div>
+                <div>
+                  <p className="voice-welcome-eyebrow">
+                    DIGITAL URGENCY · VOICE
+                  </p>
+                  <h2>
+                    {speaking
+                      ? "I'm here with you"
+                      : listening
+                        ? "Go ahead, I'm listening"
+                        : "Let's talk"}
+                  </h2>
+                  <p className="voice-welcome-hint">
+                    {conversationId
+                      ? "Speak naturally. There's no need to press send."
+                      : "Tap the microphone to begin. Allow microphone access when prompted."}
+                  </p>
+                </div>
               </div>
             )}
           </div>
 
-          <footer className="flex items-center justify-center gap-3 px-4 pt-2 pb-5">
+          <footer className="voice-conversation-footer flex flex-col items-center justify-center gap-3 px-4 pt-2 pb-5">
+            {!showHistory && conversationId ? (
+              <VoiceWaveform state={orbState} level={level} />
+            ) : null}
             {!conversationId ? (
               <button
                 type="button"
@@ -414,17 +705,59 @@ export function VoiceAgentLauncher() {
       <button
         type="button"
         onClick={toggle}
-        aria-label="Open Voice Agent"
+        aria-label={
+          conversationId
+            ? "Voice Agent — conversation live"
+            : "Open Voice Agent"
+        }
         aria-expanded={open}
         title="Voice Agent · Ctrl+Space or \u2318\u21e7Space"
         className="group fixed right-4 bottom-5 z-50 grid size-14 place-items-center rounded-full transition hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary md:right-6 md:bottom-6"
       >
+        {/* While a conversation is live the orb keeps glowing, so it is plain
+            the agent is still with you after the panel fades away. */}
+        {conversationId ? (
+          <span
+            aria-hidden="true"
+            className="voice-orb-halo pointer-events-none absolute -inset-3 rounded-full blur-xl"
+            style={{
+              backgroundImage: RING_GRADIENT,
+              opacity: speaking || listening ? 0.75 : 0.45,
+            }}
+          />
+        ) : null}
         <VoiceOrb state={orbState} level={level} size="md" />
         <span className="pointer-events-none absolute right-full mr-3 rounded-full bg-base-content px-2.5 py-1 text-xs font-medium whitespace-nowrap text-base-100 opacity-0 transition group-hover:opacity-100 group-focus-visible:opacity-100">
           Voice Agent
         </span>
       </button>
     </>
+  );
+}
+
+function VoiceWaveform({
+  state,
+  level,
+}: {
+  state: "idle" | "live" | "listening" | "speaking";
+  level: number;
+}) {
+  const amplitude = Math.max(0, Math.min(1, level));
+  return (
+    <div className="voice-waveform" data-state={state} aria-hidden="true">
+      {Array.from({ length: 25 }, (_, index) => {
+        const envelope = Math.sin(((index + 1) / 26) * Math.PI);
+        return (
+          <span
+            key={index}
+            style={{
+              height: `${6 + envelope * (state === "speaking" ? 34 : amplitude * 42)}px`,
+              animationDelay: `${index * -0.09}s`,
+            }}
+          />
+        );
+      })}
+    </div>
   );
 }
 
@@ -452,12 +785,40 @@ const ORB_SIZES = {
 } as const;
 
 /**
- * The agent, drawn rather than iconified.
+ * The hues the ring cycles through — magenta into pink, a warm peach, then
+ * blue and violet back round to magenta, as on Deepgram's orb. Written as one
+ * conic gradient so the colours flow into each other instead of meeting at
+ * seams.
+ */
+const RING_GRADIENT =
+  "conic-gradient(from 0deg, #ff2fb4, #ff6ec7, #ffb089, #7a8bff, #3b6bff, #a24bff, #ff2fb4)";
+
+/** Cuts the gradient disc down to a ring: clear in the middle, solid at the rim. */
+const RING_MASK =
+  "radial-gradient(closest-side, transparent 74%, #000 79%, #000 95%, transparent 100%)";
+
+/** The same palette started a third of the way round, for the second ring. */
+const COUNTER_GRADIENT =
+  "conic-gradient(from 120deg, #ff2fb4, #ff6ec7, #ffb089, #7a8bff, #3b6bff, #a24bff, #ff2fb4)";
+
+function ringStyle(gradient: string) {
+  return {
+    backgroundImage: gradient,
+    maskImage: RING_MASK,
+    WebkitMaskImage: RING_MASK,
+  } as const;
+}
+
+/**
+ * The agent, drawn rather than iconified: a neon ring that moves like liquid.
  *
- * Concentric rings that widen with what the microphone is actually hearing,
- * and a colour that says whose turn it is: green while it listens to you, red
- * while it is speaking. Someone glancing at the orb should know whether to
- * talk or wait without reading the status line.
+ * Transparent all the way through — the page shows in the middle, so the orb
+ * sits on whatever is behind it instead of punching a dark hole in it.
+ *
+ * Two elliptical rings turn in opposite directions and keep crossing, so the
+ * outline ripples and reshapes instead of simply spinning. Whose turn it is
+ * used to be a colour; now it is motion: slow and quiet while it waits,
+ * swelling with your voice while it listens, fast and bright while it talks.
  */
 function VoiceOrb({
   state,
@@ -470,52 +831,54 @@ function VoiceOrb({
 }) {
   const listening = state === "listening";
   const speaking = state === "speaking";
-  // Semantic tokens, not literals, so the orb follows the theme in both modes.
-  const tone = speaking
-    ? {
-        halo: "bg-error/20",
-        inner: "bg-error/30",
-        core: "from-error to-error/70",
-        ring: "ring-error/40",
-        glow: "shadow-error/30",
-      }
-    : listening
-      ? {
-          halo: "bg-success/20",
-          inner: "bg-success/30",
-          core: "from-success to-success/70",
-          ring: "ring-success/40",
-          glow: "shadow-success/30",
-        }
-      : {
-          halo: "bg-primary/20",
-          inner: "bg-primary/15",
-          core: "from-primary to-primary/70",
-          ring: "ring-primary/40",
-          glow: "shadow-primary/30",
-        };
+  const active = listening || speaking;
+  // The measured level while listening, so a still orb means the microphone
+  // genuinely hears nothing. Speaking has nothing to measure, so it runs
+  // brighter and faster on its own.
+  const swell = listening ? level : speaking ? 0.4 : 0;
+  // Custom properties the stylesheet reads, typed as such rather than cast:
+  // React's CSSProperties does not know about "--" names on its own.
+  const tempo: CSSProperties & Record<`--${string}`, string> = {
+    "--orb-spin": speaking ? "2.6s" : active ? "4.5s" : "8s",
+    "--orb-counter": speaking ? "3.6s" : active ? "6s" : "11s",
+    "--orb-breath": speaking ? "1.1s" : "3.2s",
+  };
 
   return (
     <span
-      className={`relative grid ${ORB_SIZES[size]} shrink-0 place-items-center`}
+      className={`voice-orb-breathe relative grid ${ORB_SIZES[size]} shrink-0 place-items-center`}
+      style={tempo}
       aria-hidden="true"
     >
-      {/* Driven by the measured level, not a fixed animation: a still ring
-          means the microphone is genuinely hearing nothing. While speaking
-          there is no input to measure, so it breathes on its own instead. */}
-      <span
-        className={`absolute inset-0 rounded-full ${tone.halo} transition-transform duration-100 ${speaking ? "animate-ping [animation-duration:1.6s]" : ""}`}
-        style={{ transform: `scale(${1 + (listening ? level * 0.55 : 0)})` }}
-      />
-      <span
-        className={`absolute inset-[15%] rounded-full ${tone.inner} transition-transform duration-150`}
-        style={{ transform: `scale(${1 + (listening ? level * 0.3 : 0)})` }}
-      />
-      <span
-        className={`relative grid size-1/2 place-items-center rounded-full bg-gradient-to-br ${tone.core} shadow-lg ${tone.glow} ${state === "idle" ? "" : `ring-2 ${tone.ring}`}`}
-      >
+      {/* Glow: the ring again, blurred, brightening with activity. */}
+      <span className="voice-orb-turn absolute inset-0">
         <span
-          className={`size-1/3 rounded-full bg-base-100 ${listening || speaking ? "animate-pulse" : ""}`}
+          className="absolute inset-0 rounded-full blur-md transition-opacity duration-300"
+          style={{
+            ...ringStyle(RING_GRADIENT),
+            opacity: 0.45 + swell * 0.5 + (active ? 0.15 : 0),
+          }}
+        />
+      </span>
+      {/* First ring: squashed a little, turning clockwise. The squash turns
+          with it, which is what makes the outline wobble. */}
+      <span className="voice-orb-turn absolute inset-0">
+        <span
+          className="absolute inset-0 rounded-full transition-transform duration-100"
+          style={{
+            ...ringStyle(RING_GRADIENT),
+            transform: `scale(${1 + swell * 0.1}, ${0.9 + swell * 0.1})`,
+          }}
+        />
+      </span>
+      {/* Second ring: squashed the other way, turning back against the first. */}
+      <span className="voice-orb-counter absolute inset-0">
+        <span
+          className="absolute inset-0 rounded-full opacity-80 transition-transform duration-100"
+          style={{
+            ...ringStyle(COUNTER_GRADIENT),
+            transform: `scale(${0.9 + swell * 0.1}, ${1 + swell * 0.1})`,
+          }}
         />
       </span>
     </span>

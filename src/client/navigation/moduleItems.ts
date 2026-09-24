@@ -4,6 +4,7 @@ import {
   CalendarDays,
   ClipboardList,
   ContactRound,
+  FileSignature,
   Inbox,
   LayoutDashboard,
   Package,
@@ -12,6 +13,7 @@ import {
   UserRound,
   Radar,
   ChartNoAxesColumn,
+  MessageSquareText,
 } from "lucide-react";
 import { linkOptions } from "@tanstack/react-router";
 
@@ -66,6 +68,16 @@ const crmNavGroups = [
         to: "/modules/crm/meetings",
         label: "Meetings",
         icon: CalendarDays,
+      }),
+      linkOptions({
+        to: "/modules/crm/quotations",
+        label: "Quotations",
+        icon: FileSignature,
+      }),
+      linkOptions({
+        to: "/modules/crm/sms",
+        label: "SMS",
+        icon: MessageSquareText,
       }),
       linkOptions({
         to: "/modules/crm/analytics",

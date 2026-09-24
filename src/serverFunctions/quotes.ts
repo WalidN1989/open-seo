@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { QuoteEmailService } from "@/server/features/quotes/services/QuoteEmailService";
 import { QuoteFlowService } from "@/server/features/quotes/services/QuoteFlowService";
 import { QuoteService } from "@/server/features/quotes/services/QuoteService";
 import { productItemTypeSchema } from "@/types/schemas/commerce";
@@ -107,6 +108,19 @@ export const searchQuoteCatalogue = createServerFn({ method: "POST" })
       context.userId,
       data,
     ),
+  );
+
+export const emailQuote = createServerFn({ method: "POST" })
+  .middleware(requireAuthenticatedContext)
+  .validator(
+    z.object({
+      quoteId: z.string().min(1),
+      to: z.string().trim().max(200).nullish(),
+      message: z.string().trim().max(2000).nullish(),
+    }),
+  )
+  .handler(({ context, data }) =>
+    QuoteEmailService.emailQuote(context.organizationId, context.userId, data),
   );
 
 /** The client's view of a quote, authorized by the signed link alone. */

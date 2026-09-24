@@ -1,4 +1,7 @@
+import { z } from "zod";
 import { createServerFn } from "@tanstack/react-start";
+import { VoiceLessonsService } from "@/server/features/voice/services/VoiceLessonsService";
+import { VoiceGreetingService } from "@/server/features/voice/services/VoiceGreetingService";
 import { CommunicationsService } from "@/server/features/communications/services/CommunicationsService";
 import { requireAuthenticatedContext } from "@/serverFunctions/middleware";
 import {
@@ -94,6 +97,16 @@ export const launchWhatsappCampaign = createServerFn({ method: "POST" })
   .validator(launchWhatsappCampaignSchema)
   .handler(({ context, data }) =>
     CommunicationsService.launchWhatsappCampaign(
+      context.organizationId,
+      context.userId,
+      data,
+    ),
+  );
+export const deleteWhatsappCampaign = createServerFn({ method: "POST" })
+  .middleware(requireAuthenticatedContext)
+  .validator(launchWhatsappCampaignSchema)
+  .handler(({ context, data }) =>
+    CommunicationsService.deleteWhatsappCampaign(
       context.organizationId,
       context.userId,
       data,
@@ -338,4 +351,40 @@ export const retryWebhookDelivery = createServerFn({ method: "POST" })
       context.userId,
       data,
     ),
+  );
+/** The spoken greeting the voice plays the moment it is opened. */
+export const getVoiceGreeting = createServerFn({ method: "GET" })
+  .middleware(requireAuthenticatedContext)
+  .handler(({ context }) =>
+    VoiceGreetingService.greeting(context.organizationId, context.userId),
+  );
+
+export const getVoiceName = createServerFn({ method: "GET" })
+  .middleware(requireAuthenticatedContext)
+  .handler(({ context }) =>
+    VoiceGreetingService.getVoiceName(context.organizationId, context.userId),
+  );
+
+export const setVoiceName = createServerFn({ method: "POST" })
+  .middleware(requireAuthenticatedContext)
+  .validator(z.object({ voiceName: z.string().max(60) }))
+  .handler(({ context, data }) =>
+    VoiceGreetingService.setVoiceName(
+      context.organizationId,
+      context.userId,
+      data,
+    ),
+  );
+
+export const listVoiceLessons = createServerFn({ method: "GET" })
+  .middleware(requireAuthenticatedContext)
+  .handler(({ context }) =>
+    VoiceLessonsService.list(context.organizationId, context.userId),
+  );
+
+export const forgetVoiceLesson = createServerFn({ method: "POST" })
+  .middleware(requireAuthenticatedContext)
+  .validator(z.object({ lessonId: z.string().min(1) }))
+  .handler(({ context, data }) =>
+    VoiceLessonsService.forget(context.organizationId, context.userId, data),
   );

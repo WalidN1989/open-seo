@@ -105,6 +105,16 @@ async function updateProduct(
     );
   }
 
+  if (
+    input.inventoryMode === "single" &&
+    (await CommerceRepository.hasStockOutsideDefault(organizationId, input.id))
+  ) {
+    throw new AppError(
+      "VALIDATION_ERROR",
+      "Move stock from the other branches before switching to single-location inventory.",
+    );
+  }
+
   const updated = await CommerceRepository.updateProduct(organizationId, input);
   if (!updated) throw new AppError("NOT_FOUND");
   return updated;

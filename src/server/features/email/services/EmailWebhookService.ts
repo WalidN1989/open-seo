@@ -1,18 +1,4 @@
 import { decryptCredentials } from "@/server/lib/connection-secrets";
-import { getOptionalEnvValue } from "@/server/lib/runtime-env";
-import { CommunicationsRepository } from "@/server/features/communications/repositories/CommunicationsRepository";
-import { WhatsappAssistantRepository } from "@/server/features/communications/repositories/WhatsappAssistantRepository";
-import {
-  WhatsappAssistantService,
-  resolveAiKey,
-} from "@/server/features/communications/services/WhatsappAssistantService";
-import {
-  businessContext,
-  lookupProducts,
-} from "@/server/features/communications/services/WhatsappAssistantReplyService";
-import { generateWhatsappAiReply } from "@/server/features/communications/providers/whatsapp-ai";
-import { toPlainText } from "@/server/features/communications/providers/assistant-knowledge";
-import { outboundFor } from "../providers/outbound";
 import {
   addressOf,
   parseAgentmailEvent,
@@ -23,83 +9,8 @@ import {
 import {
   EmailRepository as Repo,
   type EmailAccountRow,
-  type EmailMessageRow,
-  type EmailThreadRow,
 } from "../repositories/EmailRepository";
-import { recordOutbound } from "./EmailService";
-
-const ASSISTANT = "assistant";
-
-/**
- * Let the shared assistant answer an inbound email. It reads the same
- * settings, facts, prices and product lookup as WhatsApp — nothing is
- * duplicated — but writes a draft unless this account is on autopilot.
- */
-export async function replyWithAssistant(
-  account: EmailAccountRow,
-  threadRow: EmailThreadRow,
-  inbound: EmailMessageRow,
-) {
-  const organizationId = account.organizationId;
-  const aiConnection = await CommunicationsRepository.getIntegrationByProvider(
-    organizationId,
-    "claude_haiku",
-  );
-  if (aiConnection?.status !== "connected") return;
-  const settings = WhatsappAssistantService.withDefaults(
-    await WhatsappAssistantRepository.getSettings(organizationId),
-  );
-  const [history, context, apiKey] = await Promise.all([
-    Repo.listMessages(organizationId, threadRow.id),
-    businessContext(organizationId, settings),
-    resolveAiKey(aiConnection),
-  ]);
-  const result = await generateWhatsappAiReply({
-    history: history
-      .filter((message) => message.direction !== "draft")
-      .map((message) => ({
-        direction: message.direction === "inbound" ? "inbound" : "outbound",
-        body: message.textBody,
-      })),
-    apiKey,
-    model: settings.model ?? (await getOptionalEnvValue("WHATSAPP_AI_MODEL")),
-    businessContext: `${context}\n\n## Channel\nThis is an email, not a chat. Write a complete reply: a greeting, the answer, and a short sign-off with the business name. Plain text only, no markdown.`,
-    persona: settings.persona,
-    lookupProducts: (query) => lookupProducts(organizationId, query),
-  });
-  if (!result?.reply) return;
-  // An email is plain text; markdown emphasis would reach the reader as
-  // asterisks around the words it was meant to lift.
-  const body = toPlainText(result.reply);
-  if (account.autopilot) {
-    const sent = await (
-      await outboundFor(account)
-    ).reply({ thread: threadRow, last: inbound, text: body });
-    await recordOutbound(account, threadRow, sent, {
-      to: [inbound.fromAddress],
-      subject: inbound.subject,
-      text: body,
-      authoredBy: ASSISTANT,
-    });
-    return;
-  }
-  await Repo.insertMessage({
-    organizationId,
-    accountId: account.id,
-    threadId: threadRow.id,
-    externalMessageId: null,
-    direction: "draft",
-    fromAddress: account.address,
-    toAddresses: [inbound.fromAddress],
-    subject: inbound.subject,
-    textBody: body,
-    htmlBody: null,
-    status: "draft",
-    authoredBy: ASSISTANT,
-    occurredAt: new Date().toISOString(),
-  });
-  await Repo.setThreadStatus(organizationId, threadRow.id, "pending");
-}
+import { EmailAssistantService } from "./EmailAssistantService";
 
 async function ingestReceived(
   account: EmailAccountRow,
@@ -177,7 +88,12 @@ async function processWebhook(
     const ingested = await ingestReceived(account, event.message, event.thread);
     if (ingested) {
       try {
-        await replyWithAssistant(account, ingested.threadRow, ingested.inbound);
+        await EmailAssistantService.onInbound(
+          account,
+          ingested.threadRow,
+          ingested.inbound,
+          [],
+        );
       } catch (error) {
         console.error(
           "Email assistant failed; message kept for a person",

@@ -1,4 +1,6 @@
-import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
+import { ModuleLauncher } from "@/client/features/business-modules/ModuleLauncher";
+import { InventoryLauncher } from "@/client/features/business-modules/InventoryLauncher";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 import {
@@ -12,6 +14,7 @@ import {
   ReceiptText,
   ShieldCheck,
   Share2,
+  MessageSquareText,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -26,6 +29,8 @@ import {
   type BusinessModuleKey,
 } from "@/shared/business-modules";
 import { getStandardErrorMessage } from "@/client/lib/error-messages";
+import { ClientModuleList } from "@/client/features/business-modules/ClientModuleList";
+import { useWorkspaceAccess } from "@/client/features/team/workspaceAccess";
 
 export const Route = createFileRoute("/_app/modules/")({
   component: BusinessModulesPage,
@@ -35,6 +40,7 @@ const icons = {
   leads: ContactRound,
   crm: Blocks,
   whatsapp: MessagesSquare,
+  sms: MessageSquareText,
   voice: Bot,
   email: Mail,
   social: Share2,
@@ -44,6 +50,7 @@ const icons = {
   integrations: PlugZap,
 } satisfies Record<BusinessModuleKey, typeof Blocks>;
 
+/** The agency reads a catalogue here; a client reads what they were given. */
 function BusinessModulesPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -66,6 +73,8 @@ function BusinessModulesPage() {
         getStandardErrorMessage(error, "We couldn't update this module."),
       ),
   });
+  const { data: workspace } = useWorkspaceAccess();
+  const isClient = workspace?.isClientLogin ?? false;
   const canManageStaff =
     accessQuery.data?.some((module) => module.canConfigureEntitlement) ?? false;
   const firstAvailableModule = accessQuery.data?.find(
@@ -73,6 +82,9 @@ function BusinessModulesPage() {
   );
 
   useEffect(() => {
+    // A client came here to see what they have, so this page answers that
+    // rather than throwing them into whichever module happens to be first.
+    if (isClient) return;
     if (!accessQuery.isSuccess || canManageStaff || !firstAvailableModule)
       return;
     void navigate(
@@ -86,7 +98,13 @@ function BusinessModulesPage() {
               replace: true,
             },
     );
-  }, [accessQuery.isSuccess, canManageStaff, firstAvailableModule, navigate]);
+  }, [
+    accessQuery.isSuccess,
+    canManageStaff,
+    firstAvailableModule,
+    isClient,
+    navigate,
+  ]);
   const staffQuery = useQuery({
     queryKey: ["business-modules", "staff"],
     queryFn: () => getBusinessModuleStaffAccess(),
@@ -117,24 +135,21 @@ function BusinessModulesPage() {
         getStandardErrorMessage(error, "We couldn't update staff access."),
       ),
   });
-  const leadsModule = accessQuery.data?.find(
-    (module) => module.key === "leads",
-  );
 
   return (
-    <div className="h-full overflow-auto bg-base-100 px-4 py-8 pb-24 md:px-6 md:py-12 md:pb-8">
-      <div className="mx-auto max-w-5xl space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Business Access</h1>
-          <p className="mt-1 max-w-2xl text-sm text-base-content/60">
-            Add operational tools around Digital Urgency without changing its
-            SEO engine. Owners can activate only the modules included for this
-            organization.
-          </p>
-        </div>
-
+    <div className="business-access h-full overflow-auto bg-base-100 px-4 py-6 pb-24 md:px-6 md:py-8 md:pb-8">
+      <div
+        className={
+          isClient
+            ? "mx-auto max-w-[1500px] space-y-6"
+            : "business-access-layout mx-auto max-w-[1500px]"
+        }
+      >
         {accessQuery.isLoading ||
-        (accessQuery.isSuccess && !canManageStaff && firstAvailableModule) ? (
+        (accessQuery.isSuccess &&
+          !isClient &&
+          !canManageStaff &&
+          firstAvailableModule) ? (
           <div className="flex justify-center py-16">
             <span className="loading loading-spinner loading-md" />
           </div>
@@ -145,62 +160,123 @@ function BusinessModulesPage() {
               "We couldn't load the business modules.",
             )}
           </div>
+        ) : isClient ? (
+          <ClientModuleList modules={accessQuery.data ?? []} icons={icons} />
         ) : !canManageStaff ? (
           <div className="alert alert-info">
             No business capabilities are available for this account. Ask a
             workspace owner or administrator to update your access.
           </div>
         ) : (
-          <div className="grid gap-4 md:grid-cols-2">
-            {(accessQuery.data ?? [])
-              .filter((module) => module.key !== "leads" && !module.hidden)
-              .map((module) => {
-                const Icon = icons[module.key];
-                return (
-                  <article
-                    key={module.key}
-                    className="rounded-xl border border-base-300 bg-base-100 p-5"
-                  >
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex min-w-0 gap-3">
-                        <span className="rounded-lg bg-base-200 p-2">
-                          <Icon className="size-5" />
-                        </span>
-                        <div>
-                          <h2 className="font-semibold">{module.label}</h2>
-                          <p className="mt-1 text-sm text-base-content/60">
-                            {module.description}
-                          </p>
-                        </div>
-                      </div>
-                      <span
-                        className={`badge badge-sm ${module.enabled ? "badge-success" : "badge-ghost"}`}
-                      >
-                        {module.enabled ? "Active" : "Inactive"}
-                      </span>
-                    </div>
-
-                    <div className="mt-5 flex items-center justify-between gap-3">
-                      {module.enabled && module.permission ? (
-                        <Link
-                          to="/modules/$moduleKey"
-                          params={{ moduleKey: module.key }}
-                          className="btn btn-primary btn-sm"
+          <div className="business-access-groups">
+            {[true, false].map((enabled) => {
+              const modules = (accessQuery.data ?? []).filter(
+                (module) =>
+                  module.key !== "leads" &&
+                  !module.hidden &&
+                  module.enabled === enabled,
+              );
+              const Container = enabled ? "section" : "details";
+              if (!modules.length)
+                return enabled ? (
+                  <p key="empty" className="text-sm text-base-content/60">
+                    No active modules. Expand inactive modules to enable one.
+                  </p>
+                ) : null;
+              return (
+                <Container
+                  key={String(enabled)}
+                  className={
+                    enabled
+                      ? "business-access-active space-y-3"
+                      : "business-access-panel"
+                  }
+                >
+                  {enabled ? (
+                    <h2 className="text-sm font-semibold">Active modules</h2>
+                  ) : (
+                    <summary>
+                      <h2 className="font-semibold">
+                        Inactive modules ({modules.length})
+                      </h2>
+                    </summary>
+                  )}
+                  <div className="business-access-grid">
+                    {enabled &&
+                    modules.some(
+                      (module) => module.key === "crm" && module.permission,
+                    ) ? (
+                      <InventoryLauncher />
+                    ) : null}
+                    {modules.map((module) => {
+                      const Icon = icons[module.key];
+                      return (
+                        <article
+                          key={module.key}
+                          className="business-access-card"
                         >
-                          Open
-                        </Link>
-                      ) : (
-                        <span className="text-xs text-base-content/50">
-                          Not available to this staff member
-                        </span>
-                      )}
-                      {module.canConfigureEntitlement ? (
+                          <ModuleLauncher
+                            moduleKey={module.key}
+                            label={module.label}
+                            Icon={Icon}
+                            accessible={Boolean(
+                              module.enabled && module.permission,
+                            )}
+                          />
+
+                          {!enabled && module.canConfigureEntitlement ? (
+                            <button
+                              className="btn btn-sm btn-outline mt-3"
+                              disabled={entitlementMutation.isPending}
+                              onClick={() =>
+                                entitlementMutation.mutate({
+                                  moduleKey: module.key,
+                                  enabled: true,
+                                })
+                              }
+                            >
+                              Enable
+                            </button>
+                          ) : null}
+                        </article>
+                      );
+                    })}
+                  </div>
+                </Container>
+              );
+            })}
+          </div>
+        )}
+
+        {canManageStaff && staffQuery.data ? (
+          <details className="business-access-panel">
+            <summary>
+              <h2 className="text-lg font-semibold">Staff access</h2>
+              <p className="text-sm text-base-content/60">
+                Owners and admins inherit access. Set the highest permission
+                each staff member needs for an active module.
+              </p>
+            </summary>
+            <div className="overflow-x-auto rounded-xl border border-base-300">
+              <div className="p-4 border-b border-base-300">
+                <h3 className="text-sm font-semibold mb-3">Enabled modules</h3>
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {(accessQuery.data ?? [])
+                    .filter(
+                      (module) =>
+                        !module.hidden && module.canConfigureEntitlement,
+                    )
+                    .map((module) => (
+                      <label
+                        key={module.key}
+                        className="flex items-center justify-between gap-3 text-sm"
+                      >
+                        {module.label}
                         <input
                           type="checkbox"
                           className="toggle toggle-primary toggle-sm"
                           checked={module.enabled}
                           disabled={entitlementMutation.isPending}
-                          aria-label={`${module.enabled ? "Disable" : "Enable"} ${module.label}`}
                           onChange={(event) =>
                             entitlementMutation.mutate({
                               moduleKey: module.key,
@@ -208,55 +284,10 @@ function BusinessModulesPage() {
                             })
                           }
                         />
-                      ) : null}
-                    </div>
-                    {module.key === "crm" && leadsModule ? (
-                      <div className="mt-4 flex items-center justify-between gap-3 border-t border-base-300 pt-4">
-                        <div>
-                          <div className="text-sm font-medium">Leads</div>
-                          <div className="text-xs text-base-content/50">
-                            Capture, qualify, assign, and track prospects.
-                          </div>
-                        </div>
-                        {leadsModule.canConfigureEntitlement ? (
-                          <input
-                            type="checkbox"
-                            className="toggle toggle-primary toggle-sm"
-                            checked={leadsModule.enabled}
-                            disabled={entitlementMutation.isPending}
-                            aria-label={`${leadsModule.enabled ? "Disable" : "Enable"} Leads`}
-                            onChange={(event) =>
-                              entitlementMutation.mutate({
-                                moduleKey: "leads",
-                                enabled: event.currentTarget.checked,
-                              })
-                            }
-                          />
-                        ) : (
-                          <span
-                            className={`badge badge-sm ${leadsModule.enabled ? "badge-success" : "badge-ghost"}`}
-                          >
-                            {leadsModule.enabled ? "Active" : "Inactive"}
-                          </span>
-                        )}
-                      </div>
-                    ) : null}
-                  </article>
-                );
-              })}
-          </div>
-        )}
-
-        {canManageStaff && staffQuery.data ? (
-          <section className="space-y-3 pt-4">
-            <div>
-              <h2 className="text-lg font-semibold">Staff access</h2>
-              <p className="text-sm text-base-content/60">
-                Owners and admins inherit access. Set the highest permission
-                each staff member needs for an active module.
-              </p>
-            </div>
-            <div className="overflow-x-auto rounded-xl border border-base-300">
+                      </label>
+                    ))}
+                </div>
+              </div>
               <table className="table table-sm">
                 <thead>
                   <tr>
@@ -291,7 +322,7 @@ function BusinessModulesPage() {
                           return (
                             <td key={module.key}>
                               <select
-                                className="select select-bordered select-sm"
+                                className="select select-bordered select-sm min-w-28"
                                 value={current ?? ""}
                                 disabled={
                                   inherited || staffPermissionMutation.isPending
@@ -327,17 +358,17 @@ function BusinessModulesPage() {
                 </tbody>
               </table>
             </div>
-          </section>
+          </details>
         ) : null}
         {canManageStaff && auditQuery.data?.length ? (
-          <section className="space-y-3 pt-4">
-            <div>
+          <details className="business-access-panel">
+            <summary>
               <h2 className="text-lg font-semibold">Audit trail</h2>
               <p className="text-sm text-base-content/60">
                 Recent module and staff-access changes for this organization.
               </p>
-            </div>
-            <div className="divide-y divide-base-300 overflow-hidden rounded-xl border border-base-300">
+            </summary>
+            <div className="max-h-80 divide-y divide-base-300 overflow-auto rounded-xl border border-base-300">
               {auditQuery.data.slice(0, 20).map((event) => (
                 <div
                   key={event.id}
@@ -356,7 +387,7 @@ function BusinessModulesPage() {
                 </div>
               ))}
             </div>
-          </section>
+          </details>
         ) : null}
       </div>
     </div>

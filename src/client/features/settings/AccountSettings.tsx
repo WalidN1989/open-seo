@@ -1,7 +1,9 @@
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { KeyRound, Mail, UserRound } from "lucide-react";
 import { authClient, useSession } from "@/lib/auth-client";
+import { getProjects } from "@/serverFunctions/projects";
 
 /**
  * Profile and sign-in management, ported from the legacy CRM's Account page.
@@ -44,11 +46,13 @@ function ProfileSection({ currentName }: { currentName: string }) {
         <UserRound className="size-4" /> Profile
       </h2>
       <p className="text-sm text-base-content/60">
-        How your name appears across the workspace.
+        Your own name, shown to everyone in every workspace you belong to. The
+        workspace is named in its project settings.
       </p>
+      <WorkspaceLine />
       <div className="flex flex-wrap items-end gap-2">
         <label className="form-control flex-1">
-          <span className="label-text text-xs">Display name</span>
+          <span className="label-text text-xs">Your display name</span>
           <input
             value={name}
             onChange={(event) => setName(event.target.value)}
@@ -238,5 +242,30 @@ function SecuritySection({ email }: { email: string }) {
         Changing your password signs out your other sessions.
       </p>
     </section>
+  );
+}
+
+/**
+ * Which workspace these settings belong to.
+ *
+ * Team, access and currency below are per workspace, while the name above is
+ * the person's own — without this line, the page reads as though "Digital
+ * Urgency" were the name of whichever client is open.
+ */
+function WorkspaceLine() {
+  const projects = useQuery({
+    queryKey: ["projects"],
+    queryFn: () => getProjects(),
+  });
+  const active = (projects.data ?? []).find((project) => project.isActive);
+  if (!active) return null;
+  return (
+    <p className="rounded-lg border border-base-300 px-3 py-2 text-sm">
+      <span className="text-base-content/55">Workspace:</span>{" "}
+      <span className="font-medium">{active.name}</span>
+      {active.domain ? (
+        <span className="text-base-content/55"> · {active.domain}</span>
+      ) : null}
+    </p>
   );
 }

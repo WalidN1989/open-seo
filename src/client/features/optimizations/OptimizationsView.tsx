@@ -5,8 +5,13 @@ import {
   Search,
   ShieldCheck,
   Sparkles,
+  Clock,
+  Globe,
+  Store,
 } from "lucide-react";
 import { OpportunityDetail } from "./OpportunityDetail";
+import { SitePosts } from "./SitePosts";
+import { SiteServices } from "./SiteServices";
 import {
   CMS_LABEL,
   SOURCE_LABEL,
@@ -53,6 +58,20 @@ function Chip({
   );
 }
 
+/** "20 Sep 2026, 2:45 pm" — the day and the hour, which is what is asked. */
+function when(value: string | null) {
+  if (!value) return null;
+  const at = new Date(value);
+  if (Number.isNaN(at.getTime())) return null;
+  return at.toLocaleString(undefined, {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
 function OpportunityCard({
   opportunity,
   onOpen,
@@ -67,9 +86,17 @@ function OpportunityCard({
       onClick={onOpen}
     >
       <div className="flex flex-wrap items-center gap-2">
-        <span className={`badge badge-sm ${STATUS_TONE[status]}`}>
-          {STATUS_LABEL[status]}
-        </span>
+        {status === "published" ? (
+          // Live blogs: the one state worth spotting from across the
+          // room, because it is the one that is already public.
+          <span className="badge badge-sm badge-error gap-1 font-medium">
+            <Globe className="size-3" /> Published
+          </span>
+        ) : (
+          <span className={`badge badge-sm ${STATUS_TONE[status]}`}>
+            {STATUS_LABEL[status]}
+          </span>
+        )}
         <span className="badge badge-sm badge-ghost">
           {TYPE_LABEL[opportunity.type] ?? opportunity.type}
         </span>
@@ -87,8 +114,15 @@ function OpportunityCard({
       <p className="mt-0.5 truncate text-sm text-base-content/60">
         {opportunity.targetUrl ?? opportunity.proposedPath ?? "New page"}
       </p>
-      <p className="mt-2 text-xs text-base-content/50">
-        {SOURCE_LABEL[opportunity.source] ?? opportunity.source}
+      <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-base-content/50">
+        <span>{SOURCE_LABEL[opportunity.source] ?? opportunity.source}</span>
+        <span aria-hidden="true">·</span>
+        <span className="flex items-center gap-1">
+          <Clock className="size-3" />
+          {opportunity.publishedAt
+            ? `Published ${when(opportunity.publishedAt)}`
+            : `Updated ${when(opportunity.updatedAt) ?? when(opportunity.createdAt)}`}
+        </span>
       </p>
     </button>
   );
@@ -98,6 +132,7 @@ export function OptimizationsView({ projectId }: { projectId: string }) {
   const [type, setType] = useState<OptimizationType | undefined>();
   const [status, setStatus] = useState<OptimizationStatus | undefined>();
   const [selected, setSelected] = useState<string | null>(null);
+  const [tab, setTab] = useState<"queue" | "live" | "services">("queue");
   const query = useOpportunities(projectId, { type, status });
 
   if (selected) {
@@ -125,94 +160,124 @@ export function OptimizationsView({ projectId }: { projectId: string }) {
         </span>
       </header>
 
-      <section className="overflow-hidden rounded-2xl border border-base-300 bg-base-100">
-        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-base-300 p-4">
-          <div
-            className="flex flex-wrap items-center gap-1 rounded-xl bg-base-200/60 p-1"
-            aria-label="Content type"
-          >
-            <Chip
-              active={!type}
-              label="All"
-              onClick={() => setType(undefined)}
-            />
-            {TYPE_FILTERS.map((item) => (
-              <Chip
-                key={item}
-                active={type === item}
-                label={TYPE_LABEL[item] ?? item}
-                onClick={() => setType(type === item ? undefined : item)}
-              />
-            ))}
-          </div>
-          <label className="flex items-center gap-3 text-sm text-base-content/60">
-            Status
-            <select
-              className="select select-sm w-48 rounded-lg"
-              value={status ?? ""}
-              onChange={(event) =>
-                setStatus(
-                  STATUS_FILTERS.find((item) => item === event.target.value),
-                )
-              }
-            >
-              <option value="">All statuses</option>
-              {STATUS_FILTERS.map((item) => (
-                <option key={item} value={item}>
-                  {STATUS_LABEL[item]}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
+      <div role="tablist" className="tabs tabs-border">
+        <button
+          role="tab"
+          className={`tab gap-2 ${tab === "queue" ? "tab-active" : ""}`}
+          onClick={() => setTab("queue")}
+        >
+          <FileText className="size-4" /> Opportunities
+        </button>
+        <button
+          role="tab"
+          className={`tab gap-2 ${tab === "live" ? "tab-active" : ""}`}
+          onClick={() => setTab("live")}
+        >
+          <Globe className="size-4" /> Live blogs
+        </button>
+        <button
+          role="tab"
+          className={`tab gap-2 ${tab === "services" ? "tab-active" : ""}`}
+          onClick={() => setTab("services")}
+        >
+          <Store className="size-4" /> Live services
+        </button>
+      </div>
 
-        {query.isPending ? (
-          <div className="flex justify-center py-16">
-            <span className="loading loading-spinner" />
-          </div>
-        ) : query.isError ? (
-          <div role="alert" className="p-10 text-center text-sm text-error">
-            Opportunities could not be loaded. Please refresh to try again.
-          </div>
-        ) : query.data?.length ? (
-          <div className="grid gap-4 bg-base-200/20 p-4 md:grid-cols-2">
-            {query.data.map((opportunity) => (
-              <OpportunityCard
-                key={opportunity.id}
-                opportunity={opportunity}
-                onOpen={() => setSelected(opportunity.id)}
+      {tab === "live" ? <SitePosts projectId={projectId} /> : null}
+
+      {tab === "services" ? <SiteServices projectId={projectId} /> : null}
+
+      {tab === "queue" ? (
+        <section className="overflow-hidden rounded-2xl border border-base-300 bg-base-100">
+          <div className="flex flex-wrap items-center justify-between gap-4 border-b border-base-300 p-4">
+            <div
+              className="flex flex-wrap items-center gap-1 rounded-xl bg-base-200/60 p-1"
+              aria-label="Content type"
+            >
+              <Chip
+                active={!type}
+                label="All"
+                onClick={() => setType(undefined)}
               />
-            ))}
-          </div>
-        ) : (
-          <div className="flex min-h-[340px] flex-col items-center justify-center bg-gradient-to-b from-base-100 to-base-200/30 px-6 py-12 text-center">
-            <div className="mb-6 grid size-20 place-items-center rounded-3xl border border-teal-500/15 bg-teal-500/5 text-teal-600">
-              <Sparkles className="size-8" strokeWidth={1.5} />
+              {TYPE_FILTERS.map((item) => (
+                <Chip
+                  key={item}
+                  active={type === item}
+                  label={TYPE_LABEL[item] ?? item}
+                  onClick={() => setType(type === item ? undefined : item)}
+                />
+              ))}
             </div>
-            <p className="text-xl font-semibold tracking-tight">
-              {type || status
-                ? "No matching opportunities"
-                : "Your next content opportunity starts here"}
-            </p>
-            <p className="mt-3 max-w-md text-sm leading-6 text-base-content/55">
-              {type || status
-                ? "Try another content type or status to see more results."
-                : "Opportunities will appear after research or the next scheduled scan. This is where you’ll review and refine them."}
-            </p>
-            {type || status ? (
-              <button
-                className="btn btn-ghost btn-sm mt-4"
-                onClick={() => {
-                  setType(undefined);
-                  setStatus(undefined);
-                }}
+            <label className="flex items-center gap-3 text-sm text-base-content/60">
+              Status
+              <select
+                className="select select-sm w-48 rounded-lg"
+                value={status ?? ""}
+                onChange={(event) =>
+                  setStatus(
+                    STATUS_FILTERS.find((item) => item === event.target.value),
+                  )
+                }
               >
-                Clear filters
-              </button>
-            ) : null}
+                <option value="">All statuses</option>
+                {STATUS_FILTERS.map((item) => (
+                  <option key={item} value={item}>
+                    {STATUS_LABEL[item]}
+                  </option>
+                ))}
+              </select>
+            </label>
           </div>
-        )}
-      </section>
+
+          {query.isPending ? (
+            <div className="flex justify-center py-16">
+              <span className="loading loading-spinner" />
+            </div>
+          ) : query.isError ? (
+            <div role="alert" className="p-10 text-center text-sm text-error">
+              Opportunities could not be loaded. Please refresh to try again.
+            </div>
+          ) : query.data?.length ? (
+            <div className="grid gap-4 bg-base-200/20 p-4 md:grid-cols-2">
+              {query.data.map((opportunity) => (
+                <OpportunityCard
+                  key={opportunity.id}
+                  opportunity={opportunity}
+                  onOpen={() => setSelected(opportunity.id)}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="flex min-h-[340px] flex-col items-center justify-center bg-gradient-to-b from-base-100 to-base-200/30 px-6 py-12 text-center">
+              <div className="mb-6 grid size-20 place-items-center rounded-3xl border border-teal-500/15 bg-teal-500/5 text-teal-600">
+                <Sparkles className="size-8" strokeWidth={1.5} />
+              </div>
+              <p className="text-xl font-semibold tracking-tight">
+                {type || status
+                  ? "No matching opportunities"
+                  : "Your next content opportunity starts here"}
+              </p>
+              <p className="mt-3 max-w-md text-sm leading-6 text-base-content/55">
+                {type || status
+                  ? "Try another content type or status to see more results."
+                  : "Opportunities will appear after research or the next scheduled scan. This is where you’ll review and refine them."}
+              </p>
+              {type || status ? (
+                <button
+                  className="btn btn-ghost btn-sm mt-4"
+                  onClick={() => {
+                    setType(undefined);
+                    setStatus(undefined);
+                  }}
+                >
+                  Clear filters
+                </button>
+              ) : null}
+            </div>
+          )}
+        </section>
+      ) : null}
       <div className="grid gap-4 md:grid-cols-3">
         {[
           {

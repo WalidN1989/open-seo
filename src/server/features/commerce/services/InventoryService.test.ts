@@ -43,6 +43,14 @@ vi.mock("../repositories/InventoryRepository", () => ({
   },
 }));
 
+vi.mock("../repositories/BranchRepository", () => ({
+  BranchRepository: {
+    resolve: async (organizationId: string, branchId?: string) => ({
+      id: branchId ?? `default:${organizationId}`,
+    }),
+  },
+}));
+
 const { InventoryService } = await import("./InventoryService");
 
 const ORG = "org_1";
@@ -58,7 +66,12 @@ function auditItem(expected: number, counted: number, productId = "p1") {
 beforeEach(() => {
   for (const mock of Object.values(mocks)) mock.mockReset();
   mocks.requireAccess.mockResolvedValue(undefined);
-  mocks.getProduct.mockResolvedValue({ id: "p1", organizationId: ORG });
+  mocks.getProduct.mockResolvedValue({
+    id: "p1",
+    organizationId: ORG,
+    itemType: "product",
+    inventoryMode: "multi",
+  });
   mocks.applyMovements.mockResolvedValue(undefined);
   mocks.findMovementByReference.mockResolvedValue(null);
   mocks.listBalances.mockResolvedValue([]);
@@ -141,10 +154,11 @@ describe("audit lifecycle", () => {
       auditItem(4, 4, "p2"),
     ]);
     const result = await InventoryService.publishAudit(ORG, USER, "a1");
-    // The unchanged line writes nothing.
-    expect(result.movementCount).toBe(1);
+    // A zero movement records that the unchanged line was counted too.
+    expect(result.movementCount).toBe(2);
     expect(mocks.applyMovements).toHaveBeenCalledWith(ORG, [
       expect.objectContaining({ productId: "p1", quantityDelta: 2 }),
+      expect.objectContaining({ productId: "p2", quantityDelta: 0 }),
     ]);
   });
 

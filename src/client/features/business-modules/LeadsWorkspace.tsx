@@ -15,6 +15,7 @@ import {
 import { getStandardErrorMessage } from "@/client/lib/error-messages";
 import { leadPrioritySchema } from "@/types/schemas/crm";
 import { LeadsTable } from "./leads/LeadsTable";
+import "./leads/workspace.css";
 import { useWorkspaceCurrency } from "@/client/hooks/useWorkspaceCurrency";
 
 export function LeadsWorkspace() {
@@ -119,7 +120,7 @@ export function LeadsWorkspace() {
   );
 
   return (
-    <div className="space-y-6">
+    <div className="leads-workspace">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-3xl font-semibold tracking-tight">Leads</h1>
@@ -161,7 +162,7 @@ export function LeadsWorkspace() {
         </div>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="leads-stats grid gap-3 sm:grid-cols-3">
         <Stat
           label="Open leads"
           value={String(

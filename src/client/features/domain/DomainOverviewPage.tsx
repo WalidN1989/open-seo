@@ -19,6 +19,9 @@ import {
 } from "@/client/features/domain/domainSearchValidation";
 import { useDomainOverviewQuery } from "@/client/features/domain/hooks/useDomainOverviewQuery";
 import { DomainOverviewLoadingState } from "@/client/features/domain/components/DomainOverviewLoadingState";
+import { getDomainOverview } from "@/serverFunctions/domain";
+import { getDomainRouteState } from "@/client/features/domain/domainRouteState";
+import { useAutoOpenLatest } from "@/client/features/search-history/useAutoOpenLatest";
 import { DomainHistorySection } from "@/client/features/domain/components/DomainHistorySection";
 import { DomainSearchCard } from "@/client/features/domain/components/DomainSearchCard";
 import { KeywordsTab } from "@/client/features/domain/components/KeywordsTab";
@@ -197,6 +200,7 @@ function useDomainOverviewState({
   const {
     history,
     isLoaded: historyLoaded,
+    isSynced: historySynced,
     addSearch,
     removeHistoryItem,
   } = useDomainSearchHistory(projectId);
@@ -272,6 +276,29 @@ function useDomainOverviewState({
     },
     [routeState.defaultLocationCode, setSearchParams],
   );
+
+  useAutoOpenLatest({
+    projectId,
+    hasExplicitSelection: routeState.domain !== "",
+    historySynced,
+    history,
+    probe: async (item) => {
+      // The same domain, scope and market the page will ask for once opened.
+      const opened = getDomainRouteState(
+        getHistorySearchUpdate(item, routeState.defaultLocationCode),
+      );
+      const overview = await getDomainOverview({
+        data: {
+          projectId,
+          domain: opened.domain,
+          scope: opened.scope,
+          locationCode: opened.sentLocationCode,
+        },
+      });
+      return overview.hasData;
+    },
+    open: handleHistorySelect,
+  });
 
   const overviewQuery = useDomainOverviewQuery({
     projectId,

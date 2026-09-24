@@ -1,5 +1,6 @@
 import * as React from "react";
 import { z } from "zod";
+import { ScrambleText } from "@/client/components/ScrambleText";
 import {
   getCurrentAuthRedirect,
   getOAuthSignedQuery,
@@ -173,7 +174,10 @@ export function AuthPageShell({
         // The form column is capped and the video column sizes to the video, and
         // the pair is centred as one piece. Splitting the viewport in half left
         // the clip stranded in the far corner of a wide screen.
-        className="min-h-[100dvh] bg-base-200 text-base-content lg:grid lg:grid-cols-[minmax(0,34rem)_auto] lg:items-center lg:justify-center lg:gap-10 lg:p-5"
+        // overflow-x-hidden because nothing on a sign-in page should be
+        // reachable sideways: a stray horizontal scrollbar here reads as a
+        // broken page before anyone has typed anything.
+        className="min-h-[100dvh] overflow-x-hidden bg-base-200 text-base-content lg:grid lg:grid-cols-[minmax(0,34rem)_auto] lg:items-center lg:justify-center lg:gap-10 lg:p-5"
       >
         {/* The form column is its own scroll container so a tall form stays
             reachable without the panel beside it scrolling away. */}
@@ -200,7 +204,7 @@ export function AuthPageShell({
             <div className="relative space-y-4">
               <div aria-hidden className="auth-halo" />
               <h2 className="auth-headline-sheen relative text-balance font-serif text-5xl leading-[1.05] tracking-tight xl:text-6xl">
-                Every client, one workspace
+                <ScrambleText text="Every client, one workspace" />
               </h2>
               <p className="auth-rise auth-rise-2 relative mx-auto max-w-sm text-base text-base-content/60">
                 Search performance, CRM and conversations for every site you
@@ -208,8 +212,18 @@ export function AuthPageShell({
               </p>
             </div>
 
-            <div className="auth-rise auth-rise-3 flex w-full flex-col items-center rounded-2xl border border-base-300 bg-base-100 px-6 py-8 shadow-[0_1px_0_0_oklch(100%_0_0/0.04)_inset]">
-              {children}
+            <div className="auth-rise auth-rise-3 flex w-full flex-col items-center gap-5">
+              <div className="flex w-full flex-col items-center rounded-2xl border border-base-300 bg-base-100 px-6 py-8 shadow-[0_1px_0_0_oklch(100%_0_0/0.04)_inset]">
+                {children}
+              </div>
+              <a
+                href="https://digitalurgency.com.au/"
+                target="_blank"
+                rel="noreferrer"
+                className="text-sm text-base-content/50 underline-offset-4 transition hover:text-base-content hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              >
+                digitalurgency.com.au
+              </a>
             </div>
           </div>
         </div>
@@ -229,6 +243,18 @@ export function AuthPageShell({
  * `muted` attribute is the initial state; the property is what the toggle
  * flips, and React keeps the two in step through the ref.
  */
+/**
+ * The clip beside the form.
+ *
+ * This slot held a live frame of digitalurgency.com.au for a while. The site
+ * scaled into a 416px panel read as a thumbnail of unreadable text, so the
+ * clip is back and the site is a link under the form instead.
+ *
+ * Muted by default and it starts that way on every visit: browsers refuse to
+ * autoplay with sound, and a login page that talks unprompted would be worse
+ * than one that plays nothing. The `muted` attribute is the initial state;
+ * the property is what the toggle flips.
+ */
 function AuthShowcase() {
   const videoRef = React.useRef<HTMLVideoElement>(null);
   const [muted, setMuted] = React.useState(true);
@@ -242,10 +268,6 @@ function AuthShowcase() {
 
   return (
     <div className="relative hidden lg:block">
-      {/* Sized rather than full-bleed: the clip is portrait, so covering the
-          whole column cropped it to a strip and made the page feel like the
-          video was the product. Capped width keeps it a panel beside the
-          form. */}
       <video
         ref={videoRef}
         className="max-h-[min(78dvh,44rem)] w-[26rem] max-w-full rounded-2xl object-contain"

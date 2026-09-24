@@ -26,14 +26,16 @@ async function getAccess(organizationId: string, userId: string) {
   );
   if (!membership) throw new AppError("FORBIDDEN");
 
-  const [entitlements, permissions] = await Promise.all([
+  const [entitlements, permissions, clientLogin] = await Promise.all([
     BusinessModuleRepository.listEntitlements(organizationId),
     BusinessModuleRepository.listMemberPermissions(
       organizationId,
       membership.id,
     ),
+    BusinessModuleRepository.isClientLogin(organizationId, userId),
   ]);
-  const organizationAdmin = isOrganizationAdmin(membership.role);
+  const organizationAdmin =
+    isOrganizationAdmin(membership.role) && !clientLogin;
   // Client Reports is the agency's tool, not the client's. A client's
   // workspace has no company details of its own; the agency's does. That is
   // the whole test, and it needs no flag to be set per client.
@@ -50,13 +52,25 @@ async function getAccess(organizationId: string, userId: string) {
       (row) => row.moduleKey === module.key,
     )?.permission;
     const enabled = entitlement?.status === "enabled" && !agencyOnly;
+    // A client gets whatever the agency switched on, at the level of someone
+    // who uses the module rather than configures it. Without this, turning a
+    // module on for a client did nothing until somebody also remembered to
+    // add them a per-member permission row, which is not what switching a
+    // module on is understood to mean.
+    const clientPermission = enabled ? ("manage" as const) : null;
     return {
       ...module,
       enabled,
-      permission: organizationAdmin && enabled ? "admin" : (permission ?? null),
+      permission: clientLogin
+        ? clientPermission
+        : organizationAdmin && enabled
+          ? "admin"
+          : (permission ?? null),
+      // A client never activates their own modules, whatever their role says.
       canConfigureEntitlement: organizationAdmin && !agencyOnly,
-      /** Not shown at all here: it belongs to another workspace. */
-      hidden: agencyOnly,
+      /** Not shown at all here: it belongs to another workspace, or to the
+       * agency's side of this one. */
+      hidden: agencyOnly || (clientLogin && !enabled),
     };
   });
 }

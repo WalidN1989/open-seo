@@ -1,8 +1,12 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { AlarmClock, Building2, Check, Clock } from "lucide-react";
 import { whenLabel } from "@/shared/lead-journal";
 import { isDue, useNow, useReminders, type Reminder } from "./useReminders";
+
+// Page-lifetime memory survives route remounts and resets on a full refresh.
+// Reminder IDs are globally unique; keep no reminder content here.
+const popped = new Set<string>();
 
 const SNOOZE_OPTIONS = [
   { label: "10 min", minutes: 10 },
@@ -18,7 +22,6 @@ export function ReminderPopup() {
   const { reminders, snooze, done } = useReminders();
   const now = useNow();
   const navigate = useNavigate();
-  const popped = useRef(new Set<string>());
   const [current, setCurrent] = useState<Reminder | null>(null);
   const [snoozing, setSnoozing] = useState(false);
 
@@ -34,10 +37,10 @@ export function ReminderPopup() {
   useEffect(() => {
     if (current) return;
     const next = reminders.find(
-      (reminder) => isDue(reminder, now) && !popped.current.has(reminder.id),
+      (reminder) => isDue(reminder, now) && !popped.has(reminder.id),
     );
     if (!next) return;
-    popped.current.add(next.id);
+    popped.add(next.id);
     setCurrent(next);
     if (
       typeof Notification !== "undefined" &&
@@ -60,6 +63,12 @@ export function ReminderPopup() {
   const close = () => {
     setCurrent(null);
     setSnoozing(false);
+  };
+  const dismissAll = () => {
+    for (const reminder of reminders) {
+      if (isDue(reminder, Date.now())) popped.add(reminder.id);
+    }
+    close();
   };
   const open = () => {
     if (current.leadId) {
@@ -162,8 +171,15 @@ export function ReminderPopup() {
             </button>
           </div>
         )}
-        <p className="mt-3 text-center text-[11px] text-base-content/50">
-          Click outside to keep it in the bell
+        <button
+          type="button"
+          className="btn btn-ghost btn-sm mt-3 w-full"
+          onClick={dismissAll}
+        >
+          Dismiss all
+        </button>
+        <p className="mt-2 text-center text-[11px] text-base-content/50">
+          Dismissed reminders stay in the bell
         </p>
       </div>
     </div>

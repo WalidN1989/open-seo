@@ -137,6 +137,26 @@ describe("formatCatalogueMatches", () => {
     // A service says nothing about stock, and nothing about a link it lacks.
     expect(text).toContain("- Untracked — LKR 10 (SKU U1)");
     expect(text).not.toContain("ask the team to confirm");
+    // …but the model is told not to invent it.
+    expect(text).toContain("never say they are in stock or out of stock");
+  });
+
+  it("adds no stock rule when every item has a stock figure", () => {
+    const text = formatCatalogueMatches(
+      "slides",
+      [
+        {
+          name: "Adidas Ladies Slides",
+          sku: "P12787",
+          salePriceMinor: 600000,
+          productUrl:
+            "https://www.bestrends.lk/item/Adidas-Ladies-Slides/12985",
+          quantityOnHand: 3,
+        },
+      ],
+      "LKR",
+    );
+    expect(text).not.toContain("not stock-tracked");
   });
 
   it("tells the model to offer a pre-order when nothing matches", () => {

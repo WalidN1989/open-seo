@@ -1,37 +1,46 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { ClipboardList, Plus } from "lucide-react";
+import {
+  CalendarDays,
+  ClipboardList,
+  Eye,
+  FileText,
+  Plus,
+  X,
+} from "lucide-react";
 import {
   createInventoryAudit,
   getInventoryAudit,
   listCommerceProducts,
   listInventoryAudits,
   publishInventoryAudit,
+  submitInventoryAudit,
   recordInventoryAuditCount,
   revertInventoryAudit,
 } from "@/serverFunctions/commerce";
+import { getBusinessModuleAccess } from "@/serverFunctions/business-modules";
 import { getStandardErrorMessage } from "@/client/lib/error-messages";
 import {
   ErrorState,
   INVENTORY_AUDITS_KEY as AUDITS_KEY,
-  INVENTORY_OVERVIEW_KEY as OVERVIEW_KEY,
   Loading,
   StatusBadge,
 } from "./inventoryShared";
 
-export function AuditsTab() {
+export function AuditsTab({ branchId }: { branchId: string }) {
   const queryClient = useQueryClient();
   const [creating, setCreating] = useState(false);
   const [openAuditId, setOpenAuditId] = useState<string | null>(null);
 
   const audits = useQuery({
-    queryKey: AUDITS_KEY,
-    queryFn: () => listInventoryAudits(),
+    queryKey: [...AUDITS_KEY, branchId],
+    queryFn: () => listInventoryAudits({ data: { branchId } }),
   });
 
   const create = useMutation({
-    mutationFn: (name: string) => createInventoryAudit({ data: { name } }),
+    mutationFn: (name: string) =>
+      createInventoryAudit({ data: { name, branchId } }),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: AUDITS_KEY });
       setCreating(false);
@@ -44,6 +53,7 @@ export function AuditsTab() {
   if (audits.isError) return <ErrorState error={audits.error} />;
 
   const rows = audits.data ?? [];
+  const openAudit = rows.find((audit) => audit.id === openAuditId) ?? null;
 
   return (
     <div className="space-y-4">
@@ -82,57 +92,140 @@ export function AuditsTab() {
         </form>
       ) : null}
 
-      <section className="rounded-xl border border-base-300">
-        <div className="border-b border-base-300 p-4">
+      <section className="overflow-hidden rounded-xl border border-base-300">
+        <div className="flex items-center justify-between gap-3 border-b border-base-300 p-4">
           <h2 className="flex items-center gap-2 font-semibold">
             <ClipboardList className="size-4" /> Inventory audits
-            <span className="badge badge-sm ml-1">{rows.length}</span>
           </h2>
+          <span className="text-sm text-base-content/50">
+            {rows.length} audit{rows.length === 1 ? "" : "s"}
+          </span>
         </div>
         {rows.length === 0 ? (
           <p className="p-8 text-center text-sm text-base-content/50">
             No inventory audits yet
           </p>
         ) : (
-          <div className="divide-y divide-base-300">
-            {rows.map((audit) => (
-              <div key={audit.id} className="p-4">
-                <button
-                  type="button"
-                  className="flex w-full items-center justify-between gap-3 text-left"
-                  onClick={() =>
-                    setOpenAuditId((open) =>
-                      open === audit.id ? null : audit.id,
-                    )
-                  }
-                >
-                  <div className="min-w-0">
-                    <p className="truncate font-medium">{audit.name}</p>
-                    <p className="text-xs text-base-content/50">
-                      {new Date(audit.createdAt).toLocaleString()}
-                    </p>
-                  </div>
-                  <StatusBadge status={audit.status} />
-                </button>
-                {openAuditId === audit.id ? (
-                  <AuditDetail auditId={audit.id} status={audit.status} />
-                ) : null}
-              </div>
-            ))}
+          <div className="overflow-x-auto">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Audit name</th>
+                  <th>Date</th>
+                  <th>Status</th>
+                  <th>Notes</th>
+                  <th className="text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((audit) => (
+                  <tr key={audit.id}>
+                    <td className="max-w-xs">
+                      <span className="flex items-center gap-2">
+                        <FileText className="size-4 shrink-0 text-base-content/40" />
+                        <span className="truncate font-medium">
+                          {audit.name}
+                        </span>
+                      </span>
+                    </td>
+                    <td className="whitespace-nowrap text-base-content/70">
+                      <span className="flex items-center gap-2">
+                        <CalendarDays className="size-4 text-base-content/40" />
+                        {new Date(audit.createdAt).toLocaleDateString(
+                          undefined,
+                          { day: "numeric", month: "short", year: "numeric" },
+                        )}
+                      </span>
+                    </td>
+                    <td>
+                      <StatusBadge status={audit.status} />
+                    </td>
+                    <td className="max-w-sm">
+                      <span className="block truncate text-base-content/60">
+                        {audit.note ?? "—"}
+                      </span>
+                    </td>
+                    <td className="text-right">
+                      <button
+                        className="btn btn-ghost btn-xs gap-1"
+                        onClick={() => setOpenAuditId(audit.id)}
+                      >
+                        <Eye className="size-3.5" /> View
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
       </section>
+
+      {openAudit ? (
+        <div className="modal modal-open">
+          <div className="modal-box max-w-3xl">
+            <div className="mb-3 flex items-start justify-between gap-3">
+              <div>
+                <h3 className="flex items-center gap-2 text-lg font-semibold">
+                  <FileText className="size-4 text-base-content/40" />
+                  {openAudit.name}
+                </h3>
+                <p className="mt-1 text-sm text-base-content/60">
+                  {new Date(openAudit.createdAt).toLocaleDateString(undefined, {
+                    day: "numeric",
+                    month: "long",
+                    year: "numeric",
+                  })}
+                  {openAudit.note ? ` · ${openAudit.note}` : ""}
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <StatusBadge status={openAudit.status} />
+                <button
+                  className="btn btn-circle btn-ghost btn-sm"
+                  aria-label="Close"
+                  onClick={() => setOpenAuditId(null)}
+                >
+                  <X className="size-4" />
+                </button>
+              </div>
+            </div>
+            <AuditDetail auditId={openAudit.id} status={openAudit.status} />
+          </div>
+          <div
+            className="modal-backdrop"
+            onClick={() => setOpenAuditId(null)}
+          />
+        </div>
+      ) : null}
     </div>
   );
 }
 
 function AuditDetail({ auditId, status }: { auditId: string; status: string }) {
   const queryClient = useQueryClient();
+  // Publishing moves stock, so it is offered only to whoever may do it.
+  const access = useQuery({
+    queryKey: ["business-modules", "access"],
+    queryFn: () => getBusinessModuleAccess(),
+    staleTime: 5 * 60_000,
+  });
+  const mayPublish =
+    access.data?.find((module) => module.key === "crm")?.permission === "admin";
   const products = useQuery({
     queryKey: ["commerce", "products", ""],
     queryFn: () => listCommerceProducts({ data: { limit: 200 } }),
     // Only needed while counting into a draft.
     enabled: status === "draft",
+  });
+
+  const submit = useMutation({
+    mutationFn: () => submitInventoryAudit({ data: { auditId } }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: AUDITS_KEY });
+      toast.success("Sent to the owner to review");
+    },
+    onError: (error) => toast.error(getStandardErrorMessage(error)),
   });
 
   const detail = useQuery({
@@ -143,7 +236,7 @@ function AuditDetail({ auditId, status }: { auditId: string; status: string }) {
   const refresh = async () => {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: AUDITS_KEY }),
-      queryClient.invalidateQueries({ queryKey: OVERVIEW_KEY }),
+      queryClient.invalidateQueries({ queryKey: ["commerce"] }),
       queryClient.invalidateQueries({
         queryKey: ["commerce", "inventory", "audit", auditId],
       }),
@@ -275,7 +368,16 @@ function AuditDetail({ auditId, status }: { auditId: string; status: string }) {
       ) : null}
 
       <div className="flex justify-end gap-2">
-        {status === "draft" ? (
+        {status === "draft" && !mayPublish ? (
+          <button
+            className="btn btn-primary btn-sm"
+            disabled={submit.isPending}
+            onClick={() => submit.mutate()}
+          >
+            Submit for review
+          </button>
+        ) : null}
+        {(status === "draft" || status === "submitted") && mayPublish ? (
           <button
             className="btn btn-primary btn-sm"
             disabled={publish.isPending}
@@ -283,6 +385,11 @@ function AuditDetail({ auditId, status }: { auditId: string; status: string }) {
           >
             Publish audit
           </button>
+        ) : null}
+        {status === "submitted" && !mayPublish ? (
+          <p className="self-center text-sm text-base-content/60">
+            Waiting for the owner to review it.
+          </p>
         ) : null}
         {status === "published" ? (
           <button

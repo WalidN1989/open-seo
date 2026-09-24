@@ -18,6 +18,11 @@ export function StatusBadge({ status }: { status: string }) {
   if (status === "published") {
     return <span className="badge badge-success badge-sm">Published</span>;
   }
+  if (status === "submitted") {
+    return (
+      <span className="badge badge-warning badge-sm">Awaiting review</span>
+    );
+  }
   if (status === "reverted") {
     return <span className="badge badge-ghost badge-sm">Reverted</span>;
   }

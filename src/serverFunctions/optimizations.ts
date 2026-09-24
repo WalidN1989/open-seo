@@ -1,4 +1,7 @@
+import { z } from "zod";
 import { createServerFn } from "@tanstack/react-start";
+import { OptimizationPublishService } from "@/server/features/optimizations/services/OptimizationPublishService";
+import { SiteCatalogueService } from "@/server/features/commerce/services/SiteCatalogueService";
 import { OptimizationService } from "@/server/features/optimizations/services/OptimizationService";
 import { requireProjectContext } from "@/serverFunctions/middleware";
 import {
@@ -52,6 +55,22 @@ export const approveOptimizationOpportunity = createServerFn({ method: "POST" })
     ),
   );
 
+/**
+ * Sends an approved article to the project's WordPress site, live. Only a
+ * person in the browser reaches this; the service refuses anything not
+ * approved.
+ */
+export const publishOptimizationOpportunity = createServerFn({ method: "POST" })
+  .middleware(requireProjectContext)
+  .validator(decisionSchema)
+  .handler(({ data, context }) =>
+    OptimizationPublishService.publish(
+      context.organizationId,
+      context.userId,
+      data.opportunityId,
+    ),
+  );
+
 export const requestOptimizationChanges = createServerFn({ method: "POST" })
   .middleware(requireProjectContext)
   .validator(requestChangesSchema)
@@ -81,4 +100,49 @@ export const rejectOptimizationOpportunity = createServerFn({ method: "POST" })
   .validator(decisionSchema)
   .handler(({ data, context }) =>
     OptimizationService.reject(context.organizationId, data.opportunityId),
+  );
+
+/**
+ * Generates images for an article that is already live and rewrites the post
+ * to use them. A person in the browser asks for this; it spends whatever the
+ * image model costs, so no agent reaches it.
+ */
+export const addOptimizationImages = createServerFn({ method: "POST" })
+  .middleware(requireProjectContext)
+  .validator(decisionSchema)
+  .handler(({ data, context }) =>
+    OptimizationPublishService.addImages(
+      context.organizationId,
+      context.userId,
+      data.opportunityId,
+    ),
+  );
+
+/** The posts already live on this project's site. */
+export const listSiteBlogPosts = createServerFn({ method: "GET" })
+  .middleware(requireProjectContext)
+  .validator(z.object({ projectId: z.string().min(1) }))
+  .handler(({ context }) =>
+    OptimizationPublishService.sitePosts(context.organizationId),
+  );
+
+/** The service pages already live on this project's site. */
+export const listSiteServicePages = createServerFn({ method: "GET" })
+  .middleware(requireProjectContext)
+  .validator(z.object({ projectId: z.string().min(1) }))
+  .handler(({ context }) =>
+    OptimizationPublishService.siteServices(context.organizationId),
+  );
+
+/**
+ * Copy the site's service pages into Products.
+ *
+ * A person in the browser asks for this: it writes to the catalogue the
+ * assistant quotes from, so no agent reaches it.
+ */
+export const syncSiteServicesToProducts = createServerFn({ method: "POST" })
+  .middleware(requireProjectContext)
+  .validator(z.object({ projectId: z.string().min(1) }))
+  .handler(({ context }) =>
+    SiteCatalogueService.syncServices(context.organizationId, context.userId),
   );

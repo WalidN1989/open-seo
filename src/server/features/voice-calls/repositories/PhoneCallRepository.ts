@@ -252,7 +252,7 @@ async function insertCallActivity(values: {
   outcome: string | null;
   occurredAt: string;
   /** The call itself, or the WhatsApp and email it set off. */
-  activityType?: "call" | "whatsapp" | "email";
+  activityType?: "call" | "whatsapp" | "email" | "quotation";
 }) {
   await db.insert(crmActivities).values({
     id: crypto.randomUUID(),

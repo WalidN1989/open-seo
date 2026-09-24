@@ -29,6 +29,9 @@ import {
   MAIL_BRIDGE_INGEST_PATH,
   MAIL_BRIDGE_INTERNAL_PREFIX,
   MAIL_BRIDGE_SECRET_HEADER,
+  MAX_ATTACHMENT_BYTES,
+  MAX_ATTACHMENTS_READ,
+  READABLE_ATTACHMENT_TYPES,
   type BridgeAccount,
   type BridgeIngestRequest,
   type BridgeInboundMessage,
@@ -65,7 +68,8 @@ async function worker<T>(path: string, body: unknown): Promise<T> {
       [MAIL_BRIDGE_SECRET_HEADER]: secret!,
     },
     body: JSON.stringify(body),
-    signal: AbortSignal.timeout(120_000),
+    // New mail is read, photos included, and answered before this returns.
+    signal: AbortSignal.timeout(300_000),
   });
   if (!response.ok) {
     throw new Error(`${path} returned ${response.status}`);
@@ -104,6 +108,7 @@ async function parseMessage(
   source: Buffer,
 ): Promise<BridgeInboundMessage> {
   const parsed = await simpleParser(source, { skipImageLinks: true });
+  let carried = 0;
   const references = Array.isArray(parsed.references)
     ? parsed.references
     : parsed.references
@@ -121,6 +126,23 @@ async function parseMessage(
     text: parsed.text ?? null,
     html: typeof parsed.html === "string" ? parsed.html : null,
     date: (parsed.date ?? new Date()).toISOString(),
+    attachments: parsed.attachments
+      .filter((file) =>
+        READABLE_ATTACHMENT_TYPES.some((type) => type === file.contentType),
+      )
+      .slice(0, MAX_ATTACHMENTS_READ)
+      .map((file, index) => {
+        // A message carries at most a dozen megabytes of files to read, so
+        // one batch of new mail stays a request the worker can take.
+        carried += file.size <= MAX_ATTACHMENT_BYTES ? file.size : 0;
+        const keep = file.size <= MAX_ATTACHMENT_BYTES && carried <= 12_000_000;
+        return {
+          filename: file.filename ?? `attachment-${index + 1}`,
+          contentType: file.contentType,
+          size: file.size,
+          contentBase64: keep ? file.content.toString("base64") : null,
+        };
+      }),
   };
 }
 
@@ -259,7 +281,16 @@ class Watcher {
       accountId: this.account.accountId,
       folder: this.folder,
       backfill,
-      messages: batch,
+      // History is never read by the assistant, so its photos stay behind.
+      messages: backfill
+        ? batch.map((message) => ({
+            ...message,
+            attachments: message.attachments.map((file) => ({
+              ...file,
+              contentBase64: null,
+            })),
+          }))
+        : batch,
     };
     const result = await worker<{ accepted: number; cursor: string | null }>(
       MAIL_BRIDGE_INGEST_PATH,

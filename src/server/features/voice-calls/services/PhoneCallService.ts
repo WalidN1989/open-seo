@@ -1,123 +1,41 @@
 import { BusinessAuditRepository } from "@/server/features/business-modules/repositories/BusinessAuditRepository";
 import { BusinessModuleService } from "@/server/features/business-modules/services/BusinessModuleService";
-import { sendWhatsappTemplate } from "@/server/features/communications/providers/whatsapp";
 import { CrmService } from "@/server/features/crm/services/CrmService";
 import { decryptCredentials } from "@/server/lib/connection-secrets";
 import {
   emailFrom,
   phoneFromText,
+  phoneRegionOf,
   shortNeed,
   readPostCall,
   verifyElevenLabsSignature,
   type PhoneCallReport,
+  type PhoneRegion,
 } from "../elevenlabsWebhook";
+import { activityNotes, duration, inSentence, splitName } from "../callNotes";
 import { PhoneCallRepository as Repo } from "../repositories/PhoneCallRepository";
+import { CallQuoteService } from "./CallQuoteService";
+import { CallWelcomeService } from "./CallWelcomeService";
 import { CallRecapService } from "./CallRecapService";
 
-const PROVIDER = "elevenlabs";
-
-type WebhookResult = { status: number; body: string };
-
-function duration(seconds: number | null) {
-  if (!seconds) return "";
-  const minutes = Math.floor(seconds / 60);
-  const rest = Math.round(seconds % 60);
-  return minutes ? ` (${minutes}m ${rest}s)` : ` (${rest}s)`;
-}
-
-function splitName(raw: string | undefined) {
-  const cleaned = (raw ?? "").trim().replace(/\s+/g, " ");
-  if (!cleaned) return { firstName: "Caller", lastName: null };
-  const [first, ...rest] = cleaned.split(" ");
-  return { firstName: first ?? "Caller", lastName: rest.join(" ") || null };
-}
-
-function label(key: string) {
-  return key
-    .replace(/^caller_/, "")
-    .replace(/_/g, " ")
-    .replace(/^\w/, (c) => c.toUpperCase());
-}
-
-/** The activity note a person reads on the lead. */
-function activityNotes(report: PhoneCallReport) {
-  const lines: string[] = [];
-  if (report.summary) lines.push(report.summary, "");
-  const captured = Object.entries(report.captured);
-  if (captured.length) {
-    lines.push("Captured on the call:");
-    for (const [key, value] of captured)
-      lines.push(`- ${label(key)}: ${value}`);
-    lines.push("");
-  }
-  if (report.callerNumber)
-    lines.push(`Caller number: ${report.callerNumber}`, "");
-  if (report.transcript.length) {
-    lines.push("Transcript:");
-    for (const turn of report.transcript) {
-      lines.push(
-        `${turn.role === "agent" ? "Agent" : "Caller"}: ${turn.message}`,
-      );
-    }
-  }
-  return lines.join("\n").slice(0, 20_000);
-}
-
-/** "Website design" reads as "website design" mid-sentence; "SEO" stays. */
-function inSentence(phrase: string) {
-  return /^[A-Z][a-z]/.test(phrase)
-    ? phrase[0].toLowerCase() + phrase.slice(1)
-    : phrase;
-}
-
 /**
- * Send the configured WhatsApp welcome to a first-time caller. A template is
- * required: the business has never messaged this person, so WhatsApp allows
- * nothing else. Returns what happened, for the call record.
+ * Where a call came from: the phone line answered by an ElevenLabs agent, or
+ * the website voice agent running on Deepgram. Stored on every call so the
+ * log can tell the two apart.
  */
-async function sendWelcome(
-  organizationId: string,
-  template: string | undefined,
-  recipient: string | null,
-  variables: Record<string, string>,
-) {
-  if (!template?.trim()) return "skipped: no welcome template configured";
-  if (!recipient) return "skipped: no caller number";
-  const connection = await Repo.connectedWhatsapp(organizationId);
-  if (!connection) return "skipped: no connected WhatsApp sender";
-  const value = template.trim();
-  // Twilio sends by Content SID (HX…); Meta sends by template name.
-  const isContentSid = /^HX[0-9a-f]{32}$/i.test(value);
-  const send = (withVariables: boolean) =>
-    sendWhatsappTemplate(
-      connection,
-      connection.provider === "twilio"
-        ? recipient
-        : recipient.replace(/^\+/, ""),
-      {
-        name: isContentSid ? "call_welcome" : value,
-        languageCode: "en",
-        externalTemplateId: isContentSid ? value : null,
-        variables: withVariables ? variables : undefined,
-      },
-    );
-  try {
-    try {
-      await send(isContentSid);
-    } catch (error) {
-      // A template without placeholders can refuse the name and service;
-      // the plain template is still the right message.
-      if (!isContentSid) throw error;
-      await send(false);
-    }
-    return "sent";
-  } catch (error) {
-    return `failed: ${error instanceof Error ? error.message : "unknown error"}`.slice(
-      0,
-      300,
-    );
-  }
-}
+type CallProvider = "elevenlabs" | "deepgram";
+
+/** Who took the call, for which business, and how to follow it up. */
+type CallSource = {
+  provider: CallProvider;
+  organizationId: string;
+  integrationId: string;
+  welcomeTemplate: string | undefined;
+  /** A website call has no line to read the country from; the site says it. */
+  region?: PhoneRegion;
+};
+
+export type WebhookResult = { status: number; body: string };
 
 /**
  * Put the WhatsApp and email the call set off into the lead's journal, so
@@ -159,22 +77,74 @@ async function journalOutreach(input: {
   }
 }
 
-async function recordCall(
+/** The call log row; `links` is what the pipeline decided about the caller. */
+function callRow(
+  provider: CallProvider,
   organizationId: string,
   integrationId: string,
   report: PhoneCallReport,
-  welcomeTemplate: string | undefined,
+  links: {
+    callerNumber: string | null;
+    contactId: string | null;
+    leadId: string | null;
+    welcomeStatus: string | null;
+    recapEmailStatus: string | null;
+  },
 ) {
+  return {
+    id: crypto.randomUUID(),
+    organizationId,
+    integrationId,
+    provider,
+    externalConversationId: report.conversationId,
+    externalAgentId: report.agentId,
+    agentName: report.agentName,
+    direction: report.direction,
+    calledNumber: report.calledNumber,
+    startedAt: report.startedAt,
+    durationSeconds: report.durationSeconds,
+    summary: report.summary,
+    callSuccessful: report.callSuccessful,
+    capturedJson: JSON.stringify(report.captured),
+    transcriptJson: JSON.stringify(report.transcript),
+    ...links,
+  };
+}
+
+async function recordCall(source: CallSource, report: PhoneCallReport) {
+  const { provider, organizationId, integrationId, welcomeTemplate } = source;
   const existing = await Repo.findCall(organizationId, report.conversationId);
   if (existing) return { callId: existing.id, duplicate: true };
 
   const { firstName, lastName } = splitName(report.captured.caller_name);
+  // A number said out loud has no country code, and which country it belongs
+  // to is only knowable from the line they rang on.
+  const region = source.region ?? phoneRegionOf(report.callerNumber);
   // Caller ID first; a web-widget call has none, and then the number the
   // caller gave out loud is the one to use.
   const phone =
-    report.callerNumber ?? phoneFromText(report.captured.callback_details);
+    report.callerNumber ??
+    phoneFromText(report.captured.callback_details, region);
   const email = emailFrom(report.captured.caller_email);
   const businessName = report.captured.business_name?.trim();
+
+  // A website visitor who opens the widget and says nothing leaves no caller
+  // ID, name, number or email. Keep the call in the log, but a CRM contact
+  // and lead called "Caller" with no way to reach them is only clutter.
+  if (!phone && !email && !report.captured.caller_name?.trim()) {
+    const skipped = "skipped: nothing captured";
+    const call = await Repo.insertCall(
+      callRow(provider, organizationId, integrationId, report, {
+        callerNumber: null,
+        contactId: null,
+        leadId: null,
+        welcomeStatus: skipped,
+        recapEmailStatus: skipped,
+      }),
+    );
+    return { callId: call.id, duplicate: false };
+  }
+
   const company = businessName
     ? await Repo.companyNamed(organizationId, businessName.slice(0, 200))
     : null;
@@ -197,6 +167,14 @@ async function recordCall(
         email,
         companyId: company?.id ?? null,
       });
+
+  // A returning caller who was recognised isn't asked their name or email
+  // again, so what the CRM already holds fills the gaps.
+  const knownName =
+    report.captured.caller_name?.trim() || contact.firstName === "Caller"
+      ? firstName
+      : contact.firstName;
+  const recapTo = email ?? contact.email;
 
   const occurredAt = report.startedAt ?? new Date().toISOString();
   let lead = await Repo.findOpenLead(organizationId, contact.id);
@@ -236,52 +214,57 @@ async function recordCall(
     occurredAt,
   });
 
-  const call = await Repo.insertCall({
-    id: crypto.randomUUID(),
-    organizationId,
-    integrationId,
-    provider: PROVIDER,
-    externalConversationId: report.conversationId,
-    externalAgentId: report.agentId,
-    agentName: report.agentName,
-    direction: report.direction,
-    callerNumber: phone,
-    calledNumber: report.calledNumber,
-    startedAt: report.startedAt,
-    durationSeconds: report.durationSeconds,
-    summary: report.summary,
-    callSuccessful: report.callSuccessful,
-    capturedJson: JSON.stringify(report.captured),
-    transcriptJson: JSON.stringify(report.transcript),
-    contactId: contact.id,
-    leadId: lead.id,
-    welcomeStatus: null,
-    recapEmailStatus: null,
-  });
+  const call = await Repo.insertCall(
+    callRow(provider, organizationId, integrationId, report, {
+      callerNumber: phone,
+      contactId: contact.id,
+      leadId: lead.id,
+      welcomeStatus: null,
+      recapEmailStatus: null,
+    }),
+  );
 
   // The number the caller read out is the one they asked us to use; the line
   // they rang from can be a landline or a phone without WhatsApp.
-  const whatsappTo = phoneFromText(report.captured.callback_details) ?? phone;
+  const whatsappTo =
+    phoneFromText(report.captured.callback_details, region) ?? phone;
   // Anyone who has not had the thank-you yet gets it, so a caller whose
   // first call came before a template was set up is not left out.
   const welcomeOwed = !(await Repo.welcomeSentTo(organizationId, contact.id));
   const welcome = welcomeOwed
-    ? await sendWelcome(organizationId, welcomeTemplate, whatsappTo, {
+    ? await CallWelcomeService.sendWelcome({
+        organizationId,
+        template: welcomeTemplate,
+        recipient: whatsappTo,
+        contactId: contact.id,
         // Template: "Hi {{1}}, thanks for calling … about {{2}} …"
-        "1": firstName || "there",
-        "2": report.captured.service_interest
-          ? inSentence(shortNeed(report.captured.service_interest))
-          : "our services",
+        variables: {
+          "1": knownName || "there",
+          "2": report.captured.service_interest
+            ? inSentence(shortNeed(report.captured.service_interest))
+            : "our services",
+        },
       })
     : "skipped: already welcomed";
   await Repo.setWelcomeStatus(call.id, welcome);
   const recapEmail = await CallRecapService.sendCallRecap({
     organizationId,
-    email,
-    firstName,
+    email: recapTo,
+    firstName: knownName,
     report,
   });
   await Repo.setRecapEmailStatus(call.id, recapEmail);
+  const quote = await CallQuoteService.quoteFromCall({
+    organizationId,
+    leadId: lead.id,
+    contactId: contact.id,
+    clientName:
+      businessName ||
+      [knownName, contact.lastName].filter(Boolean).join(" ") ||
+      "Caller",
+    email: recapTo,
+    report,
+  });
   await journalOutreach({
     organizationId,
     leadId: lead.id,
@@ -293,16 +276,17 @@ async function recordCall(
   await BusinessAuditRepository.record({
     organizationId,
     // No member acts on a webhook; the provider is the actor.
-    actorUserId: "system:elevenlabs",
+    actorUserId: `system:${provider}`,
     action: "voice.phone_call.recorded",
     targetType: "lead",
     targetId: lead.id,
     metadata: {
       callId: call.id,
-      provider: PROVIDER,
+      provider,
       firstTimeCaller,
       welcome,
       recapEmail,
+      quote,
     },
   });
   return { callId: call.id, duplicate: false };
@@ -322,7 +306,7 @@ async function processElevenLabsWebhook(
   const connection = await Repo.getIntegrationById(connectionId);
   if (
     !connection ||
-    connection.providerKey !== PROVIDER ||
+    connection.providerKey !== "elevenlabs" ||
     connection.status !== "connected"
   ) {
     return { status: 404, body: "unknown connection" };
@@ -348,10 +332,13 @@ async function processElevenLabsWebhook(
   if (!report) return { status: 200, body: "ignored" };
 
   const result = await recordCall(
-    connection.organizationId,
-    connection.id,
+    {
+      provider: "elevenlabs",
+      organizationId: connection.organizationId,
+      integrationId: connection.id,
+      welcomeTemplate: credentials.WELCOME_TEMPLATE,
+    },
     report,
-    credentials.WELCOME_TEMPLATE,
   );
   return { status: 200, body: result.duplicate ? "duplicate" : "recorded" };
 }
@@ -361,6 +348,7 @@ async function listCalls(organizationId: string, userId: string) {
   const rows = await Repo.listCalls(organizationId);
   return rows.map(({ call, contact, lead }) => ({
     id: call.id,
+    provider: call.provider,
     agentName: call.agentName,
     direction: call.direction,
     callerNumber: call.callerNumber,
@@ -420,4 +408,8 @@ function transcriptFrom(json: string): PhoneCallReport["transcript"] {
   }
 }
 
-export const PhoneCallService = { processElevenLabsWebhook, listCalls };
+export const PhoneCallService = {
+  processElevenLabsWebhook,
+  recordCall,
+  listCalls,
+};

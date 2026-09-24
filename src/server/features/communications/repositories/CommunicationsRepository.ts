@@ -1,5 +1,15 @@
+import { optOutChange } from "../outreachRules";
 /* oxlint-disable max-lines */
-import { and, count, desc, eq, isNotNull, lte, sql } from "drizzle-orm";
+import {
+  and,
+  count,
+  desc,
+  eq,
+  inArray,
+  isNotNull,
+  lte,
+  sql,
+} from "drizzle-orm";
 import { db } from "@/db";
 import {
   integrationConnections,
@@ -152,7 +162,96 @@ async function ingestWhatsappMessage(
         ),
       );
   }
+  const optOut = optOutChange(message.body ?? null);
+  if (optOut) {
+    await db
+      .update(whatsappConversations)
+      .set({ optedOutAt: optOut === "out" ? message.receivedAt : null })
+      .where(
+        and(
+          eq(whatsappConversations.id, conversationId),
+          eq(whatsappConversations.organizationId, connection.organizationId),
+        ),
+      );
+  }
   return { duplicate: false, conversationId, isNew: !existingConversation };
+}
+
+/**
+ * A message the app sent on its own (a call's thank-you, an automation) put
+ * in the shared inbox, so the team sees everything the customer received.
+ * Opens the chat if there isn't one and links it to the CRM contact.
+ */
+async function recordAutomatedWhatsapp(
+  connection: NonNullable<
+    Awaited<ReturnType<typeof getWhatsappConnectionById>>
+  >,
+  input: {
+    recipient: string;
+    contactId: string | null;
+    body: string;
+    externalMessageId: string | null;
+    status: string;
+    sentAt: string;
+  },
+) {
+  const organizationId = connection.organizationId;
+  const find = () =>
+    db
+      .select()
+      .from(whatsappConversations)
+      .where(
+        and(
+          eq(whatsappConversations.connectionId, connection.id),
+          eq(whatsappConversations.externalConversationId, input.recipient),
+        ),
+      )
+      .limit(1);
+  let [conversation] = await find();
+  if (!conversation) {
+    await db
+      .insert(whatsappConversations)
+      .values({
+        id: crypto.randomUUID(),
+        organizationId,
+        connectionId: connection.id,
+        contactId: input.contactId,
+        externalConversationId: input.recipient,
+        lastMessageAt: input.sentAt,
+      })
+      .onConflictDoNothing();
+    [conversation] = await find();
+  }
+  if (!conversation) return null;
+  await db
+    .insert(whatsappMessages)
+    .values({
+      id: crypto.randomUUID(),
+      organizationId,
+      conversationId: conversation.id,
+      externalMessageId: input.externalMessageId,
+      direction: "outbound",
+      messageType: "template",
+      body: input.body,
+      status: input.status,
+      sentAt: input.sentAt,
+    })
+    .onConflictDoNothing();
+  await db
+    .update(whatsappConversations)
+    .set({
+      lastMessageAt: input.sentAt,
+      ...(conversation.contactId || !input.contactId
+        ? {}
+        : { contactId: input.contactId }),
+    })
+    .where(
+      and(
+        eq(whatsappConversations.id, conversation.id),
+        eq(whatsappConversations.organizationId, organizationId),
+      ),
+    );
+  return conversation.id;
 }
 
 async function updateWhatsappDelivery(
@@ -766,6 +865,37 @@ async function createWhatsappCampaign(
   return row;
 }
 
+/** Whether this workspace already has a campaign by that name, ignoring case. */
+async function whatsappCampaignNameTaken(organizationId: string, name: string) {
+  const [row] = await db
+    .select({ id: whatsappCampaigns.id })
+    .from(whatsappCampaigns)
+    .where(
+      and(
+        eq(whatsappCampaigns.organizationId, organizationId),
+        eq(sql`lower(${whatsappCampaigns.name})`, name.trim().toLowerCase()),
+      ),
+    )
+    .limit(1);
+  return Boolean(row);
+}
+
+async function deleteWhatsappCampaign(
+  organizationId: string,
+  campaignId: string,
+) {
+  const [row] = await db
+    .delete(whatsappCampaigns)
+    .where(
+      and(
+        eq(whatsappCampaigns.id, campaignId),
+        eq(whatsappCampaigns.organizationId, organizationId),
+      ),
+    )
+    .returning({ id: whatsappCampaigns.id, name: whatsappCampaigns.name });
+  return row ?? null;
+}
+
 async function getWhatsappCampaignContext(
   organizationId: string,
   campaignId: string,
@@ -847,6 +977,51 @@ async function listMatchingWhatsappAutomations(
       normalized.includes(rule.matchValue?.toLowerCase() ?? "")
     );
   });
+}
+
+/** The workspace's WhatsApp number, for work that belongs to the account itself. */
+async function firstWhatsappConnection(organizationId: string) {
+  const [row] = await db
+    .select()
+    .from(whatsappConnections)
+    .where(eq(whatsappConnections.organizationId, organizationId))
+    .orderBy(desc(whatsappConnections.createdAt))
+    .limit(1);
+  return row ?? null;
+}
+
+async function updateWhatsappTemplate(
+  organizationId: string,
+  templateId: string,
+  values: { externalTemplateId?: string; status?: string },
+) {
+  const [row] = await db
+    .update(whatsappTemplates)
+    .set({ ...values, updatedAt: new Date().toISOString() })
+    .where(
+      and(
+        eq(whatsappTemplates.id, templateId),
+        eq(whatsappTemplates.organizationId, organizationId),
+      ),
+    )
+    .returning();
+  return row ?? null;
+}
+
+async function deleteWhatsappTemplate(
+  organizationId: string,
+  templateId: string,
+) {
+  const [row] = await db
+    .delete(whatsappTemplates)
+    .where(
+      and(
+        eq(whatsappTemplates.id, templateId),
+        eq(whatsappTemplates.organizationId, organizationId),
+      ),
+    )
+    .returning({ id: whatsappTemplates.id, name: whatsappTemplates.name });
+  return row ?? null;
 }
 
 async function getWhatsappTemplate(organizationId: string, templateId: string) {
@@ -1034,6 +1209,35 @@ async function appendVoiceTranscript(
     .values({ id: crypto.randomUUID(), organizationId, ...input })
     .returning();
   return message;
+}
+
+/**
+ * Removes conversations from the history. Their turns go with them — the
+ * messages row cascades — so nothing is left half-deleted.
+ */
+async function deleteVoiceConversations(
+  organizationId: string,
+  conversationIds: string[],
+) {
+  if (!conversationIds.length) return 0;
+  const removed = await db
+    .delete(voiceConversations)
+    .where(
+      and(
+        eq(voiceConversations.organizationId, organizationId),
+        inArray(voiceConversations.id, conversationIds),
+      ),
+    )
+    .returning({ id: voiceConversations.id });
+  return removed.length;
+}
+
+async function listVoiceConversationIds(organizationId: string) {
+  const rows = await db
+    .select({ id: voiceConversations.id })
+    .from(voiceConversations)
+    .where(eq(voiceConversations.organizationId, organizationId));
+  return rows.map((row) => row.id);
 }
 
 async function endVoiceConversation(
@@ -1243,6 +1447,7 @@ async function createIntegration(
 }
 
 export const CommunicationsRepository = {
+  recordAutomatedWhatsapp,
   appendVoiceTranscript,
   completeWhatsappMessage,
   contactBelongsToOrganization,
@@ -1257,9 +1462,16 @@ export const CommunicationsRepository = {
   updateWhatsappConnection,
   createWhatsappAutomation,
   createWhatsappCampaign,
+  whatsappCampaignNameTaken,
+  deleteWhatsappCampaign,
   createWhatsappOrder,
   createWhatsappTemplate,
+  updateWhatsappTemplate,
+  deleteWhatsappTemplate,
+  firstWhatsappConnection,
   endVoiceConversation,
+  deleteVoiceConversations,
+  listVoiceConversationIds,
   flagWhatsappConversationForTeam,
   getIntegrationsWorkspace,
   findWhatsappConnectionByPhoneNumberId,

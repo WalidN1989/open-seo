@@ -15,10 +15,12 @@ import { ModuleSwitcher } from "@/client/components/ModuleSwitcher";
 import { getModuleNavGroups } from "@/client/navigation/moduleItems";
 import {
   connectNavGroup,
+  demoOverviewNavItem,
   getProjectNavGroups,
 } from "@/client/navigation/items";
 import { ProjectSwitcher } from "@/client/features/projects/ProjectSwitcher";
 import { SamSidebarPanel } from "@/client/features/sam/SamSidebarPanel";
+import { useWorkspaceAccess } from "@/client/features/team/workspaceAccess";
 import { ThemePreferenceMenuItems } from "@/client/components/ThemePreferenceMenuItems";
 import { closeDropdown } from "@/client/lib/dropdown";
 import { signOutAndRedirect, useSession } from "@/lib/auth-client";
@@ -62,7 +64,7 @@ function SidebarNavLink({
       onClick={onNavigate}
       activeOptions={{ exact: false, includeSearch: false }}
       {...linkProps}
-      className={navItemClass}
+      className={`sidebar-motion-link ${navItemClass}`}
       activeProps={navItemActiveProps}
     >
       {({ isActive }: { isActive: boolean }) => (
@@ -86,13 +88,28 @@ export function Sidebar({ projectId, onNavigate, onClose }: SidebarProps) {
   // Inside a module the sidebar belongs to that module: its own sections
   // replace the SEO navigation, with one row back out. Stacking a module's
   // sections into a single page is what left it cramped beside empty width.
-  const moduleKey = location.pathname.match(/^\/modules\/([^/]+)/)?.[1];
+  // A quote page belongs to the CRM, so it keeps the CRM sidebar.
+  const pathModule = location.pathname.match(/^\/modules\/([^/]+)/)?.[1];
+  const moduleKey = pathModule === "quotes" ? "crm" : pathModule;
   const moduleNavGroups = moduleKey ? getModuleNavGroups(moduleKey) : [];
   const inModule = moduleNavGroups.length > 0;
 
+  // A client sees their own business, not the wiring behind it: the MCP
+  // connection is the agency's tool and only prompts a support call here.
+  const { data: access } = useWorkspaceAccess();
+  const connectGroup = access?.isClientLogin
+    ? {
+        ...connectNavGroup,
+        items: [
+          ...(access.demoData ? [demoOverviewNavItem] : []),
+          ...connectNavGroup.items.filter((item) => item.to !== "/ai"),
+        ],
+      }
+    : connectNavGroup;
+
   const navGroups = inModule
     ? moduleNavGroups
-    : [...(projectId ? getProjectNavGroups(projectId) : []), connectNavGroup];
+    : [...(projectId ? getProjectNavGroups(projectId) : []), connectGroup];
 
   // PostHog-style sidebar tabs: Browse shows the regular nav, Chat shows the
   // SAM chat history. The tab is view state (switching to Browse leaves the

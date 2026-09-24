@@ -42,6 +42,12 @@ export type IntegrationCredentialField = {
   required: boolean;
   placeholder?: string;
   help?: string;
+  /**
+   * Offer a button that fills this field with a fresh random value. Only for
+   * secrets this app chooses itself — never for one another service issues,
+   * where a generated value would simply be wrong.
+   */
+  generate?: boolean;
 };
 
 export type IntegrationFeature = {
@@ -348,11 +354,20 @@ export const integrationCatalogue: readonly IntegrationCatalogueEntry[] = [
         placeholder: "HX… Content SID, or a Meta template name",
         help: "Sent once to first-time callers from your connected WhatsApp number. Must be an approved template: Twilio uses the Content SID, Meta the template name.",
       },
+      {
+        key: "CALLER_LOOKUP_SECRET",
+        label: "Caller recognition secret (optional)",
+        type: "secret",
+        required: false,
+        generate: true,
+        help: "Click Generate, then copy it into ElevenLabs as the x-openseo-secret header of the conversation initiation webhook, so returning callers are greeted by name. This one is yours to choose — unlike the webhook secret above, which ElevenLabs issues.",
+      },
     ],
     capabilities: [
       "post-call transcripts",
       "CRM contact and lead per caller",
       "WhatsApp welcome",
+      "returning callers greeted by name",
     ],
     howToConnect: [
       "Type any placeholder in Webhook secret and click Connect. The webhook address then appears on this page; copy it.",
@@ -360,6 +375,186 @@ export const integrationCatalogue: readonly IntegrationCatalogueEntry[] = [
       "Back here, replace the placeholder with that secret and save.",
       "In ElevenLabs, open your agent → Security → post-call webhook override, choose the new webhook and tick Transcript. Use the agent override, not the workspace default, so other agents' calls don't land in this business.",
       "Optionally add an approved WhatsApp template so first-time callers get a welcome.",
+      "Optionally, to greet returning callers by name: click Generate beside the Caller recognition secret and save, then in ElevenLabs set the conversation initiation webhook to the caller recognition address on this page with header x-openseo-secret set to that value, and turn on fetching initiation data in the agent's Security tab.",
+      "If you turn that on, also switch on the First message override in the same Security tab. A recognised caller is greeted by name, which replaces the agent's opening line, and ElevenLabs ends the call at zero seconds — \"Override for field 'first_message' is not allowed by config\" — if the agent does not allow it.",
+    ],
+  },
+  {
+    key: "deepgram",
+    name: "Deepgram",
+    tagline: "Calls to your website voice agent, straight into the CRM",
+    description:
+      "When a visitor finishes a call with the voice agent on your website, the transcript arrives here. The call is summarised, the caller becomes a CRM contact with a lead when they left a name, number or email, and the call appears in the Voice module next to your phone calls, labelled with the website agent's name.",
+    category: "channels",
+    state: "connectable",
+    credentialFields: [
+      {
+        key: "WEBHOOK_SECRET",
+        label: "Call log secret",
+        type: "secret",
+        required: true,
+        generate: true,
+        help: "Click Generate and save. Your website signs every call it sends with this value, so it goes into the website's settings too.",
+      },
+      {
+        key: "WELCOME_TEMPLATE",
+        label: "WhatsApp welcome template (optional)",
+        type: "text",
+        required: false,
+        placeholder: "HX… Content SID, or a Meta template name",
+        help: "Sent once to first-time callers who gave a mobile number. Must be an approved template: Twilio uses the Content SID, Meta the template name.",
+      },
+    ],
+    capabilities: [
+      "website call transcripts",
+      "AI call summary",
+      "CRM contact and lead per caller",
+      "recap email and WhatsApp welcome",
+    ],
+    howToConnect: [
+      "Click Generate beside Call log secret, then Connect. The call log address appears on this page.",
+      "In your website's hosting settings (Lovable → Secrets), add VOICE_LOG_URL set to that address and VOICE_LOG_SECRET set to the same secret.",
+      "Make a short test call on the website. It appears under Voice within a minute of hanging up.",
+      "Calls where the visitor gave no name, number or email are logged but do not create a contact or lead.",
+    ],
+  },
+  {
+    key: "lovable",
+    name: "Lovable site",
+    tagline: "Send approved blog posts, with images, to your Lovable website",
+    description:
+      "Blog posts approved in Content Optimization are committed to this site's GitHub repository with a generated hero image and any in-article images. They appear in the Lovable editor straight away and go live when you click Publish in Lovable. Sending again updates the same post.",
+    category: "channels",
+    state: "connectable",
+    credentialFields: [
+      {
+        key: "SITE_URL",
+        label: "Live site address",
+        type: "url",
+        required: true,
+        placeholder: "https://digitalurgency.com.au",
+        help: "The address the blog is read at. A .lk address makes the images Sri Lankan; anything else, Australian.",
+      },
+      {
+        key: "REPOSITORY",
+        label: "GitHub repository",
+        type: "text",
+        required: true,
+        placeholder: "WalidN1989/sprout-reach-studio",
+        help: "The repository Lovable syncs this project with (Lovable → GitHub).",
+      },
+      {
+        key: "BRANCH",
+        label: "Branch (optional)",
+        type: "text",
+        required: false,
+        placeholder: "main",
+        help: "Leave empty for main.",
+      },
+      {
+        key: "GITHUB_TOKEN",
+        label: "GitHub token",
+        type: "secret",
+        required: true,
+        help: "A fine-grained personal access token limited to this repository, with Contents: Read and write.",
+      },
+    ],
+    capabilities: [
+      "send approved blog posts",
+      "generate hero and in-article images",
+      "update existing posts",
+    ],
+    howToConnect: [
+      "On GitHub: Settings → Developer settings → Fine-grained tokens → Generate new token.",
+      "Repository access: Only select repositories → pick this site's repository. Permissions: Contents → Read and write. Generate and copy it.",
+      "Here, enter the live site address, the repository (owner/name) and the token, then click Connect.",
+      "Click Check now: it should count the posts already on the blog.",
+      "Each project connects its own site, so an Australian post can never land on the Sri Lankan site.",
+    ],
+  },
+  {
+    key: "wordpress",
+    name: "WordPress",
+    tagline: "Publish approved articles to your site in one click",
+    description:
+      "Articles approved in Content Optimization go live on this WordPress site as posts, with their title, SEO description and web address. Publishing again updates the same post instead of making a copy.",
+    category: "channels",
+    state: "connectable",
+    credentialFields: [
+      {
+        key: "SITE_URL",
+        label: "Site address",
+        type: "url",
+        required: true,
+        placeholder: "https://bookshopnearme.lk",
+        help: "Your WordPress site, starting with https://.",
+      },
+      {
+        key: "USERNAME",
+        label: "WordPress username",
+        type: "text",
+        required: true,
+        help: "An administrator or editor account.",
+      },
+      {
+        key: "APPLICATION_PASSWORD",
+        label: "Application Password",
+        type: "secret",
+        required: true,
+        help: "WordPress admin → Users → Profile → Application Passwords: name it OpenSEO, click Add, and paste the password shown. It is not your login password.",
+      },
+    ],
+    capabilities: ["publish approved articles", "update existing posts"],
+    howToConnect: [
+      "In WordPress admin, open Users → Profile → Application Passwords.",
+      "Type OpenSEO as the name and click Add New Application Password; copy it.",
+      "Here, enter the site address, your WordPress username and that password, then click Connect.",
+      "Click Check now: it should say who you are logged in as.",
+    ],
+  },
+  {
+    key: "twilio_sms",
+    name: "Twilio SMS",
+    tagline: "Two-way texts from your Twilio number, inside the CRM",
+    description:
+      "Texts customers send to your Twilio number arrive in the SMS inbox, linked to their CRM contact, and your team (or an agent, within daily limits) can text back. STOP replies are honoured.",
+    category: "channels",
+    state: "connectable",
+    credentialFields: [
+      {
+        key: "ACCOUNT_SID",
+        label: "Account SID",
+        type: "text",
+        required: true,
+        placeholder: "AC…",
+        help: "Twilio Console → Account info, for the account that owns the number.",
+      },
+      {
+        key: "AUTH_TOKEN",
+        label: "Auth Token",
+        type: "secret",
+        required: true,
+        help: "Twilio Console → Account info. Used to send texts and to check Twilio really sent each webhook.",
+      },
+      {
+        key: "PHONE_NUMBER",
+        label: "SMS number",
+        type: "text",
+        required: true,
+        placeholder: "+19412974258",
+        help: "The Twilio number texts go from, in international format.",
+      },
+    ],
+    capabilities: [
+      "two-way SMS inbox",
+      "texts on the CRM lead page",
+      "STOP opt-outs",
+    ],
+    howToConnect: [
+      "Enter the Account SID, Auth Token and number, then click Connect.",
+      "Copy the SMS webhook address shown on this page.",
+      "In Twilio, open the number → Messaging configuration → A message comes in: paste the address, method HTTP POST, and save.",
+      "Click Check now here to confirm the credentials, then text the number to test.",
     ],
   },
   {

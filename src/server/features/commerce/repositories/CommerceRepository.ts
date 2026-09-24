@@ -1,6 +1,17 @@
-import { and, asc, count, eq, like, or, sql } from "drizzle-orm";
+import {
+  and,
+  asc,
+  count,
+  eq,
+  gt,
+  inArray,
+  like,
+  ne,
+  or,
+  sql,
+} from "drizzle-orm";
 import { db } from "@/db";
-import { commerceProducts } from "@/db/schema";
+import { commerceInventoryBalances, commerceProducts } from "@/db/schema";
 import type {
   CreateProductInput,
   ListProductsInput,
@@ -84,6 +95,49 @@ async function findProductBySku(organizationId: string, sku: string) {
   return row ?? null;
 }
 
+/**
+ * The ids of every product in this workspace whose SKU is in the list.
+ *
+ * An import asks "does this one exist?" once per row, and a round trip per
+ * row is what turns a catalogue of two hundred into a request that times out
+ * before it writes anything.
+ */
+async function findProductIdsBySkus(organizationId: string, skus: string[]) {
+  if (skus.length === 0) return new Map<string, string>();
+  const rows = await db
+    .select({ id: commerceProducts.id, sku: commerceProducts.sku })
+    .from(commerceProducts)
+    .where(
+      and(
+        eq(commerceProducts.organizationId, organizationId),
+        inArray(commerceProducts.sku, skus),
+      ),
+    );
+  return new Map(rows.map((row) => [row.sku, row.id]));
+}
+
+/** Insert many at once; the caller decides how big a batch the driver takes. */
+async function createProducts(
+  organizationId: string,
+  inputs: CreateProductInput[],
+) {
+  if (inputs.length === 0) return 0;
+  await db.insert(commerceProducts).values(
+    inputs.map((input) => ({
+      id: crypto.randomUUID(),
+      organizationId,
+      ...input,
+      barcode: input.barcode || null,
+      isbn: input.isbn || null,
+      description: input.description || null,
+      category: input.category || null,
+      parentProductId: input.parentProductId ?? null,
+      costPriceMinor: input.costPriceMinor ?? null,
+    })),
+  );
+  return inputs.length;
+}
+
 async function createProduct(
   organizationId: string,
   input: CreateProductInput,
@@ -138,6 +192,25 @@ async function listVariants(organizationId: string, parentProductId: string) {
     .orderBy(asc(commerceProducts.name));
 }
 
+async function hasStockOutsideDefault(
+  organizationId: string,
+  productId: string,
+) {
+  const [row] = await db
+    .select({ id: commerceInventoryBalances.id })
+    .from(commerceInventoryBalances)
+    .where(
+      and(
+        eq(commerceInventoryBalances.organizationId, organizationId),
+        eq(commerceInventoryBalances.productId, productId),
+        ne(commerceInventoryBalances.branchId, `default:${organizationId}`),
+        gt(commerceInventoryBalances.quantityOnHand, 0),
+      ),
+    )
+    .limit(1);
+  return Boolean(row);
+}
+
 /**
  * Upsert a product the provider owns. The external id is the identity, so a
  * repeated sync updates the same row instead of adding another. Fields a
@@ -155,6 +228,11 @@ async function upsertExternalProduct(
     category: string | null;
     salePriceMinor: number;
     productUrl: string | null;
+    /**
+     * A service has no stock, so it must not be counted like one. Store syncs
+     * leave this alone and keep the "product" default.
+     */
+    itemType?: "product" | "service";
   },
 ) {
   const now = new Date().toISOString();
@@ -185,6 +263,7 @@ async function upsertExternalProduct(
       id: crypto.randomUUID(),
       organizationId,
       ...input,
+      itemType: input.itemType ?? "product",
       sku,
       updatedAt: now,
     })
@@ -201,6 +280,7 @@ async function upsertExternalProduct(
         category: input.category,
         salePriceMinor: input.salePriceMinor,
         productUrl: input.productUrl,
+        itemType: input.itemType ?? "product",
         updatedAt: now,
       },
     })
@@ -236,8 +316,11 @@ export const CommerceRepository = {
   listProducts,
   getProduct,
   findProductBySku,
+  findProductIdsBySkus,
+  createProducts,
   createProduct,
   updateProduct,
   listVariants,
+  hasStockOutsideDefault,
   rewriteExternalProductUrlOrigin,
 };

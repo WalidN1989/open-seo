@@ -167,8 +167,8 @@ export function LeadsTable({
     Boolean(stageFilter);
 
   return (
-    <div className="space-y-3">
-      <div className="flex flex-wrap items-center gap-2">
+    <div className="leads-table-workspace">
+      <div className="leads-toolbar flex flex-wrap items-center gap-2">
         <label className="input input-bordered input-sm flex flex-1 items-center gap-2 md:max-w-xs">
           <Search className="size-4 shrink-0 text-base-content/40" />
           <input
@@ -265,7 +265,7 @@ export function LeadsTable({
         </div>
       </div>
 
-      <div className="overflow-x-auto rounded-xl border border-base-300">
+      <div className="leads-table-scroll overflow-x-auto rounded-xl border border-base-300">
         <table className="table table-pin-rows table-xs">
           <thead>
             <tr>

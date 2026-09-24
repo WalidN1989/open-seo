@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { useCallback, useMemo } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { AlertCircle, ArrowLeft } from "lucide-react";
 import { getErrorCode } from "@/client/lib/error-messages";
 import { BILLING_ROUTE } from "@/shared/billing";
@@ -20,6 +21,12 @@ import {
   tabInputKey,
   useSearchTabNavigation,
 } from "@/client/features/search-tabs/useSearchTabNavigation";
+import {
+  buildKeywordResearchQueryKey,
+  buildKeywordResearchRequest,
+  keywordResearchQueryFn,
+} from "@/client/features/keywords/hooks/useKeywordResearchData";
+import { useAutoOpenLatest } from "@/client/features/search-history/useAutoOpenLatest";
 import { KeywordResearchEmptyState } from "./KeywordResearchEmptyState";
 import { KeywordResearchLoadingState } from "./KeywordResearchLoadingState";
 import { KeywordResearchResults } from "./KeywordResearchResults";
@@ -174,6 +181,38 @@ export function KeywordResearchPage(input: Props) {
   const controller = useKeywordResearchController({
     ...controllerInput,
     onFormSubmit,
+  });
+  const queryClient = useQueryClient();
+  useAutoOpenLatest({
+    projectId,
+    hasExplicitSelection: urlInput !== null,
+    historySynced: controller.historySynced,
+    history: controller.history,
+    probe: async (item) => {
+      const request = buildKeywordResearchRequest({
+        projectId,
+        keywordInput: item.keyword,
+        locationCode: item.locationCode,
+        resultLimit: 150,
+        mode: "auto",
+        clickstream: false,
+      });
+      if (!request) return false;
+      const result = await keywordResearchQueryFn(request);
+      if (result.rows.length === 0) return false;
+      // Handed to the page's own query so opening it does not ask again.
+      queryClient.setQueryData(buildKeywordResearchQueryKey(request), result);
+      return true;
+    },
+    open: (item) =>
+      navigateToKeywordInput({
+        type: "keyword",
+        keyword: item.keyword,
+        locationCode: item.locationCode,
+        resultLimit: 150,
+        mode: "auto",
+        clickstream: false,
+      }),
   });
 
   return (

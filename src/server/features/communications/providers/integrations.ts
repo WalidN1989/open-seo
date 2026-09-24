@@ -1,3 +1,11 @@
+import {
+  checkRepository,
+  repositoryName,
+} from "@/server/features/optimizations/lovable/githubRepo";
+import {
+  siteOrigin,
+  wordpressWhoAmI,
+} from "@/server/features/optimizations/wordpress/wordpressClient";
 import { resolveConnectionCredential } from "@/server/lib/connection-secrets";
 import { z } from "zod";
 import { fetchStoreName } from "@/server/features/commerce/providers/shopify";
@@ -172,6 +180,62 @@ export async function testIntegrationConnection(
         providerKey: connection.providerKey,
         detail: "Webhook secret is stored; calls arrive when ElevenLabs posts",
       };
+    case "deepgram":
+      await credentialValue(connection, "WEBHOOK_SECRET");
+      return {
+        providerKey: connection.providerKey,
+        detail:
+          "Call log secret is stored; calls arrive when the website sends them",
+      };
+    case "lovable": {
+      const [token, repository, siteUrl] = await Promise.all([
+        credentialValue(connection, "GITHUB_TOKEN"),
+        credentialValue(connection, "REPOSITORY"),
+        credentialValue(connection, "SITE_URL"),
+      ]);
+      const branch =
+        (await credentialValue(connection, "BRANCH").catch(() => ""))?.trim() ||
+        "main";
+      const posts = await checkRepository(
+        { token, repository, branch },
+        fetcher,
+      );
+      return {
+        providerKey: connection.providerKey,
+        detail: `${repositoryName(repository)} (${branch}) reachable for ${new URL(siteUrl).host}; ${posts} files in its blog`,
+      };
+    }
+    case "wordpress": {
+      const [siteUrl, username, applicationPassword] = await Promise.all([
+        credentialValue(connection, "SITE_URL"),
+        credentialValue(connection, "USERNAME"),
+        credentialValue(connection, "APPLICATION_PASSWORD"),
+      ]);
+      const name = await wordpressWhoAmI(
+        { siteUrl, username, applicationPassword },
+        fetcher,
+      );
+      return {
+        providerKey: connection.providerKey,
+        detail: `Logged in to ${new URL(siteOrigin(siteUrl)).host} as ${name}`,
+      };
+    }
+    case "twilio_sms": {
+      const [accountSid, authToken, number] = await Promise.all([
+        credentialValue(connection, "ACCOUNT_SID"),
+        credentialValue(connection, "AUTH_TOKEN"),
+        credentialValue(connection, "PHONE_NUMBER"),
+      ]);
+      await checkedJson(
+        `https://api.twilio.com/2010-04-01/Accounts/${encodeURIComponent(accountSid)}.json`,
+        { Authorization: `Basic ${btoa(`${accountSid}:${authToken}`)}` },
+        fetcher,
+      );
+      return {
+        providerKey: connection.providerKey,
+        detail: `Twilio account authenticated; texts go from ${number}`,
+      };
+    }
     case "make":
       await credentialValue(connection, "SIGNING_SECRET");
       return {

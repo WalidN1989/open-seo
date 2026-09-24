@@ -1,4 +1,5 @@
 /* oxlint-disable max-lines, max-depth, max-params */
+import { waitUntil } from "cloudflare:workers";
 import type { z } from "zod";
 import { BusinessModuleService } from "@/server/features/business-modules/services/BusinessModuleService";
 import { AppError } from "@/server/lib/errors";
@@ -45,6 +46,12 @@ import type {
   WhatsappDeliveryUpdate,
 } from "../providers/whatsapp";
 import {
+  createContentTemplate,
+  fetchApproval,
+  submitForApproval,
+} from "../providers/twilioContent";
+import {
+  isWhatsappSandbox,
   parseMetaPayload,
   parseTwilioPayload,
   resolveCredential,
@@ -58,12 +65,16 @@ import {
 import { deliverWebhook, validateWebhookUrl } from "../providers/webhooks";
 import { speakWithDeepgram, transcribeWithDeepgram } from "../providers/voice";
 import { buildVoiceAgentContext } from "./VoiceAgentContext";
+import { learnFromConversation, rememberNow } from "./VoiceLearningService";
+import { asksToRemember } from "@/server/features/voice/remember";
+import { isFarewell } from "@/server/features/voice/remember";
 import {
   runApifyActor,
   scrapeWithFirecrawl,
   testIntegrationConnection,
 } from "../providers/integrations";
 import { generateVoiceAgentReply } from "../providers/voice-ai";
+import { VoiceAnalystService } from "@/server/features/voice/services/VoiceAnalystService";
 import { BusinessAuditRepository } from "@/server/features/business-modules/repositories/BusinessAuditRepository";
 import { isUniqueViolation } from "@/server/lib/db-errors";
 import { replyToInbound } from "./WhatsappAssistantReplyService";
@@ -201,15 +212,132 @@ async function createWhatsappTemplate(
     organizationId,
     input,
   );
+  // A real WhatsApp number cannot message anyone out of the blue until Meta
+  // has approved the wording, so a new template is written at Twilio and put
+  // to Meta straight away. An already-approved id is left alone.
+  const submitted = input.externalTemplateId
+    ? null
+    : await submitTemplateForApproval(organizationId, template).catch(
+        (error: unknown) => {
+          console.error("WhatsApp template submission failed", error);
+          return null;
+        },
+      );
   await auditMutation(
     organizationId,
     userId,
     "whatsapp.template.created",
     "whatsapp_template",
     template.id,
-    { status: template.status },
+    { status: submitted?.status ?? template.status },
   );
+  return submitted ?? template;
   return template;
+}
+
+/**
+ * Writes one template at Twilio and asks Meta to approve it. Returns the row
+ * as it now stands: pending while Meta decides.
+ */
+async function submitTemplateForApproval(
+  organizationId: string,
+  template: {
+    id: string;
+    name: string;
+    languageCode: string;
+    category: string;
+    body: string;
+    mediaUrl: string | null;
+  },
+) {
+  const connection =
+    await CommunicationsRepository.firstWhatsappConnection(organizationId);
+  if (!connection || connection.provider !== "twilio") return null;
+  const draft = {
+    name: template.name,
+    languageCode: template.languageCode,
+    body: template.body,
+    mediaUrl: template.mediaUrl,
+    category:
+      template.category === "utility"
+        ? ("UTILITY" as const)
+        : template.category === "authentication"
+          ? ("AUTHENTICATION" as const)
+          : ("MARKETING" as const),
+  };
+  const contentSid = await createContentTemplate(connection, draft);
+  const approval = await submitForApproval(connection, contentSid, draft);
+  return CommunicationsRepository.updateWhatsappTemplate(
+    organizationId,
+    template.id,
+    { externalTemplateId: contentSid, status: approval.status },
+  );
+}
+
+/**
+ * Where a submitted template stands with Meta. Approval takes minutes to a
+ * day, so this is asked for rather than waited on.
+ */
+async function refreshWhatsappTemplate(
+  organizationId: string,
+  userId: string,
+  input: { templateId: string },
+) {
+  await BusinessModuleService.requireAccess(
+    organizationId,
+    userId,
+    "whatsapp",
+    "manage",
+  );
+  const template = await CommunicationsRepository.getWhatsappTemplate(
+    organizationId,
+    input.templateId,
+  );
+  if (!template) throw new AppError("NOT_FOUND", "Template not found.");
+  const connection =
+    await CommunicationsRepository.firstWhatsappConnection(organizationId);
+  if (!template.externalTemplateId || connection?.provider !== "twilio") {
+    return { status: template.status, reason: null };
+  }
+  const approval = await fetchApproval(connection, template.externalTemplateId);
+  await CommunicationsRepository.updateWhatsappTemplate(
+    organizationId,
+    template.id,
+    { status: approval.status },
+  );
+  return approval;
+}
+
+/**
+ * Removes a template from the list. A rejected one cannot be edited and
+ * resubmitted — WhatsApp wants a fresh submission — so it is deleted and
+ * written again.
+ */
+async function deleteWhatsappTemplate(
+  organizationId: string,
+  userId: string,
+  input: { templateId: string },
+) {
+  await BusinessModuleService.requireAccess(
+    organizationId,
+    userId,
+    "whatsapp",
+    "manage",
+  );
+  const removed = await CommunicationsRepository.deleteWhatsappTemplate(
+    organizationId,
+    input.templateId,
+  );
+  if (!removed) throw new AppError("NOT_FOUND", "Template not found.");
+  await auditMutation(
+    organizationId,
+    userId,
+    "whatsapp.template.deleted",
+    "whatsapp_template",
+    removed.id,
+    { name: removed.name },
+  );
+  return { templateId: removed.id };
 }
 
 async function updateWhatsappConversation(
@@ -386,6 +514,19 @@ async function createWhatsappCampaign(
   if (!connectionValid || !templateValid) {
     throw new Error("WhatsApp connection or template not found.");
   }
+  // One campaign per name: a double-clicked Save used to leave three
+  // identical drafts, each of which could be launched.
+  if (
+    await CommunicationsRepository.whatsappCampaignNameTaken(
+      organizationId,
+      input.name,
+    )
+  ) {
+    throw new AppError(
+      "CONFLICT",
+      `A campaign named "${input.name.trim()}" already exists. Pick another name.`,
+    );
+  }
   const campaign = await CommunicationsRepository.createWhatsappCampaign(
     organizationId,
     input,
@@ -398,6 +539,44 @@ async function createWhatsappCampaign(
     campaign.id,
   );
   return campaign;
+}
+
+/**
+ * Removes a campaign from the list. Messages it already sent stay in each
+ * chat; only a campaign in the middle of sending cannot be removed.
+ */
+async function deleteWhatsappCampaign(
+  organizationId: string,
+  userId: string,
+  input: { campaignId: string },
+) {
+  await BusinessModuleService.requireAccess(
+    organizationId,
+    userId,
+    "whatsapp",
+    "manage",
+  );
+  const context = await CommunicationsRepository.getWhatsappCampaignContext(
+    organizationId,
+    input.campaignId,
+  );
+  if (context?.campaign.status === "running") {
+    throw new AppError("CONFLICT", "This campaign is still sending.");
+  }
+  const removed = await CommunicationsRepository.deleteWhatsappCampaign(
+    organizationId,
+    input.campaignId,
+  );
+  if (!removed) throw new AppError("NOT_FOUND");
+  await auditMutation(
+    organizationId,
+    userId,
+    "whatsapp.campaign.deleted",
+    "whatsapp_campaign",
+    removed.id,
+    { name: removed.name },
+  );
+  return { campaignId: removed.id };
 }
 
 async function launchWhatsappCampaign(
@@ -422,7 +601,11 @@ async function launchWhatsappCampaign(
   ) {
     throw new Error("Only draft or scheduled campaigns can be launched.");
   }
-  if (context.template.status !== "approved") {
+  // The sandbox can hold no approved templates, but everyone who has joined
+  // it has an open session, and a plain message with the template's text and
+  // image reaches them. A real sender still needs the approved template.
+  const sandbox = isWhatsappSandbox(context.connection);
+  if (!sandbox && context.template.status !== "approved") {
     throw new Error("Campaigns require a provider-approved WhatsApp template.");
   }
   const startedAt = new Date().toISOString();
@@ -441,11 +624,19 @@ async function launchWhatsappCampaign(
       context.template.body,
     );
     try {
-      const result = await sendWhatsappTemplate(
-        context.connection,
-        conversation.externalConversationId,
-        context.template,
-      );
+      const result = sandbox
+        ? await sendWhatsappText(
+            context.connection,
+            conversation.externalConversationId,
+            context.template.body,
+            undefined,
+            context.template.mediaUrl,
+          )
+        : await sendWhatsappTemplate(
+            context.connection,
+            conversation.externalConversationId,
+            context.template,
+          );
       await CommunicationsRepository.completeWhatsappMessage(
         organizationId,
         queued.id,
@@ -626,6 +817,9 @@ async function startVoiceConversation(
     organizationId,
     input,
   );
+  // While the greeting plays, wake the database and read the workspace, so
+  // the first question is answered instead of waited on.
+  waitUntil(VoiceAnalystService.prewarm(organizationId, userId));
   await emitBusinessEvent(organizationId, "voice.conversation.started", {
     conversationId: conversation.id,
     agentConfigId: conversation.agentConfigId,
@@ -685,6 +879,12 @@ async function endVoiceConversation(
   await emitBusinessEvent(organizationId, "voice.conversation.completed", {
     conversationId: input.conversationId,
   });
+  // Learned from while it is fresh; the reply to "end" does not wait for it.
+  waitUntil(
+    learnFromConversation(organizationId, input.conversationId).catch((error) =>
+      console.error("[voice-learning] conversation failed:", error),
+    ),
+  );
   await auditMutation(
     organizationId,
     userId,
@@ -693,6 +893,42 @@ async function endVoiceConversation(
     input.conversationId,
   );
   return conversation;
+}
+
+/**
+ * Clears voice history: one conversation, or all of them. The transcripts
+ * are the person's own record of what was said, so removing them is theirs
+ * to decide and takes effect at once.
+ */
+async function deleteVoiceHistory(
+  organizationId: string,
+  userId: string,
+  input: { conversationId?: string; all?: boolean },
+) {
+  await BusinessModuleService.requireAccess(
+    organizationId,
+    userId,
+    "voice",
+    "manage",
+  );
+  const ids = input.all
+    ? await CommunicationsRepository.listVoiceConversationIds(organizationId)
+    : input.conversationId
+      ? [input.conversationId]
+      : [];
+  const removed = await CommunicationsRepository.deleteVoiceConversations(
+    organizationId,
+    ids,
+  );
+  await auditMutation(
+    organizationId,
+    userId,
+    "voice.history.deleted",
+    "voice_conversation",
+    input.conversationId ?? "all",
+    { removed },
+  );
+  return { removed };
 }
 
 async function voiceSessionContext(
@@ -734,12 +970,14 @@ async function transcribeVoiceAudio(
       "This voice agent is not configured for Deepgram transcription.",
     );
   }
+  const startedAt = Date.now();
   const result = await transcribeWithDeepgram(
     agent.credentialReference,
     input.audioBase64,
     input.mimeType,
     input.language,
   );
+  const heardAt = Date.now();
   // Nothing was said. Save no turn and generate no reply: an empty message
   // would pollute the transcript and the history the agent learns from.
   if (!result.transcript) return { ...result, heardNothing: true as const };
@@ -749,6 +987,13 @@ async function transcribeVoiceAudio(
     speaker: "user",
     transcript: result.transcript,
   });
+  // "Remember that…" is kept before the reply is written, so the reply can
+  // already follow it.
+  if (asksToRemember(result.transcript)) {
+    await rememberNow(organizationId, agent.id, result.transcript).catch(
+      (error) => console.error("[voice-learning] remember failed:", error),
+    );
+  }
   if (
     agent.modelProvider === "anthropic" &&
     agent.textToSpeechProvider === "deepgram"
@@ -759,16 +1004,28 @@ async function transcribeVoiceAudio(
           organizationId,
           input.conversationId,
         );
+      // Both contexts are independent reads; waiting on one before starting
+      // the other added their latencies to every spoken turn.
+      const [businessContext, analystContext] = await Promise.all([
+        buildVoiceAgentContext(organizationId, agent.id, result.transcript),
+        // The in-app voice is a teammate's, never a customer's: it answers
+        // about the projects that teammate can see.
+        VoiceAnalystService.contextForTurn(
+          organizationId,
+          userId,
+          history
+            .filter((turn) => turn.speaker === "user")
+            .map((turn) => turn.transcript),
+        ),
+      ]);
       const generated = await generateVoiceAgentReply({
         agentName: agent.name,
         credentialReference: agent.credentialReference,
         history,
-        businessContext: await buildVoiceAgentContext(
-          organizationId,
-          agent.id,
-          result.transcript,
-        ),
+        businessContext,
+        analystContext: analystContext.text,
       });
+      const answeredAt = Date.now();
       const speech = await speakWithDeepgram(
         agent.credentialReference,
         generated.reply
@@ -781,7 +1038,17 @@ async function transcribeVoiceAudio(
         speaker: "agent",
         transcript: generated.reply,
       });
-      return { ...result, ...speech, reply: generated.reply };
+      // One line per turn, so a slow reply can be blamed on the right step.
+      console.info(
+        `[voice] turn: heard ${heardAt - startedAt}ms, answered ${answeredAt - heardAt}ms, spoke ${Date.now() - answeredAt}ms`,
+      );
+      // "Thanks, that's all" ends the conversation once the reply has played.
+      return {
+        ...result,
+        ...speech,
+        reply: generated.reply,
+        endsConversation: isFarewell(result.transcript),
+      };
     } catch (error) {
       console.error("Voice agent response failed after transcription", error);
       return {
@@ -1649,11 +1916,15 @@ export const CommunicationsService = {
   createWhatsappCampaign,
   createWhatsappOrder,
   createWhatsappTemplate,
+  refreshWhatsappTemplate,
+  deleteWhatsappTemplate,
   createWebhookEndpoint,
   endVoiceConversation,
+  deleteVoiceHistory,
   emitBusinessEvent,
   integrationsWorkspace,
   launchWhatsappCampaign,
+  deleteWhatsappCampaign,
   processWhatsappWebhook,
   processMetaWebhook,
   retryWebhookDelivery,

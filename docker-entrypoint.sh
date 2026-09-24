@@ -26,16 +26,18 @@ test -d "$OUT_DIR/server"
 # the container and is never included in the image or repository.
 pnpm exec tsx scripts/write-runtime-dev-vars.ts "$OUT_DIR/server/.dev.vars"
 
+# Launch long-running programs directly: pnpm/tsx CLI wrappers otherwise stay
+# resident alongside each worker and consume memory for the life of the container.
 # This container has no cron. Start the ticker beside the server so background
 # jobs actually run; it waits for the server to answer before its first tick.
 # Without INTERNAL_CRON_SECRET it exits and the server still serves traffic —
 # background work simply stays off, which the log makes explicit.
 if [ -n "${INTERNAL_CRON_SECRET:-}" ]; then
-  pnpm exec tsx scripts/internal-ticker.ts &
+  node --import tsx scripts/internal-ticker.ts &
   TICKER_PID=$!
   # The mailbox bridge does IMAP and SMTP for customer-owned mailboxes; the
   # Worker runtime cannot open sockets, so it lives beside the server too.
-  pnpm exec tsx scripts/mail-bridge.ts &
+  node --import tsx scripts/mail-bridge.ts &
   BRIDGE_PID=$!
   # Take the server down with the helpers rather than leaving a half-running
   # container that looks healthy but processes nothing.
@@ -44,4 +46,4 @@ else
   echo "INTERNAL_CRON_SECRET not set - background jobs (webhook retries, rank checks, audit watchdog) will NOT run."
 fi
 
-exec pnpm exec vite preview --host 0.0.0.0 --port "${PORT:-3001}"
+exec node node_modules/vite/bin/vite.js preview --host 0.0.0.0 --port "${PORT:-3001}"

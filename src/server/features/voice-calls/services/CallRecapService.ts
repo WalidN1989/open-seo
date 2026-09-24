@@ -10,6 +10,24 @@ import type { PhoneCallReport } from "../elevenlabsWebhook";
 const AUTHOR = "assistant:voice-recap";
 
 /**
+ * The business's own Anthropic key when its Claude connection is live,
+ * otherwise the platform's, otherwise null.
+ */
+export async function resolveAnthropicKey(organizationId: string) {
+  const aiConnection = await CommunicationsRepository.getIntegrationByProvider(
+    organizationId,
+    "claude_haiku",
+  );
+  return (
+    (aiConnection?.status === "connected"
+      ? await resolveAiKey(aiConnection)
+      : null) ??
+    (await getOptionalEnvValue("ANTHROPIC_API_KEY")) ??
+    null
+  );
+}
+
+/**
  * Email the caller a recap of their call from the business's connected
  * mailbox, so their reply lands in the Email module next to it. Returns what
  * happened, for the call record; it never throws, because the call is
@@ -28,17 +46,7 @@ async function sendCallRecap(input: {
       return "skipped: no connected mailbox";
     }
     const businessName = account.displayName?.trim() || "our";
-    const aiConnection =
-      await CommunicationsRepository.getIntegrationByProvider(
-        input.organizationId,
-        "claude_haiku",
-      );
-    const apiKey =
-      (aiConnection?.status === "connected"
-        ? await resolveAiKey(aiConnection)
-        : null) ??
-      (await getOptionalEnvValue("ANTHROPIC_API_KEY")) ??
-      null;
+    const apiKey = await resolveAnthropicKey(input.organizationId);
     const draftInput = {
       report: input.report,
       firstName: input.firstName,

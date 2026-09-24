@@ -69,6 +69,10 @@ export function useLocalHistoryStore<TItem, TAddInput>({
   const syncRef = useRef(sync);
   const [history, setHistory] = useState<TItem[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
+  // Which store the server has answered for. Compared with the current key,
+  // not kept as a flag: for one render after a project switch the list still
+  // holds the previous project's items, and must not read as settled.
+  const [syncedKey, setSyncedKey] = useState<string | null>(null);
 
   useEffect(() => {
     parseRef.current = parse;
@@ -81,7 +85,10 @@ export function useLocalHistoryStore<TItem, TAddInput>({
     setIsLoaded(true);
 
     const options = syncRef.current;
-    if (!options) return;
+    if (!options) {
+      setSyncedKey(storageKey);
+      return;
+    }
     let cancelled = false;
     void (async () => {
       try {
@@ -118,6 +125,7 @@ export function useLocalHistoryStore<TItem, TAddInput>({
       } catch {
         // Offline or refused: the local list is still shown.
       }
+      if (!cancelled) setSyncedKey(storageKey);
     })();
     return () => {
       cancelled = true;
@@ -183,5 +191,12 @@ export function useLocalHistoryStore<TItem, TAddInput>({
     }
   }, [storageKey]);
 
-  return { history, isLoaded, addItem, removeItem, clearItems };
+  return {
+    history,
+    isLoaded,
+    isSynced: syncedKey === storageKey,
+    addItem,
+    removeItem,
+    clearItems,
+  };
 }

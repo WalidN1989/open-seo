@@ -51,6 +51,14 @@ vi.mock("../repositories/OrderRepository", () => ({
   },
 }));
 
+vi.mock("../repositories/BranchRepository", () => ({
+  BranchRepository: {
+    resolve: async (organizationId: string, branchId?: string) => ({
+      id: branchId ?? `default:${organizationId}`,
+    }),
+  },
+}));
+
 const { OrderService, calculateTotals } = await import("./OrderService");
 
 const ORG = "org_1";

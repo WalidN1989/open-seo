@@ -22,7 +22,7 @@ const searchHistorySchema = z.array(searchHistoryItemSchema);
 const searchHistoryCodec = jsonCodec(searchHistorySchema);
 
 export function useSearchHistory(projectId: string) {
-  const { history, isLoaded, addItem, removeItem, clearItems } =
+  const { history, isLoaded, isSynced, addItem, removeItem, clearItems } =
     useLocalHistoryStore<
       SearchHistoryItem,
       Omit<SearchHistoryItem, "timestamp">
@@ -52,6 +52,7 @@ export function useSearchHistory(projectId: string) {
   return {
     history,
     isLoaded,
+    isSynced,
     addSearch: (keyword: string, locationCode: number, locationName: string) =>
       addItem({ keyword, locationCode, locationName }),
     clearHistory: clearItems,

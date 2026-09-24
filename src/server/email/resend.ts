@@ -61,12 +61,23 @@ export function renderActionEmail({
   footer,
 }: {
   heading: string;
-  body: string;
+  /** One paragraph, or several: each is given its own row and its own space. */
+  body: string | string[];
   buttonLabel: string;
   actionUrl: string;
   footer: string;
 }) {
   const safeUrl = escapeHtml(actionUrl);
+  // A wall of text in one cell is what four sentences look like in Gmail.
+  // Each paragraph gets a row, so the message has room to breathe.
+  const paragraphs = (Array.isArray(body) ? body : [body])
+    .map(
+      (paragraph, index, all) =>
+        `<tr><td style="font-size:15px;line-height:1.65;color:#42505e;padding-bottom:${
+          index === all.length - 1 ? 26 : 16
+        }px;">${escapeHtml(paragraph)}</td></tr>`,
+    )
+    .join("");
 
   return `<!doctype html>
 <html lang="en">
@@ -75,7 +86,7 @@ export function renderActionEmail({
 <tr><td align="center">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background:#ffffff;border-radius:12px;padding:36px 32px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;color:#1c2530;">
 <tr><td style="font-size:20px;font-weight:600;padding-bottom:14px;">${escapeHtml(heading)}</td></tr>
-<tr><td style="font-size:15px;line-height:1.6;color:#42505e;padding-bottom:26px;">${escapeHtml(body)}</td></tr>
+${paragraphs}
 <tr><td style="padding-bottom:26px;">
 <a href="${safeUrl}" style="display:inline-block;background:#1c2530;color:#ffffff;text-decoration:none;font-size:15px;font-weight:600;padding:12px 26px;border-radius:8px;">${escapeHtml(buttonLabel)}</a>
 </td></tr>
@@ -226,7 +237,7 @@ export async function sendResendActionEmail(
     to: string;
     subject: string;
     heading: string;
-    body: string;
+    body: string | string[];
     buttonLabel: string;
     actionUrl: string;
     footer: string;
@@ -242,7 +253,10 @@ export async function sendResendActionEmail(
     actionUrl: input.actionUrl,
     footer: input.footer,
   });
-  const text = `${input.heading}\n\n${input.body}\n\n${input.buttonLabel}: ${input.actionUrl}\n\n${input.footer}`;
+  const bodyText = (Array.isArray(input.body) ? input.body : [input.body]).join(
+    "\n\n",
+  );
+  const text = `${input.heading}\n\n${bodyText}\n\n${input.buttonLabel}: ${input.actionUrl}\n\n${input.footer}`;
   await sendResendEmail({
     config,
     to: input.to,

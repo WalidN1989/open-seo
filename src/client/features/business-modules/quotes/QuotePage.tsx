@@ -1,7 +1,10 @@
+import { useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import {
   ArrowLeft,
   Check,
+  Download,
+  Mail,
   FileText,
   Link2,
   Pencil,
@@ -14,11 +17,13 @@ import {
 import { toast } from "sonner";
 import { QuoteDocument } from "./QuoteDocument";
 import { QuoteEditor } from "./QuoteEditor";
+import { EmailQuoteDialog } from "./EmailQuoteDialog";
 import {
   QUOTE_STATUS_LABEL,
   QUOTE_STATUS_TONE,
   useConvertQuote,
   useDeleteQuote,
+  useEmailQuote,
   useQuoteDetail,
   useQuoteLink,
   useQuotePrefill,
@@ -65,11 +70,7 @@ export function QuotePage({
     if (lead) {
       void navigate({ to: "/modules/leads/$leadId", params: { leadId: lead } });
     } else {
-      void navigate({
-        to: "/modules/$moduleKey",
-        params: { moduleKey: "invoicing" },
-        hash: "quotes",
-      });
+      void navigate({ to: "/modules/crm/quotations" });
     }
   };
 
@@ -119,6 +120,14 @@ function QuoteView({
   const remove = useDeleteQuote();
   const convert = useConvertQuote();
   const link = useQuoteLink();
+  const email = useEmailQuote();
+  const [emailing, setEmailing] = useState(false);
+  const downloadPdf = () =>
+    link.mutate(quote.id, {
+      onSuccess: (result) => {
+        window.location.assign(`${result.pdfPath}&download=1`);
+      },
+    });
   const busy = setStatus.isPending || remove.isPending || convert.isPending;
   const move = (status: Parameters<typeof setStatus.mutate>[0]["status"]) =>
     setStatus.mutate(
@@ -175,6 +184,26 @@ function QuoteView({
         >
           <Link2 className="size-4" /> Copy client link
         </button>
+        <button
+          type="button"
+          className="btn btn-ghost btn-sm"
+          disabled={link.isPending}
+          onClick={downloadPdf}
+        >
+          <Download className="size-4" /> Download PDF
+        </button>
+        {quote.status === "draft" ||
+        quote.status === "sent" ||
+        quote.status === "accepted" ? (
+          <button
+            type="button"
+            className="btn btn-ghost btn-sm"
+            disabled={busy || email.isPending}
+            onClick={() => setEmailing(true)}
+          >
+            <Mail className="size-4" /> Email quote
+          </button>
+        ) : null}
         {quote.status === "draft" ? (
           <button
             type="button"
@@ -230,7 +259,7 @@ function QuoteView({
               </button>
               <button
                 type="button"
-                className="btn btn-success btn-sm"
+                className="btn btn-sm border-0 bg-emerald-600 text-white hover:bg-emerald-700"
                 disabled={busy}
                 onClick={() => move("accepted")}
               >
@@ -265,6 +294,25 @@ function QuoteView({
         </div>
       </div>
       <QuoteDocument detail={detail} />
+      {emailing ? (
+        <EmailQuoteDialog
+          number={quote.number}
+          defaultTo={quote.clientEmail ?? ""}
+          sending={email.isPending}
+          onClose={() => setEmailing(false)}
+          onSend={(input) =>
+            email.mutate(
+              { quoteId: quote.id, ...input },
+              {
+                onSuccess: (result) => {
+                  setEmailing(false);
+                  toast.success(`${quote.number} emailed to ${result.to}`);
+                },
+              },
+            )
+          }
+        />
+      ) : null}
     </div>
   );
 }

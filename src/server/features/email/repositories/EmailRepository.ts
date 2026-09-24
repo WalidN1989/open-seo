@@ -243,12 +243,15 @@ async function insertMessage(values: {
   status: string;
   authoredBy: string | null;
   occurredAt: string;
+  attachments?: { filename: string; contentType: string; size: number }[];
 }) {
+  const { attachments, ...rest } = values;
   const [row] = await db
     .insert(emailMessages)
     .values({
       id: crypto.randomUUID(),
-      ...values,
+      ...rest,
+      attachmentsJson: JSON.stringify(attachments ?? []),
       toAddresses: JSON.stringify(values.toAddresses),
       ccAddresses: JSON.stringify(values.ccAddresses ?? []),
       bccAddresses: JSON.stringify(values.bccAddresses ?? []),
@@ -277,7 +280,12 @@ async function updateMessage(
   values: Partial<
     Pick<
       EmailMessageRow,
-      "externalMessageId" | "direction" | "status" | "textBody" | "occurredAt"
+      | "externalMessageId"
+      | "direction"
+      | "status"
+      | "textBody"
+      | "occurredAt"
+      | "attachmentNotes"
     >
   > & { ccAddresses?: string[]; bccAddresses?: string[] },
 ) {

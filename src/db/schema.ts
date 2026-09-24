@@ -151,6 +151,8 @@ export const {
   whatsappConnections,
   whatsappConversations,
   whatsappMessages,
+  smsConversations,
+  smsMessages,
   whatsappContactProfiles,
   whatsappTags,
   whatsappContactTagAssignments,
@@ -177,6 +179,7 @@ export const {
   webhookSubscriptions,
   webhookDeliveries,
   commerceProducts,
+  commerceBranches,
   commerceInventoryBalances,
   commerceStockMovements,
   commerceInventoryAudits,
@@ -195,4 +198,5 @@ export const {
   clientAccounts,
   clientContacts,
   clientAccessEvents,
+  clientLogins,
 } = schema;

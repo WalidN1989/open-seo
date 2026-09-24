@@ -4,6 +4,17 @@
 // org's project list.
 const LAST_PROJECT_KEY = "openseo:lastProjectId";
 
+/** Preferred agency project; only applied within the signed-in user's authorized list. */
+export function isPreferredAgencyProject(project: {
+  slug?: string | null;
+  domain: string | null;
+}): boolean {
+  return (
+    project.slug === "digital-urgency-aus" &&
+    project.domain === "digitalurgency.com.au"
+  );
+}
+
 export function getLastProjectId(): string | null {
   if (typeof window === "undefined") return null;
   try {

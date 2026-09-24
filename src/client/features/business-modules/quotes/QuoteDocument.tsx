@@ -1,4 +1,5 @@
 import { formatMoney } from "@/server/features/invoicing/invoiceTotals";
+import { companyFooterLines, yearOf } from "@/shared/company-footer";
 import { Lines, longDate, quantityLabel } from "../invoicing/documentParts";
 import type { QuoteDetailData } from "./quotesQuery";
 
@@ -134,6 +135,11 @@ export function QuoteDocument({ detail }: { detail: QuoteDetailData }) {
           <div>{issuer.taxNote ?? "No GST is included."}</div>
         ) : null}
         {issuer.footerNote ? <Lines value={issuer.footerNote} /> : null}
+        <div className="mt-3">
+          {companyFooterLines(issuer, yearOf(quote.issueDate)).map((line) => (
+            <div key={line}>{line}</div>
+          ))}
+        </div>
       </footer>
     </div>
   );

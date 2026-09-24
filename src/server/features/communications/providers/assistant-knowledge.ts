@@ -203,7 +203,7 @@ export function formatCatalogueMatches(
   if (!rows.length) {
     return `No catalogue item matches "${query}". Tell the customer it is not in the catalogue right now, offer to note a pre-order so the team can source it, and record it with create_order_request if they agree. Do not invent a price.`;
   }
-  return rows
+  const lines = rows
     .map((row) => {
       const detail = [formatMinor(row.salePriceMinor, currency)];
       // A service carries no inventory row. Silence is the honest answer
@@ -219,6 +219,12 @@ export function formatCatalogueMatches(
       return `- ${row.name} — ${detail.join(" — ")} (SKU ${row.sku})`;
     })
     .join("\n");
+  // Silence per line was not enough: shown a price and a link with nothing
+  // about stock, the model filled the gap with "in stock". One plain rule,
+  // only when some item has no stock figure.
+  return rows.some((row) => row.quantityOnHand === null)
+    ? `${lines}\nItems above without a stock figure are not stock-tracked: never say they are in stock or out of stock.`
+    : lines;
 }
 
 /** Markdown emphasis and headings, as a model tends to write them. */

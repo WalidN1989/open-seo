@@ -145,8 +145,8 @@ async function inventorySummary(organizationId: string) {
     )
     .where(eq(commerceInventoryBalances.organizationId, organizationId));
 
-  const [low] = await db
-    .select({ count: sql<number>`count(*)` })
+  const low = await db
+    .select({ productId: commerceProducts.id })
     .from(commerceInventoryBalances)
     .innerJoin(
       commerceProducts,
@@ -155,9 +155,12 @@ async function inventorySummary(organizationId: string) {
     .where(
       and(
         eq(commerceInventoryBalances.organizationId, organizationId),
-        sql`${commerceInventoryBalances.quantityOnHand} <= ${commerceProducts.reorderThreshold}`,
         sql`${commerceProducts.reorderThreshold} > 0`,
       ),
+    )
+    .groupBy(commerceProducts.id, commerceProducts.reorderThreshold)
+    .having(
+      sql`sum(${commerceInventoryBalances.quantityOnHand}) <= ${commerceProducts.reorderThreshold}`,
     );
 
   const [catalogue] = await db
@@ -169,7 +172,7 @@ async function inventorySummary(organizationId: string) {
     units: Number(row?.units ?? 0),
     valueMinor: Number(row?.valueMinor ?? 0),
     retailMinor: Number(row?.retailMinor ?? 0),
-    lowStock: Number(low?.count ?? 0),
+    lowStock: low.length,
     products: Number(catalogue?.count ?? 0),
   };
 }

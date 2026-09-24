@@ -1,5 +1,11 @@
 # Agent guidance
 
+## Start here
+
+Read `docs/HANDOVER.md` first. It says where the local checkout lives
+(`~/Developer/open-seo`, outside iCloud), the full gate to run before pushing
+to `main`, the traps already paid for, and what is deliberately not built yet.
+
 ## Business modules and deployment
 
 `docs/BUSINESS_MODULE_MIGRATION_SCOPE.md` is the single ledger for the business

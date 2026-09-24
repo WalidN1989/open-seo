@@ -131,7 +131,7 @@ function InvoiceView({
           ) : null}
           {invoice.status === "sent" ? (
             <button
-              className="btn btn-success btn-sm"
+              className="btn btn-primary btn-sm"
               disabled={setStatus.isPending}
               onClick={() => setStatus.mutate({ invoiceId, status: "paid" })}
             >

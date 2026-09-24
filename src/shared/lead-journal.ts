@@ -7,6 +7,7 @@
 export type ActivityKind =
   | "call"
   | "whatsapp"
+  | "sms"
   | "meeting"
   | "email"
   | "visit"
@@ -24,6 +25,7 @@ export const ACTIVITY_KIND_META: Record<
     emoji: "💬",
     tint: "bg-emerald-100 text-emerald-700",
   },
+  sms: { label: "SMS", emoji: "📱", tint: "bg-indigo-100 text-indigo-700" },
   meeting: {
     label: "Meeting",
     emoji: "🤝",
@@ -48,6 +50,7 @@ export const ACTIVITY_KIND_META: Record<
 export const LOGGABLE_KINDS: ActivityKind[] = [
   "call",
   "whatsapp",
+  "sms",
   "meeting",
   "email",
   "visit",

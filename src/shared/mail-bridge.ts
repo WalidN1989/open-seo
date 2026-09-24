@@ -77,6 +77,27 @@ export type BridgeInboundMessage = {
   text: string | null;
   html: string | null;
   date: string;
+  /** Photos and PDFs the sender attached; bytes only on new mail. */
+  attachments: InboundAttachment[];
+};
+
+/** Kinds of attachment worth reading: what a customer photographs or scans. */
+export const READABLE_ATTACHMENT_TYPES = [
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+  "application/pdf",
+] as const;
+/** The model's per-file limit is 5 MB; base64 grows a file by a third. */
+export const MAX_ATTACHMENT_BYTES = 3_700_000;
+export const MAX_ATTACHMENTS_READ = 6;
+
+export type InboundAttachment = {
+  filename: string;
+  contentType: string;
+  size: number;
+  contentBase64: string | null;
 };
 
 /** A file sent with a message, base64 so it survives the JSON hop. */

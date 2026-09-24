@@ -470,6 +470,62 @@
       "when": 1789330381368,
       "tag": "0066_sweet_baron_zemo",
       "breakpoints": true
+    },
+    {
+      "idx": 67,
+      "version": "7",
+      "when": 1789416548230,
+      "tag": "0067_regular_aaron_stack",
+      "breakpoints": true
+    },
+    {
+      "idx": 68,
+      "version": "7",
+      "when": 1789417680671,
+      "tag": "0068_good_khan",
+      "breakpoints": true
+    },
+    {
+      "idx": 69,
+      "version": "7",
+      "when": 1789447204040,
+      "tag": "0069_same_winter_soldier",
+      "breakpoints": true
+    },
+    {
+      "idx": 70,
+      "version": "7",
+      "when": 1789584454688,
+      "tag": "0070_regular_nomad",
+      "breakpoints": true
+    },
+    {
+      "idx": 71,
+      "version": "7",
+      "when": 1789831233694,
+      "tag": "0071_huge_marvel_boy",
+      "breakpoints": true
+    },
+    {
+      "idx": 72,
+      "version": "7",
+      "when": 1789845754233,
+      "tag": "0072_certain_sunfire",
+      "breakpoints": true
+    },
+    {
+      "idx": 73,
+      "version": "7",
+      "when": 1790023888872,
+      "tag": "0073_moaning_sugar_man",
+      "breakpoints": true
+    },
+    {
+      "idx": 74,
+      "version": "7",
+      "when": 1790052468013,
+      "tag": "0074_sad_rocket_raccoon",
+      "breakpoints": true
     }
   ]
 }

@@ -19,6 +19,17 @@ const inboundSchema = z.object({
   text: z.string().nullable(),
   html: z.string().nullable(),
   date: z.string().min(1),
+  attachments: z
+    .array(
+      z.object({
+        filename: z.string().max(300),
+        contentType: z.string().max(120),
+        size: z.number().int().nonnegative(),
+        contentBase64: z.string().nullable(),
+      }),
+    )
+    .max(20)
+    .default([]),
 });
 
 const folderSchema = z.enum(["inbox", "sent"]);

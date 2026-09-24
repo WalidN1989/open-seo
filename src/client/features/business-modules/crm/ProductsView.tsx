@@ -1,13 +1,14 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Package, Plus } from "lucide-react";
+import { Package, Plus, Upload } from "lucide-react";
 import {
   createCommerceProduct,
   listCommerceProducts,
 } from "@/serverFunctions/commerce";
 import { getStandardErrorMessage } from "@/client/lib/error-messages";
 import { ProductEditModal } from "./ProductEditModal";
+import { ProductImportPanel } from "./ProductImportPanel";
 import { useWorkspaceCurrency } from "@/client/hooks/useWorkspaceCurrency";
 
 const PRODUCTS_KEY = ["commerce", "products"];
@@ -32,6 +33,7 @@ export function CrmProductsView() {
   const [search, setSearch] = useState("");
   const [source, setSource] = useState<"" | "woocommerce" | "shopify">("");
   const [adding, setAdding] = useState(false);
+  const [importing, setImporting] = useState(false);
   const [page, setPage] = useState(0);
   const [editingId, setEditingId] = useState<string | null>(null);
 
@@ -83,13 +85,23 @@ export function CrmProductsView() {
             What your organization sells, priced and identified by SKU.
           </p>
         </div>
-        <button
-          className="btn btn-primary btn-sm"
-          onClick={() => setAdding((open) => !open)}
-        >
-          <Plus className="size-4" /> Product
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            className="btn btn-outline btn-sm"
+            onClick={() => setImporting((open) => !open)}
+          >
+            <Upload className="size-4" /> Import
+          </button>
+          <button
+            className="btn btn-primary btn-sm"
+            onClick={() => setAdding((open) => !open)}
+          >
+            <Plus className="size-4" /> Product
+          </button>
+        </div>
       </div>
+
+      {importing ? <ProductImportPanel /> : null}
 
       <div className="flex flex-wrap gap-2">
         <input

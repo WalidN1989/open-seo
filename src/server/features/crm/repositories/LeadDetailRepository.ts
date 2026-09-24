@@ -131,6 +131,7 @@ async function listEmails(organizationId: string, address: string) {
   // Addresses are stored as a JSON array; the quotes keep a@x.com from
   // matching ba@x.com.
   const quoted = `%"${email.replace(/[%_]/g, "")}"%`;
+  const named = `%<${email.replace(/[%_]/g, "")}>%`;
   return db
     .select({
       id: emailMessages.id,
@@ -148,7 +149,10 @@ async function listEmails(organizationId: string, address: string) {
         eq(emailMessages.organizationId, organizationId),
         or(
           eq(sql`lower(${emailMessages.fromAddress})`, email),
+          // A sender with a display name is stored as "Justin <j@x.com>".
+          like(sql`lower(${emailMessages.fromAddress})`, named),
           like(sql`lower(${emailMessages.toAddresses})`, quoted),
+          like(sql`lower(${emailMessages.toAddresses})`, named),
         ),
       ),
     )

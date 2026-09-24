@@ -12,11 +12,15 @@ import { getStandardErrorMessage } from "@/client/lib/error-messages";
 import { orderCatalogue } from "./catalogueOrder";
 
 const logos: Record<string, string> = {
+  lovable: "lovable",
   make: "make",
   woocommerce: "woocommerce",
   shopify: "shopify",
   claude_haiku: "claude",
   elevenlabs: "elevenlabs",
+  deepgram: "deepgram",
+  twilio_sms: "twilio",
+  wordpress: "wordpress",
   instagram: "instagram",
   messenger: "messenger",
   google_sheets: "googlesheets",

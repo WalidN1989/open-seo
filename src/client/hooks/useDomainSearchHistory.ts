@@ -58,7 +58,7 @@ function isSameSearch(
 }
 
 export function useDomainSearchHistory(projectId: string) {
-  const { history, isLoaded, addItem, removeItem, clearItems } =
+  const { history, isLoaded, isSynced, addItem, removeItem, clearItems } =
     useLocalHistoryStore<DomainSearchHistoryItem, AddDomainSearchInput>({
       storageKey: `domain-search-history:${projectId}`,
       sync: {
@@ -82,6 +82,7 @@ export function useDomainSearchHistory(projectId: string) {
   return {
     history,
     isLoaded,
+    isSynced,
     addSearch: addItem,
     clearHistory: clearItems,
     removeHistoryItem: removeItem,

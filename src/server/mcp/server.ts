@@ -4,6 +4,7 @@ import {
   type ToolAnnotations,
 } from "@modelcontextprotocol/server";
 import type { z } from "zod";
+import { ALL_MCP_TOOLS } from "@/server/mcp/catalogue";
 import {
   createMcpToolContext,
   type McpProps,
@@ -11,83 +12,12 @@ import {
 } from "@/server/mcp/context";
 import { objectSchema } from "@/server/mcp/output-schemas";
 import { instrumentMcpToolHandler } from "@/server/mcp/instrumentation";
-import { getBacklinksOverviewTool } from "@/server/mcp/tools/get-backlinks-overview";
-import { getBacklinksProfileTool } from "@/server/mcp/tools/get-backlinks-profile";
-import { getDomainKeywordSuggestionsTool } from "@/server/mcp/tools/get-domain-keyword-suggestions";
-import { getDomainOverviewTool } from "@/server/mcp/tools/get-domain-overview";
-import { addRankTrackingKeywordsTool } from "@/server/mcp/tools/add-rank-tracking-keywords";
-import { createRankTrackerTool } from "@/server/mcp/tools/create-rank-tracker";
-import { estimateRankTrackerCostTool } from "@/server/mcp/tools/estimate-rank-tracker-cost";
-import { getRankTrackerTool } from "@/server/mcp/tools/get-rank-tracker";
-import { removeRankTrackingKeywordsTool } from "@/server/mcp/tools/remove-rank-tracking-keywords";
-import { runRankTrackerTool } from "@/server/mcp/tools/run-rank-tracker";
-import { getSerpResultsTool } from "@/server/mcp/tools/get-serp-results";
-import {
-  getGoogleAnalyticsAudienceBreakdownTool,
-  getGoogleAnalyticsEcommercePerformanceTool,
-  getGoogleAnalyticsKeyEventsTool,
-  getGoogleAnalyticsMeasurementHealthTool,
-  getGoogleAnalyticsOrganicLandingPagesTool,
-  getGoogleAnalyticsOrganicOverviewTool,
-  getGoogleAnalyticsPagePerformanceTool,
-  getGoogleAnalyticsSiteSearchTool,
-  getGoogleAnalyticsTrafficAcquisitionTool,
-  getSearchOpportunitiesTool,
-} from "@/server/mcp/tools/google-analytics-tools";
-import { createProjectTool } from "@/server/mcp/tools/create-project";
-import { listProjectsTool } from "@/server/mcp/tools/list-projects";
-import {
-  getProjectContextTool,
-  updateProjectContextTool,
-} from "@/server/mcp/tools/project-context";
-import { listSavedKeywordsTool } from "@/server/mcp/tools/list-saved-keywords";
-import { optimizationsSurface } from "@/server/mcp/tools/optimization-tools";
-import { invoiceSurface } from "@/server/mcp/tools/invoice-tools";
-import { quoteSurface } from "@/server/mcp/tools/quote-tools";
-import { reportSurface } from "@/server/mcp/tools/report-tools";
-import { emailSurface } from "@/server/mcp/tools/email-tools";
-import type { McpModuleSurface } from "@/server/mcp/module-registry";
 
 /**
  * Modules declare their MCP surface; the server registers whatever they
  * declare. Adding a module means adding it here, not threading imports and
  * register() calls through this file one tool at a time.
  */
-const MODULE_SURFACES: readonly McpModuleSurface[] = [
-  optimizationsSurface,
-  invoiceSurface,
-  quoteSurface,
-  reportSurface,
-  emailSurface,
-];
-import {
-  findSerpCompetitorsTool,
-  getGoogleBusinessQuestionsTool,
-  getKeywordMetricsTool,
-  getLocalSerpResultsTool,
-  getRankedKeywordsTool,
-  searchLocalBusinessesTool,
-} from "@/server/mcp/tools/dataforseo-research-tools";
-import {
-  getBusinessProfileTool,
-  getBusinessReviewsTool,
-  getBusinessUpdatesTool,
-  getLocalRankGridTool,
-  listBusinessCategoriesTool,
-} from "@/server/mcp/tools/local-seo-tools";
-import { researchKeywordsTool } from "@/server/mcp/tools/research-keywords";
-import { saveKeywordsTool } from "@/server/mcp/tools/save-keywords";
-import {
-  getSearchConsolePerformanceTool,
-  inspectUrlsTool,
-} from "@/server/mcp/tools/search-console-tools";
-import {
-  getAuditIssuesTool,
-  getAuditPagesTool,
-  getAuditStatusTool,
-  runSiteAuditTool,
-} from "@/server/mcp/tools/site-audit-tools";
-import { whoamiTool } from "@/server/mcp/tools/whoami";
 
 type ToolSchema = z.ZodType | z.ZodRawShape;
 
@@ -171,63 +101,15 @@ export function createOpenSeoMcpServer(authProps: McpProps) {
     tool: OpenSeoToolDefinition<Input>,
   ) => registerOpenSeoTool(server, tool, authProps);
 
-  register(whoamiTool);
-  register(listProjectsTool);
-  register(createProjectTool);
-  register(getProjectContextTool);
-  register(updateProjectContextTool);
-  register(listSavedKeywordsTool);
-  // Business and content modules register from their declared surfaces.
-  for (const surface of MODULE_SURFACES) {
-    for (const tool of surface.tools) {
-      // A surface holds tools with different input schemas; TypeScript has no
-      // existential type to name "a tool of some schema", so the list is
-      // loosely typed and each tool is narrowed back here. The surface tests
-      // pin which tools can appear.
-      // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-      register(tool as Parameters<typeof register>[0]);
-    }
+  // Every tool comes from the shared catalogue, so the MCP surface and the
+  // voice agent's toolset are one list.
+  for (const tool of ALL_MCP_TOOLS) {
+    // The catalogue holds tools with different input schemas; TypeScript has
+    // no existential type to name "a tool of some schema", so each is
+    // narrowed back here. The surface tests pin which tools can appear.
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+    register(tool as Parameters<typeof register>[0]);
   }
-  register(researchKeywordsTool);
-  register(saveKeywordsTool);
-  register(getDomainOverviewTool);
-  register(getDomainKeywordSuggestionsTool);
-  register(getBacklinksOverviewTool);
-  register(getBacklinksProfileTool);
-  register(getSerpResultsTool);
-  register(createRankTrackerTool);
-  register(getRankTrackerTool);
-  register(addRankTrackingKeywordsTool);
-  register(removeRankTrackingKeywordsTool);
-  register(estimateRankTrackerCostTool);
-  register(runRankTrackerTool);
-  register(getRankedKeywordsTool);
-  register(findSerpCompetitorsTool);
-  register(searchLocalBusinessesTool);
-  register(getLocalSerpResultsTool);
-  register(getGoogleBusinessQuestionsTool);
-  register(getBusinessProfileTool);
-  register(getBusinessReviewsTool);
-  register(getBusinessUpdatesTool);
-  register(listBusinessCategoriesTool);
-  register(getLocalRankGridTool);
-  register(getKeywordMetricsTool);
-  register(getSearchConsolePerformanceTool);
-  register(inspectUrlsTool);
-  register(getGoogleAnalyticsOrganicLandingPagesTool);
-  register(getGoogleAnalyticsPagePerformanceTool);
-  register(getGoogleAnalyticsKeyEventsTool);
-  register(getSearchOpportunitiesTool);
-  register(getGoogleAnalyticsOrganicOverviewTool);
-  register(getGoogleAnalyticsTrafficAcquisitionTool);
-  register(getGoogleAnalyticsMeasurementHealthTool);
-  register(getGoogleAnalyticsEcommercePerformanceTool);
-  register(getGoogleAnalyticsSiteSearchTool);
-  register(getGoogleAnalyticsAudienceBreakdownTool);
-  register(runSiteAuditTool);
-  register(getAuditStatusTool);
-  register(getAuditIssuesTool);
-  register(getAuditPagesTool);
 
   return server;
 }

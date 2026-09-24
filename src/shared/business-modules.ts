@@ -4,6 +4,7 @@ const businessModuleKeys = [
   "leads",
   "crm",
   "whatsapp",
+  "sms",
   "voice",
   "email",
   "social",
@@ -31,6 +32,11 @@ export const businessModuleCatalog = [
     key: "whatsapp",
     label: "WhatsApp",
     description: "Shared inbox, templates, campaigns, and automations.",
+  },
+  {
+    key: "sms",
+    label: "SMS",
+    description: "Text customers from your business number, inside the CRM.",
   },
   {
     key: "voice",

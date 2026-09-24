@@ -4,6 +4,7 @@ import { AppError } from "@/server/lib/errors";
 
 const repository = vi.hoisted(() => ({
   findMembership: vi.fn(),
+  isClientLogin: vi.fn(),
   listEntitlements: vi.fn(),
   listMemberPermissions: vi.fn(),
   setEntitlement: vi.fn(),
@@ -37,6 +38,36 @@ describe("BusinessModuleService", () => {
     });
     repository.listEntitlements.mockResolvedValue([]);
     repository.listMemberPermissions.mockResolvedValue([]);
+    repository.isClientLogin.mockResolvedValue(false);
+  });
+
+  it("gives a client whatever the agency switched on, and no switches", async () => {
+    repository.isClientLogin.mockResolvedValue(true);
+    repository.findMembership.mockResolvedValue({
+      id: "client-1",
+      // Even an owner-role client only uses the modules; activating them
+      // stays with the agency.
+      role: "owner",
+    });
+    repository.listEntitlements.mockResolvedValue([
+      { moduleKey: "crm", status: "enabled" },
+      { moduleKey: "whatsapp", status: "disabled" },
+    ]);
+
+    const access = await BusinessModuleService.getAccess("org-1", "user-1");
+    expect(access.find((module) => module.key === "crm")).toMatchObject({
+      enabled: true,
+      permission: "manage",
+      canConfigureEntitlement: false,
+      hidden: false,
+    });
+    // What they have not been given is not shown as a locked door.
+    expect(access.find((module) => module.key === "whatsapp")).toMatchObject({
+      enabled: false,
+      permission: null,
+      canConfigureEntitlement: false,
+      hidden: true,
+    });
   });
 
   it("defaults every paid business module to disabled", async () => {

@@ -11,6 +11,8 @@ import {
 import { useBacklinksDomainExpansion } from "./useBacklinksDomainExpansion";
 import { useBacklinksFilters } from "./useBacklinksFilters";
 import { useBacklinksSearchHistory } from "@/client/hooks/useBacklinksSearchHistory";
+import { useAutoOpenLatest } from "@/client/features/search-history/useAutoOpenLatest";
+import { getBacklinksOverview } from "@/serverFunctions/backlinks";
 import type {
   BacklinksSearchTabInput,
   SearchTabInput,
@@ -118,9 +120,27 @@ export function BacklinksPage({
   const {
     history,
     isLoaded: historyLoaded,
+    isSynced: historySynced,
     addSearch,
     removeHistoryItem,
   } = useBacklinksSearchHistory(projectId);
+  useAutoOpenLatest({
+    projectId,
+    hasExplicitSelection: searchState.target.trim() !== "",
+    historySynced,
+    history,
+    probe: async (item) => {
+      const overview = await getBacklinksOverview({
+        data: { projectId, target: item.target, scope: item.scope },
+      });
+      return Boolean(overview);
+    },
+    open: (item) =>
+      navigateToBacklinksSearch(navigate, {
+        target: item.target,
+        scope: item.scope,
+      }),
+  });
   const urlTabInput = useMemo<SearchTabInput | null>(() => {
     if (searchState.target.trim() === "") return null;
     return {

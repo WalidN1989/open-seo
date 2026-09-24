@@ -14,6 +14,7 @@ import {
   type PDFPage,
 } from "pdf-lib";
 import { formatMoney } from "@/server/features/invoicing/invoiceTotals";
+import { companyFooterLines, yearOf } from "@/shared/company-footer";
 
 type QuotePdfInput = {
   heading: string;
@@ -344,8 +345,10 @@ export async function renderQuotePdf(
       ? ""
       : (input.issuer.taxNote ?? "No GST is included."),
     input.issuer.footerNote ?? "",
+    "",
+    ...companyFooterLines(input.issuer, yearOf(input.quote.issueDate)),
   ]
-    .filter(Boolean)
+    .filter((line, index, lines) => line || lines[index - 1])
     .join("\n");
   w.ensure(40);
   w.rule();

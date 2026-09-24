@@ -38,11 +38,13 @@ import { Route as AuthenticatedOnboardingIndexRouteImport } from './routes/_auth
 import { Route as AppModulesIndexRouteImport } from './routes/_app/modules/index'
 import { Route as ApiWhatsappMetaRouteImport } from './routes/api/whatsapp/meta'
 import { Route as ApiWhatsappConnectionIdRouteImport } from './routes/api/whatsapp/$connectionId'
+import { Route as ApiVoiceTurnRouteImport } from './routes/api/voice/turn'
 import { Route as ApiSocialMetaRouteImport } from './routes/api/social/meta'
 import { Route as ApiEmailAccountIdRouteImport } from './routes/api/email/$accountId'
 import { Route as ApiAutumnSplatRouteImport } from './routes/api/autumn/$'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as AuthenticatedOnboardingChatRouteImport } from './routes/_authenticated.onboarding.chat'
+import { Route as AppModulesOverviewRouteImport } from './routes/_app/modules/overview'
 import { Route as AppModulesIntegrationsRouteImport } from './routes/_app/modules/integrations'
 import { Route as AppModulesCrmRouteImport } from './routes/_app/modules/crm'
 import { Route as AppModulesModuleKeyRouteImport } from './routes/_app/modules/$moduleKey'
@@ -53,6 +55,10 @@ import { Route as ProjectPProjectIdIndexRouteImport } from './routes/_project/p/
 import { Route as AppModulesIntegrationsIndexRouteImport } from './routes/_app/modules/integrations/index'
 import { Route as AppModulesCrmIndexRouteImport } from './routes/_app/modules/crm/index'
 import { Route as ApiVoiceElevenlabsConnectionIdRouteImport } from './routes/api/voice/elevenlabs/$connectionId'
+import { Route as ApiVoiceElevenlabsCallerConnectionIdRouteImport } from './routes/api/voice/elevenlabs-caller/$connectionId'
+import { Route as ApiVoiceDeepgramConnectionIdRouteImport } from './routes/api/voice/deepgram/$connectionId'
+import { Route as ApiSmsTwilioConnectionIdRouteImport } from './routes/api/sms/twilio/$connectionId'
+import { Route as ApiQuotesQuoteIdPdfRouteImport } from './routes/api/quotes/$quoteId/pdf'
 import { Route as ApiGscOauthCallbackRouteImport } from './routes/api/gsc/oauth/callback'
 import { Route as ApiGa4OauthCallbackRouteImport } from './routes/api/ga4/oauth/callback'
 import { Route as ApiEmailMicrosoftCallbackRouteImport } from './routes/api/email/microsoft/callback'
@@ -72,6 +78,8 @@ import { Route as AppModulesLeadsLeadIdRouteImport } from './routes/_app/modules
 import { Route as AppModulesIntegrationsConnectionsRouteImport } from './routes/_app/modules/integrations/connections'
 import { Route as AppModulesIntegrationsProviderKeyRouteImport } from './routes/_app/modules/integrations.$providerKey'
 import { Route as AppModulesCrmSourcesRouteImport } from './routes/_app/modules/crm/sources'
+import { Route as AppModulesCrmSmsRouteImport } from './routes/_app/modules/crm/sms'
+import { Route as AppModulesCrmQuotationsRouteImport } from './routes/_app/modules/crm/quotations'
 import { Route as AppModulesCrmProductsRouteImport } from './routes/_app/modules/crm/products'
 import { Route as AppModulesCrmOrdersRouteImport } from './routes/_app/modules/crm/orders'
 import { Route as AppModulesCrmMeetingsRouteImport } from './routes/_app/modules/crm/meetings'
@@ -85,6 +93,7 @@ import { Route as ProjectPProjectIdRankTrackingIndexRouteImport } from './routes
 import { Route as ProjectPProjectIdOptimizationsIndexRouteImport } from './routes/_project/p/$projectId/optimizations/index'
 import { Route as ProjectPProjectIdCompetitorsIndexRouteImport } from './routes/_project/p/$projectId/competitors/index'
 import { Route as ProjectPProjectIdAuditIndexRouteImport } from './routes/_project/p/$projectId/audit/index'
+import { Route as AppModulesCrmProductsIndexRouteImport } from './routes/_app/modules/crm/products.index'
 import { Route as ProjectPProjectIdSettingsIntegrationsRouteImport } from './routes/_project/p/$projectId/settings/integrations'
 import { Route as ProjectPProjectIdSettingsContextRouteImport } from './routes/_project/p/$projectId/settings/context'
 import { Route as ProjectPProjectIdRankTrackingConfigIdRouteImport } from './routes/_project/p/$projectId/rank-tracking/$configId'
@@ -236,6 +245,11 @@ const ApiWhatsappConnectionIdRoute = ApiWhatsappConnectionIdRouteImport.update({
   path: '/api/whatsapp/$connectionId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiVoiceTurnRoute = ApiVoiceTurnRouteImport.update({
+  id: '/api/voice/turn',
+  path: '/api/voice/turn',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiSocialMetaRoute = ApiSocialMetaRouteImport.update({
   id: '/api/social/meta',
   path: '/api/social/meta',
@@ -262,6 +276,11 @@ const AuthenticatedOnboardingChatRoute =
     path: '/onboarding/chat',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
+const AppModulesOverviewRoute = AppModulesOverviewRouteImport.update({
+  id: '/overview',
+  path: '/overview',
+  getParentRoute: () => AppModulesRouteRoute,
+} as any)
 const AppModulesIntegrationsRoute = AppModulesIntegrationsRouteImport.update({
   id: '/integrations',
   path: '/integrations',
@@ -314,6 +333,29 @@ const ApiVoiceElevenlabsConnectionIdRoute =
     path: '/api/voice/elevenlabs/$connectionId',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiVoiceElevenlabsCallerConnectionIdRoute =
+  ApiVoiceElevenlabsCallerConnectionIdRouteImport.update({
+    id: '/api/voice/elevenlabs-caller/$connectionId',
+    path: '/api/voice/elevenlabs-caller/$connectionId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiVoiceDeepgramConnectionIdRoute =
+  ApiVoiceDeepgramConnectionIdRouteImport.update({
+    id: '/api/voice/deepgram/$connectionId',
+    path: '/api/voice/deepgram/$connectionId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiSmsTwilioConnectionIdRoute =
+  ApiSmsTwilioConnectionIdRouteImport.update({
+    id: '/api/sms/twilio/$connectionId',
+    path: '/api/sms/twilio/$connectionId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiQuotesQuoteIdPdfRoute = ApiQuotesQuoteIdPdfRouteImport.update({
+  id: '/api/quotes/$quoteId/pdf',
+  path: '/api/quotes/$quoteId/pdf',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiGscOauthCallbackRoute = ApiGscOauthCallbackRouteImport.update({
   id: '/api/gsc/oauth/callback',
   path: '/api/gsc/oauth/callback',
@@ -419,6 +461,16 @@ const AppModulesCrmSourcesRoute = AppModulesCrmSourcesRouteImport.update({
   path: '/sources',
   getParentRoute: () => AppModulesCrmRoute,
 } as any)
+const AppModulesCrmSmsRoute = AppModulesCrmSmsRouteImport.update({
+  id: '/sms',
+  path: '/sms',
+  getParentRoute: () => AppModulesCrmRoute,
+} as any)
+const AppModulesCrmQuotationsRoute = AppModulesCrmQuotationsRouteImport.update({
+  id: '/quotations',
+  path: '/quotations',
+  getParentRoute: () => AppModulesCrmRoute,
+} as any)
 const AppModulesCrmProductsRoute = AppModulesCrmProductsRouteImport.update({
   id: '/products',
   path: '/products',
@@ -489,6 +541,12 @@ const ProjectPProjectIdAuditIndexRoute =
     path: '/',
     getParentRoute: () => ProjectPProjectIdAuditRoute,
   } as any)
+const AppModulesCrmProductsIndexRoute =
+  AppModulesCrmProductsIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AppModulesCrmProductsRoute,
+  } as any)
 const ProjectPProjectIdSettingsIntegrationsRoute =
   ProjectPProjectIdSettingsIntegrationsRouteImport.update({
     id: '/integrations',
@@ -548,11 +606,13 @@ export interface FileRoutesByFullPath {
   '/modules/$moduleKey': typeof AppModulesModuleKeyRoute
   '/modules/crm': typeof AppModulesCrmRouteWithChildren
   '/modules/integrations': typeof AppModulesIntegrationsRouteWithChildren
+  '/modules/overview': typeof AppModulesOverviewRoute
   '/onboarding/chat': typeof AuthenticatedOnboardingChatRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/autumn/$': typeof ApiAutumnSplatRoute
   '/api/email/$accountId': typeof ApiEmailAccountIdRoute
   '/api/social/meta': typeof ApiSocialMetaRoute
+  '/api/voice/turn': typeof ApiVoiceTurnRoute
   '/api/whatsapp/$connectionId': typeof ApiWhatsappConnectionIdRoute
   '/api/whatsapp/meta': typeof ApiWhatsappMetaRoute
   '/modules/': typeof AppModulesIndexRoute
@@ -565,6 +625,8 @@ export interface FileRoutesByFullPath {
   '/modules/crm/meetings': typeof AppModulesCrmMeetingsRoute
   '/modules/crm/orders': typeof AppModulesCrmOrdersRoute
   '/modules/crm/products': typeof AppModulesCrmProductsRouteWithChildren
+  '/modules/crm/quotations': typeof AppModulesCrmQuotationsRoute
+  '/modules/crm/sms': typeof AppModulesCrmSmsRoute
   '/modules/crm/sources': typeof AppModulesCrmSourcesRoute
   '/modules/integrations/$providerKey': typeof AppModulesIntegrationsProviderKeyRoute
   '/modules/integrations/connections': typeof AppModulesIntegrationsConnectionsRoute
@@ -584,6 +646,10 @@ export interface FileRoutesByFullPath {
   '/api/email/microsoft/callback': typeof ApiEmailMicrosoftCallbackRoute
   '/api/ga4/oauth/callback': typeof ApiGa4OauthCallbackRoute
   '/api/gsc/oauth/callback': typeof ApiGscOauthCallbackRoute
+  '/api/quotes/$quoteId/pdf': typeof ApiQuotesQuoteIdPdfRoute
+  '/api/sms/twilio/$connectionId': typeof ApiSmsTwilioConnectionIdRoute
+  '/api/voice/deepgram/$connectionId': typeof ApiVoiceDeepgramConnectionIdRoute
+  '/api/voice/elevenlabs-caller/$connectionId': typeof ApiVoiceElevenlabsCallerConnectionIdRoute
   '/api/voice/elevenlabs/$connectionId': typeof ApiVoiceElevenlabsConnectionIdRoute
   '/modules/crm/': typeof AppModulesCrmIndexRoute
   '/modules/integrations/': typeof AppModulesIntegrationsIndexRoute
@@ -592,6 +658,7 @@ export interface FileRoutesByFullPath {
   '/p/$projectId/rank-tracking/$configId': typeof ProjectPProjectIdRankTrackingConfigIdRoute
   '/p/$projectId/settings/context': typeof ProjectPProjectIdSettingsContextRoute
   '/p/$projectId/settings/integrations': typeof ProjectPProjectIdSettingsIntegrationsRoute
+  '/modules/crm/products/': typeof AppModulesCrmProductsIndexRoute
   '/p/$projectId/audit/': typeof ProjectPProjectIdAuditIndexRoute
   '/p/$projectId/competitors/': typeof ProjectPProjectIdCompetitorsIndexRoute
   '/p/$projectId/optimizations/': typeof ProjectPProjectIdOptimizationsIndexRoute
@@ -623,11 +690,13 @@ export interface FileRoutesByTo {
   '/help/dataforseo-api-key': typeof AppHelpDataforseoApiKeyRoute
   '/help/openrouter-api-key': typeof AppHelpOpenrouterApiKeyRoute
   '/modules/$moduleKey': typeof AppModulesModuleKeyRoute
+  '/modules/overview': typeof AppModulesOverviewRoute
   '/onboarding/chat': typeof AuthenticatedOnboardingChatRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/autumn/$': typeof ApiAutumnSplatRoute
   '/api/email/$accountId': typeof ApiEmailAccountIdRoute
   '/api/social/meta': typeof ApiSocialMetaRoute
+  '/api/voice/turn': typeof ApiVoiceTurnRoute
   '/api/whatsapp/$connectionId': typeof ApiWhatsappConnectionIdRoute
   '/api/whatsapp/meta': typeof ApiWhatsappMetaRoute
   '/modules': typeof AppModulesIndexRoute
@@ -639,7 +708,8 @@ export interface FileRoutesByTo {
   '/modules/crm/inventory': typeof AppModulesCrmInventoryRoute
   '/modules/crm/meetings': typeof AppModulesCrmMeetingsRoute
   '/modules/crm/orders': typeof AppModulesCrmOrdersRoute
-  '/modules/crm/products': typeof AppModulesCrmProductsRouteWithChildren
+  '/modules/crm/quotations': typeof AppModulesCrmQuotationsRoute
+  '/modules/crm/sms': typeof AppModulesCrmSmsRoute
   '/modules/crm/sources': typeof AppModulesCrmSourcesRoute
   '/modules/integrations/$providerKey': typeof AppModulesIntegrationsProviderKeyRoute
   '/modules/integrations/connections': typeof AppModulesIntegrationsConnectionsRoute
@@ -656,6 +726,10 @@ export interface FileRoutesByTo {
   '/api/email/microsoft/callback': typeof ApiEmailMicrosoftCallbackRoute
   '/api/ga4/oauth/callback': typeof ApiGa4OauthCallbackRoute
   '/api/gsc/oauth/callback': typeof ApiGscOauthCallbackRoute
+  '/api/quotes/$quoteId/pdf': typeof ApiQuotesQuoteIdPdfRoute
+  '/api/sms/twilio/$connectionId': typeof ApiSmsTwilioConnectionIdRoute
+  '/api/voice/deepgram/$connectionId': typeof ApiVoiceDeepgramConnectionIdRoute
+  '/api/voice/elevenlabs-caller/$connectionId': typeof ApiVoiceElevenlabsCallerConnectionIdRoute
   '/api/voice/elevenlabs/$connectionId': typeof ApiVoiceElevenlabsConnectionIdRoute
   '/modules/crm': typeof AppModulesCrmIndexRoute
   '/modules/integrations': typeof AppModulesIntegrationsIndexRoute
@@ -664,6 +738,7 @@ export interface FileRoutesByTo {
   '/p/$projectId/rank-tracking/$configId': typeof ProjectPProjectIdRankTrackingConfigIdRoute
   '/p/$projectId/settings/context': typeof ProjectPProjectIdSettingsContextRoute
   '/p/$projectId/settings/integrations': typeof ProjectPProjectIdSettingsIntegrationsRoute
+  '/modules/crm/products': typeof AppModulesCrmProductsIndexRoute
   '/p/$projectId/audit': typeof ProjectPProjectIdAuditIndexRoute
   '/p/$projectId/competitors': typeof ProjectPProjectIdCompetitorsIndexRoute
   '/p/$projectId/optimizations': typeof ProjectPProjectIdOptimizationsIndexRoute
@@ -704,11 +779,13 @@ export interface FileRoutesById {
   '/_app/modules/$moduleKey': typeof AppModulesModuleKeyRoute
   '/_app/modules/crm': typeof AppModulesCrmRouteWithChildren
   '/_app/modules/integrations': typeof AppModulesIntegrationsRouteWithChildren
+  '/_app/modules/overview': typeof AppModulesOverviewRoute
   '/_authenticated/onboarding/chat': typeof AuthenticatedOnboardingChatRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/autumn/$': typeof ApiAutumnSplatRoute
   '/api/email/$accountId': typeof ApiEmailAccountIdRoute
   '/api/social/meta': typeof ApiSocialMetaRoute
+  '/api/voice/turn': typeof ApiVoiceTurnRoute
   '/api/whatsapp/$connectionId': typeof ApiWhatsappConnectionIdRoute
   '/api/whatsapp/meta': typeof ApiWhatsappMetaRoute
   '/_app/modules/': typeof AppModulesIndexRoute
@@ -721,6 +798,8 @@ export interface FileRoutesById {
   '/_app/modules/crm/meetings': typeof AppModulesCrmMeetingsRoute
   '/_app/modules/crm/orders': typeof AppModulesCrmOrdersRoute
   '/_app/modules/crm/products': typeof AppModulesCrmProductsRouteWithChildren
+  '/_app/modules/crm/quotations': typeof AppModulesCrmQuotationsRoute
+  '/_app/modules/crm/sms': typeof AppModulesCrmSmsRoute
   '/_app/modules/crm/sources': typeof AppModulesCrmSourcesRoute
   '/_app/modules/integrations/$providerKey': typeof AppModulesIntegrationsProviderKeyRoute
   '/_app/modules/integrations/connections': typeof AppModulesIntegrationsConnectionsRoute
@@ -740,6 +819,10 @@ export interface FileRoutesById {
   '/api/email/microsoft/callback': typeof ApiEmailMicrosoftCallbackRoute
   '/api/ga4/oauth/callback': typeof ApiGa4OauthCallbackRoute
   '/api/gsc/oauth/callback': typeof ApiGscOauthCallbackRoute
+  '/api/quotes/$quoteId/pdf': typeof ApiQuotesQuoteIdPdfRoute
+  '/api/sms/twilio/$connectionId': typeof ApiSmsTwilioConnectionIdRoute
+  '/api/voice/deepgram/$connectionId': typeof ApiVoiceDeepgramConnectionIdRoute
+  '/api/voice/elevenlabs-caller/$connectionId': typeof ApiVoiceElevenlabsCallerConnectionIdRoute
   '/api/voice/elevenlabs/$connectionId': typeof ApiVoiceElevenlabsConnectionIdRoute
   '/_app/modules/crm/': typeof AppModulesCrmIndexRoute
   '/_app/modules/integrations/': typeof AppModulesIntegrationsIndexRoute
@@ -748,6 +831,7 @@ export interface FileRoutesById {
   '/_project/p/$projectId/rank-tracking/$configId': typeof ProjectPProjectIdRankTrackingConfigIdRoute
   '/_project/p/$projectId/settings/context': typeof ProjectPProjectIdSettingsContextRoute
   '/_project/p/$projectId/settings/integrations': typeof ProjectPProjectIdSettingsIntegrationsRoute
+  '/_app/modules/crm/products/': typeof AppModulesCrmProductsIndexRoute
   '/_project/p/$projectId/audit/': typeof ProjectPProjectIdAuditIndexRoute
   '/_project/p/$projectId/competitors/': typeof ProjectPProjectIdCompetitorsIndexRoute
   '/_project/p/$projectId/optimizations/': typeof ProjectPProjectIdOptimizationsIndexRoute
@@ -785,11 +869,13 @@ export interface FileRouteTypes {
     | '/modules/$moduleKey'
     | '/modules/crm'
     | '/modules/integrations'
+    | '/modules/overview'
     | '/onboarding/chat'
     | '/api/auth/$'
     | '/api/autumn/$'
     | '/api/email/$accountId'
     | '/api/social/meta'
+    | '/api/voice/turn'
     | '/api/whatsapp/$connectionId'
     | '/api/whatsapp/meta'
     | '/modules/'
@@ -802,6 +888,8 @@ export interface FileRouteTypes {
     | '/modules/crm/meetings'
     | '/modules/crm/orders'
     | '/modules/crm/products'
+    | '/modules/crm/quotations'
+    | '/modules/crm/sms'
     | '/modules/crm/sources'
     | '/modules/integrations/$providerKey'
     | '/modules/integrations/connections'
@@ -821,6 +909,10 @@ export interface FileRouteTypes {
     | '/api/email/microsoft/callback'
     | '/api/ga4/oauth/callback'
     | '/api/gsc/oauth/callback'
+    | '/api/quotes/$quoteId/pdf'
+    | '/api/sms/twilio/$connectionId'
+    | '/api/voice/deepgram/$connectionId'
+    | '/api/voice/elevenlabs-caller/$connectionId'
     | '/api/voice/elevenlabs/$connectionId'
     | '/modules/crm/'
     | '/modules/integrations/'
@@ -829,6 +921,7 @@ export interface FileRouteTypes {
     | '/p/$projectId/rank-tracking/$configId'
     | '/p/$projectId/settings/context'
     | '/p/$projectId/settings/integrations'
+    | '/modules/crm/products/'
     | '/p/$projectId/audit/'
     | '/p/$projectId/competitors/'
     | '/p/$projectId/optimizations/'
@@ -860,11 +953,13 @@ export interface FileRouteTypes {
     | '/help/dataforseo-api-key'
     | '/help/openrouter-api-key'
     | '/modules/$moduleKey'
+    | '/modules/overview'
     | '/onboarding/chat'
     | '/api/auth/$'
     | '/api/autumn/$'
     | '/api/email/$accountId'
     | '/api/social/meta'
+    | '/api/voice/turn'
     | '/api/whatsapp/$connectionId'
     | '/api/whatsapp/meta'
     | '/modules'
@@ -876,7 +971,8 @@ export interface FileRouteTypes {
     | '/modules/crm/inventory'
     | '/modules/crm/meetings'
     | '/modules/crm/orders'
-    | '/modules/crm/products'
+    | '/modules/crm/quotations'
+    | '/modules/crm/sms'
     | '/modules/crm/sources'
     | '/modules/integrations/$providerKey'
     | '/modules/integrations/connections'
@@ -893,6 +989,10 @@ export interface FileRouteTypes {
     | '/api/email/microsoft/callback'
     | '/api/ga4/oauth/callback'
     | '/api/gsc/oauth/callback'
+    | '/api/quotes/$quoteId/pdf'
+    | '/api/sms/twilio/$connectionId'
+    | '/api/voice/deepgram/$connectionId'
+    | '/api/voice/elevenlabs-caller/$connectionId'
     | '/api/voice/elevenlabs/$connectionId'
     | '/modules/crm'
     | '/modules/integrations'
@@ -901,6 +1001,7 @@ export interface FileRouteTypes {
     | '/p/$projectId/rank-tracking/$configId'
     | '/p/$projectId/settings/context'
     | '/p/$projectId/settings/integrations'
+    | '/modules/crm/products'
     | '/p/$projectId/audit'
     | '/p/$projectId/competitors'
     | '/p/$projectId/optimizations'
@@ -940,11 +1041,13 @@ export interface FileRouteTypes {
     | '/_app/modules/$moduleKey'
     | '/_app/modules/crm'
     | '/_app/modules/integrations'
+    | '/_app/modules/overview'
     | '/_authenticated/onboarding/chat'
     | '/api/auth/$'
     | '/api/autumn/$'
     | '/api/email/$accountId'
     | '/api/social/meta'
+    | '/api/voice/turn'
     | '/api/whatsapp/$connectionId'
     | '/api/whatsapp/meta'
     | '/_app/modules/'
@@ -957,6 +1060,8 @@ export interface FileRouteTypes {
     | '/_app/modules/crm/meetings'
     | '/_app/modules/crm/orders'
     | '/_app/modules/crm/products'
+    | '/_app/modules/crm/quotations'
+    | '/_app/modules/crm/sms'
     | '/_app/modules/crm/sources'
     | '/_app/modules/integrations/$providerKey'
     | '/_app/modules/integrations/connections'
@@ -976,6 +1081,10 @@ export interface FileRouteTypes {
     | '/api/email/microsoft/callback'
     | '/api/ga4/oauth/callback'
     | '/api/gsc/oauth/callback'
+    | '/api/quotes/$quoteId/pdf'
+    | '/api/sms/twilio/$connectionId'
+    | '/api/voice/deepgram/$connectionId'
+    | '/api/voice/elevenlabs-caller/$connectionId'
     | '/api/voice/elevenlabs/$connectionId'
     | '/_app/modules/crm/'
     | '/_app/modules/integrations/'
@@ -984,6 +1093,7 @@ export interface FileRouteTypes {
     | '/_project/p/$projectId/rank-tracking/$configId'
     | '/_project/p/$projectId/settings/context'
     | '/_project/p/$projectId/settings/integrations'
+    | '/_app/modules/crm/products/'
     | '/_project/p/$projectId/audit/'
     | '/_project/p/$projectId/competitors/'
     | '/_project/p/$projectId/optimizations/'
@@ -1011,11 +1121,16 @@ export interface RootRouteChildren {
   ApiAutumnSplatRoute: typeof ApiAutumnSplatRoute
   ApiEmailAccountIdRoute: typeof ApiEmailAccountIdRoute
   ApiSocialMetaRoute: typeof ApiSocialMetaRoute
+  ApiVoiceTurnRoute: typeof ApiVoiceTurnRoute
   ApiWhatsappConnectionIdRoute: typeof ApiWhatsappConnectionIdRoute
   ApiWhatsappMetaRoute: typeof ApiWhatsappMetaRoute
   ApiEmailMicrosoftCallbackRoute: typeof ApiEmailMicrosoftCallbackRoute
   ApiGa4OauthCallbackRoute: typeof ApiGa4OauthCallbackRoute
   ApiGscOauthCallbackRoute: typeof ApiGscOauthCallbackRoute
+  ApiQuotesQuoteIdPdfRoute: typeof ApiQuotesQuoteIdPdfRoute
+  ApiSmsTwilioConnectionIdRoute: typeof ApiSmsTwilioConnectionIdRoute
+  ApiVoiceDeepgramConnectionIdRoute: typeof ApiVoiceDeepgramConnectionIdRoute
+  ApiVoiceElevenlabsCallerConnectionIdRoute: typeof ApiVoiceElevenlabsCallerConnectionIdRoute
   ApiVoiceElevenlabsConnectionIdRoute: typeof ApiVoiceElevenlabsConnectionIdRoute
 }
 
@@ -1224,6 +1339,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiWhatsappConnectionIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/voice/turn': {
+      id: '/api/voice/turn'
+      path: '/api/voice/turn'
+      fullPath: '/api/voice/turn'
+      preLoaderRoute: typeof ApiVoiceTurnRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/social/meta': {
       id: '/api/social/meta'
       path: '/api/social/meta'
@@ -1258,6 +1380,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/onboarding/chat'
       preLoaderRoute: typeof AuthenticatedOnboardingChatRouteImport
       parentRoute: typeof AuthenticatedRoute
+    }
+    '/_app/modules/overview': {
+      id: '/_app/modules/overview'
+      path: '/overview'
+      fullPath: '/modules/overview'
+      preLoaderRoute: typeof AppModulesOverviewRouteImport
+      parentRoute: typeof AppModulesRouteRoute
     }
     '/_app/modules/integrations': {
       id: '/_app/modules/integrations'
@@ -1327,6 +1456,34 @@ declare module '@tanstack/react-router' {
       path: '/api/voice/elevenlabs/$connectionId'
       fullPath: '/api/voice/elevenlabs/$connectionId'
       preLoaderRoute: typeof ApiVoiceElevenlabsConnectionIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/voice/elevenlabs-caller/$connectionId': {
+      id: '/api/voice/elevenlabs-caller/$connectionId'
+      path: '/api/voice/elevenlabs-caller/$connectionId'
+      fullPath: '/api/voice/elevenlabs-caller/$connectionId'
+      preLoaderRoute: typeof ApiVoiceElevenlabsCallerConnectionIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/voice/deepgram/$connectionId': {
+      id: '/api/voice/deepgram/$connectionId'
+      path: '/api/voice/deepgram/$connectionId'
+      fullPath: '/api/voice/deepgram/$connectionId'
+      preLoaderRoute: typeof ApiVoiceDeepgramConnectionIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/sms/twilio/$connectionId': {
+      id: '/api/sms/twilio/$connectionId'
+      path: '/api/sms/twilio/$connectionId'
+      fullPath: '/api/sms/twilio/$connectionId'
+      preLoaderRoute: typeof ApiSmsTwilioConnectionIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/quotes/$quoteId/pdf': {
+      id: '/api/quotes/$quoteId/pdf'
+      path: '/api/quotes/$quoteId/pdf'
+      fullPath: '/api/quotes/$quoteId/pdf'
+      preLoaderRoute: typeof ApiQuotesQuoteIdPdfRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/gsc/oauth/callback': {
@@ -1462,6 +1619,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppModulesCrmSourcesRouteImport
       parentRoute: typeof AppModulesCrmRoute
     }
+    '/_app/modules/crm/sms': {
+      id: '/_app/modules/crm/sms'
+      path: '/sms'
+      fullPath: '/modules/crm/sms'
+      preLoaderRoute: typeof AppModulesCrmSmsRouteImport
+      parentRoute: typeof AppModulesCrmRoute
+    }
+    '/_app/modules/crm/quotations': {
+      id: '/_app/modules/crm/quotations'
+      path: '/quotations'
+      fullPath: '/modules/crm/quotations'
+      preLoaderRoute: typeof AppModulesCrmQuotationsRouteImport
+      parentRoute: typeof AppModulesCrmRoute
+    }
     '/_app/modules/crm/products': {
       id: '/_app/modules/crm/products'
       path: '/products'
@@ -1553,6 +1724,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProjectPProjectIdAuditIndexRouteImport
       parentRoute: typeof ProjectPProjectIdAuditRoute
     }
+    '/_app/modules/crm/products/': {
+      id: '/_app/modules/crm/products/'
+      path: '/'
+      fullPath: '/modules/crm/products/'
+      preLoaderRoute: typeof AppModulesCrmProductsIndexRouteImport
+      parentRoute: typeof AppModulesCrmProductsRoute
+    }
     '/_project/p/$projectId/settings/integrations': {
       id: '/_project/p/$projectId/settings/integrations'
       path: '/integrations'
@@ -1593,10 +1771,12 @@ declare module '@tanstack/react-router' {
 
 interface AppModulesCrmProductsRouteChildren {
   AppModulesCrmProductsProductIdRoute: typeof AppModulesCrmProductsProductIdRoute
+  AppModulesCrmProductsIndexRoute: typeof AppModulesCrmProductsIndexRoute
 }
 
 const AppModulesCrmProductsRouteChildren: AppModulesCrmProductsRouteChildren = {
   AppModulesCrmProductsProductIdRoute: AppModulesCrmProductsProductIdRoute,
+  AppModulesCrmProductsIndexRoute: AppModulesCrmProductsIndexRoute,
 }
 
 const AppModulesCrmProductsRouteWithChildren =
@@ -1613,6 +1793,8 @@ interface AppModulesCrmRouteChildren {
   AppModulesCrmMeetingsRoute: typeof AppModulesCrmMeetingsRoute
   AppModulesCrmOrdersRoute: typeof AppModulesCrmOrdersRoute
   AppModulesCrmProductsRoute: typeof AppModulesCrmProductsRouteWithChildren
+  AppModulesCrmQuotationsRoute: typeof AppModulesCrmQuotationsRoute
+  AppModulesCrmSmsRoute: typeof AppModulesCrmSmsRoute
   AppModulesCrmSourcesRoute: typeof AppModulesCrmSourcesRoute
   AppModulesCrmIndexRoute: typeof AppModulesCrmIndexRoute
 }
@@ -1626,6 +1808,8 @@ const AppModulesCrmRouteChildren: AppModulesCrmRouteChildren = {
   AppModulesCrmMeetingsRoute: AppModulesCrmMeetingsRoute,
   AppModulesCrmOrdersRoute: AppModulesCrmOrdersRoute,
   AppModulesCrmProductsRoute: AppModulesCrmProductsRouteWithChildren,
+  AppModulesCrmQuotationsRoute: AppModulesCrmQuotationsRoute,
+  AppModulesCrmSmsRoute: AppModulesCrmSmsRoute,
   AppModulesCrmSourcesRoute: AppModulesCrmSourcesRoute,
   AppModulesCrmIndexRoute: AppModulesCrmIndexRoute,
 }
@@ -1658,6 +1842,7 @@ interface AppModulesRouteRouteChildren {
   AppModulesModuleKeyRoute: typeof AppModulesModuleKeyRoute
   AppModulesCrmRoute: typeof AppModulesCrmRouteWithChildren
   AppModulesIntegrationsRoute: typeof AppModulesIntegrationsRouteWithChildren
+  AppModulesOverviewRoute: typeof AppModulesOverviewRoute
   AppModulesIndexRoute: typeof AppModulesIndexRoute
   AppModulesLeadsLeadIdRoute: typeof AppModulesLeadsLeadIdRoute
   AppModulesQuotesQuoteIdRoute: typeof AppModulesQuotesQuoteIdRoute
@@ -1667,6 +1852,7 @@ const AppModulesRouteRouteChildren: AppModulesRouteRouteChildren = {
   AppModulesModuleKeyRoute: AppModulesModuleKeyRoute,
   AppModulesCrmRoute: AppModulesCrmRouteWithChildren,
   AppModulesIntegrationsRoute: AppModulesIntegrationsRouteWithChildren,
+  AppModulesOverviewRoute: AppModulesOverviewRoute,
   AppModulesIndexRoute: AppModulesIndexRoute,
   AppModulesLeadsLeadIdRoute: AppModulesLeadsLeadIdRoute,
   AppModulesQuotesQuoteIdRoute: AppModulesQuotesQuoteIdRoute,
@@ -1865,11 +2051,17 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAutumnSplatRoute: ApiAutumnSplatRoute,
   ApiEmailAccountIdRoute: ApiEmailAccountIdRoute,
   ApiSocialMetaRoute: ApiSocialMetaRoute,
+  ApiVoiceTurnRoute: ApiVoiceTurnRoute,
   ApiWhatsappConnectionIdRoute: ApiWhatsappConnectionIdRoute,
   ApiWhatsappMetaRoute: ApiWhatsappMetaRoute,
   ApiEmailMicrosoftCallbackRoute: ApiEmailMicrosoftCallbackRoute,
   ApiGa4OauthCallbackRoute: ApiGa4OauthCallbackRoute,
   ApiGscOauthCallbackRoute: ApiGscOauthCallbackRoute,
+  ApiQuotesQuoteIdPdfRoute: ApiQuotesQuoteIdPdfRoute,
+  ApiSmsTwilioConnectionIdRoute: ApiSmsTwilioConnectionIdRoute,
+  ApiVoiceDeepgramConnectionIdRoute: ApiVoiceDeepgramConnectionIdRoute,
+  ApiVoiceElevenlabsCallerConnectionIdRoute:
+    ApiVoiceElevenlabsCallerConnectionIdRoute,
   ApiVoiceElevenlabsConnectionIdRoute: ApiVoiceElevenlabsConnectionIdRoute,
 }
 export const routeTree = rootRouteImport

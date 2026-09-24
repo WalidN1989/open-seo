@@ -2,14 +2,16 @@ import { and, desc, eq, inArray, lte, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { runBatch } from "@/db/runBatch";
 import {
-  commerceInventoryAuditItems,
-  commerceInventoryAudits,
   commerceInventoryBalances,
   commerceProducts,
   commerceStockMovements,
 } from "@/db/schema";
 
+import { InventoryAuditRepository } from "./InventoryAuditRepository";
+import { BranchRepository } from "./BranchRepository";
+
 export type StockMovementDraft = {
+  branchId?: string;
   productId: string;
   movementType: "receipt" | "sale" | "return" | "adjustment" | "audit";
   quantityDelta: number;
@@ -19,13 +21,18 @@ export type StockMovementDraft = {
   actorUserId?: string | null;
 };
 
-async function getBalance(organizationId: string, productId: string) {
+async function getBalance(
+  organizationId: string,
+  productId: string,
+  branchId = BranchRepository.defaultId(organizationId),
+) {
   const [row] = await db
     .select()
     .from(commerceInventoryBalances)
     .where(
       and(
         eq(commerceInventoryBalances.organizationId, organizationId),
+        eq(commerceInventoryBalances.branchId, branchId),
         eq(commerceInventoryBalances.productId, productId),
       ),
     )
@@ -33,7 +40,11 @@ async function getBalance(organizationId: string, productId: string) {
   return row ?? null;
 }
 
-async function listBalances(organizationId: string, productIds: string[]) {
+async function listBalances(
+  organizationId: string,
+  productIds: string[],
+  branchId = BranchRepository.defaultId(organizationId),
+) {
   if (productIds.length === 0) return [];
   return db
     .select()
@@ -41,6 +52,7 @@ async function listBalances(organizationId: string, productIds: string[]) {
     .where(
       and(
         eq(commerceInventoryBalances.organizationId, organizationId),
+        eq(commerceInventoryBalances.branchId, branchId),
         inArray(commerceInventoryBalances.productId, productIds),
       ),
     );
@@ -51,7 +63,11 @@ async function listBalances(organizationId: string, productIds: string[]) {
  * threshold lives on the product and the quantity lives on the balance, and
  * "low stock" is only meaningful as the comparison of the two.
  */
-async function listLowStock(organizationId: string, limit: number) {
+async function listLowStock(
+  organizationId: string,
+  limit: number,
+  branchId = BranchRepository.defaultId(organizationId),
+) {
   return db
     .select({
       product: commerceProducts,
@@ -66,6 +82,7 @@ async function listLowStock(organizationId: string, limit: number) {
       and(
         eq(commerceProducts.organizationId, organizationId),
         eq(commerceProducts.status, "active"),
+        eq(commerceInventoryBalances.branchId, branchId),
         lte(
           commerceInventoryBalances.quantityOnHand,
           commerceProducts.reorderThreshold,
@@ -79,8 +96,12 @@ async function listMovements(
   organizationId: string,
   productId: string | undefined,
   limit: number,
+  branchId = BranchRepository.defaultId(organizationId),
 ) {
-  const filters = [eq(commerceStockMovements.organizationId, organizationId)];
+  const filters = [
+    eq(commerceStockMovements.organizationId, organizationId),
+    eq(commerceStockMovements.branchId, branchId),
+  ];
   if (productId) filters.push(eq(commerceStockMovements.productId, productId));
   return db
     .select()
@@ -95,6 +116,7 @@ async function findMovementByReference(
   referenceType: string,
   referenceId: string,
   productId: string,
+  branchId = BranchRepository.defaultId(organizationId),
 ) {
   const [row] = await db
     .select()
@@ -102,6 +124,7 @@ async function findMovementByReference(
     .where(
       and(
         eq(commerceStockMovements.organizationId, organizationId),
+        eq(commerceStockMovements.branchId, branchId),
         eq(commerceStockMovements.referenceType, referenceType),
         eq(commerceStockMovements.referenceId, referenceId),
         eq(commerceStockMovements.productId, productId),
@@ -124,11 +147,20 @@ async function applyMovements(
   if (movements.length === 0) return;
   const now = new Date().toISOString();
 
+  await BranchRepository.resolve(organizationId);
+  // Validate every branch at this shared boundary, including integration callers.
+  for (const selectedBranchId of new Set(
+    movements.map((m) => m.branchId).filter((id) => id !== undefined),
+  )) {
+    await BranchRepository.resolve(organizationId, selectedBranchId);
+  }
   await runBatch((tx) => [
     ...movements.map((movement) =>
       tx.insert(commerceStockMovements).values({
         id: crypto.randomUUID(),
         organizationId,
+        branchId:
+          movement.branchId ?? BranchRepository.defaultId(organizationId),
         productId: movement.productId,
         movementType: movement.movementType,
         quantityDelta: movement.quantityDelta,
@@ -138,137 +170,138 @@ async function applyMovements(
         actorUserId: movement.actorUserId ?? null,
       }),
     ),
-    ...movements.map((movement) =>
-      tx
-        .insert(commerceInventoryBalances)
-        .values({
-          id: crypto.randomUUID(),
-          organizationId,
-          productId: movement.productId,
-          quantityOnHand: movement.quantityDelta,
-          updatedAt: now,
-        })
-        .onConflictDoUpdate({
-          target: [
-            commerceInventoryBalances.organizationId,
-            commerceInventoryBalances.productId,
-          ],
-          set: {
-            quantityOnHand: sql`${commerceInventoryBalances.quantityOnHand} + ${movement.quantityDelta}`,
+    ...movements.flatMap((movement) => {
+      const branchId =
+        movement.branchId ?? BranchRepository.defaultId(organizationId);
+      return [
+        tx
+          .insert(commerceInventoryBalances)
+          .values({
+            id: crypto.randomUUID(),
+            organizationId,
+            branchId,
+            productId: movement.productId,
+            quantityOnHand: 0,
             updatedAt: now,
-          },
-        }),
-    ),
+          })
+          .onConflictDoNothing(),
+        // A negative result violates NOT NULL, rolling back the entire batch.
+        // This is checked inside the write, so concurrent transfers cannot oversell.
+        tx
+          .update(commerceInventoryBalances)
+          .set({
+            quantityOnHand: sql`case when ${commerceInventoryBalances.quantityOnHand} + ${movement.quantityDelta} < 0 then null else ${commerceInventoryBalances.quantityOnHand} + ${movement.quantityDelta} end`,
+            updatedAt: now,
+          })
+          .where(
+            and(
+              eq(commerceInventoryBalances.organizationId, organizationId),
+              eq(commerceInventoryBalances.branchId, branchId),
+              eq(commerceInventoryBalances.productId, movement.productId),
+            ),
+          ),
+      ];
+    }),
   ]);
 }
 
-async function createAudit(
+/**
+ * Every countable product with its barcode and what stock says it has.
+ *
+ * Read in one go so a stock take can be done with no signal at all: the
+ * scanner matches barcodes against this copy in the browser, and the counts
+ * go up when the connection comes back.
+ */
+async function listCountableProducts(
   organizationId: string,
-  input: { name: string; note?: string | null; createdByUserId: string },
+  branchId = BranchRepository.defaultId(organizationId),
 ) {
-  const [row] = await db
-    .insert(commerceInventoryAudits)
-    .values({
-      id: crypto.randomUUID(),
-      organizationId,
-      name: input.name,
-      note: input.note ?? null,
-      createdByUserId: input.createdByUserId,
-    })
-    .returning();
-  return row;
-}
-
-async function listAudits(organizationId: string, limit: number) {
-  return db
-    .select()
-    .from(commerceInventoryAudits)
-    .where(eq(commerceInventoryAudits.organizationId, organizationId))
-    .orderBy(desc(commerceInventoryAudits.createdAt))
-    .limit(limit);
-}
-
-async function getAudit(organizationId: string, auditId: string) {
-  const [row] = await db
-    .select()
-    .from(commerceInventoryAudits)
-    .where(
-      and(
-        eq(commerceInventoryAudits.id, auditId),
-        eq(commerceInventoryAudits.organizationId, organizationId),
-      ),
-    )
-    .limit(1);
-  return row ?? null;
-}
-
-async function listAuditItems(organizationId: string, auditId: string) {
-  return db
+  const filters = [
+    eq(commerceProducts.organizationId, organizationId),
+    eq(commerceProducts.status, "active"),
+    eq(commerceProducts.itemType, "product"),
+  ];
+  if (branchId !== BranchRepository.defaultId(organizationId)) {
+    filters.push(eq(commerceProducts.inventoryMode, "multi"));
+  }
+  const rows = await db
     .select({
-      item: commerceInventoryAuditItems,
-      product: commerceProducts,
+      id: commerceProducts.id,
+      name: commerceProducts.name,
+      sku: commerceProducts.sku,
+      barcode: commerceProducts.barcode,
+      quantityOnHand: commerceInventoryBalances.quantityOnHand,
     })
-    .from(commerceInventoryAuditItems)
-    .innerJoin(
-      commerceProducts,
-      eq(commerceProducts.id, commerceInventoryAuditItems.productId),
-    )
-    .where(
+    .from(commerceProducts)
+    .leftJoin(
+      commerceInventoryBalances,
       and(
-        eq(commerceInventoryAuditItems.organizationId, organizationId),
-        eq(commerceInventoryAuditItems.auditId, auditId),
-      ),
-    );
-}
-
-async function upsertAuditItem(
-  organizationId: string,
-  input: {
-    auditId: string;
-    productId: string;
-    expectedQuantity: number;
-    countedQuantity: number;
-  },
-) {
-  const [row] = await db
-    .insert(commerceInventoryAuditItems)
-    .values({ id: crypto.randomUUID(), organizationId, ...input })
-    .onConflictDoUpdate({
-      target: [
-        commerceInventoryAuditItems.auditId,
-        commerceInventoryAuditItems.productId,
-      ],
-      set: {
-        expectedQuantity: input.expectedQuantity,
-        countedQuantity: input.countedQuantity,
-      },
-    })
-    .returning();
-  return row;
-}
-
-async function setAuditStatus(
-  organizationId: string,
-  auditId: string,
-  status: "draft" | "published" | "reverted",
-) {
-  const now = new Date().toISOString();
-  const [row] = await db
-    .update(commerceInventoryAudits)
-    .set({
-      status,
-      updatedAt: now,
-      publishedAt: status === "published" ? now : undefined,
-      revertedAt: status === "reverted" ? now : undefined,
-    })
-    .where(
-      and(
-        eq(commerceInventoryAudits.id, auditId),
-        eq(commerceInventoryAudits.organizationId, organizationId),
+        eq(commerceInventoryBalances.organizationId, organizationId),
+        eq(commerceInventoryBalances.branchId, branchId),
+        eq(commerceInventoryBalances.productId, commerceProducts.id),
       ),
     )
-    .returning();
-  return row ?? null;
+    .where(and(...filters))
+    .orderBy(commerceProducts.name)
+    .limit(10_000);
+  return rows.map((row) => ({
+    ...row,
+    quantityOnHand: row.quantityOnHand ?? 0,
+  }));
+}
+
+/**
+ * What was on hand at the end of a given day.
+ *
+ * Worked out from the ledger rather than stored: today's balance, less
+ * everything that has moved since. Accounts ask this question months later,
+ * and the answer has to be the same every time it is asked.
+ */
+async function stockAsOf(
+  organizationId: string,
+  endOfDay: string,
+  branchId = BranchRepository.defaultId(organizationId),
+) {
+  const since = sql<number>`coalesce((
+    select sum(${commerceStockMovements.quantityDelta})
+    from ${commerceStockMovements}
+    where ${commerceStockMovements.organizationId} = ${organizationId}
+      and ${commerceStockMovements.branchId} = ${branchId}
+      and ${commerceStockMovements.productId} = ${commerceProducts.id}
+      and ${commerceStockMovements.createdAt} > ${endOfDay}
+  ), 0)`;
+  const rows = await db
+    .select({
+      id: commerceProducts.id,
+      name: commerceProducts.name,
+      sku: commerceProducts.sku,
+      quantityNow: commerceInventoryBalances.quantityOnHand,
+      movedSince: since,
+    })
+    .from(commerceProducts)
+    .leftJoin(
+      commerceInventoryBalances,
+      and(
+        eq(commerceInventoryBalances.organizationId, organizationId),
+        eq(commerceInventoryBalances.branchId, branchId),
+        eq(commerceInventoryBalances.productId, commerceProducts.id),
+      ),
+    )
+    .where(eq(commerceProducts.organizationId, organizationId))
+    .orderBy(commerceProducts.name)
+    .limit(10_000);
+  return rows.map((row) => {
+    const now = row.quantityNow ?? 0;
+    const moved = Number(row.movedSince ?? 0);
+    return {
+      id: row.id,
+      name: row.name,
+      sku: row.sku,
+      quantityNow: now,
+      quantityThen: now - moved,
+      movedSince: moved,
+    };
+  });
 }
 
 /**
@@ -281,14 +314,28 @@ async function reconcileToQuantity(
   productId: string,
   targetQuantity: number,
 ) {
-  const balance = await getBalance(organizationId, productId);
-  const current = balance?.quantityOnHand ?? 0;
+  const rows = await db
+    .select({
+      quantity: sql<number>`coalesce(sum(${commerceInventoryBalances.quantityOnHand}), 0)`,
+      tracked: sql<number>`count(*)`,
+    })
+    .from(commerceInventoryBalances)
+    .where(
+      and(
+        eq(commerceInventoryBalances.organizationId, organizationId),
+        eq(commerceInventoryBalances.productId, productId),
+      ),
+    );
+  // Providers report a product total. Allocation to another branch must not
+  // make the next sync replenish the same units in the default branch.
+  const current = Number(rows[0]?.quantity ?? 0);
   const delta = targetQuantity - current;
-  if (delta === 0) return null;
+  if (delta === 0 && Number(rows[0]?.tracked ?? 0) > 0) return null;
   return delta;
 }
 
 export const InventoryRepository = {
+  ...InventoryAuditRepository,
   reconcileToQuantity,
   getBalance,
   listBalances,
@@ -296,10 +343,6 @@ export const InventoryRepository = {
   listMovements,
   findMovementByReference,
   applyMovements,
-  createAudit,
-  listAudits,
-  getAudit,
-  listAuditItems,
-  upsertAuditItem,
-  setAuditStatus,
+  listCountableProducts,
+  stockAsOf,
 };

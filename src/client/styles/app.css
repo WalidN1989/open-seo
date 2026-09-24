@@ -1,4 +1,7 @@
 @import "tailwindcss";
+@import "./business-access.css";
+@import "./connections.css";
+@import "./sidebar-motion.css";
 @import "../features/business-modules/whatsapp/workspace.css";
 @import "../features/business-modules/integrations/catalogue.css";
 @import "../features/business-modules/social/workspace.css";
@@ -513,5 +516,65 @@ html[data-theme="openseo-dark"] .alert-error {
     animation: none;
     background: none;
     color: inherit;
+  }
+}
+
+/*
+ * The voice orb. Two elliptical rings turning in opposite directions keep
+ * crossing over each other, so the outline appears to ripple and reshape
+ * rather than simply spin — the liquid look of Deepgram's orb without a
+ * canvas. The breath underneath gives it a pulse even when nobody is talking.
+ */
+@keyframes voice-orb-turn {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* The live-conversation glow behind the orb: a slow swell, so it reads as
+   "still here" rather than as an alert. */
+@keyframes voice-orb-halo {
+  0%,
+  100% {
+    transform: scale(0.92);
+  }
+  50% {
+    transform: scale(1.08);
+  }
+}
+
+.voice-orb-halo {
+  animation: voice-orb-halo 2.8s ease-in-out infinite;
+  transition: opacity 400ms ease-out;
+}
+
+@keyframes voice-orb-breathe {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+.voice-orb-turn {
+  animation: voice-orb-turn var(--orb-spin, 8s) linear infinite;
+}
+
+.voice-orb-counter {
+  animation: voice-orb-turn var(--orb-counter, 11s) linear infinite reverse;
+}
+
+.voice-orb-breathe {
+  animation: voice-orb-breathe var(--orb-breath, 3.2s) ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .voice-orb-turn,
+  .voice-orb-counter,
+  .voice-orb-breathe,
+  .voice-orb-halo {
+    animation: none;
   }
 }

@@ -17,6 +17,7 @@ import {
   Settings2,
   ArrowLeft,
   X,
+  Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { AssistantConfigSection } from "./whatsapp/AssistantConfigSection";
@@ -42,6 +43,7 @@ import {
   getWhatsappWorkspace,
   getWhatsappOperations,
   launchWhatsappCampaign,
+  deleteWhatsappCampaign,
   retryWebhookDelivery,
   testWebhookEndpoint,
   testIntegration,
@@ -55,6 +57,10 @@ import {
   createWhatsappInternalNote,
   runIntegrationAction,
 } from "@/serverFunctions/communications";
+import {
+  deleteWhatsappTemplate,
+  refreshWhatsappTemplate,
+} from "@/serverFunctions/communications-admin";
 import { createCrmContact } from "@/serverFunctions/crm";
 import { convertWhatsappOrderRequest } from "@/serverFunctions/commerce";
 import { getStandardErrorMessage } from "@/client/lib/error-messages";
@@ -295,8 +301,9 @@ export function WhatsappWorkspace() {
     mutationFn: (data: {
       name: string;
       body: string;
+      mediaUrl?: string;
       languageCode: string;
-      category: "marketing";
+      category: "marketing" | "utility" | "authentication";
       connectionId?: string;
       externalTemplateId?: string;
       status?: "draft" | "approved";
@@ -304,7 +311,9 @@ export function WhatsappWorkspace() {
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: ["whatsapp"] });
       setForm(null);
-      toast.success("Template created");
+      toast.success(
+        "Template sent to WhatsApp for approval — usually minutes, up to a day",
+      );
     },
     onError: showError,
   });
@@ -370,6 +379,30 @@ export function WhatsappWorkspace() {
     },
     onError: showError,
   });
+  const checkTemplate = useMutation({
+    mutationFn: (templateId: string) =>
+      refreshWhatsappTemplate({ data: { templateId } }),
+    onSuccess: async (result) => {
+      await client.invalidateQueries({ queryKey: ["whatsapp"] });
+      toast.success(
+        result.status === "approved"
+          ? "Approved by WhatsApp — it can be sent now"
+          : result.status === "rejected"
+            ? `WhatsApp rejected it${result.reason ? `: ${result.reason}` : ""}`
+            : "Still with WhatsApp; check again shortly",
+      );
+    },
+    onError: showError,
+  });
+  const forgetTemplate = useMutation({
+    mutationFn: (templateId: string) =>
+      deleteWhatsappTemplate({ data: { templateId } }),
+    onSuccess: async () => {
+      await client.invalidateQueries({ queryKey: ["whatsapp"] });
+      toast.success("Template deleted");
+    },
+    onError: showError,
+  });
   const campaign = useMutation({
     mutationFn: (data: {
       name: string;
@@ -380,6 +413,15 @@ export function WhatsappWorkspace() {
       await client.invalidateQueries({ queryKey: ["whatsapp"] });
       setForm(null);
       toast.success("Campaign draft created");
+    },
+    onError: showError,
+  });
+  const deleteCampaign = useMutation({
+    mutationFn: (campaignId: string) =>
+      deleteWhatsappCampaign({ data: { campaignId } }),
+    onSuccess: async () => {
+      await client.invalidateQueries({ queryKey: ["whatsapp"] });
+      toast.success("Campaign deleted");
     },
     onError: showError,
   });
@@ -672,14 +714,45 @@ export function WhatsappWorkspace() {
           ) : null}
           {form === "template" ? (
             <SimpleForm
-              fields={["name", "body", "connectionId", "externalTemplateId"]}
+              stacked
+              isSubmitting={template.isPending}
+              select={{
+                name: "category",
+                options: ["marketing", "utility", "authentication"],
+              }}
+              fields={["name", "body", "mediaUrl", "externalTemplateId"]}
+              meta={{
+                name: { label: "Template name", hint: "For your list only." },
+                body: {
+                  label: "Message",
+                  hint: "What the customer reads. *bold* and emojis work.",
+                },
+                mediaUrl: {
+                  label: "Image link (optional)",
+                  hint: "A public https image, such as a product photo from your website.",
+                },
+                category: {
+                  label: "What it is for",
+                  hint: "Marketing for offers and news; utility for order or account updates. WhatsApp judges the wording against this.",
+                },
+                externalTemplateId: {
+                  label: "Existing approved ID (optional)",
+                  hint: "Only if WhatsApp already approved this template elsewhere. Leave empty and it is submitted for you.",
+                },
+              }}
               onSubmit={(values) =>
                 template.mutate({
                   name: values.name,
                   body: values.body,
+                  mediaUrl: values.mediaUrl.trim() || undefined,
                   languageCode: "en",
-                  category: "marketing",
-                  connectionId: values.connectionId || undefined,
+                  category:
+                    values.category === "utility"
+                      ? "utility"
+                      : values.category === "authentication"
+                        ? "authentication"
+                        : "marketing",
+                  connectionId: data.connections[0]?.id,
                   externalTemplateId: values.externalTemplateId || undefined,
                   status: values.externalTemplateId ? "approved" : "draft",
                 })
@@ -688,14 +761,30 @@ export function WhatsappWorkspace() {
           ) : null}
           {form === "campaign" ? (
             <SimpleForm
-              fields={["name", "connectionId", "templateId"]}
-              onSubmit={(values) =>
+              isSubmitting={campaign.isPending}
+              fields={["name"]}
+              select={{
+                name: "template",
+                options: (ops?.templates ?? []).map((item) => item.name),
+              }}
+              onSubmit={(values) => {
+                // Picked by name; the connection is the workspace's own.
+                const picked = (ops?.templates ?? []).find(
+                  (item) => item.name === values.template,
+                );
+                const connectionId = data.connections[0]?.id;
+                if (!picked || !connectionId) {
+                  toast.error(
+                    "Create a template and a WhatsApp connection first.",
+                  );
+                  return;
+                }
                 campaign.mutate({
                   name: values.name,
-                  connectionId: values.connectionId,
-                  templateId: values.templateId,
-                })
-              }
+                  connectionId,
+                  templateId: picked.id,
+                });
+              }}
             />
           ) : null}
           {form === "automation" ? (
@@ -1437,11 +1526,32 @@ export function WhatsappWorkspace() {
               </div>
               {(ops?.templates ?? []).length ? (
                 (ops?.templates ?? []).map((item) => (
-                  <Row
-                    key={item.id}
-                    title={item.name}
-                    detail={`${item.languageCode} · ${item.status}`}
-                  />
+                  <div key={item.id} className="flex items-center gap-2 pr-4">
+                    <div className="min-w-0 flex-1">
+                      <Row
+                        title={item.name}
+                        detail={`${item.languageCode} · ${TEMPLATE_STATUS[item.status] ?? item.status}${item.mediaUrl ? " · image" : ""}`}
+                      />
+                    </div>
+                    {item.externalTemplateId && item.status !== "approved" ? (
+                      <button
+                        className="btn btn-ghost btn-xs"
+                        disabled={checkTemplate.isPending}
+                        onClick={() => checkTemplate.mutate(item.id)}
+                      >
+                        Check approval
+                      </button>
+                    ) : null}
+                    <button
+                      type="button"
+                      aria-label={`Delete template ${item.name}`}
+                      className="p-1 text-base-content/20 transition-colors hover:text-error"
+                      disabled={forgetTemplate.isPending}
+                      onClick={() => forgetTemplate.mutate(item.id)}
+                    >
+                      <Trash2 className="size-3.5" />
+                    </button>
+                  </div>
                 ))
               ) : (
                 <Empty text="No message templates yet." />
@@ -1467,9 +1577,28 @@ export function WhatsappWorkspace() {
                     {item.status === "draft" || item.status === "scheduled" ? (
                       <button
                         className="btn btn-primary btn-xs"
+                        disabled={launchCampaign.isPending}
                         onClick={() => launchCampaign.mutate(item.id)}
                       >
                         Launch
+                      </button>
+                    ) : null}
+                    {item.status !== "running" ? (
+                      <button
+                        className="btn btn-ghost btn-xs text-error"
+                        aria-label={`Delete campaign ${item.name}`}
+                        disabled={deleteCampaign.isPending}
+                        onClick={() => {
+                          if (
+                            window.confirm(
+                              `Delete "${item.name}"? Messages it already sent stay in the chats.`,
+                            )
+                          ) {
+                            deleteCampaign.mutate(item.id);
+                          }
+                        }}
+                      >
+                        <Trash2 className="size-3.5" />
                       </button>
                     ) : null}
                   </div>
@@ -2052,8 +2181,9 @@ export function IntegrationsWorkspace() {
   if (query.isError) return <ErrorBox error={query.error} />;
   return (
     <Workspace
-      title="Integrations"
-      subtitle="Provider-neutral connections and signed webhook delivery infrastructure."
+      className="connections-workspace"
+      title="Connections"
+      subtitle="Your connected services and webhook activity."
       actions={
         <>
           <button
@@ -2071,6 +2201,29 @@ export function IntegrationsWorkspace() {
         </>
       }
     >
+      <div className="connections-summary">
+        <div>
+          <Cable className="size-5" />
+          <strong>
+            {
+              query.data!.connections.filter(
+                (item) => item.status === "connected",
+              ).length
+            }
+          </strong>
+          <span>Connected services</span>
+        </div>
+        <div>
+          <Webhook className="size-5" />
+          <strong>{query.data!.webhooks.length}</strong>
+          <span>Webhook endpoints</span>
+        </div>
+        <div>
+          <FileText className="size-5" />
+          <strong>{query.data!.deliveries.length}</strong>
+          <span>Recent deliveries</span>
+        </div>
+      </div>
       {adding === "integration" ? (
         <SimpleForm
           fields={["displayName", "providerKey", "credentialReference"]}
@@ -2105,11 +2258,13 @@ export function IntegrationsWorkspace() {
             query.data!.connections.map((item) => (
               <div key={item.id} className="flex items-center gap-2 pr-4">
                 <div className="min-w-0 flex-1">
-                  <Row
-                    title={item.displayName}
-                    detail={`${item.providerKey} · ${item.status}`}
-                  />
+                  <Row title={item.displayName} detail={item.providerKey} />
                 </div>
+                <span
+                  className={`badge badge-sm ${item.status === "connected" ? "badge-success badge-outline" : "badge-ghost"}`}
+                >
+                  {item.status}
+                </span>
                 <button
                   className="btn btn-ghost btn-xs"
                   disabled={integrationTest.isPending}
@@ -2200,13 +2355,15 @@ export function IntegrationsWorkspace() {
         </Panel>
       ) : null}
       <Panel title="Available provider adapters" icon={Cable}>
-        {integrationProviders.map((provider) => (
-          <Row
-            key={provider.key}
-            title={provider.name}
-            detail={provider.capabilities.join(" · ")}
-          />
-        ))}
+        <div className="connections-adapters">
+          {integrationProviders.map((provider) => (
+            <Row
+              key={provider.key}
+              title={provider.name}
+              detail={provider.capabilities.join(" · ")}
+            />
+          ))}
+        </div>
       </Panel>
       <Panel title="Recent webhook deliveries" icon={Webhook}>
         {query.data!.deliveries.length ? (
@@ -2242,15 +2399,17 @@ function Workspace({
   actions,
   children,
   compact = false,
+  className = "",
 }: {
   title: string;
   subtitle: string;
   actions: React.ReactNode;
   children: React.ReactNode;
   compact?: boolean;
+  className?: string;
 }) {
   return (
-    <div className={compact ? "space-y-2" : "space-y-5"}>
+    <div className={`${compact ? "space-y-2" : "space-y-5"} ${className}`}>
       {!compact ? (
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
@@ -2380,6 +2539,14 @@ function ErrorBox({ error }: { error: unknown }) {
 function showError(error: unknown) {
   toast.error(getStandardErrorMessage(error));
 }
+/** What a template's stored status means to the person reading it. */
+const TEMPLATE_STATUS: Record<string, string> = {
+  draft: "not submitted",
+  pending: "waiting for WhatsApp",
+  approved: "approved — ready to send",
+  rejected: "rejected by WhatsApp",
+};
+
 const SECRET_FIELDS = new Set(["accessToken"]);
 
 type FieldMeta = { label: string; hint?: string };

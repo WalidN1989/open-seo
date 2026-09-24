@@ -6,11 +6,13 @@ import {
   clearLastProjectId,
   getLastProjectId,
   projectAddress,
+  isPreferredAgencyProject,
 } from "@/client/lib/active-project";
 import {
   getErrorCode,
   getStandardErrorMessage,
 } from "@/client/lib/error-messages";
+import { useWorkspaceAccess } from "@/client/features/team/workspaceAccess";
 import { AuthConfigErrorCard } from "@/client/components/AuthConfigErrorCard";
 import { UnauthenticatedErrorCard } from "@/client/components/UnauthenticatedErrorCard";
 import { SUBSCRIBE_ROUTE } from "@/shared/billing";
@@ -21,6 +23,9 @@ export const Route = createFileRoute("/_app/")({
 
 function IndexRedirect() {
   const navigate = useNavigate();
+  // A client still being shown sample data lands on the worked example of
+  // their business, not on SEO tools they have not been walked through yet.
+  const { data: access, isLoading: accessLoading } = useWorkspaceAccess();
 
   const { data, error, isError, refetch } = useQuery({
     queryKey: ["projects"],
@@ -29,6 +34,11 @@ function IndexRedirect() {
   });
 
   useEffect(() => {
+    if (accessLoading) return;
+    if (access?.demoData) {
+      void navigate({ to: "/modules/overview" });
+      return;
+    }
     if (!data || data.length === 0) return;
 
     // localStorage is untrusted — only honor the remembered project if it's
@@ -42,9 +52,13 @@ function IndexRedirect() {
 
     void navigate({
       to: "/p/$projectId",
-      params: { projectId: projectAddress(target ?? data[0]) },
+      params: {
+        projectId: projectAddress(
+          data.find(isPreferredAgencyProject) ?? target ?? data[0],
+        ),
+      },
     });
-  }, [data, navigate]);
+  }, [access, accessLoading, data, navigate]);
 
   useEffect(() => {
     if (getErrorCode(error) !== "PAYMENT_REQUIRED") {

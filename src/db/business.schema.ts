@@ -51,6 +51,9 @@ export const businessSettings = sqliteTable(
     // Every stored amount is an integer in this currency's smallest unit.
     // Changing it relabels existing figures; it does not convert them.
     currency: text("currency").notNull().default("AUD"),
+    // What the in-app voice calls the person it greets in this workspace.
+    // Per business, not per login: one agency login answers for many.
+    voiceName: text("voice_name"),
     createdAt: createdAt(),
     updatedAt: text("updated_at")
       .notNull()
@@ -584,6 +587,8 @@ export const whatsappConversations = sqliteTable(
     }),
     externalConversationId: text("external_conversation_id"),
     status: text("status").notNull().default("open"),
+    /** Set when the customer replied STOP; nothing is sent to them after. */
+    optedOutAt: text("opted_out_at"),
     lastMessageAt: text("last_message_at"),
     createdAt: createdAt(),
   },
@@ -752,6 +757,79 @@ export const whatsappInternalNotes = sqliteTable(
   ],
 );
 
+/**
+ * SMS module. One conversation per customer number per SMS connection (a
+ * Twilio number saved as an integration), and its messages. Per organisation
+ * like every business module, so each business keeps its own texts.
+ */
+export const smsConversations = sqliteTable(
+  "sms_conversations",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    connectionId: text("connection_id")
+      .notNull()
+      .references(() => integrationConnections.id, { onDelete: "cascade" }),
+    /** The customer's number, E.164. */
+    phone: text("phone").notNull(),
+    contactId: text("contact_id").references(() => crmContacts.id, {
+      onDelete: "set null",
+    }),
+    status: text("status").notNull().default("open"),
+    /** Set when the customer replied STOP; nothing is sent to them after. */
+    optedOutAt: text("opted_out_at"),
+    lastMessageAt: text("last_message_at"),
+    lastInboundAt: text("last_inbound_at"),
+    lastOutboundAt: text("last_outbound_at"),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (table) => [
+    uniqueIndex("sms_conversations_connection_phone_idx").on(
+      table.connectionId,
+      table.phone,
+    ),
+    index("sms_conversations_org_last_idx").on(
+      table.organizationId,
+      table.lastMessageAt,
+    ),
+  ],
+);
+
+export const smsMessages = sqliteTable(
+  "sms_messages",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    conversationId: text("conversation_id")
+      .notNull()
+      .references(() => smsConversations.id, { onDelete: "cascade" }),
+    /** Twilio's message SID; null until the send is accepted. */
+    externalMessageId: text("external_message_id"),
+    direction: text("direction", { enum: ["inbound", "outbound"] }).notNull(),
+    body: text("body").notNull().default(""),
+    status: text("status").notNull(),
+    errorMessage: text("error_message"),
+    /** Who wrote an outbound text: a member id, or "agent:mcp". */
+    authoredBy: text("authored_by"),
+    occurredAt: text("occurred_at").notNull(),
+  },
+  (table) => [
+    uniqueIndex("sms_messages_org_external_idx").on(
+      table.organizationId,
+      table.externalMessageId,
+    ),
+    index("sms_messages_conversation_idx").on(
+      table.conversationId,
+      table.occurredAt,
+    ),
+  ],
+);
+
 export const whatsappTemplates = sqliteTable(
   "whatsapp_templates",
   {
@@ -767,6 +845,9 @@ export const whatsappTemplates = sqliteTable(
     languageCode: text("language_code").notNull().default("en"),
     category: text("category").notNull().default("marketing"),
     body: text("body").notNull(),
+    // A public https image sent with the text. On the sandbox it goes out as
+    // a media message; an approved template carries its own media.
+    mediaUrl: text("media_url"),
     externalTemplateId: text("external_template_id"),
     status: text("status").notNull().default("draft"),
     createdAt: createdAt(),
@@ -1156,6 +1237,12 @@ export const commerceProducts = sqliteTable(
     itemType: text("item_type", { enum: ["product", "service"] })
       .notNull()
       .default("product"),
+    // Existing catalogues stay simple. A product must be deliberately opted
+    // into branch stock before it can be counted or adjusted away from the
+    // default location.
+    inventoryMode: text("inventory_mode", { enum: ["single", "multi"] })
+      .notNull()
+      .default("single"),
     salePriceMinor: integer("sale_price_minor").notNull().default(0),
     costPriceMinor: integer("cost_price_minor"),
     reorderThreshold: integer("reorder_threshold").notNull().default(0),
@@ -1205,10 +1292,34 @@ export const commerceProducts = sqliteTable(
  * count can always be explained and a mistake is corrected by a compensating
  * movement rather than by editing history.
  */
+/** Physical locations share the catalogue but keep separate stock. */
+export const commerceBranches = sqliteTable(
+  "commerce_branches",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    address: text("address"),
+    city: text("city"),
+    state: text("state"),
+    postcode: text("postcode"),
+    country: text("country"),
+    phone: text("phone"),
+    openingHours: text("opening_hours"),
+    createdAt: createdAt(),
+  },
+  (table) => [index("commerce_branches_org_idx").on(table.organizationId)],
+);
+
 export const commerceInventoryBalances = sqliteTable(
   "commerce_inventory_balances",
   {
     id: text("id").primaryKey(),
+    branchId: text("branch_id")
+      .notNull()
+      .references(() => commerceBranches.id, { onDelete: "no action" }),
     organizationId: text("organization_id")
       .notNull()
       .references(() => organization.id, { onDelete: "cascade" }),
@@ -1221,9 +1332,10 @@ export const commerceInventoryBalances = sqliteTable(
       .default(sql`(current_timestamp)`),
   },
   (table) => [
-    // One balance per product per tenant; the ledger carries the history.
+    // One balance per product per branch; the ledger carries the history.
     uniqueIndex("commerce_inventory_balances_org_product_idx").on(
       table.organizationId,
+      table.branchId,
       table.productId,
     ),
   ],
@@ -1233,6 +1345,9 @@ export const commerceStockMovements = sqliteTable(
   "commerce_stock_movements",
   {
     id: text("id").primaryKey(),
+    branchId: text("branch_id")
+      .notNull()
+      .references(() => commerceBranches.id, { onDelete: "no action" }),
     organizationId: text("organization_id")
       .notNull()
       .references(() => organization.id, { onDelete: "cascade" }),
@@ -1261,6 +1376,7 @@ export const commerceStockMovements = sqliteTable(
     ),
     uniqueIndex("commerce_stock_movements_reference_idx").on(
       table.organizationId,
+      table.branchId,
       table.referenceType,
       table.referenceId,
       table.productId,
@@ -1272,6 +1388,9 @@ export const commerceInventoryAudits = sqliteTable(
   "commerce_inventory_audits",
   {
     id: text("id").primaryKey(),
+    branchId: text("branch_id")
+      .notNull()
+      .references(() => commerceBranches.id, { onDelete: "no action" }),
     organizationId: text("organization_id")
       .notNull()
       .references(() => organization.id, { onDelete: "cascade" }),
@@ -1279,7 +1398,11 @@ export const commerceInventoryAudits = sqliteTable(
     note: text("note"),
     // A published audit has written its movements; reverting writes
     // compensating ones and never deletes them.
-    status: text("status", { enum: ["draft", "published", "reverted"] })
+    // A counted audit waits in "submitted" until whoever may publish has
+    // looked at it: counting and publishing are different jobs.
+    status: text("status", {
+      enum: ["draft", "submitted", "published", "reverted"],
+    })
       .notNull()
       .default("draft"),
     createdByUserId: text("created_by_user_id"),
@@ -1341,6 +1464,9 @@ export const commerceOrders = sqliteTable(
   "commerce_orders",
   {
     id: text("id").primaryKey(),
+    branchId: text("branch_id")
+      .notNull()
+      .references(() => commerceBranches.id, { onDelete: "no action" }),
     organizationId: text("organization_id")
       .notNull()
       .references(() => organization.id, { onDelete: "cascade" }),
@@ -1646,6 +1772,10 @@ export const emailMessages = sqliteTable(
     textBody: text("text_body"),
     htmlBody: text("html_body"),
     status: text("status").notNull(),
+    /** Photos and PDFs attached, as [{filename, contentType, size}]. */
+    attachmentsJson: text("attachments_json").notNull().default("[]"),
+    /** What the attachments show, read by the model when the mail arrived. */
+    attachmentNotes: text("attachment_notes"),
     /** Set when the assistant wrote it, so the inbox can say so. */
     authoredBy: text("authored_by"),
     occurredAt: text("occurred_at")
@@ -1953,6 +2083,11 @@ export const quotes = sqliteTable(
     issuerSnapshotJson: text("issuer_snapshot_json"),
     sentAt: text("sent_at"),
     /** When the client accepted or declined. */
+    /** The email thread the quote went out in, so a follow-up replies in it. */
+    emailThreadId: text("email_thread_id"),
+    /** Follow-up emails sent while it waited for an answer. */
+    chaseCount: integer("chase_count").notNull().default(0),
+    lastChasedAt: text("last_chased_at"),
     respondedAt: text("responded_at"),
     convertedInvoiceId: text("converted_invoice_id").references(
       () => invoices.id,
@@ -2095,5 +2230,44 @@ export const clientReportProfiles = sqliteTable(
       table.organizationId,
       table.projectId,
     ),
+  ],
+);
+
+/**
+ * A login the agency created for someone outside it.
+ *
+ * Its purpose is to tell a client apart from agency staff, which no other
+ * table can: both are ordinary members. The row carries what only a client
+ * needs — the welcome email, the nudges a quiet account earns, and the switch
+ * that shows sample data while their own workspace is still empty. No row
+ * means staff, so the workspaces that existed before this table are untouched.
+ */
+export const clientLogins = sqliteTable(
+  "client_logins",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    userId: text("user_id").notNull(),
+    createdByUserId: text("created_by_user_id"),
+    /** Show generated sample data instead of this workspace's empty own. */
+    demoData: integer("demo_data", { mode: "boolean" })
+      .notNull()
+      .default(false),
+    /** "sent", or the reason the welcome email did not go. */
+    welcomeStatus: text("welcome_status"),
+    welcomeSentAt: text("welcome_sent_at"),
+    /** How far through the quiet-account emails: 0 none, 3 finished. */
+    nudgeStage: integer("nudge_stage").notNull().default(0),
+    lastNudgeAt: text("last_nudge_at"),
+    createdAt: createdAt(),
+  },
+  (table) => [
+    uniqueIndex("client_logins_user_idx").on(
+      table.organizationId,
+      table.userId,
+    ),
+    index("client_logins_stage_idx").on(table.nudgeStage),
   ],
 );

@@ -2,6 +2,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   addOptimizationComment,
   approveOptimizationOpportunity,
+  addOptimizationImages,
+  publishOptimizationOpportunity,
   getOptimizationOpportunity,
   listOptimizationOpportunities,
   rejectOptimizationOpportunity,
@@ -69,6 +71,7 @@ export const SOURCE_LABEL: Record<string, string> = {
 export const CMS_LABEL: Record<string, string> = {
   wordpress: "WordPress",
   shopify: "Shopify",
+  lovable: "Lovable site",
   manual: "Publish by hand",
 };
 
@@ -97,6 +100,10 @@ export function useOpportunity(
         data: { projectId, opportunityId: opportunityId! },
       }),
     enabled: Boolean(opportunityId),
+    // A push to a Lovable site runs in the background (images take a minute
+    // or two), so the row is re-read until it settles.
+    refetchInterval: (query) =>
+      query.state.data?.opportunity.status === "publishing" ? 5_000 : false,
   });
 }
 
@@ -129,6 +136,19 @@ export function useSubmitForReview(projectId: string) {
 export function useApprove(projectId: string) {
   return useDecision(projectId, (opportunityId: string) =>
     approveOptimizationOpportunity({ data: { projectId, opportunityId } }),
+  );
+}
+
+/** Pictures for an article that is already live. */
+export function useAddImages(projectId: string) {
+  return useDecision<string>(projectId, (opportunityId) =>
+    addOptimizationImages({ data: { projectId, opportunityId } }),
+  );
+}
+
+export function usePublish(projectId: string) {
+  return useDecision(projectId, (opportunityId: string) =>
+    publishOptimizationOpportunity({ data: { projectId, opportunityId } }),
   );
 }
 

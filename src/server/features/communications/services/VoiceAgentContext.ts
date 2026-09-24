@@ -1,7 +1,7 @@
+import { cached } from "@/server/features/voice/cache";
 import { and, count, desc, eq, like, or, sql } from "drizzle-orm";
 import { db } from "@/db";
 import {
-  commerceInventoryBalances,
   commerceProducts,
   crmContacts,
   organization,
@@ -18,6 +18,25 @@ const platformKnowledge = [
 ].join("\n");
 
 export async function buildVoiceAgentContext(
+  organizationId: string,
+  agentConfigId: string,
+  question: string,
+) {
+  const terms = question
+    .toLowerCase()
+    .split(/[^\p{L}\p{N}]+/u)
+    .filter((term) => term.length >= 3)
+    .slice(0, 8)
+    .toSorted()
+    .join(",");
+  // Two questions about the same things read the workspace once.
+  return cached(
+    `voice:context:${organizationId}:${agentConfigId}:${terms}`,
+    () => readVoiceAgentContext(organizationId, agentConfigId, question),
+  );
+}
+
+async function readVoiceAgentContext(
   organizationId: string,
   agentConfigId: string,
   question: string,
@@ -53,16 +72,9 @@ export async function buildVoiceAgentContext(
         category: commerceProducts.category,
         price: commerceProducts.salePriceMinor,
         productUrl: commerceProducts.productUrl,
-        stock: commerceInventoryBalances.quantityOnHand,
+        id: commerceProducts.id,
       })
       .from(commerceProducts)
-      .leftJoin(
-        commerceInventoryBalances,
-        and(
-          eq(commerceInventoryBalances.organizationId, organizationId),
-          eq(commerceInventoryBalances.productId, commerceProducts.id),
-        ),
-      )
       .where(
         and(
           eq(commerceProducts.organizationId, organizationId),
@@ -94,7 +106,7 @@ export async function buildVoiceAgentContext(
     ? products
         .map(
           (product) =>
-            `- ${product.name} | SKU ${product.sku} | ${product.category ?? "uncategorized"} | price minor units ${product.price} | stock ${product.stock ?? "unknown"}${product.productUrl ? ` | ${product.productUrl}` : ""}`,
+            `- ${product.name} | SKU ${product.sku} | ${product.category ?? "uncategorized"} | price minor units ${product.price} | product id ${product.id}${product.productUrl ? ` | ${product.productUrl}` : ""}`,
         )
         .join("\n")
     : "No current product rows were found.";
@@ -104,6 +116,7 @@ export async function buildVoiceAgentContext(
   return [
     `Organization: ${org?.name ?? "Current organization"}. CRM contact count: ${contactTotal?.value ?? 0}.`,
     `Digital Urgency platform knowledge:\n${platformKnowledge}`,
+    "Before answering stock availability or recommending a branch, call find_branch_stock for live quantities and addresses. Use its availabilitySummary and availableBranchNames: say an item is available at all branches only when the summary is all_branches; otherwise name only confirmed in-stock branches. Do not volunteer exact quantities unless the customer asks. Unknown stock is not zero. Do not claim a nearest branch without distance evidence, or promise a reservation.",
     `Current organization catalogue snapshot:\n${productContext}`,
     `Durable lessons learned from this agent's past conversations:\n${learned}`,
   ].join("\n\n");
