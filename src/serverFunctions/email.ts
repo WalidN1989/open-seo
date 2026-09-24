@@ -3,6 +3,7 @@ import { getRequest } from "@tanstack/react-start/server";
 import { z } from "zod";
 import { getPublicOrigin } from "@/server/mcp/public-origin";
 import { microsoftAuthorizationUrl } from "@/server/features/email/services/MicrosoftEmailService";
+import { importExistingMicrosoftMail } from "@/server/features/email/services/MicrosoftMailSyncService";
 import { EmailService } from "@/server/features/email/services/EmailService";
 import { EmailAccountService } from "@/server/features/email/services/EmailAccountService";
 import { requireAuthenticatedContext } from "@/serverFunctions/middleware";
@@ -72,6 +73,12 @@ export const disconnectEmailAccount = createServerFn({ method: "POST" })
   .middleware(requireAuthenticatedContext)
   .handler(({ context }) =>
     EmailAccountService.disconnect(context.organizationId, context.userId),
+  );
+
+export const importExistingMicrosoftEmail = createServerFn({ method: "POST" })
+  .middleware(requireAuthenticatedContext)
+  .handler(({ context }) =>
+    importExistingMicrosoftMail(context.organizationId, context.userId),
   );
 
 export const setEmailAutopilot = createServerFn({ method: "POST" })

@@ -1,4 +1,6 @@
 import { z } from "zod";
+import { AppError } from "@/server/lib/errors";
+import { BusinessModuleService } from "@/server/features/business-modules/services/BusinessModuleService";
 import { graphRequest } from "../providers/microsoft";
 import {
   EmailRepository as Repo,
@@ -20,6 +22,7 @@ const messageSchema = z.object({
   toRecipients: z.array(recipient).optional(),
   ccRecipients: z.array(recipient).optional(),
   receivedDateTime: z.string().optional(),
+  sentDateTime: z.string().optional(),
   "@removed": z.unknown().optional(),
 });
 const pageSchema = z.object({
@@ -27,7 +30,25 @@ const pageSchema = z.object({
   "@odata.nextLink": z.string().optional(),
   "@odata.deltaLink": z.string().optional(),
 });
-const cursorSchema = z.object({ url: z.url(), cutoff: z.iso.datetime() });
+const cursorSchema = z.object({
+  url: z.url(),
+  cutoff: z.iso.datetime(),
+  historyUrl: z.url().optional(),
+  historyFolder: z.enum(["inbox", "sentitems"]).optional(),
+  historyDone: z.boolean().optional(),
+});
+
+function historyUrl(folder: "inbox" | "sentitems") {
+  const url = new URL(
+    `https://graph.microsoft.com/v1.0/me/mailFolders/${folder}/messages/delta`,
+  );
+  url.searchParams.set(
+    "$select",
+    "id,conversationId,subject,bodyPreview,body,from,toRecipients,ccRecipients,receivedDateTime,sentDateTime",
+  );
+  url.searchParams.set("$top", "50");
+  return url.toString();
+}
 
 /** No historical import: start when this mailbox is connected. */
 export function initialMicrosoftMailCursor(connectedAt = new Date()) {
@@ -53,24 +74,25 @@ async function ingest(
   account: EmailAccountRow,
   message: z.infer<typeof messageSchema>,
   cutoff: string,
+  folder: "inbox" | "sentitems" = "inbox",
 ) {
-  if (
-    message["@removed"] ||
-    !message.from?.emailAddress.address ||
-    !message.receivedDateTime
-  )
+  const occurredAt =
+    folder === "sentitems"
+      ? (message.sentDateTime ?? message.receivedDateTime)
+      : message.receivedDateTime;
+  if (message["@removed"] || !message.from?.emailAddress.address || !occurredAt)
     return;
-  if (message.receivedDateTime < cutoff) return;
+  if (occurredAt < cutoff) return;
   if (
+    folder === "inbox" &&
     message.from.emailAddress.address.toLowerCase() ===
-    account.address.toLowerCase()
+      account.address.toLowerCase()
   )
     return;
   if (await Repo.findMessageByExternalId(account.id, message.id)) return;
   const threadKey = message.conversationId ?? message.id;
   const existing = await Repo.findThreadByExternalId(account.id, threadKey);
-  const latest =
-    !existing || message.receivedDateTime >= existing.lastMessageAt;
+  const latest = !existing || occurredAt >= existing.lastMessageAt;
   const from = message.from.emailAddress.address;
   const to = (message.toRecipients ?? []).map(
     (item) => item.emailAddress.address,
@@ -84,9 +106,11 @@ async function ingest(
     senders: [from],
     recipients: to,
     messageCount: null,
-    lastMessageAt: latest ? message.receivedDateTime : existing.lastMessageAt,
+    lastMessageAt: latest ? occurredAt : existing.lastMessageAt,
     lastDirection: latest
-      ? "inbound"
+      ? folder === "sentitems"
+        ? "outbound"
+        : "inbound"
       : existing?.lastDirection === "outbound"
         ? "outbound"
         : "inbound",
@@ -96,7 +120,7 @@ async function ingest(
     accountId: account.id,
     threadId: thread.id,
     externalMessageId: message.id,
-    direction: "inbound",
+    direction: folder === "sentitems" ? "outbound" : "inbound",
     fromAddress: from,
     toAddresses: to,
     ccAddresses: (message.ccRecipients ?? []).map(
@@ -105,11 +129,11 @@ async function ingest(
     subject: message.subject ?? null,
     textBody: message.body?.content.slice(0, 200_000) ?? null,
     htmlBody: null,
-    status: "received",
+    status: folder === "sentitems" ? "sent" : "received",
     authoredBy: null,
-    occurredAt: message.receivedDateTime,
+    occurredAt,
   });
-  // This connector mirrors new mail only. It does not invoke an assistant or send replies.
+  // Mirroring never invokes an assistant or sends replies.
 }
 
 async function syncAccount(account: EmailAccountRow) {
@@ -133,6 +157,82 @@ async function syncAccount(account: EmailAccountRow) {
     });
     if (batch["@odata.deltaLink"]) break;
   }
+  if (!cursor.historyUrl || !cursor.historyFolder)
+    return { historyComplete: true };
+  for (let page = 0; page < 5; page += 1) {
+    const response = await graphRequest(account, cursor.historyUrl);
+    const batch = pageSchema.parse(await response.json());
+    for (const message of batch.value.toSorted((a, b) =>
+      (a.sentDateTime ?? a.receivedDateTime ?? "").localeCompare(
+        b.sentDateTime ?? b.receivedDateTime ?? "",
+      ),
+    )) {
+      await ingest(
+        account,
+        message,
+        new Date(0).toISOString(),
+        cursor.historyFolder,
+      );
+    }
+    const next = batch["@odata.nextLink"] ?? batch["@odata.deltaLink"];
+    if (!next)
+      throw new Error("Microsoft Graph did not return a history cursor.");
+    if (batch["@odata.deltaLink"]) {
+      if (cursor.historyFolder === "inbox") {
+        cursor.historyFolder = "sentitems";
+        cursor.historyUrl = historyUrl("sentitems");
+      } else {
+        delete cursor.historyFolder;
+        delete cursor.historyUrl;
+        cursor.historyDone = true;
+      }
+    } else {
+      cursor.historyUrl = next;
+    }
+    await Repo.updateAccount(account.id, {
+      syncCursor: JSON.stringify(cursor),
+      lastError: null,
+    });
+    if (!cursor.historyUrl) break;
+  }
+  return { historyComplete: !cursor.historyUrl };
+}
+
+/** Explicitly requested per-business import; a page-bounded pass can be resumed. */
+export async function importExistingMicrosoftMail(
+  organizationId: string,
+  userId: string,
+) {
+  await BusinessModuleService.requireAccess(
+    organizationId,
+    userId,
+    "email",
+    "manage",
+  );
+  const account = await Repo.getAccount(organizationId);
+  if (
+    !account ||
+    account.provider !== "microsoft" ||
+    account.status !== "connected" ||
+    !account.syncCursor
+  ) {
+    throw new AppError(
+      "VALIDATION_ERROR",
+      "Connect a Microsoft mailbox first.",
+    );
+  }
+  const cursor = cursorSchema.parse(JSON.parse(account.syncCursor));
+  if (cursor.historyDone) return { historyComplete: true };
+  if (!cursor.historyUrl) {
+    cursor.historyFolder = "inbox";
+    cursor.historyUrl = historyUrl("inbox");
+    await Repo.updateAccount(account.id, {
+      syncCursor: JSON.stringify(cursor),
+    });
+  }
+  const fresh = await Repo.getAccountById(account.id);
+  if (!fresh) throw new AppError("NOT_FOUND", "Mailbox not found.");
+  return syncAccount(fresh);
 }
 
 export async function syncMicrosoftMailboxes() {

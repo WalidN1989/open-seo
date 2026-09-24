@@ -3,6 +3,7 @@ import { Bot, Mail } from "lucide-react";
 import {
   connectAgentmail,
   disconnectEmailAccount,
+  importExistingMicrosoftEmail,
   setEmailAutopilot,
   startMicrosoftEmailConnection,
 } from "@/serverFunctions/email";
@@ -29,6 +30,10 @@ function ConnectedAccount({
   const disconnect = useEmailMutation(
     () => disconnectEmailAccount(),
     "Email account disconnected",
+  );
+  const historyImport = useEmailMutation(
+    () => importExistingMicrosoftEmail(),
+    "Email import pass completed",
   );
   const webhookUrl = `${window.location.origin}/api/email/${account.id}`;
   return (
@@ -98,10 +103,36 @@ function ConnectedAccount({
           />
         </label>
       ) : (
-        <p className="text-sm text-base-content/70">
-          This Microsoft connection mirrors new messages only. Automatic AI
-          drafts and replies are off.
-        </p>
+        <section className="rounded-xl border border-base-300 p-4">
+          <p className="text-sm text-base-content/70">
+            New mail is mirrored automatically. Automatic AI drafts and replies
+            are off.
+          </p>
+          <div className="mt-3 flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              className="btn btn-outline btn-sm"
+              disabled={
+                historyImport.isPending || account.historyImport === "complete"
+              }
+              onClick={() => historyImport.mutate(undefined)}
+            >
+              {historyImport.isPending
+                ? "Importing…"
+                : account.historyImport === "running"
+                  ? "Continue existing mail import"
+                  : account.historyImport === "complete"
+                    ? "Existing mail imported"
+                    : "Import existing Inbox and Sent Items"}
+            </button>
+            {account.historyImport === "running" ? (
+              <span className="text-sm text-base-content/60">
+                More messages are being imported in batches. You can continue
+                now; scheduled sync also resumes the import.
+              </span>
+            ) : null}
+          </div>
+        </section>
       )}
 
       <section className="rounded-xl border border-base-300 p-4 text-sm">
