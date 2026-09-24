@@ -1134,7 +1134,8 @@ email account. A standard-tier scheduler job mirrors new messages in bounded
 delta pages. A separately requested historical import reads existing Inbox and
 Sent Items in resumable batches, preserving the new-mail cursor and
 deduplicating by provider message ID. Message text and headers are mirrored;
-attachment files are not. The Microsoft path does not invoke the assistant or
+attachment files remain in Microsoft 365 and are listed and streamed on demand
+to an authorized business user. The Microsoft path does not invoke the assistant or
 send automatic replies. Manual sending uses Graph over HTTPS. No DNS change is
 part of this connector.
 
