@@ -1,4 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
+import { getRequest } from "@tanstack/react-start/server";
+import { z } from "zod";
+import { getPublicOrigin } from "@/server/mcp/public-origin";
+import { microsoftAuthorizationUrl } from "@/server/features/email/services/MicrosoftEmailService";
 import { EmailService } from "@/server/features/email/services/EmailService";
 import { EmailAccountService } from "@/server/features/email/services/EmailAccountService";
 import { requireAuthenticatedContext } from "@/serverFunctions/middleware";
@@ -48,6 +52,21 @@ export const connectMailbox = createServerFn({ method: "POST" })
       data,
     ),
   );
+
+export const startMicrosoftEmailConnection = createServerFn({ method: "POST" })
+  .middleware(requireAuthenticatedContext)
+  .validator(
+    z.object({ address: z.email(), displayName: z.string().trim().min(1) }),
+  )
+  .handler(async ({ context, data }) => ({
+    url: await microsoftAuthorizationUrl({
+      organizationId: context.organizationId,
+      userId: context.userId,
+      address: data.address,
+      displayName: data.displayName,
+      origin: getPublicOrigin(getRequest()),
+    }),
+  }));
 
 export const disconnectEmailAccount = createServerFn({ method: "POST" })
   .middleware(requireAuthenticatedContext)

@@ -4,6 +4,7 @@ import {
   connectAgentmail,
   disconnectEmailAccount,
   setEmailAutopilot,
+  startMicrosoftEmailConnection,
 } from "@/serverFunctions/email";
 import { type EmailWorkspace, useEmailMutation } from "./emailQuery";
 import { MailboxConnectForm } from "./MailboxConnectForm";
@@ -38,7 +39,12 @@ function ConnectedAccount({
             <p className="font-medium">{account.address}</p>
             <p className="text-sm text-base-content/60">
               {account.displayName} ·{" "}
-              {account.provider === "mailbox" ? "Your mailbox" : "AgentMail"} ·{" "}
+              {account.provider === "microsoft"
+                ? "Microsoft 365"
+                : account.provider === "mailbox"
+                  ? "Your mailbox"
+                  : "AgentMail"}{" "}
+              ·{" "}
               <span
                 className={
                   account.status === "connected"
@@ -72,24 +78,31 @@ function ConnectedAccount({
         </div>
       </section>
 
-      <label className="flex cursor-pointer items-center justify-between gap-4 rounded-xl border border-base-300 p-4">
-        <span>
-          <span className="block font-medium">Autopilot</span>
-          <span className="text-sm text-base-content/60">
-            Off: the assistant writes a draft for every customer email and a
-            person approves it under Drafts. On: it replies on its own. Either
-            way it uses the persona, facts, prices and contact details from the
-            Assistant tab, which this business shares with WhatsApp.
+      {account.provider !== "microsoft" ? (
+        <label className="flex cursor-pointer items-center justify-between gap-4 rounded-xl border border-base-300 p-4">
+          <span>
+            <span className="block font-medium">Autopilot</span>
+            <span className="text-sm text-base-content/60">
+              Off: the assistant writes a draft for every customer email and a
+              person approves it under Drafts. On: it replies on its own. Either
+              way it uses the persona, facts, prices and contact details from
+              the Assistant tab, which this business shares with WhatsApp.
+            </span>
           </span>
-        </span>
-        <input
-          type="checkbox"
-          className="toggle toggle-primary"
-          checked={account.autopilot}
-          disabled={autopilot.isPending}
-          onChange={(event) => autopilot.mutate(event.currentTarget.checked)}
-        />
-      </label>
+          <input
+            type="checkbox"
+            className="toggle toggle-primary"
+            checked={account.autopilot}
+            disabled={autopilot.isPending}
+            onChange={(event) => autopilot.mutate(event.currentTarget.checked)}
+          />
+        </label>
+      ) : (
+        <p className="text-sm text-base-content/70">
+          This Microsoft connection mirrors new messages only. Automatic AI
+          drafts and replies are off.
+        </p>
+      )}
 
       <section className="rounded-xl border border-base-300 p-4 text-sm">
         <div className="mb-2 flex items-center gap-2">
@@ -109,6 +122,11 @@ function ConnectedAccount({
               there.
             </li>
           </ul>
+        ) : account.provider === "microsoft" ? (
+          <p className="text-base-content/70">
+            Microsoft 365 mail is mirrored here; sending uses Microsoft Graph.
+            The Outlook mailbox stays available as usual.
+          </p>
         ) : (
           <ul className="grid gap-1 text-base-content/70">
             <li>
@@ -138,6 +156,9 @@ function ConnectedAccount({
 }
 
 function ProviderChoice() {
+  const [microsoft, setMicrosoft] = useState({ address: "", displayName: "" });
+  const [microsoftError, setMicrosoftError] = useState("");
+  const [microsoftPending, setMicrosoftPending] = useState(false);
   const [form, setForm] = useState({
     displayName: "",
     username: "",
@@ -152,6 +173,65 @@ function ProviderChoice() {
   const input = "input input-bordered input-sm w-full";
   return (
     <div className="grid max-w-3xl gap-4 md:grid-cols-2">
+      <form
+        className="grid gap-3 rounded-xl border border-base-300 p-4 md:col-span-2"
+        onSubmit={async (event) => {
+          event.preventDefault();
+          setMicrosoftPending(true);
+          setMicrosoftError("");
+          try {
+            const result = await startMicrosoftEmailConnection({
+              data: microsoft,
+            });
+            window.location.assign(result.url);
+          } catch (error) {
+            setMicrosoftError(
+              error instanceof Error
+                ? error.message
+                : "Could not start Microsoft sign-in.",
+            );
+            setMicrosoftPending(false);
+          }
+        }}
+      >
+        <h3 className="font-medium">Microsoft 365 / GoDaddy Email</h3>
+        <p className="text-sm text-base-content/60">
+          Connect the existing Outlook mailbox with Microsoft sign-in. No
+          mailbox password or DNS change is needed.
+        </p>
+        <input
+          className={input}
+          type="email"
+          required
+          placeholder="info@yourbusiness.com.au"
+          value={microsoft.address}
+          onChange={(event) =>
+            setMicrosoft({ ...microsoft, address: event.currentTarget.value })
+          }
+        />
+        <input
+          className={input}
+          required
+          placeholder="Display name"
+          value={microsoft.displayName}
+          onChange={(event) =>
+            setMicrosoft({
+              ...microsoft,
+              displayName: event.currentTarget.value,
+            })
+          }
+        />
+        {microsoftError ? (
+          <p className="text-sm text-error">{microsoftError}</p>
+        ) : null}
+        <button
+          className="btn btn-primary btn-sm justify-self-start"
+          type="submit"
+          disabled={microsoftPending}
+        >
+          Connect Microsoft mailbox
+        </button>
+      </form>
       <form
         className="grid gap-3 rounded-xl border border-primary/30 bg-primary/5 p-4"
         onSubmit={(event) => {
