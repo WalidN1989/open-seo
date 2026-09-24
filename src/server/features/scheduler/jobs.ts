@@ -5,6 +5,7 @@ import { runScheduledRankChecks } from "@/server/features/rank-tracking/services
 import { CommunicationsService } from "@/server/features/communications/services/CommunicationsService";
 import { CatalogueSyncService } from "@/server/features/commerce/services/CatalogueSyncService";
 import { runDueVoiceLearning } from "@/server/features/communications/services/VoiceLearningService";
+import { syncMicrosoftMailboxes } from "@/server/features/email/services/MicrosoftMailSyncService";
 
 let registered = false;
 
@@ -44,6 +45,14 @@ export function registerBusinessCronJobs() {
     tier: "standard",
     run: async () => {
       await withPgClient(() => CatalogueSyncService.runDueSyncs());
+    },
+  });
+
+  registerCronJob({
+    name: "email.microsoftSync",
+    tier: "standard",
+    run: async () => {
+      await withPgClient(() => syncMicrosoftMailboxes());
     },
   });
 

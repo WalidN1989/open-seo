@@ -1091,3 +1091,23 @@ a second recording or provider pipeline. `Ctrl+Space` opens it on Windows/Linux;
 macOS uses `Command+Shift+Space` because `Command+Space` is reserved by
 Spotlight. A shared Railway `DEEPGRAM_API_KEY` is supported directly, while a
 credential-reference-specific key remains an optional tenant override.
+
+### 2026-09-24: Microsoft 365 email connector (prepared, not deployed)
+
+The Email module can connect an existing Microsoft 365 mailbox through a
+tenant-specific Microsoft sign-in rather than an IMAP/SMTP password. Delegated
+`User.Read`, `Mail.Read`, `Mail.Send` and `offline_access` are requested for the
+signed-in mailbox; the encrypted refresh token is stored on that organization's
+email account. A standard-tier scheduler job mirrors only messages received
+after connection, in bounded delta pages. The Microsoft path does not invoke
+the assistant or send automatic replies. Manual sending uses Graph over HTTPS.
+No historical mailbox import or DNS change is part of this connector.
+
+Before production use, register a single-tenant Microsoft Entra app with
+redirect URI `https://seo.digitalurgency.com.au/api/email/microsoft/callback`,
+configure delegated Graph permissions, and set
+`MICROSOFT_MAIL_TENANT_ID`, `MICROSOFT_MAIL_CLIENT_ID`, and
+`MICROSOFT_MAIL_CLIENT_SECRET` on Railway. These names are in
+`scripts/write-runtime-dev-vars.ts`. The account owner must consent to the
+mailbox permissions at connection time. Verify deployment and one new inbound
+message in the correct business workspace before calling the setup complete.

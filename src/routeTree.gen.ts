@@ -55,6 +55,7 @@ import { Route as AppModulesCrmIndexRouteImport } from './routes/_app/modules/cr
 import { Route as ApiVoiceElevenlabsConnectionIdRouteImport } from './routes/api/voice/elevenlabs/$connectionId'
 import { Route as ApiGscOauthCallbackRouteImport } from './routes/api/gsc/oauth/callback'
 import { Route as ApiGa4OauthCallbackRouteImport } from './routes/api/ga4/oauth/callback'
+import { Route as ApiEmailMicrosoftCallbackRouteImport } from './routes/api/email/microsoft/callback'
 import { Route as ProjectPProjectIdSettingsRouteImport } from './routes/_project/p/$projectId/settings'
 import { Route as ProjectPProjectIdSearchPerformanceRouteImport } from './routes/_project/p/$projectId/search-performance'
 import { Route as ProjectPProjectIdSavedRouteImport } from './routes/_project/p/$projectId/saved'
@@ -323,6 +324,12 @@ const ApiGa4OauthCallbackRoute = ApiGa4OauthCallbackRouteImport.update({
   path: '/api/ga4/oauth/callback',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiEmailMicrosoftCallbackRoute =
+  ApiEmailMicrosoftCallbackRouteImport.update({
+    id: '/api/email/microsoft/callback',
+    path: '/api/email/microsoft/callback',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ProjectPProjectIdSettingsRoute =
   ProjectPProjectIdSettingsRouteImport.update({
     id: '/settings',
@@ -574,6 +581,7 @@ export interface FileRoutesByFullPath {
   '/p/$projectId/saved': typeof ProjectPProjectIdSavedRoute
   '/p/$projectId/search-performance': typeof ProjectPProjectIdSearchPerformanceRoute
   '/p/$projectId/settings': typeof ProjectPProjectIdSettingsRouteWithChildren
+  '/api/email/microsoft/callback': typeof ApiEmailMicrosoftCallbackRoute
   '/api/ga4/oauth/callback': typeof ApiGa4OauthCallbackRoute
   '/api/gsc/oauth/callback': typeof ApiGscOauthCallbackRoute
   '/api/voice/elevenlabs/$connectionId': typeof ApiVoiceElevenlabsConnectionIdRoute
@@ -645,6 +653,7 @@ export interface FileRoutesByTo {
   '/p/$projectId/sam': typeof ProjectPProjectIdSamRoute
   '/p/$projectId/saved': typeof ProjectPProjectIdSavedRoute
   '/p/$projectId/search-performance': typeof ProjectPProjectIdSearchPerformanceRoute
+  '/api/email/microsoft/callback': typeof ApiEmailMicrosoftCallbackRoute
   '/api/ga4/oauth/callback': typeof ApiGa4OauthCallbackRoute
   '/api/gsc/oauth/callback': typeof ApiGscOauthCallbackRoute
   '/api/voice/elevenlabs/$connectionId': typeof ApiVoiceElevenlabsConnectionIdRoute
@@ -728,6 +737,7 @@ export interface FileRoutesById {
   '/_project/p/$projectId/saved': typeof ProjectPProjectIdSavedRoute
   '/_project/p/$projectId/search-performance': typeof ProjectPProjectIdSearchPerformanceRoute
   '/_project/p/$projectId/settings': typeof ProjectPProjectIdSettingsRouteWithChildren
+  '/api/email/microsoft/callback': typeof ApiEmailMicrosoftCallbackRoute
   '/api/ga4/oauth/callback': typeof ApiGa4OauthCallbackRoute
   '/api/gsc/oauth/callback': typeof ApiGscOauthCallbackRoute
   '/api/voice/elevenlabs/$connectionId': typeof ApiVoiceElevenlabsConnectionIdRoute
@@ -808,6 +818,7 @@ export interface FileRouteTypes {
     | '/p/$projectId/saved'
     | '/p/$projectId/search-performance'
     | '/p/$projectId/settings'
+    | '/api/email/microsoft/callback'
     | '/api/ga4/oauth/callback'
     | '/api/gsc/oauth/callback'
     | '/api/voice/elevenlabs/$connectionId'
@@ -879,6 +890,7 @@ export interface FileRouteTypes {
     | '/p/$projectId/sam'
     | '/p/$projectId/saved'
     | '/p/$projectId/search-performance'
+    | '/api/email/microsoft/callback'
     | '/api/ga4/oauth/callback'
     | '/api/gsc/oauth/callback'
     | '/api/voice/elevenlabs/$connectionId'
@@ -961,6 +973,7 @@ export interface FileRouteTypes {
     | '/_project/p/$projectId/saved'
     | '/_project/p/$projectId/search-performance'
     | '/_project/p/$projectId/settings'
+    | '/api/email/microsoft/callback'
     | '/api/ga4/oauth/callback'
     | '/api/gsc/oauth/callback'
     | '/api/voice/elevenlabs/$connectionId'
@@ -1000,6 +1013,7 @@ export interface RootRouteChildren {
   ApiSocialMetaRoute: typeof ApiSocialMetaRoute
   ApiWhatsappConnectionIdRoute: typeof ApiWhatsappConnectionIdRoute
   ApiWhatsappMetaRoute: typeof ApiWhatsappMetaRoute
+  ApiEmailMicrosoftCallbackRoute: typeof ApiEmailMicrosoftCallbackRoute
   ApiGa4OauthCallbackRoute: typeof ApiGa4OauthCallbackRoute
   ApiGscOauthCallbackRoute: typeof ApiGscOauthCallbackRoute
   ApiVoiceElevenlabsConnectionIdRoute: typeof ApiVoiceElevenlabsConnectionIdRoute
@@ -1327,6 +1341,13 @@ declare module '@tanstack/react-router' {
       path: '/api/ga4/oauth/callback'
       fullPath: '/api/ga4/oauth/callback'
       preLoaderRoute: typeof ApiGa4OauthCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/email/microsoft/callback': {
+      id: '/api/email/microsoft/callback'
+      path: '/api/email/microsoft/callback'
+      fullPath: '/api/email/microsoft/callback'
+      preLoaderRoute: typeof ApiEmailMicrosoftCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_project/p/$projectId/settings': {
@@ -1846,6 +1867,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiSocialMetaRoute: ApiSocialMetaRoute,
   ApiWhatsappConnectionIdRoute: ApiWhatsappConnectionIdRoute,
   ApiWhatsappMetaRoute: ApiWhatsappMetaRoute,
+  ApiEmailMicrosoftCallbackRoute: ApiEmailMicrosoftCallbackRoute,
   ApiGa4OauthCallbackRoute: ApiGa4OauthCallbackRoute,
   ApiGscOauthCallbackRoute: ApiGscOauthCallbackRoute,
   ApiVoiceElevenlabsConnectionIdRoute: ApiVoiceElevenlabsConnectionIdRoute,

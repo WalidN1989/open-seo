@@ -19,6 +19,7 @@ import {
 } from "./mailbox";
 import { normalizeMessageId, replySubject } from "./threading";
 import { textToHtml } from "./textToHtml";
+import { graphRequest } from "./microsoft";
 
 /** What every provider must be able to do, in the mirror's own terms. */
 type Copies = { cc?: string[]; bcc?: string[] };
@@ -77,6 +78,63 @@ function agentmailOutbound(account: EmailAccountRow, apiKey: string): Outbound {
           content: file.contentBase64,
         })),
       }),
+  };
+}
+
+const microsoftRecipients = (addresses: string[] = []) =>
+  addresses.map((address) => ({ emailAddress: { address } }));
+
+function microsoftOutbound(account: EmailAccountRow): Outbound {
+  return {
+    reply: async ({ thread, last, text, cc, bcc }) => {
+      if (!last.externalMessageId)
+        throw new AppError(
+          "VALIDATION_ERROR",
+          "Nothing to reply to in this thread yet.",
+        );
+      await graphRequest(
+        account,
+        `/me/messages/${encodeURIComponent(last.externalMessageId)}/reply`,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            message: {
+              body: { contentType: "HTML", content: textToHtml(text) },
+              toRecipients: microsoftRecipients([last.fromAddress]),
+              ccRecipients: microsoftRecipients(cc),
+              bccRecipients: microsoftRecipients(bcc),
+            },
+          }),
+        },
+      );
+      return {
+        message_id: `microsoft-sent:${crypto.randomUUID()}`,
+        thread_id: thread.externalThreadId,
+      };
+    },
+    compose: async ({ to, subject, text, html, cc, bcc, attachments }) => {
+      const externalId = `microsoft-sent:${crypto.randomUUID()}`;
+      await graphRequest(account, "/me/sendMail", {
+        method: "POST",
+        body: JSON.stringify({
+          message: {
+            subject,
+            body: { contentType: "HTML", content: html ?? textToHtml(text) },
+            toRecipients: microsoftRecipients([to]),
+            ccRecipients: microsoftRecipients(cc),
+            bccRecipients: microsoftRecipients(bcc),
+            attachments: attachments?.map((file) => ({
+              "@odata.type": "#microsoft.graph.fileAttachment",
+              name: file.filename,
+              contentType: file.contentType,
+              contentBytes: file.contentBase64,
+            })),
+          },
+          saveToSentItems: true,
+        }),
+      });
+      return { message_id: externalId, thread_id: externalId };
+    },
   };
 }
 
@@ -154,6 +212,7 @@ function resendKeyFor(address: string) {
 
 /** The sender for this account, whichever provider it is on. */
 export async function outboundFor(account: EmailAccountRow): Promise<Outbound> {
+  if (account.provider === "microsoft") return microsoftOutbound(account);
   const creds = await decryptCredentials(account.credentials);
   if (account.provider === "mailbox") {
     const credentials = mailboxCredentialsFrom(creds);
