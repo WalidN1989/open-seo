@@ -7,6 +7,7 @@ vi.mock("@/server/lib/runtime-env", () => ({
 }));
 afterEach(() => {
   vi.unstubAllGlobals();
+  vi.restoreAllMocks();
   config.key = "test-key";
 });
 describe("bounded Jev decisions", () => {
@@ -25,6 +26,7 @@ describe("bounded Jev decisions", () => {
     expect((await routeQuestion("projects?")).status).toBe("uncertain");
   });
   it("uses TypeSafe's supported rolling Jev model alias", async () => {
+    const timeout = vi.spyOn(AbortSignal, "timeout");
     const fetcher = vi.fn().mockResolvedValue(
       Response.json({
         answers: {
@@ -42,6 +44,7 @@ describe("bounded Jev decisions", () => {
       .tuple([z.string(), z.object({ body: z.string() })])
       .parse(fetcher.mock.calls[0]);
     expect(JSON.parse(call[1].body)).toMatchObject({ model: "jev-latest" });
+    expect(timeout).toHaveBeenCalledWith(30_000);
   });
   it("validates provider output and never falls back to another model", async () => {
     const fetcher = vi.fn().mockResolvedValue(

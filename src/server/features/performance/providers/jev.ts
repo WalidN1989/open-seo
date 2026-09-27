@@ -34,7 +34,7 @@ async function evaluate(state: unknown, questions: Record<string, unknown>) {
   const response = await fetch("https://api.typesafe.ai/v1/systemone", {
     method: "POST",
     redirect: "error",
-    signal: AbortSignal.timeout(10_000),
+    signal: AbortSignal.timeout(30_000),
     headers: {
       Authorization: `Bearer ${key}`,
       "Content-Type": "application/json",

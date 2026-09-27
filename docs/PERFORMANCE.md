@@ -75,7 +75,7 @@ flags cannot be overwritten by a model. Unsupported questions ask for
 clarification. Failures are surfaced; no OpenAI/Claude fallback is enabled.
 
 The dashboard makes no automatic Jev requests. Asking or requesting priorities
-is explicit, has a ten-second timeout and no automatic retries. A per-user,
+is explicit, has a thirty-second timeout and no automatic retries. A per-user,
 per-process guard allows six requests per minute; this is not a global billing
 cap across workers or restarts. The API key is
 only in server headers and never returned to the browser. Provider messages are
