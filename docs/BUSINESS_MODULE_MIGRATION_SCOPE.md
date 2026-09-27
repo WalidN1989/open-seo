@@ -1273,3 +1273,9 @@ marking it 85% ambiguous while Choice selected projects at 86%. Routing now uses
 one Choice question with an explicit `unsupported` option. This reduces tokens
 and removes the contradictory decision; any genuine provider or validation
 failure is logged server-side without the API key or user question.
+
+The diagnostic then isolated the browser-only failure to the self-host fetch
+runtime: it rejects `redirect: "error"` before sending a request. TypeSafe itself
+returned HTTP 200 from the same production container. The provider now uses
+`redirect: "manual"`; any 3xx remains non-success and is rejected before the
+bearer credential can be forwarded.
