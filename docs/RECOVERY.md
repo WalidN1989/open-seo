@@ -122,6 +122,28 @@ extracting `files.tar.gz` into an isolated recovery directory, never over a
 live checkout. The manifest records deleted files as absent. Verify checksums
 before recovery. The snapshot does not replace the production-data backup plan.
 
+## Storage recommendation, 2026-09-27
+
+Neon Console confirms a seven-day history window for OPEN SEO production.
+Keep that fast recovery path. A second Neon project shares account/provider
+risk and does not replace an independent backup. No second project is needed
+to schedule snapshots of the existing production branch.
+
+For independent encrypted exports, consider an owner-controlled private
+Backblaze B2 bucket with Object Lock, separate recovery access and no public
+downloads. Encrypt before upload; the writer should not be able to delete
+retained backups. Keep recovery keys in the owner's password vault, separate
+from the backup writer. Choose the region, retention and access before setup.
+
+Published B2 pricing is $6.95/TB-month with the first 10 GB free. At 50 GB total
+retained storage, storage alone would be about $0.28/month after that allowance.
+This excludes backup-job compute, source-provider costs, taxes and download
+overages; measure actual export and volume sizes before budgeting. No account,
+bucket, upload or paid commitment has been created.
+
+Sources: [B2 pricing](https://www.backblaze.com/cloud-storage/pricing),
+[Object Lock](https://help.backblaze.com/hc/en-us/articles/360052973274-Object-Lock-FAQs).
+
 ## Password recovery setup
 
 The current application already supports password-reset mail through Resend.

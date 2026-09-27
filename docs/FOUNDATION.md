@@ -78,10 +78,11 @@ Never run migrations, seed scripts, scheduled jobs or outbound email/SMS/
 WhatsApp against production as part of a test. Do not load `.env.local` into a
 test environment without confirming which database and services it selects.
 
-## Protection to approve and enable
+## Release protections
 
 Documentation expresses the policy; GitHub must enforce the parts it can.
-The audit records the actual settings. Proposed protections are:
+The audit records the actual settings and which file changes await merge.
+The required protections are:
 
 - Require pull requests and the successful `ci` and `docker-build` checks,
   using the verified GitHub Actions source. Require the branch to be up to

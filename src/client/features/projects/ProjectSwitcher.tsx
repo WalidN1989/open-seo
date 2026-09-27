@@ -81,7 +81,7 @@ export function ProjectSwitcher({
     queryKey: ["projects"],
     queryFn: () => getProjects(),
   });
-  const projects = [...(projectsQuery.data ?? [])].sort(
+  const projects = (projectsQuery.data ?? []).toSorted(
     (a, b) =>
       Number(isPreferredAgencyProject(b)) - Number(isPreferredAgencyProject(a)),
   );
@@ -385,22 +385,7 @@ export function ProjectSwitcher({
                         isActive ? "active" : isHighlighted ? "bg-base-200" : ""
                       }
                     >
-                      <span className="flex min-w-0 flex-1 flex-col">
-                        <span className="flex min-w-0 items-center gap-1">
-                          <span className="truncate">{project.name}</span>
-                          {isPreferredAgencyProject(project) ? (
-                            <BadgeCheck
-                              aria-label="Preferred project"
-                              className="size-4 shrink-0 text-sky-500"
-                            />
-                          ) : null}
-                        </span>
-                        {project.domain ? (
-                          <span className="truncate text-xs text-base-content/50">
-                            {project.domain}
-                          </span>
-                        ) : null}
-                      </span>
+                      <ProjectOptionLabel project={project} />
                       {isActive ? (
                         <Check className="size-4 shrink-0 text-primary" />
                       ) : null}
@@ -463,5 +448,26 @@ export function ProjectSwitcher({
         />
       ) : null}
     </div>
+  );
+}
+
+function ProjectOptionLabel({ project }: { project: ProjectSummary }) {
+  return (
+    <span className="flex min-w-0 flex-1 flex-col">
+      <span className="flex min-w-0 items-center gap-1">
+        <span className="truncate">{project.name}</span>
+        {isPreferredAgencyProject(project) ? (
+          <BadgeCheck
+            aria-label="Preferred project"
+            className="size-4 shrink-0 text-sky-500"
+          />
+        ) : null}
+      </span>
+      {project.domain ? (
+        <span className="truncate text-xs text-base-content/50">
+          {project.domain}
+        </span>
+      ) : null}
+    </span>
   );
 }

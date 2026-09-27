@@ -44,6 +44,12 @@ On the subsequent inspection, the activation prompt was gone and CI run
 unused export in the existing Microsoft email provider. The foundation branch
 makes that helper private without changing its behavior. Further checks remain
 subject to the final revision's CI result.
+The subsequent run exposed an outdated committed route tree, then local
+validation found 11 pre-existing lint errors. The branch regenerates the route
+tree, narrows parsed JSON from unknown, completes a test fixture, removes a
+shadowed name, uses non-mutating sorting and splits existing component logic.
+The stylesheet import allowance uses Oxlint's documented CSS-only option;
+JavaScript side-effect imports remain checked. No lint rule is disabled.
 Repository workflow token permissions are read-only, with workflow approval
 of PRs disabled.
 
@@ -82,9 +88,12 @@ claiming that protection exists. An org-enforced Greptile baseline is unverified
   establish successful `ci` and `docker-build` results before release.
 - Pending business decision: private off-provider backup destination and
   budget, recovery access, and whether custom code should remain public.
-- Pending operational verification: Neon recovery retention, encrypted export
-  schedule, volume backups, vaulted encryption/configuration recovery and a
-  full isolated database/application restore drill.
+- Verified in Neon Console: OPEN SEO production has a seven-day history
+  window on Launch, Postgres 18 and about 86 MB of database storage. No snapshot
+  schedule or snapshots existed at inspection. No database was restored.
+- Pending operational verification: independent encrypted export schedule,
+  volume backups, vaulted encryption/configuration recovery and a full isolated
+  database/application restore drill.
 - Pending application recovery check: password-reset email, following the live
   health endpoint warning.
 - Pending feature work: recover Azure into its own short branch from current
