@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { ArrowUp, MessageCircle, X } from "lucide-react";
+import { ArrowUp, X } from "lucide-react";
 import { useSession } from "@/lib/auth-client";
 import { isUserAuthMode } from "@/lib/auth-mode";
 import { getStandardErrorMessage } from "@/client/lib/error-messages";
@@ -56,45 +56,25 @@ function QuickQuestion() {
           role="dialog"
           aria-modal="true"
           aria-label="Performance chat"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-base-300/55 p-3 backdrop-blur-md sm:p-6"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/10 p-4 sm:p-8"
           onMouseDown={(event) => {
             if (event.target === event.currentTarget) setOpen(false);
           }}
         >
-          <div className="flex h-full max-h-[54rem] w-full max-w-6xl flex-col overflow-hidden rounded-3xl border border-base-100/70 bg-base-100/95 shadow-2xl">
-            <header className="flex items-center justify-between border-b border-base-300/70 px-5 py-4 sm:px-8">
-              <div className="flex items-center gap-3">
-                <span className="grid size-10 place-items-center rounded-2xl bg-primary text-primary-content shadow-sm">
-                  <MessageCircle className="size-5" />
-                </span>
-                <div>
-                  <h2 className="text-lg font-semibold">Ask Performance</h2>
-                  <p className="text-xs text-base-content/55">
-                    All authorized projects
-                  </p>
-                </div>
-              </div>
-              <button
-                className="btn btn-square btn-ghost btn-sm rounded-full"
-                aria-label="Close performance chat"
-                onClick={() => setOpen(false)}
-              >
-                <X className="size-5" />
-              </button>
-            </header>
-            <div className="flex-1 overflow-y-auto px-5 py-8 sm:px-10">
+          <div className="relative flex h-[26rem] max-h-[calc(100dvh-2rem)] w-full max-w-3xl flex-col overflow-hidden rounded-3xl border border-white/40 bg-base-100/55 shadow-[0_24px_80px_-20px_rgba(0,0,0,0.3)] backdrop-blur-xl">
+            <button
+              className="btn btn-square btn-ghost btn-sm absolute right-4 top-4 z-10 rounded-full text-base-content/50"
+              aria-label="Close performance chat"
+              onClick={() => setOpen(false)}
+            >
+              <X className="size-5" />
+            </button>
+            <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-4 pt-14 sm:px-10">
               {!answer.data && !answer.isPending && (
                 <div className="mx-auto flex h-full max-w-2xl flex-col items-center justify-center text-center">
-                  <span className="mb-5 grid size-16 place-items-center rounded-3xl bg-primary/10 text-primary">
-                    <MessageCircle className="size-8" />
-                  </span>
-                  <h3 className="text-2xl font-semibold tracking-tight sm:text-3xl">
+                  <h3 className="text-xl font-medium tracking-tight sm:text-2xl">
                     What would you like to know?
                   </h3>
-                  <p className="mt-3 max-w-xl text-sm leading-6 text-base-content/60">
-                    Ask about project activity, messages, attention items, or
-                    engineering checks.
-                  </p>
                 </div>
               )}
               {answer.isPending && (
@@ -132,13 +112,13 @@ function QuickQuestion() {
               )}
             </div>
             <form
-              className="border-t border-base-300/70 bg-base-200/60 p-4 sm:p-6"
+              className="p-4 pt-2 sm:p-6 sm:pt-2"
               onSubmit={(event) => {
                 event.preventDefault();
                 if (question.trim() && !answer.isPending) answer.mutate();
               }}
             >
-              <div className="mx-auto flex max-w-3xl items-end gap-2 rounded-2xl border border-base-300 bg-base-100 p-2 shadow-sm focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/10">
+              <div className="mx-auto flex max-w-3xl items-end gap-2 rounded-2xl border border-white/40 bg-base-100/35 p-2 shadow-sm focus-within:border-primary/30 focus-within:ring-2 focus-within:ring-primary/10">
                 <textarea
                   autoFocus
                   value={question}
@@ -152,7 +132,7 @@ function QuickQuestion() {
                   maxLength={500}
                   rows={2}
                   className="textarea min-h-14 flex-1 resize-none border-0 bg-transparent text-base focus:outline-none"
-                  placeholder="Ask what needs your attention…"
+                  placeholder="Ask anything…"
                   aria-label="Message Jev"
                 />
                 <button
@@ -164,9 +144,6 @@ function QuickQuestion() {
                   <ArrowUp className="size-5" />
                 </button>
               </div>
-              <p className="mt-2 text-center text-xs text-base-content/45">
-                Enter to send · Shift + Enter for a new line · Esc to close
-              </p>
             </form>
           </div>
         </div>
