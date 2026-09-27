@@ -47,8 +47,9 @@ a branch name alone cannot prevent someone from deploying it manually.
    tenant isolation and the changed workflow. Record a known-good release only
    after these pass. Delete a merged branch after accounting for its local work.
 
-At the 2026-09-27 audit, Actions and the CI workflow were enabled but no runs
-were recorded. Enabling Actions is not proof that checks pass. See
+At the 2026-09-27 audit, API flags reported Actions and CI enabled, but the
+Actions page still required fork workflow activation and no runs were recorded.
+Enabling Actions is not proof that checks pass. See
 `docs/FOUNDATION_AUDIT.md` for verification status; never bypass a missing gate.
 
 Rules the gate enforces that are easy to trip:

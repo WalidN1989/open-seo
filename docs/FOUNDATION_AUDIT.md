@@ -34,10 +34,14 @@ integrity errors. This proves code recovery, not database or service recovery.
 ## Protection gaps
 
 At initial inspection, `main` was unprotected, the branch-protection endpoint
-returned 404, and the repository ruleset list was empty. Actions and CI were
-active, but no workflow runs were listed. Repository workflow permissions were
-read-only, with workflow approval of PRs disabled. That does not establish a
-working gate.
+returned 404, and the repository ruleset list was empty. The API reported
+Actions enabled and CI active, but no workflow runs were listed. After draft
+PR #6 was opened, GitHub's Actions page displayed: "Workflows aren't being run
+on this forked repository." The fork activation prompt had not been accepted.
+This UI finding explains why the API flags were not sufficient evidence.
+Workflow activation remains pending approval; no checks ran on the draft PR.
+Repository workflow token permissions are read-only, with workflow approval
+of PRs disabled.
 
 CODEOWNERS currently names the upstream maintainer. The only listed repository
 collaborator is the fork owner, so those copied entries do not establish review
@@ -55,11 +59,16 @@ claiming that protection exists. An org-enforced Greptile baseline is unverified
 
 - Completed: local snapshots, clean primary clone updated to deployed main,
   isolated `codex/foundation` branch, README workflow and recovery documentation.
-- Pending approval: enforce GitHub branch protection, correct CODEOWNERS,
+- Pending approval: activate the fork's workflows after reviewing their scope,
+  enforce GitHub branch protection, correct CODEOWNERS,
   align AGENTS/CLAUDE guidance and harden CI settings. These controls are not
   represented as enabled by this documentation.
 - Completed: an independent restore of committed code from the bundle.
-- Pending verification: a successful CI run on a real PR.
+- Prepared: [draft PR #6](https://github.com/WalidN1989/open-seo/pull/6) contains
+  documentation only. Prettier and `git diff --check` passed. No full
+  application test run is claimed for these documentation changes.
+- Pending verification: after workflow activation, trigger CI on the PR and
+  establish successful `ci` and `docker-build` results before release.
 - Pending business decision: private off-provider backup destination and
   budget, recovery access, and whether custom code should remain public.
 - Pending operational verification: Neon recovery retention, encrypted export
