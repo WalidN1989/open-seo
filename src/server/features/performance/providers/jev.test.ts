@@ -41,7 +41,10 @@ describe("bounded Jev decisions", () => {
       intent: "projects",
     });
     const call = z
-      .tuple([z.string(), z.object({ body: z.string() })])
+      .tuple([
+        z.string(),
+        z.object({ body: z.string(), redirect: z.literal("manual") }),
+      ])
       .parse(fetcher.mock.calls[0]);
     const request = z
       .object({
@@ -54,6 +57,7 @@ describe("bounded Jev decisions", () => {
       questions: { intent: { type: "choice" } },
     });
     expect(Object.keys(request.questions)).toEqual(["intent"]);
+    expect(call[1]).toMatchObject({ redirect: "manual" });
     expect(timeout).toHaveBeenCalledWith(30_000);
   });
   it("validates provider output and never falls back to another model", async () => {

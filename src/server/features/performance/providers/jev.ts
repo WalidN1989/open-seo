@@ -29,7 +29,9 @@ async function evaluate(state: unknown, questions: Record<string, unknown>) {
   if (!key) return null;
   const response = await fetch("https://api.typesafe.ai/v1/systemone", {
     method: "POST",
-    redirect: "error",
+    // The self-host fetch runtime supports manual redirect handling, not "error".
+    // A 3xx remains non-ok below, so the bearer credential is never forwarded.
+    redirect: "manual",
     signal: AbortSignal.timeout(30_000),
     headers: {
       Authorization: `Bearer ${key}`,
