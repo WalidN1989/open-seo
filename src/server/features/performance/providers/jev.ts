@@ -39,9 +39,10 @@ async function evaluate(state: unknown, questions: Record<string, unknown>) {
       Authorization: `Bearer ${key}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ model: "jev-1.13.0", state, questions }),
+    body: JSON.stringify({ model: "jev-latest", state, questions }),
   });
-  if (!response.ok) throw new Error("TypeSafe unavailable");
+  if (!response.ok)
+    throw new Error(`TypeSafe unavailable (HTTP ${response.status})`);
   return responseSchema.parse(await response.json()).answers;
 }
 

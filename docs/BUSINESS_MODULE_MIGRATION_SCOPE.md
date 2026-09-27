@@ -1255,3 +1255,9 @@ The first Performance preview exposed a Docker build-variable trap:
 Railway variables screen, but the build received the reference text and Vite
 failed with `TypeError: Invalid URL`. The preview now uses the literal
 `https://open-seo-preview.up.railway.app`; keep that value literal.
+
+After the first production release, the Performance dashboard loaded correctly
+but explicit Jev questions failed at the provider boundary. The request pinned
+the example response version `jev-1.13.0`; TypeSafe's API documentation requires
+the supported rolling request alias `jev-latest`. The provider now uses that
+alias. No secret, data-sharing scope, scheduler, or fallback model changed.
