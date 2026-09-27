@@ -43,11 +43,17 @@ describe("bounded Jev decisions", () => {
     const call = z
       .tuple([z.string(), z.object({ body: z.string() })])
       .parse(fetcher.mock.calls[0]);
-    expect(JSON.parse(call[1].body)).toMatchObject({
+    const request = z
+      .object({
+        model: z.string(),
+        questions: z.record(z.string(), z.unknown()),
+      })
+      .parse(JSON.parse(call[1].body));
+    expect(request).toMatchObject({
       model: "jev-latest",
       questions: { intent: { type: "choice" } },
     });
-    expect(Object.keys(JSON.parse(call[1].body).questions)).toEqual(["intent"]);
+    expect(Object.keys(request.questions)).toEqual(["intent"]);
     expect(timeout).toHaveBeenCalledWith(30_000);
   });
   it("validates provider output and never falls back to another model", async () => {
