@@ -19,6 +19,7 @@ const ORGANIZATION_SCOPED_QUERY_ROOTS = [
   "commerce",
   "crm",
   "email",
+  "performance",
   "integrations",
   "social",
   "sms",

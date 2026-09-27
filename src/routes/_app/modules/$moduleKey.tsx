@@ -19,9 +19,14 @@ import { SmsWorkspace } from "@/client/features/business-modules/sms/SmsWorkspac
 import { SocialWorkspace } from "@/client/features/business-modules/social/SocialWorkspace";
 import { InvoicingWorkspace } from "@/client/features/business-modules/invoicing/InvoicingWorkspace";
 import { ClientAccountsWorkspace } from "@/client/features/business-modules/clients/ClientAccountsWorkspace";
+import { z } from "zod";
 import { ReportsWorkspace } from "@/client/features/business-modules/reports/ReportsWorkspace";
 
 export const Route = createFileRoute("/_app/modules/$moduleKey")({
+  validateSearch: z.object({
+    thread: z.string().max(200).optional(),
+    conversation: z.string().max(200).optional(),
+  }),
   component: BusinessModulePage,
 });
 
@@ -95,6 +100,7 @@ const capabilities: Record<BusinessModuleKey, readonly string[]> = {
 };
 
 function BusinessModulePage() {
+  const search = Route.useSearch();
   const { moduleKey: rawModuleKey } = Route.useParams();
   const parsed = businessModuleKeySchema.safeParse(rawModuleKey);
   if (!parsed.success) throw notFound();
@@ -147,10 +153,20 @@ function BusinessModulePage() {
         ) : (
           <>
             {moduleKey === "leads" ? <LeadsWorkspace /> : null}
-            {moduleKey === "whatsapp" ? <WhatsappWorkspace /> : null}
+            {moduleKey === "whatsapp" ? (
+              <WhatsappWorkspace
+                key={search.conversation}
+                initialConversationId={search.conversation}
+              />
+            ) : null}
             {moduleKey === "sms" ? <SmsWorkspace /> : null}
             {moduleKey === "voice" ? <VoiceWorkspace /> : null}
-            {moduleKey === "email" ? <EmailWorkspace /> : null}
+            {moduleKey === "email" ? (
+              <EmailWorkspace
+                key={search.thread}
+                initialThreadId={search.thread}
+              />
+            ) : null}
             {moduleKey === "social" ? <SocialWorkspace /> : null}
             {moduleKey === "invoicing" ? <InvoicingWorkspace /> : null}
             {moduleKey === "reports" ? <ReportsWorkspace /> : null}

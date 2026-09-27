@@ -1,5 +1,6 @@
 import { and, desc, eq, isNull } from "drizzle-orm";
 import { db } from "@/db";
+import { emailPerformance } from "@/server/features/performance/repositories/email";
 import {
   emailAccounts,
   emailMessages,
@@ -402,6 +403,7 @@ async function projectNameFor(organizationId: string) {
 }
 
 export const EmailRepository = {
+  getPerformance: emailPerformance,
   listConnectedByProvider,
   findThreadByExternalId,
   draftOnThread,

@@ -115,6 +115,9 @@ npx skills add every-app/open-seo --skill simple-issue-description
 
 ## Community
 
+DigitalUrgency operators: see [Performance](docs/PERFORMANCE.md) for the business
+dashboard, Jev quick questions and Railway monitoring configuration.
+
 Join Discord to chat: [Discord](https://discord.gg/c9uGs3cFXr)
 
 Follow along for updates:

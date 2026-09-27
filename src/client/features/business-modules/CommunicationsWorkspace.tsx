@@ -221,10 +221,14 @@ function isConversationStatusFilter(
   );
 }
 
-export function WhatsappWorkspace() {
+export function WhatsappWorkspace({
+  initialConversationId,
+}: { initialConversationId?: string } = {}) {
   const client = useQueryClient();
   const [detailsOpen, setDetailsOpen] = useState(false);
-  const [mobileConversationOpen, setMobileConversationOpen] = useState(false);
+  const [mobileConversationOpen, setMobileConversationOpen] = useState(
+    Boolean(initialConversationId),
+  );
   const [form, setForm] = useState<
     | "connection"
     | "connection-update"
@@ -237,7 +241,7 @@ export function WhatsappWorkspace() {
   >(null);
   const [selectedConversationId, setSelectedConversationId] = useState<
     string | null
-  >(null);
+  >(initialConversationId ?? null);
   const [conversationSearch, setConversationSearch] = useState("");
   const [conversationStatusFilter, setConversationStatusFilter] =
     useState<ConversationStatusFilter>("all");

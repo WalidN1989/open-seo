@@ -1,4 +1,5 @@
 import { optOutChange } from "../outreachRules";
+import { whatsappPerformance } from "@/server/features/performance/repositories/operations";
 /* oxlint-disable max-lines */
 import {
   and,
@@ -1447,6 +1448,7 @@ async function createIntegration(
 }
 
 export const CommunicationsRepository = {
+  getPerformance: whatsappPerformance,
   recordAutomatedWhatsapp,
   appendVoiceTranscript,
   completeWhatsappMessage,
