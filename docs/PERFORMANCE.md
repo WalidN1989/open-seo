@@ -68,8 +68,9 @@ project names, internal IDs and credentials are excluded from model input.
 The server calls `https://api.typesafe.ai/v1/systemone`, model alias
 `jev-latest`, so TypeSafe can route requests to its currently supported Jev
 release without an application deployment for every model revision.
-Choice routes one supported operation; Noul rejects ambiguity above 0.3; Choice
-and Score confidence must be at least 0.75. Score prioritizes at most thirty
+Choice routes one supported operation and includes an explicit `unsupported`
+option for ambiguous or out-of-scope questions. Choice and Score confidence must
+be at least 0.75. Score prioritizes at most thirty
 items, referenced by temporary indexes mapped back locally. Facts and failure
 flags cannot be overwritten by a model. Unsupported questions ask for
 clarification. Failures are surfaced; no OpenAI/Claude fallback is enabled.

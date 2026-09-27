@@ -43,10 +43,21 @@ describe("bounded Jev decisions", () => {
     const call = z
       .tuple([z.string(), z.object({ body: z.string() })])
       .parse(fetcher.mock.calls[0]);
-    expect(JSON.parse(call[1].body)).toMatchObject({ model: "jev-latest" });
+    const request = z
+      .object({
+        model: z.string(),
+        questions: z.record(z.string(), z.unknown()),
+      })
+      .parse(JSON.parse(call[1].body));
+    expect(request).toMatchObject({
+      model: "jev-latest",
+      questions: { intent: { type: "choice" } },
+    });
+    expect(Object.keys(request.questions)).toEqual(["intent"]);
     expect(timeout).toHaveBeenCalledWith(30_000);
   });
   it("validates provider output and never falls back to another model", async () => {
+    const warning = vi.spyOn(console, "warn").mockImplementation(() => {});
     const fetcher = vi.fn().mockResolvedValue(
       Response.json({
         answers: {
@@ -61,6 +72,10 @@ describe("bounded Jev decisions", () => {
     vi.stubGlobal("fetch", fetcher);
     expect((await routeQuestion("projects?")).status).toBe("unable_to_check");
     expect(fetcher).toHaveBeenCalledTimes(1);
+    expect(warning).toHaveBeenCalledWith(
+      "[performance] TypeSafe routing failed",
+      expect.stringContaining("ZodError"),
+    );
   });
   it("sends only the approved anonymous priority metadata", async () => {
     const fetcher = vi.fn().mockResolvedValue(
