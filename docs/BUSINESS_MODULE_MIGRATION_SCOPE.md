@@ -1266,3 +1266,10 @@ The live verification then showed valid Jev requests exceeding the original
 ten-second cutoff. The single-call timeout is now thirty seconds. Retries remain
 disabled, so the paid request has time to finish without creating another
 request or increasing the approved data-sharing scope.
+
+Production and TypeSafe Playground verification found that the separate Noul
+ambiguity question contradicted Choice for a clear project-count question,
+marking it 85% ambiguous while Choice selected projects at 86%. Routing now uses
+one Choice question with an explicit `unsupported` option. This reduces tokens
+and removes the contradictory decision; any genuine provider or validation
+failure is logged server-side without the API key or user question.
