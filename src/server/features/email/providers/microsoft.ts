@@ -49,7 +49,7 @@ export async function exchangeMicrosoftToken(body: URLSearchParams) {
 }
 
 /** Refresh on each operation so the browser never sees a mail token. */
-export async function microsoftAccessToken(account: EmailAccountRow) {
+async function microsoftAccessToken(account: EmailAccountRow) {
   const stored = await decryptCredentials(account.credentials);
   if (!stored.REFRESH_TOKEN) {
     throw new AppError(

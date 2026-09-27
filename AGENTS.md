@@ -3,8 +3,23 @@
 ## Start here
 
 Read `docs/HANDOVER.md` first. It says where the local checkout lives
-(`~/Developer/open-seo`, outside iCloud), the full gate to run before pushing
-to `main`, the traps already paid for, and what is deliberately not built yet.
+(`~/Developer/open-seo`, outside iCloud), the checks required before merging
+into `main`, the traps already paid for, and what is deliberately not built yet.
+
+## Development and releases
+
+Follow `docs/FOUNDATION.md` and `docs/RECOVERY.md`. Keep the primary clone clean
+on `main`; use an isolated worktree and a short `codex/<module>-<change>` branch
+from current `origin/main`. Preserve pending work in other checkouts.
+
+Open a pull request to `WalidN1989/open-seo:main`. Never push directly to main,
+force-push main, bypass required checks, or import upstream changes automatically.
+Require passing checks on the final revision and explicit owner release approval
+before merging or deploying. Report failures honestly; do not weaken checks to
+make a release pass. Assess database and configuration rollback before release.
+
+The owner and agents currently use the same GitHub identity. Owner approval in
+the conversation is required; do not claim it is an independent GitHub review.
 
 ## Business modules and deployment
 
