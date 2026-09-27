@@ -1237,3 +1237,15 @@ customer details or internal IDs. The runtime allowlist includes the key.
 Engineering credentials and verified operator emails remain deployment settings;
 absence is shown as not configured, never healthy. Release still requires owner
 approval of the new PR; earlier PR #7 approval does not cover this feature.
+
+## Reusable Railway preview — 2026-09-27
+
+Railway now has an isolated `preview` environment and `open-seo` service for
+reviewing feature branches before merge. It uses `Dockerfile.selfhost`, waits
+for GitHub CI, and is exposed at `open-seo-preview.up.railway.app`. Production
+data, volumes and provider credentials are deliberately absent. The preview
+uses disposable local D1 data, serverless sleeping and an email allowlist.
+
+For each future module, point the preview service at that module's branch; do
+not create a new production-like stack. Full operating steps and safety rules
+are in [RAILWAY_PREVIEWS.md](RAILWAY_PREVIEWS.md).
