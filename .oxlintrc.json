@@ -15,6 +15,7 @@
     "scripts"
   ],
   "rules": {
+    "import/no-unassigned-import": ["error", { "allow": ["**/*.css"] }],
     "react/react-in-jsx-scope": "off",
     "react/jsx-uses-react": "off",
     "unicorn/no-array-sort": "error",

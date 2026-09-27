@@ -50,15 +50,9 @@ const icons = {
   integrations: PlugZap,
 } satisfies Record<BusinessModuleKey, typeof Blocks>;
 
-/** The agency reads a catalogue here; a client reads what they were given. */
-function BusinessModulesPage() {
-  const navigate = useNavigate();
+function useEntitlementMutation() {
   const queryClient = useQueryClient();
-  const accessQuery = useQuery({
-    queryKey: ["business-modules"],
-    queryFn: () => getBusinessModuleAccess(),
-  });
-  const entitlementMutation = useMutation({
+  return useMutation({
     mutationFn: (input: { moduleKey: BusinessModuleKey; enabled: boolean }) =>
       setBusinessModuleEntitlement({ data: input }),
     onSuccess: async () => {
@@ -73,6 +67,23 @@ function BusinessModulesPage() {
         getStandardErrorMessage(error, "We couldn't update this module."),
       ),
   });
+}
+
+type StaffPermissionUpdate = {
+  memberId: string;
+  moduleKey: BusinessModuleKey;
+  permission: "view" | "manage" | "admin" | null;
+};
+
+/** The agency reads a catalogue here; a client reads what they were given. */
+function BusinessModulesPage() {
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const accessQuery = useQuery({
+    queryKey: ["business-modules"],
+    queryFn: () => getBusinessModuleAccess(),
+  });
+  const entitlementMutation = useEntitlementMutation();
   const { data: workspace } = useWorkspaceAccess();
   const isClient = workspace?.isClientLogin ?? false;
   const canManageStaff =
@@ -116,11 +127,8 @@ function BusinessModulesPage() {
     enabled: canManageStaff,
   });
   const staffPermissionMutation = useMutation({
-    mutationFn: (input: {
-      memberId: string;
-      moduleKey: BusinessModuleKey;
-      permission: "view" | "manage" | "admin" | null;
-    }) => setBusinessModuleStaffPermission({ data: input }),
+    mutationFn: (input: StaffPermissionUpdate) =>
+      setBusinessModuleStaffPermission({ data: input }),
     onSuccess: async () => {
       await queryClient.invalidateQueries({
         queryKey: ["business-modules", "staff"],

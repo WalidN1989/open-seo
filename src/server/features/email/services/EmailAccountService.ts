@@ -51,9 +51,16 @@ export function publicAccount(account: EmailAccountRow | null) {
   let historyImport: "idle" | "running" | "complete" = "idle";
   if (account.provider === "microsoft" && syncCursor) {
     try {
-      const cursor = JSON.parse(syncCursor) as Record<string, unknown>;
-      if (cursor.historyDone === true) historyImport = "complete";
-      else if (typeof cursor.historyUrl === "string") historyImport = "running";
+      const cursor: unknown = JSON.parse(syncCursor);
+      if (cursor && typeof cursor === "object") {
+        if ("historyDone" in cursor && cursor.historyDone === true)
+          historyImport = "complete";
+        else if (
+          "historyUrl" in cursor &&
+          typeof cursor.historyUrl === "string"
+        )
+          historyImport = "running";
+      }
     } catch {
       // The account still appears connected; the sync job reports cursor errors.
     }

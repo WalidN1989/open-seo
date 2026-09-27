@@ -14,8 +14,9 @@ customer record — those live in Railway, Neon and each provider's console.
 - Do **not** work in the old checkout
   (`~/Documents/ChatGPT/SEO Master A.K.A OpenSEO`, now moved into iCloud Drive).
   iCloud synced its `node_modules` and `.git`, pinned the CPU, stalled `tsc`
-  and created hundreds of `" 2"` conflict copies. It holds nothing that is not
-  on GitHub.
+  and created hundreds of `" 2"` conflict copies. It also contains pending Azure
+  work preserved in a local recovery snapshot on 2026-09-27. Do not delete it
+  or assume every file is already on GitHub.
 - `.env.local` is git-ignored on purpose. It already exists in the clone; a
   fresh clone needs it recreated by the owner, never pasted into a chat,
   commit or document.
@@ -23,10 +24,13 @@ customer record — those live in Railway, Neon and each provider's console.
 
 ## How to ship
 
-Railway deploys **`main`** to `seo.digitalurgency.com.au`. Any other branch
-deploys nothing.
+Railway's active production deployment was verified on **`main`** on
+2026-09-27. Follow `docs/FOUNDATION.md` for the release policy and
+`docs/RECOVERY.md` for rollback. Check live service settings before each release;
+a branch name alone cannot prevent someone from deploying it manually.
 
-1. Work on a feature branch.
+1. Fetch current `origin/main`, then work in an isolated worktree on a short
+   feature branch. Keep the primary checkout clean on `main`.
 2. Run the full gate before main — the same one CI would run:
    - `corepack pnpm run ci:check` (prettier, knip, both `tsc` projects,
      `oxlint --type-aware`, plugin-skill sync). Its last step calls bare
@@ -36,12 +40,18 @@ deploys nothing.
    - `npx vitest run`
    - `npx vite build` (also regenerates `routeTree.gen.ts`, which `tsc` needs
      after adding a route).
-3. Fast-forward `main`, push, delete the branch.
-4. The container builds on boot: expect **1–2 minutes of 502** after each
-   deploy. Wait for a 200 before checking in a browser.
+3. Open a pull request to our fork's `main`. Require passing CI, review, a
+   migration/rollback assessment and the owner's release approval. Never push
+   a local feature branch directly to `main`.
+4. Confirm Railway deploys the approved commit, then check health, login,
+   tenant isolation and the changed workflow. Record a known-good release only
+   after these pass. Delete a merged branch after accounting for its local work.
 
-GitHub Actions has never run on this fork; the local gate is the only gate
-until the owner enables Actions in the repository's Actions tab.
+At the 2026-09-27 audit, API flags reported Actions and CI enabled, but the
+Actions page initially required fork workflow activation. Subsequent inspection
+confirmed CI runs, and main protection was applied with explicit owner approval.
+Enabling Actions is not proof that checks pass. See
+`docs/FOUNDATION_AUDIT.md` for verification status; never bypass a missing gate.
 
 Rules the gate enforces that are easy to trip:
 

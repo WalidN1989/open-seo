@@ -94,6 +94,7 @@ import { Route as ProjectPProjectIdOptimizationsIndexRouteImport } from './route
 import { Route as ProjectPProjectIdCompetitorsIndexRouteImport } from './routes/_project/p/$projectId/competitors/index'
 import { Route as ProjectPProjectIdAuditIndexRouteImport } from './routes/_project/p/$projectId/audit/index'
 import { Route as AppModulesCrmProductsIndexRouteImport } from './routes/_app/modules/crm/products.index'
+import { Route as ApiEmailAttachmentsMessageIdAttachmentIdRouteImport } from './routes/api/email/attachments/$messageId/$attachmentId'
 import { Route as ProjectPProjectIdSettingsIntegrationsRouteImport } from './routes/_project/p/$projectId/settings/integrations'
 import { Route as ProjectPProjectIdSettingsContextRouteImport } from './routes/_project/p/$projectId/settings/context'
 import { Route as ProjectPProjectIdRankTrackingConfigIdRouteImport } from './routes/_project/p/$projectId/rank-tracking/$configId'
@@ -547,6 +548,12 @@ const AppModulesCrmProductsIndexRoute =
     path: '/',
     getParentRoute: () => AppModulesCrmProductsRoute,
   } as any)
+const ApiEmailAttachmentsMessageIdAttachmentIdRoute =
+  ApiEmailAttachmentsMessageIdAttachmentIdRouteImport.update({
+    id: '/api/email/attachments/$messageId/$attachmentId',
+    path: '/api/email/attachments/$messageId/$attachmentId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ProjectPProjectIdSettingsIntegrationsRoute =
   ProjectPProjectIdSettingsIntegrationsRouteImport.update({
     id: '/integrations',
@@ -658,6 +665,7 @@ export interface FileRoutesByFullPath {
   '/p/$projectId/rank-tracking/$configId': typeof ProjectPProjectIdRankTrackingConfigIdRoute
   '/p/$projectId/settings/context': typeof ProjectPProjectIdSettingsContextRoute
   '/p/$projectId/settings/integrations': typeof ProjectPProjectIdSettingsIntegrationsRoute
+  '/api/email/attachments/$messageId/$attachmentId': typeof ApiEmailAttachmentsMessageIdAttachmentIdRoute
   '/modules/crm/products/': typeof AppModulesCrmProductsIndexRoute
   '/p/$projectId/audit/': typeof ProjectPProjectIdAuditIndexRoute
   '/p/$projectId/competitors/': typeof ProjectPProjectIdCompetitorsIndexRoute
@@ -738,6 +746,7 @@ export interface FileRoutesByTo {
   '/p/$projectId/rank-tracking/$configId': typeof ProjectPProjectIdRankTrackingConfigIdRoute
   '/p/$projectId/settings/context': typeof ProjectPProjectIdSettingsContextRoute
   '/p/$projectId/settings/integrations': typeof ProjectPProjectIdSettingsIntegrationsRoute
+  '/api/email/attachments/$messageId/$attachmentId': typeof ApiEmailAttachmentsMessageIdAttachmentIdRoute
   '/modules/crm/products': typeof AppModulesCrmProductsIndexRoute
   '/p/$projectId/audit': typeof ProjectPProjectIdAuditIndexRoute
   '/p/$projectId/competitors': typeof ProjectPProjectIdCompetitorsIndexRoute
@@ -831,6 +840,7 @@ export interface FileRoutesById {
   '/_project/p/$projectId/rank-tracking/$configId': typeof ProjectPProjectIdRankTrackingConfigIdRoute
   '/_project/p/$projectId/settings/context': typeof ProjectPProjectIdSettingsContextRoute
   '/_project/p/$projectId/settings/integrations': typeof ProjectPProjectIdSettingsIntegrationsRoute
+  '/api/email/attachments/$messageId/$attachmentId': typeof ApiEmailAttachmentsMessageIdAttachmentIdRoute
   '/_app/modules/crm/products/': typeof AppModulesCrmProductsIndexRoute
   '/_project/p/$projectId/audit/': typeof ProjectPProjectIdAuditIndexRoute
   '/_project/p/$projectId/competitors/': typeof ProjectPProjectIdCompetitorsIndexRoute
@@ -921,6 +931,7 @@ export interface FileRouteTypes {
     | '/p/$projectId/rank-tracking/$configId'
     | '/p/$projectId/settings/context'
     | '/p/$projectId/settings/integrations'
+    | '/api/email/attachments/$messageId/$attachmentId'
     | '/modules/crm/products/'
     | '/p/$projectId/audit/'
     | '/p/$projectId/competitors/'
@@ -1001,6 +1012,7 @@ export interface FileRouteTypes {
     | '/p/$projectId/rank-tracking/$configId'
     | '/p/$projectId/settings/context'
     | '/p/$projectId/settings/integrations'
+    | '/api/email/attachments/$messageId/$attachmentId'
     | '/modules/crm/products'
     | '/p/$projectId/audit'
     | '/p/$projectId/competitors'
@@ -1093,6 +1105,7 @@ export interface FileRouteTypes {
     | '/_project/p/$projectId/rank-tracking/$configId'
     | '/_project/p/$projectId/settings/context'
     | '/_project/p/$projectId/settings/integrations'
+    | '/api/email/attachments/$messageId/$attachmentId'
     | '/_app/modules/crm/products/'
     | '/_project/p/$projectId/audit/'
     | '/_project/p/$projectId/competitors/'
@@ -1132,6 +1145,7 @@ export interface RootRouteChildren {
   ApiVoiceDeepgramConnectionIdRoute: typeof ApiVoiceDeepgramConnectionIdRoute
   ApiVoiceElevenlabsCallerConnectionIdRoute: typeof ApiVoiceElevenlabsCallerConnectionIdRoute
   ApiVoiceElevenlabsConnectionIdRoute: typeof ApiVoiceElevenlabsConnectionIdRoute
+  ApiEmailAttachmentsMessageIdAttachmentIdRoute: typeof ApiEmailAttachmentsMessageIdAttachmentIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -1731,6 +1745,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppModulesCrmProductsIndexRouteImport
       parentRoute: typeof AppModulesCrmProductsRoute
     }
+    '/api/email/attachments/$messageId/$attachmentId': {
+      id: '/api/email/attachments/$messageId/$attachmentId'
+      path: '/api/email/attachments/$messageId/$attachmentId'
+      fullPath: '/api/email/attachments/$messageId/$attachmentId'
+      preLoaderRoute: typeof ApiEmailAttachmentsMessageIdAttachmentIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_project/p/$projectId/settings/integrations': {
       id: '/_project/p/$projectId/settings/integrations'
       path: '/integrations'
@@ -2063,6 +2084,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiVoiceElevenlabsCallerConnectionIdRoute:
     ApiVoiceElevenlabsCallerConnectionIdRoute,
   ApiVoiceElevenlabsConnectionIdRoute: ApiVoiceElevenlabsConnectionIdRoute,
+  ApiEmailAttachmentsMessageIdAttachmentIdRoute:
+    ApiEmailAttachmentsMessageIdAttachmentIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

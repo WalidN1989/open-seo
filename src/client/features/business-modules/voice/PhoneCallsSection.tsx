@@ -33,7 +33,7 @@ function source(call: { provider: string; agentName: string | null }) {
   };
 }
 
-function label(key: string) {
+function fieldLabel(key: string) {
   return key
     .replace(/^caller_/, "")
     .replace(/_/g, " ")
@@ -163,7 +163,9 @@ export function PhoneCallsSection() {
                           key={key}
                           className="grid grid-cols-[7rem_1fr] gap-2"
                         >
-                          <dt className="text-base-content/55">{label(key)}</dt>
+                          <dt className="text-base-content/55">
+                            {fieldLabel(key)}
+                          </dt>
                           <dd>{value}</dd>
                         </div>
                       ))}

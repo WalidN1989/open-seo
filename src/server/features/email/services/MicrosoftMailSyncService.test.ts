@@ -119,11 +119,20 @@ beforeEach(() => {
     provider: "microsoft",
     status: "connected",
     address: "info@southsidefencing.com.au",
+    displayName: null,
+    podId: null,
+    inboxId: null,
+    webhookId: null,
+    credentials: null,
+    lastError: null,
+    autopilot: false,
+    createdAt: "2026-09-25T00:00:00.000Z",
+    updatedAt: "2026-09-25T00:00:00.000Z",
     syncCursor: JSON.stringify({
       url: "https://graph.microsoft.com/v1.0/new/start",
       cutoff: "2026-09-25T00:00:00.000Z",
     }),
-  } as EmailAccountRow;
+  };
 });
 
 describe("Microsoft historical mail import", () => {
@@ -136,12 +145,11 @@ describe("Microsoft historical mail import", () => {
       ["inbox-1", "inbound"],
       ["sent-1", "outbound"],
     ]);
-    const cursor = JSON.parse(state.account!.syncCursor!) as Record<
-      string,
-      unknown
-    >;
-    expect(cursor.cutoff).toBe("2026-09-25T00:00:00.000Z");
-    expect(cursor.historyDone).toBe(true);
+    const cursor: unknown = JSON.parse(state.account!.syncCursor!);
+    expect(cursor).toMatchObject({
+      cutoff: "2026-09-25T00:00:00.000Z",
+      historyDone: true,
+    });
     await importExistingMicrosoftMail("southside", "owner");
     expect(state.inserted).toHaveLength(2);
   });
