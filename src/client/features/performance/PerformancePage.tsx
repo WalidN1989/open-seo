@@ -236,7 +236,7 @@ function PerformanceScope({
             </section>
           )}
           <p className="text-xs text-base-content/60">
-            {data.jev.detail} Use Quick question or Ctrl/⌘ + Shift + J. Do not
+            {data.jev.detail} Press Space to open Performance chat. Do not
             include customer details or secrets in a question.
           </p>
         </>
