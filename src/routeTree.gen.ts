@@ -30,6 +30,7 @@ import { Route as AuthSignInRouteImport } from './routes/_auth.sign-in'
 import { Route as AppSupportRouteImport } from './routes/_app/support'
 import { Route as AppSettingsRouteImport } from './routes/_app/settings'
 import { Route as AppProjectsRouteImport } from './routes/_app/projects'
+import { Route as AppPerformanceRouteImport } from './routes/_app/performance'
 import { Route as AppBillingRouteImport } from './routes/_app/billing'
 import { Route as AppAiRouteImport } from './routes/_app/ai'
 import { Route as Char91DotwellKnownChar93OpenaiAppsChallengeRouteImport } from './routes/[.well-known]/openai-apps-challenge'
@@ -202,6 +203,11 @@ const AppSettingsRoute = AppSettingsRouteImport.update({
 const AppProjectsRoute = AppProjectsRouteImport.update({
   id: '/projects',
   path: '/projects',
+  getParentRoute: () => AppRouteRoute,
+} as any)
+const AppPerformanceRoute = AppPerformanceRouteImport.update({
+  id: '/performance',
+  path: '/performance',
   getParentRoute: () => AppRouteRoute,
 } as any)
 const AppBillingRoute = AppBillingRouteImport.update({
@@ -594,6 +600,7 @@ export interface FileRoutesByFullPath {
   '/.well-known/openai-apps-challenge': typeof Char91DotwellKnownChar93OpenaiAppsChallengeRoute
   '/ai': typeof AppAiRoute
   '/billing': typeof AppBillingRoute
+  '/performance': typeof AppPerformanceRoute
   '/projects': typeof AppProjectsRoute
   '/settings': typeof AppSettingsRoute
   '/support': typeof AppSupportRoute
@@ -682,6 +689,7 @@ export interface FileRoutesByTo {
   '/.well-known/openai-apps-challenge': typeof Char91DotwellKnownChar93OpenaiAppsChallengeRoute
   '/ai': typeof AppAiRoute
   '/billing': typeof AppBillingRoute
+  '/performance': typeof AppPerformanceRoute
   '/projects': typeof AppProjectsRoute
   '/settings': typeof AppSettingsRoute
   '/support': typeof AppSupportRoute
@@ -768,6 +776,7 @@ export interface FileRoutesById {
   '/.well-known/openai-apps-challenge': typeof Char91DotwellKnownChar93OpenaiAppsChallengeRoute
   '/_app/ai': typeof AppAiRoute
   '/_app/billing': typeof AppBillingRoute
+  '/_app/performance': typeof AppPerformanceRoute
   '/_app/projects': typeof AppProjectsRoute
   '/_app/settings': typeof AppSettingsRoute
   '/_app/support': typeof AppSupportRoute
@@ -860,6 +869,7 @@ export interface FileRouteTypes {
     | '/.well-known/openai-apps-challenge'
     | '/ai'
     | '/billing'
+    | '/performance'
     | '/projects'
     | '/settings'
     | '/support'
@@ -948,6 +958,7 @@ export interface FileRouteTypes {
     | '/.well-known/openai-apps-challenge'
     | '/ai'
     | '/billing'
+    | '/performance'
     | '/projects'
     | '/settings'
     | '/support'
@@ -1033,6 +1044,7 @@ export interface FileRouteTypes {
     | '/.well-known/openai-apps-challenge'
     | '/_app/ai'
     | '/_app/billing'
+    | '/_app/performance'
     | '/_app/projects'
     | '/_app/settings'
     | '/_app/support'
@@ -1295,6 +1307,13 @@ declare module '@tanstack/react-router' {
       path: '/projects'
       fullPath: '/projects'
       preLoaderRoute: typeof AppProjectsRouteImport
+      parentRoute: typeof AppRouteRoute
+    }
+    '/_app/performance': {
+      id: '/_app/performance'
+      path: '/performance'
+      fullPath: '/performance'
+      preLoaderRoute: typeof AppPerformanceRouteImport
       parentRoute: typeof AppRouteRoute
     }
     '/_app/billing': {
@@ -1887,6 +1906,7 @@ interface AppRouteRouteChildren {
   AppModulesRouteRoute: typeof AppModulesRouteRouteWithChildren
   AppAiRoute: typeof AppAiRoute
   AppBillingRoute: typeof AppBillingRoute
+  AppPerformanceRoute: typeof AppPerformanceRoute
   AppProjectsRoute: typeof AppProjectsRoute
   AppSettingsRoute: typeof AppSettingsRoute
   AppSupportRoute: typeof AppSupportRoute
@@ -1899,6 +1919,7 @@ const AppRouteRouteChildren: AppRouteRouteChildren = {
   AppModulesRouteRoute: AppModulesRouteRouteWithChildren,
   AppAiRoute: AppAiRoute,
   AppBillingRoute: AppBillingRoute,
+  AppPerformanceRoute: AppPerformanceRoute,
   AppProjectsRoute: AppProjectsRoute,
   AppSettingsRoute: AppSettingsRoute,
   AppSupportRoute: AppSupportRoute,

@@ -105,7 +105,11 @@ const businessModulesNavItem = linkOptions({
 // Always-visible sidebar group (not project-scoped, unlike the groups below).
 export const connectNavGroup = {
   label: "Connect",
-  items: [businessModulesNavItem, aiNavItem],
+  items: [
+    businessModulesNavItem,
+    aiNavItem,
+    linkOptions({ to: "/performance", label: "Performance", icon: Gauge }),
+  ],
 };
 
 function getProjectNavItems(projectId: string) {

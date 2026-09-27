@@ -26,10 +26,14 @@ function inFolder(thread: WorkspaceData["threads"][number], folder: Folder) {
     : thread.lastDirection !== "outbound";
 }
 
-export function EmailWorkspace() {
+export function EmailWorkspace({
+  initialThreadId,
+}: { initialThreadId?: string } = {}) {
   const query = useEmailWorkspace();
   const [section, setSection] = useState<(typeof SECTIONS)[number]>("Inbox");
-  const [selected, setSelected] = useState<string | null>(null);
+  const [selected, setSelected] = useState<string | null>(
+    initialThreadId ?? null,
+  );
   const [composing, setComposing] = useState(false);
   const [folder, setFolder] = useState<Folder>("All");
   if (query.isPending) {

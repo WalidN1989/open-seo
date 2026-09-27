@@ -1,5 +1,6 @@
 import { inArray, and, eq, or } from "drizzle-orm";
 import { db } from "@/db";
+import { integrationPerformance } from "@/server/features/performance/repositories/operations";
 import { CATALOGUE_PROVIDER_KEYS } from "../providers/catalogueProviders";
 import { integrationConnections } from "@/db/schema";
 
@@ -151,6 +152,7 @@ async function listDueSyncs(limit: number) {
 }
 
 export const IntegrationSyncRepository = {
+  getPerformance: integrationPerformance,
   getConnection,
   recordHealth,
   setSyncState,

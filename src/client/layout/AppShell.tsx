@@ -1,4 +1,5 @@
 import { ReminderPopup } from "@/client/features/reminders/ReminderPopup";
+import { PerformanceLauncher } from "@/client/features/performance/PerformanceLauncher";
 import * as React from "react";
 import { Link, useLocation } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
@@ -172,6 +173,7 @@ export function AuthenticatedAppLayout({
       />
 
       <ReminderPopup />
+      <PerformanceLauncher />
     </div>
   );
 }

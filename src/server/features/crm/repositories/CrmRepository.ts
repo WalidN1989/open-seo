@@ -1,6 +1,7 @@
 /* oxlint-disable max-lines */
 import { and, asc, desc, eq } from "drizzle-orm";
 import { db } from "@/db";
+import { leadPerformance } from "@/server/features/performance/repositories/operations";
 import {
   crmActivities,
   crmCompanies,
@@ -424,6 +425,7 @@ async function createMeeting(
 }
 
 export const CrmRepository = {
+  getPerformance: leadPerformance,
   createActivity,
   createCompany,
   createContact,

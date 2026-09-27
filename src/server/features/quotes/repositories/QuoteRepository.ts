@@ -1,5 +1,6 @@
 import { and, asc, desc, eq } from "drizzle-orm";
 import { db } from "@/db";
+import { quotePerformance } from "@/server/features/performance/repositories/operations";
 import { quoteLineItems, quotes } from "@/db/schema";
 
 export type QuoteRow = typeof quotes.$inferSelect;
@@ -92,6 +93,7 @@ async function deleteQuote(organizationId: string, id: string) {
 }
 
 export const QuoteRepository = {
+  getPerformance: quotePerformance,
   listQuotes,
   listForLead,
   getQuote,

@@ -1220,3 +1220,38 @@ not a code-only rollback: the old app expects a single balance per product and
 its old conflict target is incompatible with branch balances. Preserve the new
 schema for a forward fix, or restore the pre-rollout database together with the
 old app during a controlled rollback; never collapse allocated branch data.
+
+## Performance dashboard — 2026-09-27 branch implementation
+
+The owner explicitly requested the previously deferred dashboard. The isolated
+`codex/performance` branch adds Connect → Performance, permission-scoped business
+summaries, operator-only engineering evidence and Jev quick questions/priorities.
+See [PERFORMANCE.md](PERFORMANCE.md) for exact metric definitions, coverage limits,
+Railway variables and rollback. No new scheduler, schema migration or automatic
+AI polling was added. Existing repositories expose bounded summary projections.
+
+The owner confirmed the TypeSafe key remains in Railway, with no Integrations
+entry, and explicitly approved the limited TypeSafe payload: user-written
+questions plus anonymous categories/ages/failure flags, without retrieved
+customer details or internal IDs. The runtime allowlist includes the key.
+Engineering credentials and verified operator emails remain deployment settings;
+absence is shown as not configured, never healthy. Release still requires owner
+approval of the new PR; earlier PR #7 approval does not cover this feature.
+
+## Reusable Railway preview — 2026-09-27
+
+Railway now has an isolated `preview` environment and `open-seo` service for
+reviewing feature branches before merge. It uses `Dockerfile.selfhost`, waits
+for GitHub CI, and is exposed at `open-seo-preview.up.railway.app`. Production
+data, volumes and provider credentials are deliberately absent. The preview
+uses disposable local D1 data, serverless sleeping and an email allowlist.
+
+For each future module, point the preview service at that module's branch; do
+not create a new production-like stack. Full operating steps and safety rules
+are in [RAILWAY_PREVIEWS.md](RAILWAY_PREVIEWS.md).
+
+The first Performance preview exposed a Docker build-variable trap:
+`BETTER_AUTH_URL=https://${{RAILWAY_PUBLIC_DOMAIN}}` appeared resolved in the
+Railway variables screen, but the build received the reference text and Vite
+failed with `TypeError: Invalid URL`. The preview now uses the literal
+`https://open-seo-preview.up.railway.app`; keep that value literal.
