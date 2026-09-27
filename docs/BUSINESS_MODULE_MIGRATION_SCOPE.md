@@ -1261,3 +1261,8 @@ but explicit Jev questions failed at the provider boundary. The request pinned
 the example response version `jev-1.13.0`; TypeSafe's API documentation requires
 the supported rolling request alias `jev-latest`. The provider now uses that
 alias. No secret, data-sharing scope, scheduler, or fallback model changed.
+
+The live verification then showed valid Jev requests exceeding the original
+ten-second cutoff. The single-call timeout is now thirty seconds. Retries remain
+disabled, so the paid request has time to finish without creating another
+request or increasing the approved data-sharing scope.
