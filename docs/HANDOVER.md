@@ -48,7 +48,8 @@ a branch name alone cannot prevent someone from deploying it manually.
    after these pass. Delete a merged branch after accounting for its local work.
 
 At the 2026-09-27 audit, API flags reported Actions and CI enabled, but the
-Actions page still required fork workflow activation and no runs were recorded.
+Actions page initially required fork workflow activation. Subsequent inspection
+confirmed CI runs, and main protection was applied with explicit owner approval.
 Enabling Actions is not proof that checks pass. See
 `docs/FOUNDATION_AUDIT.md` for verification status; never bypass a missing gate.
 

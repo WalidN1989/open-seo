@@ -122,6 +122,22 @@ extracting `files.tar.gz` into an isolated recovery directory, never over a
 live checkout. The manifest records deleted files as absent. Verify checksums
 before recovery. The snapshot does not replace the production-data backup plan.
 
+## Password recovery setup
+
+The current application already supports password-reset mail through Resend.
+The live health check on 2026-09-27 reported no configured email provider.
+The next setup needs an owner-controlled Resend account, a verified sending
+domain and a chosen sender address. The owner enters `RESEND_API_KEY` and
+`RESEND_FROM_EMAIL` directly in Railway; never paste the key into chat or Git.
+Both variable names are already allowed in `scripts/write-runtime-dev-vars.ts`.
+
+Before applying configuration, inspect pending client welcome/nudge jobs:
+`sendClientActionEmail` uses the same Resend configuration. Enabling it can
+enable business emails as well as password resets. Plan the rollout accordingly.
+Verify the health warning clears, request one reset for an owner-approved test
+account and confirm delivery. The owner completes the password entry and sign-in
+test. Record the result without storing reset links, tokens or credentials.
+
 ## References
 
 - [GitHub repository backups and their scope](https://docs.github.com/en/repositories/archiving-a-github-repository/backing-up-a-repository)

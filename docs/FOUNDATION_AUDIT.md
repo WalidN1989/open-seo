@@ -39,15 +39,27 @@ Actions enabled and CI active, but no workflow runs were listed. After draft
 PR #6 was opened, GitHub's Actions page displayed: "Workflows aren't being run
 on this forked repository." The fork activation prompt had not been accepted.
 This UI finding explains why the API flags were not sufficient evidence.
-Workflow activation remains pending approval; no checks ran on the draft PR.
+On the subsequent inspection, the activation prompt was gone and CI run
+36305491128 had executed on PR #6. Docker build passed; `ci` stopped at an
+unused export in the existing Microsoft email provider. The foundation branch
+makes that helper private without changing its behavior. Further checks remain
+subject to the final revision's CI result.
 Repository workflow token permissions are read-only, with workflow approval
 of PRs disabled.
 
-CODEOWNERS currently names the upstream maintainer. The only listed repository
-collaborator is the fork owner, so those copied entries do not establish review
-coverage here. The proposed correction, agent-instruction alignment and CI
-hardening require explicit maintainer approval. Automatic approval review
-blocked those edits in this session; no control-plane files were changed.
+The owner explicitly approved workflow activation, main protection, CODEOWNERS,
+agent instructions, CI hardening and the PR template on 2026-09-27 after the
+approval system initially blocked the edits. PR #6 now replaces the copied
+upstream CODEOWNERS entries with `@WalidN1989`, aligns both agent guides,
+adds read-only CI permissions, disables persisted checkout credentials and sets
+30-minute job limits. These file changes take effect on main only after merge.
+
+Main protection was applied and verified through the GitHub API: pull requests,
+up-to-date branches, `ci` and `docker-build` from GitHub Actions (app 15368),
+resolved review conversations and enforcement for administrators. Force pushes
+and deletion are blocked. No bypass allowance was added. Required approving
+reviews are zero because the sole maintainer also authors the PRs; independent
+code-owner approval is not claimed.
 
 The owner authors the PRs through the same GitHub identity used by agents.
 Requiring that identity to independently approve its own PR would block the
@@ -59,14 +71,13 @@ claiming that protection exists. An org-enforced Greptile baseline is unverified
 
 - Completed: local snapshots, clean primary clone updated to deployed main,
   isolated `codex/foundation` branch, README workflow and recovery documentation.
-- Pending approval: activate the fork's workflows after reviewing their scope,
-  enforce GitHub branch protection, correct CODEOWNERS,
-  align AGENTS/CLAUDE guidance and harden CI settings. These controls are not
-  represented as enabled by this documentation.
+- Completed: GitHub Actions execution verified and main protection applied.
+- Prepared with explicit approval: CODEOWNERS, AGENTS/CLAUDE guidance, CI
+  permissions/time limits and PR template in PR #6, awaiting merge.
 - Completed: an independent restore of committed code from the bundle.
 - Prepared: [draft PR #6](https://github.com/WalidN1989/open-seo/pull/6) contains
-  documentation only. Prettier and `git diff --check` passed. No full
-  application test run is claimed for these documentation changes.
+  documentation, release safeguards and the unused-export fix. No production
+  deployment or merge is authorized by the safeguard approval.
 - Pending verification: after workflow activation, trigger CI on the PR and
   establish successful `ci` and `docker-build` results before release.
 - Pending business decision: private off-provider backup destination and
@@ -84,8 +95,8 @@ claiming that protection exists. An org-enforced Greptile baseline is unverified
 ## Order of work
 
 1. Preserve source and pending work, then verify recovery copies.
-2. Prove PR checks run; obtain approval to enable protections and correct the
-   review controls. Do not bypass failing checks to finish this task.
+2. Verify passing PR checks with the approved protections in place. Do not
+   bypass failing checks to finish this task.
 3. Review and merge foundation documentation through the approved release
    process. Update the app's saved project path to the intended development
    clone so future chats stop landing in the old Documents checkout.
