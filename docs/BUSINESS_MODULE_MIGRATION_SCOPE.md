@@ -1249,3 +1249,9 @@ uses disposable local D1 data, serverless sleeping and an email allowlist.
 For each future module, point the preview service at that module's branch; do
 not create a new production-like stack. Full operating steps and safety rules
 are in [RAILWAY_PREVIEWS.md](RAILWAY_PREVIEWS.md).
+
+The first Performance preview exposed a Docker build-variable trap:
+`BETTER_AUTH_URL=https://${{RAILWAY_PUBLIC_DOMAIN}}` appeared resolved in the
+Railway variables screen, but the build received the reference text and Vite
+failed with `TypeError: Invalid URL`. The preview now uses the literal
+`https://open-seo-preview.up.railway.app`; keep that value literal.

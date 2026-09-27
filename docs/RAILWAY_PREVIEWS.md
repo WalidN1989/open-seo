@@ -17,6 +17,11 @@ production.
 The preview uses `Dockerfile.selfhost`, `/api/health`, port `8080`, and
 serverless sleeping. Do not change the builder to Railpack.
 
+Set `BETTER_AUTH_URL` to the literal value
+`https://open-seo-preview.up.railway.app`. Do not build it from
+`${{RAILWAY_PUBLIC_DOMAIN}}`: Railway can leave that reference unresolved in a
+Docker build argument, causing Vite to fail with `TypeError: Invalid URL`.
+
 ## Safety rules
 
 - Never connect the preview to the production database or production volumes.
