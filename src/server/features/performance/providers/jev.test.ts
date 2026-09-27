@@ -24,6 +24,25 @@ describe("bounded Jev decisions", () => {
     );
     expect((await routeQuestion("projects?")).status).toBe("uncertain");
   });
+  it("uses TypeSafe's supported rolling Jev model alias", async () => {
+    const fetcher = vi.fn().mockResolvedValue(
+      Response.json({
+        answers: {
+          intent: { type: "choice", choice: "projects", confidence: 0.95 },
+          ambiguity: { type: "noul", noul: 0 },
+        },
+      }),
+    );
+    vi.stubGlobal("fetch", fetcher);
+    expect(await routeQuestion("How many projects do I have?")).toEqual({
+      status: "healthy",
+      intent: "projects",
+    });
+    const call = z
+      .tuple([z.string(), z.object({ body: z.string() })])
+      .parse(fetcher.mock.calls[0]);
+    expect(JSON.parse(call[1].body)).toMatchObject({ model: "jev-latest" });
+  });
   it("validates provider output and never falls back to another model", async () => {
     const fetcher = vi.fn().mockResolvedValue(
       Response.json({
