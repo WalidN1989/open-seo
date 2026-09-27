@@ -1,4 +1,34 @@
-# OpenSEO
+# DigitalUrgency
+
+DigitalUrgency is our business application, built on the MIT-licensed OpenSEO
+project. This repository contains our SEO engine and business modules. We keep
+OpenSEO's copyright and license notices.
+
+## Safe development
+
+`main` is the release branch. Every change starts from the latest `origin/main`
+in a separate worktree and a short branch, such as `codex/azure-voice` or
+`codex/crm-stock`. Tests and review come before merging a pull request. Merging
+can deploy to production, so the owner approves the release first.
+
+Use `~/Developer/open-seo` as the primary local checkout. Keep it clean on
+`main`. Do not develop in the old iCloud-synced Documents checkout. Do not copy
+files from that checkout over current code.
+
+- [Foundation and development rules](./docs/FOUNDATION.md)
+- [Recovery and release guide](./docs/RECOVERY.md)
+- [Foundation audit and remaining work](./docs/FOUNDATION_AUDIT.md)
+
+Upstream OpenSEO updates are optional. They require their own reviewed pull
+request; they must never overwrite our `main`. Git preserves code history, but
+customer data, uploads and encryption keys need separate backups.
+
+## About the original OpenSEO project
+
+The information below describes the upstream project. Its hosted service,
+prices and hosting recommendations are not DigitalUrgency's production setup.
+DigitalUrgency currently runs on Railway with a Neon Postgres database; consult
+our recovery guide and business-module ledger before changing hosting.
 
 > Open source alternative to Semrush and Ahrefs
 
