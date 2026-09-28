@@ -72,6 +72,11 @@ export async function transcribeWithAzure(
   language = "si-LK",
   fetcher: typeof fetch = fetch,
 ) {
+  if (!/^audio\/(wav|ogg)(;|$)/i.test(mimeType)) {
+    throw new Error(
+      "Azure requires WAV or Ogg audio. Reload the page to use the updated recorder.",
+    );
+  }
   const { region, key } = await azureSpeechCredentials(connection);
   const params = new URLSearchParams({ language, format: "detailed" });
   const response = await fetcher(
@@ -80,7 +85,10 @@ export async function transcribeWithAzure(
       method: "POST",
       headers: {
         "Ocp-Apim-Subscription-Key": key,
-        "Content-Type": mimeType,
+        "Content-Type":
+          mimeType === "audio/wav"
+            ? "audio/wav; codecs=audio/pcm; samplerate=16000"
+            : mimeType,
         Accept: "application/json",
       },
       body: bytesFromBase64(audioBase64),
@@ -90,13 +98,22 @@ export async function transcribeWithAzure(
   const payload: unknown = await response.json().catch(() => null);
   const parsed = z
     .object({
-      RecognitionStatus: z.string().optional(),
+      RecognitionStatus: z.string(),
       DisplayText: z.string().optional(),
       NBest: z.array(z.object({ Display: z.string().optional() })).optional(),
     })
     .safeParse(payload);
   if (!response.ok || !parsed.success) {
     throw new Error(`Azure Speech transcription failed (${response.status}).`);
+  }
+  if (
+    !["Success", "NoMatch", "InitialSilenceTimeout"].includes(
+      parsed.data.RecognitionStatus,
+    )
+  ) {
+    throw new Error(
+      `Azure could not recognize this recording (${parsed.data.RecognitionStatus}).`,
+    );
   }
   return {
     transcript:

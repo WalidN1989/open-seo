@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { AssistantConfigSection } from "./whatsapp/AssistantConfigSection";
+import { prepareAzureAudio } from "./voice/azure-audio";
 import { PhoneCallsSection } from "./voice/PhoneCallsSection";
 import {
   AskedQuestionsSection,
@@ -1748,6 +1749,12 @@ export function VoiceWorkspace() {
   const [continuousConversationId, setContinuousConversationId] = useState<
     string | null
   >(null);
+  const [voiceStatus, setVoiceStatus] = useState<Record<string, string>>({});
+  const [englishTranscripts, setEnglishTranscripts] = useState<
+    Record<string, string[]>
+  >({});
+  const [replyAudio, setReplyAudio] = useState<Record<string, string>>({});
+  const endedSessions = useRef(new Set<string>());
   const continuousRef = useRef<string | null>(null);
   const recorderRef = useRef<{
     recorder: MediaRecorder;
@@ -1783,7 +1790,7 @@ export function VoiceWorkspace() {
       startVoiceConversation({ data: { agentConfigId } }),
     onSuccess: async (conversation) => {
       await client.invalidateQueries({ queryKey: ["voice"] });
-      toast.success("Listening now — speak in Sinhala");
+
       await beginRecording(conversation.id, true);
     },
     onError: showError,
@@ -1812,10 +1819,14 @@ export function VoiceWorkspace() {
       audioBase64: string;
       mimeType: string;
     }) => {
-      const agentId = query.data?.conversations.find(
+      const workspace = client.getQueryData<typeof query.data>([
+        "voice",
+        "workspace",
+      ]);
+      const agentId = workspace?.conversations.find(
         (item) => item.id === data.conversationId,
       )?.agentConfigId;
-      const agent = query.data?.agents.find((item) => item.id === agentId);
+      const agent = workspace?.agents.find((item) => item.id === agentId);
       return transcribeVoiceAudio({
         data: {
           ...data,
@@ -1828,16 +1839,47 @@ export function VoiceWorkspace() {
     },
     onSuccess: async (result, variables) => {
       await client.invalidateQueries({ queryKey: ["voice"] });
-      if (result.transcript) toast.success(`Heard: ${result.transcript}`);
+      if (endedSessions.current.has(variables.conversationId)) return;
+      setVoiceStatus((old) => ({
+        ...old,
+        [variables.conversationId]: result.transcript
+          ? "Transcript received."
+          : "No speech recognized. Try speaking closer to the microphone.",
+      }));
+      if (
+        "englishTranscript" in result &&
+        typeof result.englishTranscript === "string" &&
+        result.englishTranscript
+      ) {
+        const english = result.englishTranscript;
+        setEnglishTranscripts((old) => ({
+          ...old,
+          [variables.conversationId]: [
+            ...(old[variables.conversationId] ?? []),
+            english,
+          ],
+        }));
+      }
+      if ("translationError" in result && result.translationError) {
+        setVoiceStatus((old) => ({
+          ...old,
+          [variables.conversationId]:
+            "Sinhala reply ready, but English translation failed.",
+        }));
+      }
       if ("replyError" in result && result.replyError) {
-        toast.warning(
-          `Transcript saved, but the agent could not reply: ${result.replyError}`,
-        );
+        setVoiceStatus((old) => ({
+          ...old,
+          [variables.conversationId]: `Transcript saved, but the agent could not reply: ${result.replyError}`,
+        }));
       }
       if ("audioBase64" in result && result.audioBase64) {
-        const audio = new Audio(
-          `data:${result.mimeType};base64,${result.audioBase64}`,
-        );
+        const audioUrl = `data:${result.mimeType};base64,${result.audioBase64}`;
+        setReplyAudio((old) => ({
+          ...old,
+          [variables.conversationId]: audioUrl,
+        }));
+        const audio = new Audio(audioUrl);
         audio.addEventListener("ended", () => {
           if (continuousRef.current === variables.conversationId) {
             void beginRecording(variables.conversationId, true);
@@ -1855,9 +1897,18 @@ export function VoiceWorkspace() {
         void beginRecording(variables.conversationId, true);
       }
     },
-    onError: showError,
+    onError: (error, variables) => {
+      continuousRef.current = null;
+      setContinuousConversationId(null);
+      setVoiceStatus((old) => ({
+        ...old,
+        [variables.conversationId]: error.message,
+      }));
+      showError(error);
+    },
   });
   const beginRecording = async (conversationId: string, continuous = false) => {
+    if (recorderRef.current) return;
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
@@ -1883,16 +1934,50 @@ export function VoiceWorkspace() {
         if (state.animationFrame) cancelAnimationFrame(state.animationFrame);
         await state.audioContext?.close();
         stream.getTracks().forEach((track) => track.stop());
-        const blob = new Blob(state.chunks, { type: recorder.mimeType });
         setRecordingConversationId(null);
         recorderRef.current = null;
-        transcribe.mutate({
-          conversationId,
-          audioBase64: await blobToBase64(blob),
-          mimeType: blob.type || "audio/webm",
-        });
+        if (endedSessions.current.has(conversationId)) return;
+        try {
+          const recorded = new Blob(state.chunks, { type: recorder.mimeType });
+          const workspace = client.getQueryData<typeof query.data>([
+            "voice",
+            "workspace",
+          ]);
+          const agentId = workspace?.conversations.find(
+            (item) => item.id === conversationId,
+          )?.agentConfigId;
+          const agent = workspace?.agents.find((item) => item.id === agentId);
+          setVoiceStatus((old) => ({
+            ...old,
+            [conversationId]: "Processing speech…",
+          }));
+          const blob =
+            agent?.speechToTextProvider === "microsoft_azure"
+              ? await prepareAzureAudio(recorded)
+              : recorded;
+          transcribe.mutate({
+            conversationId,
+            audioBase64: await blobToBase64(blob),
+            mimeType: blob.type || "audio/webm",
+          });
+        } catch (error) {
+          continuousRef.current = null;
+          setContinuousConversationId(null);
+          setVoiceStatus((old) => ({
+            ...old,
+            [conversationId]:
+              error instanceof Error
+                ? error.message
+                : "Audio preparation failed.",
+          }));
+          showError(error);
+        }
       };
       recorder.start();
+      setVoiceStatus((old) => ({
+        ...old,
+        [conversationId]: "Listening — speak, then pause for a reply.",
+      }));
       setRecordingConversationId(conversationId);
       if (continuous) {
         continuousRef.current = conversationId;
@@ -1940,7 +2025,8 @@ export function VoiceWorkspace() {
       continuousRef.current = null;
       setContinuousConversationId(null);
     }
-    recorderRef.current?.recorder.stop();
+    if (recorderRef.current?.recorder.state === "recording")
+      recorderRef.current.recorder.stop();
   };
   if (query.isLoading) return <Loading />;
   if (query.isError) return <ErrorBox error={query.error} />;
@@ -2075,7 +2161,12 @@ export function VoiceWorkspace() {
                 <div className="flex items-center justify-between gap-2">
                   <div>
                     <p className="font-medium">
-                      {conversation.channel} session
+                      {query.data!.agents.find(
+                        (agent) => agent.id === conversation.agentConfigId,
+                      )?.speechToTextProvider === "microsoft_azure"
+                        ? "Azure Sinhala"
+                        : "Deepgram"}{" "}
+                      · {conversation.channel} session
                     </p>
                     <p className="text-xs text-base-content/50">
                       {conversation.status} · {messages.length} transcript
@@ -2112,7 +2203,19 @@ export function VoiceWorkspace() {
                       </button>
                       <button
                         className="btn btn-ghost btn-xs"
-                        onClick={() => end.mutate(conversation.id)}
+                        onClick={() => {
+                          endedSessions.current.add(conversation.id);
+                          if (continuousRef.current === conversation.id) {
+                            continuousRef.current = null;
+                            setContinuousConversationId(null);
+                          }
+                          if (
+                            recorderRef.current?.conversationId ===
+                            conversation.id
+                          )
+                            stopRecording();
+                          end.mutate(conversation.id);
+                        }}
                       >
                         End
                       </button>
@@ -2130,6 +2233,28 @@ export function VoiceWorkspace() {
                     }
                   />
                 ) : null}
+                {voiceStatus[conversation.id] ? (
+                  <p role="status" className="text-sm">
+                    {voiceStatus[conversation.id]}
+                  </p>
+                ) : null}
+                {replyAudio[conversation.id] ? (
+                  <audio
+                    controls
+                    src={replyAudio[conversation.id]}
+                    aria-label="Replay agent reply"
+                  />
+                ) : null}
+                {englishTranscripts[conversation.id]?.map((text, index) => (
+                  <p
+                    key={index}
+                    className="whitespace-pre-wrap rounded bg-base-200 p-3 text-sm"
+                  >
+                    <strong>English translation · this visit</strong>
+                    {"\n"}
+                    {text}
+                  </p>
+                ))}
                 {messages
                   .toReversed()
                   .slice(-20)

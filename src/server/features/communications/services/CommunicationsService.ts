@@ -78,7 +78,10 @@ import {
   scrapeWithFirecrawl,
   testIntegrationConnection,
 } from "../providers/integrations";
-import { generateVoiceAgentReply } from "../providers/voice-ai";
+import {
+  generateVoiceAgentReply,
+  translateVoiceTranscript,
+} from "../providers/voice-ai";
 import { VoiceAnalystService } from "@/server/features/voice/services/VoiceAnalystService";
 import { BusinessAuditRepository } from "@/server/features/business-modules/repositories/BusinessAuditRepository";
 import { isUniqueViolation } from "@/server/lib/db-errors";
@@ -1060,6 +1063,18 @@ async function transcribeVoiceAudio(
         .replaceAll(/https?:\/\/\S+/g, "")
         .replaceAll(/\s{2,}/g, " ")
         .trim();
+      const translation =
+        agent.speechToTextProvider === "microsoft_azure"
+          ? translateVoiceTranscript(
+              agent.credentialReference ?? "OPENSEO_VOICE",
+              `User: ${result.transcript}\nAgent: ${generated.reply}`,
+            )
+              .then((value) => ({
+                englishTranscript: value.reply,
+                translationError: false,
+              }))
+              .catch(() => ({ englishTranscript: "", translationError: true }))
+          : Promise.resolve({ englishTranscript: "", translationError: false });
       const speech =
         agent.textToSpeechProvider === "microsoft_azure" && azureConnection
           ? await speakWithAzure(azureConnection, spokenReply)
@@ -1077,6 +1092,7 @@ async function transcribeVoiceAudio(
       return {
         ...result,
         ...speech,
+        ...(await translation),
         reply: generated.reply,
         endsConversation: isFarewell(result.transcript),
       };

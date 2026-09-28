@@ -87,7 +87,7 @@ describe("Azure Sinhala voice provider", () => {
     const result = await transcribeWithAzure(
       azureConnection(),
       btoa("audio"),
-      "audio/webm",
+      "audio/wav",
       "si-LK",
       async (input, init) => {
         expect(input instanceof URL ? input.href : input).toContain(
@@ -96,6 +96,9 @@ describe("Azure Sinhala voice provider", () => {
         expect(
           new Headers(init?.headers).get("Ocp-Apim-Subscription-Key"),
         ).toBe("private-azure-key");
+        expect(new Headers(init?.headers).get("Content-Type")).toBe(
+          "audio/wav; codecs=audio/pcm; samplerate=16000",
+        );
         return Response.json({
           RecognitionStatus: "Success",
           NBest: [{ Display: "ආයුබෝවන්" }],
@@ -105,6 +108,22 @@ describe("Azure Sinhala voice provider", () => {
     expect(result).toEqual({ transcript: "ආයුබෝවන්", language: "si-LK" });
   });
 
+  it("rejects WebM before sending an unsupported recording", async () => {
+    await expect(
+      transcribeWithAzure(azureConnection(), btoa("audio"), "audio/webm"),
+    ).rejects.toThrow("Azure requires WAV or Ogg");
+  });
+  it("does not disguise recognition errors as silent audio", async () => {
+    await expect(
+      transcribeWithAzure(
+        azureConnection(),
+        btoa("audio"),
+        "audio/wav",
+        "si-LK",
+        async () => Response.json({ RecognitionStatus: "Error" }),
+      ),
+    ).rejects.toThrow("could not recognize");
+  });
   it("synthesizes the Thilini Sinhala voice and escapes SSML", async () => {
     const result = await speakWithAzure(
       azureConnection(),
