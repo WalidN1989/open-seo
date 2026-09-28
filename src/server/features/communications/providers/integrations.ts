@@ -236,6 +236,42 @@ export async function testIntegrationConnection(
         detail: `Twilio account authenticated; texts go from ${number}`,
       };
     }
+    case "microsoft_azure": {
+      const [region, key] = await Promise.all([
+        credentialValue(connection, "SPEECH_REGION"),
+        credentialValue(connection, "SPEECH_KEY"),
+      ]);
+      if (!/^[a-z0-9-]{2,40}$/.test(region)) {
+        throw new Error(
+          "Azure Speech region must look like southeastasia or eastus.",
+        );
+      }
+      const url = `https://${region}.api.cognitive.microsoft.com/sts/v1.0/issueToken`;
+      const response = await fetcher(url, {
+        method: "POST",
+        headers: { "Ocp-Apim-Subscription-Key": key },
+        redirect: "manual",
+        signal: AbortSignal.timeout(20_000),
+      });
+      if (response.status >= 300 && response.status < 400) {
+        throw new Error(
+          `${new URL(url).host} redirected (${response.status}); refusing to follow with a credential.`,
+        );
+      }
+      if (!response.ok) {
+        throw new Error(
+          `${new URL(url).host} responded ${response.status}${
+            response.status === 401 || response.status === 403
+              ? " — the Speech key or region was rejected"
+              : ""
+          }.`,
+        );
+      }
+      return {
+        providerKey: connection.providerKey,
+        detail: `Azure Speech authenticated in ${region}`,
+      };
+    }
     case "make":
       await credentialValue(connection, "SIGNING_SECRET");
       return {

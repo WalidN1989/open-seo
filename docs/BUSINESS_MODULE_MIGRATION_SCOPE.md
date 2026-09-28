@@ -1,5 +1,42 @@
 # OpenSEO business module migration scope
 
+### 2026-09-28: BooXworm Azure Sinhala browser conversation
+
+The existing browser voice conversation loop now supports a Microsoft Azure
+Speech agent alongside the original Deepgram path. An Azure agent uses the
+organization's connected and tested `microsoft_azure` integration, sends
+browser audio to Azure Speech with the `si-LK` locale, keeps Digital Urgency's
+existing organization context and answer model as the brain, and speaks the
+answer with `si-LK-ThiliniNeural`. The key stays in the encrypted integration
+record and is never returned to the browser. This is the pre-SIP test path;
+ElevenLabs, Zoho, phone calls and the later PABX gateway are unchanged.
+
+Validation: 19 targeted Azure, voice and turn-detection tests, targeted
+type-aware lint, TypeScript before route regeneration, and the production Vite
+build. The repository's unrelated duplicate ` 2` route files still make the
+post-build generated route types fail and were left untouched.
+
+### 2026-09-27: Microsoft Azure voice integration foundation
+
+Microsoft Azure is now a first-class, connectable Channels integration for the
+BooXworm voice path in Digital Urgency. The connection stores an Azure Speech
+region and Speech key in the existing encrypted tenant credential store, with
+an optional Azure Communication Services connection string reserved for the
+later SIP stage. Its health check exchanges the Speech key for a short-lived
+Microsoft token and returns only the authentication result; neither the key nor
+the token reaches the browser.
+
+This path is deliberately separate from BooXworm's existing Zoho/ElevenLabs
+agent. Azure will eventually handle Sinhala and English recognition and speech,
+while Digital Urgency owns the conversation and business-data logic. Browser
+speech testing comes before Azure Communication Services and SIP. The Azure
+subscription is active, the Southeast Asia Free F0 Speech resource was created,
+and Sinhala recognition plus the Thilini and Sameera voices were verified in
+Speech Studio.
+
+Validation: 39 targeted integration catalogue, ordering and provider tests,
+plus the full TypeScript check.
+
 ### 2026-09-22: explicit multi-branch products and branch-aware counting
 
 Products now default to single-location inventory and must be explicitly
