@@ -1,5 +1,22 @@
 # OpenSEO business module migration scope
 
+### 2026-09-29: Azure browser recording format correction
+
+Earlier UI/credential changes did not verify a complete spoken Azure turn.
+The browser sent MediaRecorder WebM to Azure's short-audio endpoint, which
+accepts only WAV PCM or Ogg Opus. Azure recordings now decode and resample to
+mono 16 kHz signed 16-bit WAV before upload. Provider selection reads the latest
+query cache so a newly created conversation uses its Azure agent immediately.
+Recognition errors remain visible; the last spoken reply can be replayed.
+Azure turns include English display translations using the existing answer
+model; originals and spoken replies remain Sinhala. Translations are temporary
+for the current page visit, not persisted. This adds one model translation
+request per Azure turn. Existing Deepgram audio upload is unchanged.
+
+Validation: codec/header tests, provider error tests, existing model tests and
+TypeScript. A live microphone exchange still requires verification; a passing
+build or integration health check is not evidence of a working conversation.
+
 ### 2026-09-29: one-click Sinhala browser listening
 
 Starting an Azure Sinhala test agent now creates the browser session and opens
