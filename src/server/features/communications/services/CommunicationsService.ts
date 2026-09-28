@@ -1046,7 +1046,11 @@ async function transcribeVoiceAudio(
       ]);
       const generated = await generateVoiceAgentReply({
         agentName: agent.name,
-        credentialReference: agent.credentialReference,
+        credentialReference:
+          agent.credentialReference ??
+          (agent.speechToTextProvider === "microsoft_azure"
+            ? "OPENSEO_VOICE"
+            : null),
         history,
         businessContext,
         analystContext: analystContext.text,
