@@ -1781,9 +1781,10 @@ export function VoiceWorkspace() {
   const start = useMutation({
     mutationFn: (agentConfigId: string) =>
       startVoiceConversation({ data: { agentConfigId } }),
-    onSuccess: async () => {
+    onSuccess: async (conversation) => {
       await client.invalidateQueries({ queryKey: ["voice"] });
-      toast.success("Browser voice session started");
+      toast.success("Listening now — speak in Sinhala");
+      await beginRecording(conversation.id, true);
     },
     onError: showError,
   });
@@ -2050,9 +2051,12 @@ export function VoiceWorkspace() {
               </div>
               <button
                 className="btn btn-primary btn-xs"
+                disabled={start.isPending}
                 onClick={() => start.mutate(item.id)}
               >
-                Start session
+                {item.speechToTextProvider === "microsoft_azure"
+                  ? "Start live Sinhala"
+                  : "Start live test"}
               </button>
             </div>
           ))
@@ -2092,7 +2096,7 @@ export function VoiceWorkspace() {
                       >
                         {recordingConversationId === conversation.id
                           ? "Stop recording"
-                          : "Record"}
+                          : "Record once"}
                       </button>
                       <button
                         className={`btn btn-xs ${continuousConversationId === conversation.id ? "btn-error" : "btn-outline"}`}
@@ -2103,8 +2107,8 @@ export function VoiceWorkspace() {
                         }
                       >
                         {continuousConversationId === conversation.id
-                          ? "Stop conversation"
-                          : "Conversation mode"}
+                          ? "Listening… stop"
+                          : "Start listening"}
                       </button>
                       <button
                         className="btn btn-ghost btn-xs"

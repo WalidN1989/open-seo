@@ -1,5 +1,13 @@
 # OpenSEO business module migration scope
 
+### 2026-09-29: one-click Sinhala browser listening
+
+Starting an Azure Sinhala test agent now creates the browser session and opens
+continuous microphone listening in the same click. The active controls say
+`Listening… stop`, `Start listening`, and `Record once`, so a created session
+can no longer be mistaken for a live microphone. The microphone permission and
+Azure transcription path are unchanged.
+
 ### 2026-09-29: Azure Sinhala browser reply fix
 
 Azure Sinhala agents now reuse the existing `OPENSEO_VOICE` answer-model
