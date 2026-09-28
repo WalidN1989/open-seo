@@ -63,7 +63,12 @@ import {
   verifyTwilioSignature,
 } from "../providers/signatures";
 import { deliverWebhook, validateWebhookUrl } from "../providers/webhooks";
-import { speakWithDeepgram, transcribeWithDeepgram } from "../providers/voice";
+import {
+  speakWithAzure,
+  speakWithDeepgram,
+  transcribeWithAzure,
+  transcribeWithDeepgram,
+} from "../providers/voice";
 import { buildVoiceAgentContext } from "./VoiceAgentContext";
 import { learnFromConversation, rememberNow } from "./VoiceLearningService";
 import { asksToRemember } from "@/server/features/voice/remember";
@@ -965,18 +970,38 @@ async function transcribeVoiceAudio(
     organizationId,
     input.conversationId,
   );
-  if (agent.speechToTextProvider !== "deepgram") {
-    throw new Error(
-      "This voice agent is not configured for Deepgram transcription.",
-    );
+  const azureConnection =
+    agent.speechToTextProvider === "microsoft_azure" ||
+    agent.textToSpeechProvider === "microsoft_azure"
+      ? await CommunicationsRepository.getIntegrationByProvider(
+          organizationId,
+          "microsoft_azure",
+        )
+      : undefined;
+  if (azureConnection && azureConnection.status !== "connected") {
+    throw new Error("Test the Microsoft Azure integration before using it.");
   }
   const startedAt = Date.now();
-  const result = await transcribeWithDeepgram(
-    agent.credentialReference,
-    input.audioBase64,
-    input.mimeType,
-    input.language,
-  );
+  const result =
+    agent.speechToTextProvider === "microsoft_azure" && azureConnection
+      ? await transcribeWithAzure(
+          azureConnection,
+          input.audioBase64,
+          input.mimeType,
+          input.language,
+        )
+      : agent.speechToTextProvider === "deepgram"
+        ? await transcribeWithDeepgram(
+            agent.credentialReference,
+            input.audioBase64,
+            input.mimeType,
+            input.language,
+          )
+        : (() => {
+            throw new Error(
+              "This voice agent has no supported speech provider.",
+            );
+          })();
   const heardAt = Date.now();
   // Nothing was said. Save no turn and generate no reply: an empty message
   // would pollute the transcript and the history the agent learns from.
@@ -996,7 +1021,8 @@ async function transcribeVoiceAudio(
   }
   if (
     agent.modelProvider === "anthropic" &&
-    agent.textToSpeechProvider === "deepgram"
+    (agent.textToSpeechProvider === "deepgram" ||
+      agent.textToSpeechProvider === "microsoft_azure")
   ) {
     try {
       const history =
@@ -1026,13 +1052,14 @@ async function transcribeVoiceAudio(
         analystContext: analystContext.text,
       });
       const answeredAt = Date.now();
-      const speech = await speakWithDeepgram(
-        agent.credentialReference,
-        generated.reply
-          .replaceAll(/https?:\/\/\S+/g, "")
-          .replaceAll(/\s{2,}/g, " ")
-          .trim(),
-      );
+      const spokenReply = generated.reply
+        .replaceAll(/https?:\/\/\S+/g, "")
+        .replaceAll(/\s{2,}/g, " ")
+        .trim();
+      const speech =
+        agent.textToSpeechProvider === "microsoft_azure" && azureConnection
+          ? await speakWithAzure(azureConnection, spokenReply)
+          : await speakWithDeepgram(agent.credentialReference, spokenReply);
       await CommunicationsRepository.appendVoiceTranscript(organizationId, {
         conversationId: input.conversationId,
         speaker: "agent",

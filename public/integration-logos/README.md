@@ -2,6 +2,10 @@
 
 Deepgram: Simple Icons (develop/icons/deepgram.svg), retrieved 2026-09-19.
 
+Added 2026-09-17: WordPress and ElevenLabs from Simple Icons develop;
+Twilio from Simple Icons 15.0.0. These local SVGs fill the existing catalogue
+paths; no connector behavior is changed.
+
 The SVG brand marks are served locally; opening the catalogue does not send
 requests to a logo CDN. Retrieved 2026-09-06.
 

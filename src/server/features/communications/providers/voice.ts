@@ -3,6 +3,13 @@ import {
   getOptionalEnvValue,
   getRequiredEnvValue,
 } from "@/server/lib/runtime-env";
+import { resolveConnectionCredential } from "@/server/lib/connection-secrets";
+
+type AzureSpeechConnection = {
+  providerKey: string;
+  credentialReference: string | null;
+  credentials?: string | null;
+};
 
 function credentialName(reference: string, suffix: string): string {
   const prefix = reference
@@ -33,6 +40,101 @@ function base64FromBytes(value: ArrayBuffer): string {
   let binary = "";
   for (const byte of new Uint8Array(value)) binary += String.fromCharCode(byte);
   return btoa(binary);
+}
+
+function escapeSsml(value: string) {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&apos;");
+}
+
+async function azureSpeechCredentials(connection: AzureSpeechConnection) {
+  if (connection.providerKey !== "microsoft_azure") {
+    throw new Error("This voice agent requires a Microsoft Azure connection.");
+  }
+  const [region, key] = await Promise.all([
+    resolveConnectionCredential(connection, "SPEECH_REGION"),
+    resolveConnectionCredential(connection, "SPEECH_KEY"),
+  ]);
+  if (!/^[a-z0-9-]{2,40}$/.test(region)) {
+    throw new Error("The Azure Speech region is invalid.");
+  }
+  return { region, key };
+}
+
+export async function transcribeWithAzure(
+  connection: AzureSpeechConnection,
+  audioBase64: string,
+  mimeType: string,
+  language = "si-LK",
+  fetcher: typeof fetch = fetch,
+) {
+  const { region, key } = await azureSpeechCredentials(connection);
+  const params = new URLSearchParams({ language, format: "detailed" });
+  const response = await fetcher(
+    `https://${region}.stt.speech.microsoft.com/speech/recognition/conversation/cognitiveservices/v1?${params}`,
+    {
+      method: "POST",
+      headers: {
+        "Ocp-Apim-Subscription-Key": key,
+        "Content-Type": mimeType,
+        Accept: "application/json",
+      },
+      body: bytesFromBase64(audioBase64),
+      signal: AbortSignal.timeout(45_000),
+    },
+  );
+  const payload: unknown = await response.json().catch(() => null);
+  const parsed = z
+    .object({
+      RecognitionStatus: z.string().optional(),
+      DisplayText: z.string().optional(),
+      NBest: z.array(z.object({ Display: z.string().optional() })).optional(),
+    })
+    .safeParse(payload);
+  if (!response.ok || !parsed.success) {
+    throw new Error(`Azure Speech transcription failed (${response.status}).`);
+  }
+  return {
+    transcript:
+      parsed.data.NBest?.[0]?.Display?.trim() ??
+      parsed.data.DisplayText?.trim() ??
+      "",
+    language,
+  };
+}
+
+export async function speakWithAzure(
+  connection: AzureSpeechConnection,
+  text: string,
+  voice = "si-LK-ThiliniNeural",
+  fetcher: typeof fetch = fetch,
+) {
+  const { region, key } = await azureSpeechCredentials(connection);
+  const response = await fetcher(
+    `https://${region}.tts.speech.microsoft.com/cognitiveservices/v1`,
+    {
+      method: "POST",
+      headers: {
+        "Ocp-Apim-Subscription-Key": key,
+        "Content-Type": "application/ssml+xml",
+        "X-Microsoft-OutputFormat": "audio-24khz-48kbitrate-mono-mp3",
+        "User-Agent": "DigitalUrgency-BooXworm",
+      },
+      body: `<speak version="1.0" xml:lang="si-LK"><voice name="${voice}">${escapeSsml(text.slice(0, 1900))}</voice></speak>`,
+      signal: AbortSignal.timeout(45_000),
+    },
+  );
+  if (!response.ok) {
+    throw new Error(`Azure Speech synthesis failed (${response.status}).`);
+  }
+  return {
+    audioBase64: base64FromBytes(await response.arrayBuffer()),
+    mimeType: response.headers.get("content-type") ?? "audio/mpeg",
+  };
 }
 
 export async function transcribeWithDeepgram(

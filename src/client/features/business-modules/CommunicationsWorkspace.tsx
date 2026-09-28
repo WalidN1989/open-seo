@@ -108,6 +108,12 @@ const whatsappSettingsGroups = [
   { label: "Workspace", sections: ["Reports", "Settings"] },
 ] as const;
 
+function isVoiceProvider(
+  value: string,
+): value is "microsoft_azure" | "deepgram" {
+  return value === "microsoft_azure" || value === "deepgram";
+}
+
 function formatWhatsappTime(value?: string | null) {
   if (!value) return "";
   const date = new Date(value);
@@ -1733,6 +1739,9 @@ export function VoiceWorkspace() {
   const [agentName, setAgentName] = useState("Digital Urgency Assistant");
   const [credentialReference, setCredentialReference] =
     useState("OPENSEO_VOICE");
+  const [voiceProvider, setVoiceProvider] = useState<
+    "microsoft_azure" | "deepgram"
+  >("microsoft_azure");
   const [recordingConversationId, setRecordingConversationId] = useState<
     string | null
   >(null);
@@ -1801,7 +1810,21 @@ export function VoiceWorkspace() {
       conversationId: string;
       audioBase64: string;
       mimeType: string;
-    }) => transcribeVoiceAudio({ data: { ...data, language: "multi" } }),
+    }) => {
+      const agentId = query.data?.conversations.find(
+        (item) => item.id === data.conversationId,
+      )?.agentConfigId;
+      const agent = query.data?.agents.find((item) => item.id === agentId);
+      return transcribeVoiceAudio({
+        data: {
+          ...data,
+          language:
+            agent?.speechToTextProvider === "microsoft_azure"
+              ? "si-LK"
+              : "multi",
+        },
+      });
+    },
     onSuccess: async (result, variables) => {
       await client.invalidateQueries({ queryKey: ["voice"] });
       toast.success(`Heard: ${result.transcript}`);
@@ -1924,12 +1947,21 @@ export function VoiceWorkspace() {
     <Workspace
       title="Voice Agent"
       subtitle="Phone calls answered by your hosted voice agent, plus browser voice assistants."
-      actions={null}
+      actions={
+        <button
+          type="button"
+          className="btn btn-primary btn-sm"
+          onClick={() => setAdding((value) => !value)}
+        >
+          <Plus className="size-4" />
+          {adding ? "Cancel" : "New test agent"}
+        </button>
+      }
     >
       <PhoneCallsSection />
       {adding ? (
         <div className="rounded-box border border-base-300 bg-base-100 p-4">
-          <div className="grid gap-3 md:grid-cols-[1fr_1fr_auto]">
+          <div className="grid gap-3 md:grid-cols-[1fr_1fr_1fr_auto]">
             <label className="form-control">
               <span className="label-text mb-1 text-xs">Agent name</span>
               <input
@@ -1939,27 +1971,55 @@ export function VoiceWorkspace() {
               />
             </label>
             <label className="form-control">
-              <span className="label-text mb-1 text-xs">
-                Railway credential reference
-              </span>
-              <input
-                className="input input-bordered input-sm"
-                value={credentialReference}
-                onChange={(event) =>
-                  setCredentialReference(event.currentTarget.value)
-                }
-              />
+              <span className="label-text mb-1 text-xs">Speech provider</span>
+              <select
+                className="select select-bordered select-sm"
+                value={voiceProvider}
+                onChange={(event) => {
+                  const provider = event.currentTarget.value;
+                  if (isVoiceProvider(provider)) setVoiceProvider(provider);
+                }}
+              >
+                <option value="microsoft_azure">
+                  Microsoft Azure · Sinhala
+                </option>
+                <option value="deepgram">Deepgram</option>
+              </select>
             </label>
+            {voiceProvider === "deepgram" ? (
+              <label className="form-control">
+                <span className="label-text mb-1 text-xs">
+                  Railway credential reference
+                </span>
+                <input
+                  className="input input-bordered input-sm"
+                  value={credentialReference}
+                  onChange={(event) =>
+                    setCredentialReference(event.currentTarget.value)
+                  }
+                />
+              </label>
+            ) : (
+              <div className="rounded-box border border-base-300 bg-base-200/50 p-3 text-xs text-base-content/65">
+                Uses the tested Microsoft Azure connection under Integrations.
+              </div>
+            )}
             <button
               className="btn btn-primary btn-sm self-end"
-              disabled={!agentName.trim() || !credentialReference.trim()}
+              disabled={
+                !agentName.trim() ||
+                (voiceProvider === "deepgram" && !credentialReference.trim())
+              }
               onClick={() =>
                 mutation.mutate({
                   name: agentName.trim(),
-                  speechToTextProvider: "deepgram",
-                  textToSpeechProvider: "deepgram",
+                  speechToTextProvider: voiceProvider,
+                  textToSpeechProvider: voiceProvider,
                   modelProvider: "anthropic",
-                  credentialReference: credentialReference.trim(),
+                  credentialReference:
+                    voiceProvider === "deepgram"
+                      ? credentialReference.trim()
+                      : undefined,
                 })
               }
             >
@@ -1967,8 +2027,8 @@ export function VoiceWorkspace() {
             </button>
           </div>
           <p className="mt-2 text-xs text-base-content/55">
-            Uses Deepgram for listening and speech, Anthropic for answers, and
-            learns durable lessons from this organization&apos;s conversations.
+            Azure agents listen in Sinhala and reply with the Thilini Sinhala
+            voice. Digital Urgency supplies the answers and organization data.
           </p>
         </div>
       ) : null}
@@ -1985,7 +2045,7 @@ export function VoiceWorkspace() {
               <div className="min-w-0 flex-1">
                 <Row
                   title={item.name}
-                  detail={`${item.status} · ${item.modelProvider ?? "model not configured"}`}
+                  detail={`${item.status} · ${item.speechToTextProvider === "microsoft_azure" ? "Azure Sinhala" : (item.speechToTextProvider ?? "speech not configured")} · ${item.modelProvider ?? "model not configured"}`}
                 />
               </div>
               <button
@@ -1997,10 +2057,10 @@ export function VoiceWorkspace() {
             </div>
           ))
         ) : (
-          <Empty text="Create an agent, then attach speech and model credentials through a secret reference." />
+          <Empty text="Connect Microsoft Azure under Integrations, then create a Sinhala voice agent here." />
         )}
       </Panel>
-      <Panel title="Browser sessions" icon={MessageCircleMore}>
+      <Panel title="Test conversation" icon={MessageCircleMore}>
         {query.data!.conversations.length ? (
           query.data!.conversations.map((conversation) => {
             const messages = query.data!.messages.filter(
