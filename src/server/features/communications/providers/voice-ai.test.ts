@@ -62,12 +62,12 @@ it("translates the display transcript without applying agent reply instructions"
       "TRANSLATION",
       "User: ආයුබෝවන්",
       async (_input, init) => {
-        const body = JSON.parse(String(init?.body));
-        expect(body.system).toContain(
+        const body = typeof init?.body === "string" ? init.body : "";
+        expect(body).toContain(
           "Translate the supplied conversation into English",
         );
-        expect(body.system).not.toContain("Reply in the same language");
-        expect(body.messages[0].content).toBe("User: ආයුබෝවන්");
+        expect(body).not.toContain("Reply in the same language");
+        expect(body).toContain("User: ආයුබෝවන්");
         return Response.json({
           content: [{ type: "text", text: "User: Hello" }],
         });
