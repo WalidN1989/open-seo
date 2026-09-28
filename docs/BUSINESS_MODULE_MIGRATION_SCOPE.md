@@ -1,5 +1,14 @@
 # OpenSEO business module migration scope
 
+### 2026-09-29: Azure Sinhala browser reply fix
+
+Azure Sinhala agents now reuse the existing `OPENSEO_VOICE` answer-model
+credential when an older agent record has no credential reference. New Azure
+test agents store that reference explicitly. Conversation mode also ignores
+silent recognition results instead of showing an empty `Heard:` toast. Existing
+Azure Speech credentials, ElevenLabs, Zoho, Deepgram and SIP planning are
+unchanged.
+
 ### 2026-09-28: BooXworm Azure Sinhala browser conversation
 
 The existing browser voice conversation loop now supports a Microsoft Azure

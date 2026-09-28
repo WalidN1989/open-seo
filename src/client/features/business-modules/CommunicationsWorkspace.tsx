@@ -1827,7 +1827,7 @@ export function VoiceWorkspace() {
     },
     onSuccess: async (result, variables) => {
       await client.invalidateQueries({ queryKey: ["voice"] });
-      toast.success(`Heard: ${result.transcript}`);
+      if (result.transcript) toast.success(`Heard: ${result.transcript}`);
       if ("replyError" in result && result.replyError) {
         toast.warning(
           `Transcript saved, but the agent could not reply: ${result.replyError}`,
@@ -2019,7 +2019,7 @@ export function VoiceWorkspace() {
                   credentialReference:
                     voiceProvider === "deepgram"
                       ? credentialReference.trim()
-                      : undefined,
+                      : "OPENSEO_VOICE",
                 })
               }
             >
