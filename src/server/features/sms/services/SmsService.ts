@@ -284,4 +284,37 @@ async function agentSend(
   return result;
 }
 
-export const SmsService = { workspace, thread, send, agentSend };
+/**
+ * A transactional text created by a trusted provider callback, such as the
+ * post-call webhook. It reuses the normal conversation, STOP and delivery
+ * path but has no signed-in member whose permission could be checked.
+ */
+async function sendAutomated(
+  organizationId: string,
+  input: { to: string; body: string; source: string },
+) {
+  const conversation = await conversationFor(organizationId, { to: input.to });
+  const result = await deliver(
+    organizationId,
+    conversation,
+    input.body,
+    `system:${input.source}`,
+  );
+  await BusinessAuditRepository.record({
+    organizationId,
+    actorUserId: `system:${input.source}`,
+    action: "sms.message.sent_automatically",
+    targetType: "sms_message",
+    targetId: result.id,
+    metadata: { conversationId: conversation.id, source: input.source },
+  });
+  return result;
+}
+
+export const SmsService = {
+  workspace,
+  thread,
+  send,
+  agentSend,
+  sendAutomated,
+};

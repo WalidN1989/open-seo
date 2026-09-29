@@ -12,10 +12,11 @@ import {
   type PhoneCallReport,
   type PhoneRegion,
 } from "../elevenlabsWebhook";
-import { activityNotes, duration, inSentence, splitName } from "../callNotes";
+import { activityNotes, duration, splitName } from "../callNotes";
+import { callFollowupRouting } from "../callFollowup";
 import { PhoneCallRepository as Repo } from "../repositories/PhoneCallRepository";
+import { CallFollowupService } from "./CallFollowupService";
 import { CallQuoteService } from "./CallQuoteService";
-import { CallWelcomeService } from "./CallWelcomeService";
 import { CallRecapService } from "./CallRecapService";
 
 /**
@@ -36,46 +37,6 @@ type CallSource = {
 };
 
 export type WebhookResult = { status: number; body: string };
-
-/**
- * Put the WhatsApp and email the call set off into the lead's journal, so
- * whether they went out is visible on the lead rather than buried in the
- * call record. Skips are left out; a failure is worth seeing.
- */
-async function journalOutreach(input: {
-  organizationId: string;
-  leadId: string;
-  contactId: string;
-  welcome: string;
-  recapEmail: string;
-}) {
-  const occurredAt = new Date().toISOString();
-  const entries = [
-    {
-      activityType: "whatsapp" as const,
-      status: input.welcome,
-      label: "WhatsApp thank-you",
-    },
-    {
-      activityType: "email" as const,
-      status: input.recapEmail,
-      label: "Recap email",
-    },
-  ].filter((entry) => !entry.status.startsWith("skipped"));
-  for (const entry of entries) {
-    const sent = entry.status.startsWith("sent");
-    await Repo.insertCallActivity({
-      organizationId: input.organizationId,
-      leadId: input.leadId,
-      contactId: input.contactId,
-      activityType: entry.activityType,
-      subject: `${entry.label} ${sent ? "sent" : "failed"}`,
-      notes: entry.status,
-      outcome: sent ? "sent" : "failed",
-      occurredAt,
-    });
-  }
-}
 
 /** The call log row; `links` is what the pipeline decided about the caller. */
 function callRow(
@@ -224,28 +185,24 @@ async function recordCall(source: CallSource, report: PhoneCallReport) {
     }),
   );
 
-  // The number the caller read out is the one they asked us to use; the line
-  // they rang from can be a landline or a phone without WhatsApp.
-  const whatsappTo =
-    phoneFromText(report.captured.callback_details, region) ?? phone;
+  const followup = callFollowupRouting({
+    captured: report.captured,
+    callerNumber: phone,
+    region,
+  });
   // Anyone who has not had the thank-you yet gets it, so a caller whose
   // first call came before a template was set up is not left out.
-  const welcomeOwed = !(await Repo.welcomeSentTo(organizationId, contact.id));
-  const welcome = welcomeOwed
-    ? await CallWelcomeService.sendWelcome({
-        organizationId,
-        template: welcomeTemplate,
-        recipient: whatsappTo,
-        contactId: contact.id,
-        // Template: "Hi {{1}}, thanks for calling … about {{2}} …"
-        variables: {
-          "1": knownName || "there",
-          "2": report.captured.service_interest
-            ? inSentence(shortNeed(report.captured.service_interest))
-            : "our services",
-        },
-      })
-    : "skipped: already welcomed";
+  const { welcome, welcomeChannel } = await CallFollowupService.deliver({
+    organizationId,
+    contactId: contact.id,
+    template: welcomeTemplate,
+    recipient: followup.whatsappRecipient,
+    smsRecipient: followup.smsRecipient,
+    smsAllowed: followup.smsAllowed,
+    noWhatsapp: followup.noWhatsapp,
+    knownName,
+    serviceInterest: report.captured.service_interest,
+  });
   await Repo.setWelcomeStatus(call.id, welcome);
   const recapEmail = await CallRecapService.sendCallRecap({
     organizationId,
@@ -265,11 +222,12 @@ async function recordCall(source: CallSource, report: PhoneCallReport) {
     email: recapTo,
     report,
   });
-  await journalOutreach({
+  await CallFollowupService.journal({
     organizationId,
     leadId: lead.id,
     contactId: contact.id,
     welcome,
+    welcomeChannel,
     recapEmail,
   });
 

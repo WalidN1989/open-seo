@@ -178,7 +178,7 @@ export function PhoneCallsSection() {
                         </dd>
                       </div>
                       <div className="grid grid-cols-[7rem_1fr] gap-2">
-                        <dt className="text-base-content/55">WhatsApp</dt>
+                        <dt className="text-base-content/55">Call follow-up</dt>
                         <dd>{call.welcomeStatus ?? "not attempted"}</dd>
                       </div>
                       <div className="grid grid-cols-[7rem_1fr] gap-2">

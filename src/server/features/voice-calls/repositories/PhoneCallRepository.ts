@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, notInArray, or } from "drizzle-orm";
+import { and, desc, eq, inArray, like, notInArray, or } from "drizzle-orm";
 import { db } from "@/db";
 import {
   crmActivities,
@@ -75,7 +75,7 @@ async function welcomeSentTo(organizationId: string, contactId: string) {
       and(
         eq(voicePhoneCalls.organizationId, organizationId),
         eq(voicePhoneCalls.contactId, contactId),
-        eq(voicePhoneCalls.welcomeStatus, "sent"),
+        like(voicePhoneCalls.welcomeStatus, "sent%"),
       ),
     )
     .limit(1);
@@ -251,8 +251,8 @@ async function insertCallActivity(values: {
   notes: string;
   outcome: string | null;
   occurredAt: string;
-  /** The call itself, or the WhatsApp and email it set off. */
-  activityType?: "call" | "whatsapp" | "email" | "quotation";
+  /** The call itself, or the follow-up it set off. */
+  activityType?: "call" | "whatsapp" | "sms" | "email" | "quotation";
 }) {
   await db.insert(crmActivities).values({
     id: crypto.randomUUID(),

@@ -1,5 +1,24 @@
 # OpenSEO business module migration scope
 
+### 2026-09-29: Southside post-call WhatsApp and SMS routing
+
+Southside's ElevenLabs call webhook now treats the post-call thank-you as one
+channel-neutral follow-up. The agent records whether WhatsApp is available on
+the calling number, a different WhatsApp number when needed, consent to use
+SMS as the fallback, and the caller's email. A first-time caller receives the
+approved WhatsApp template at the confirmed WhatsApp destination. When the
+caller has no WhatsApp, or WhatsApp delivery fails, the webhook sends a short
+transactional SMS only when the caller consented, using the existing
+organization-scoped Twilio SMS conversation and STOP-aware delivery path.
+
+The call log labels the result as “Call follow-up” and records whether delivery
+used WhatsApp or SMS. SMS messages are stored in the shared SMS inbox, linked
+to the CRM contact, audited as a system voice action, and retain Twilio status
+callbacks. No new provider credential or scheduler job is introduced.
+
+Validation: targeted call-routing, ElevenLabs webhook and Twilio SMS tests,
+TypeScript, formatting, and the repository CI check.
+
 ### 2026-09-29: one-click Sinhala browser listening
 
 Starting an Azure Sinhala test agent now creates the browser session and opens
