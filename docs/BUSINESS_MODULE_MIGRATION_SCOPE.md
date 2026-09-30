@@ -1369,8 +1369,32 @@ contact and one linked Prospect lead for Timber Fencing, with next action
 outcome `No response`; Sent Items was checked and no reply to Alison exists.
 No call, WhatsApp, SMS, recap email or quotation was triggered.
 
-Do not bulk-import the remaining mailbox or enable automatic promotion yet.
-The owner asked to review Alison's record shape first. After approval, implement
-deduplicated inbound-email ingestion through the existing email sync/scheduler
-path, creating contacts and reviewable lead records without sending customer
-communications automatically.
+The owner approved Alison's record shape and the bulk import described below.
+
+## Southside mailbox customer journeys — 2026-09-30
+
+Production deployments `09a0ab23-ac86-4107-832b-d10e516c56b8` and
+`afc9664d-71ab-4de8-aa73-c2dedd2750cb` added normalized contact ownership to
+email threads and an idempotent `crm.ingestEmailJourneys` standard-tier job.
+It runs after the existing Microsoft mailbox sync, links customer threads to
+one CRM contact, and creates at most one lead per contact. Website enquiry
+fields and ordinary email signatures provide names, phone numbers, service
+categories and initial requirements. The latest message direction sets the
+review state to either `Pending — not yet responded` or
+`Waiting for customer response`.
+
+The initial production import reviewed all 44 mirrored Inbox/Sent threads and
+linked 24 customer threads for 17 distinct email customers. With two existing
+phone callers, Southside now has 19 contacts and 19 leads. Repeat threads for
+Luo Sen, Elisha/Yule Strata, Darren Potter and Eli remain single customer
+journeys. The lead detail page was visually verified with Ken Streeter's seven
+chronological inbound/outbound emails. System/security mail, Xero invoices,
+supplier correspondence, internal DigitalUrgency mail, marketing pitches,
+tests, automatic replies and suspicious generic quote spam were excluded.
+
+No customer email, WhatsApp, SMS, call or quotation was sent by the import.
+The importer is deliberately a CRM ingestion step only. Quoted reply text is
+excluded when extracting customer phones, and missing numbers remain blank;
+do not reintroduce phone extraction from full quoted email bodies. Future
+Microsoft syncs are picked up by the same standard scheduler job without
+creating duplicate contacts or leads.
