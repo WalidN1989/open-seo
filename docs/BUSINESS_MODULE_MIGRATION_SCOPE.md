@@ -1352,3 +1352,25 @@ runtime: it rejects `redirect: "error"` before sending a request. TypeSafe itsel
 returned HTTP 200 from the same production container. The provider now uses
 `redirect: "manual"`; any 3xx remains non-success and is rejected before the
 bearer credential can be forwarded.
+
+## Southside inquiry-to-CRM pilot — 2026-09-30
+
+The production Leads workspace now exposes the normalized contact relationship
+that the repository and service layer already supported. Manual lead creation
+can select an existing CRM contact and persist the inquiry category and notes,
+so the pipeline row keeps the customer's name, email and phone instead of
+creating an orphan opportunity. Production deployment
+`7a4bf79f-4c66-4133-8fda-22b89bd55175` completed successfully; the production
+route returned HTTP 200 after handover.
+
+Alison Mcmillan is the review pilot. Her website inquiry was saved as one CRM
+contact and one linked Prospect lead for Timber Fencing, with next action
+`Pending — not yet responded`. The journal records the inbound email with
+outcome `No response`; Sent Items was checked and no reply to Alison exists.
+No call, WhatsApp, SMS, recap email or quotation was triggered.
+
+Do not bulk-import the remaining mailbox or enable automatic promotion yet.
+The owner asked to review Alison's record shape first. After approval, implement
+deduplicated inbound-email ingestion through the existing email sync/scheduler
+path, creating contacts and reviewable lead records without sending customer
+communications automatically.
