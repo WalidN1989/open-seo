@@ -1,3 +1,4 @@
+/* oxlint-disable max-lines */
 import { and, desc, eq, isNull } from "drizzle-orm";
 import { db } from "@/db";
 import { emailPerformance } from "@/server/features/performance/repositories/email";
@@ -188,6 +189,24 @@ async function setThreadStatus(
   const [row] = await db
     .update(emailThreads)
     .set({ status, updatedAt: now() })
+    .where(
+      and(
+        eq(emailThreads.organizationId, organizationId),
+        eq(emailThreads.id, id),
+      ),
+    )
+    .returning();
+  return row ?? null;
+}
+
+async function setThreadContact(
+  organizationId: string,
+  id: string,
+  contactId: string,
+) {
+  const [row] = await db
+    .update(emailThreads)
+    .set({ contactId, updatedAt: now() })
     .where(
       and(
         eq(emailThreads.organizationId, organizationId),
@@ -416,6 +435,7 @@ export const EmailRepository = {
   getThread,
   upsertThread,
   setThreadStatus,
+  setThreadContact,
   listMessages,
   findMessageByExternalId,
   insertMessage,

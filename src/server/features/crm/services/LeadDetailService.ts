@@ -47,7 +47,7 @@ async function getLeadDetail(
       contact
         ? SmsRepository.listForContact(organizationId, contact.id, phones)
         : [],
-      contact?.email ? Repo.listEmails(organizationId, contact.email) : [],
+      contact ? Repo.listEmails(organizationId, contact.id, contact.email) : [],
       ReminderRepository.listPendingForLead(organizationId, leadId),
     ]);
   return {

@@ -1716,6 +1716,10 @@ export const emailThreads = sqliteTable(
     accountId: text("account_id")
       .notNull()
       .references(() => emailAccounts.id, { onDelete: "cascade" }),
+    /** CRM customer whose journey includes this thread. */
+    contactId: text("contact_id").references(() => crmContacts.id, {
+      onDelete: "set null",
+    }),
     externalThreadId: text("external_thread_id").notNull(),
     subject: text("subject"),
     preview: text("preview"),
@@ -1743,6 +1747,10 @@ export const emailThreads = sqliteTable(
     index("email_threads_org_last_idx").on(
       table.organizationId,
       table.lastMessageAt,
+    ),
+    index("email_threads_org_contact_idx").on(
+      table.organizationId,
+      table.contactId,
     ),
   ],
 );

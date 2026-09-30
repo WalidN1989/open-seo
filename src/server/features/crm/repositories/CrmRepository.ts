@@ -259,6 +259,39 @@ async function findContactByEmail(organizationId: string, email: string) {
   return row ?? null;
 }
 
+async function updateContactDetails(
+  organizationId: string,
+  id: string,
+  values: { firstName?: string; lastName?: string | null; phone?: string },
+) {
+  const [row] = await db
+    .update(crmContacts)
+    .set({ ...values, updatedAt: new Date().toISOString() })
+    .where(
+      and(
+        eq(crmContacts.organizationId, organizationId),
+        eq(crmContacts.id, id),
+      ),
+    )
+    .returning();
+  return row ?? null;
+}
+
+async function findLeadByContact(organizationId: string, contactId: string) {
+  const [row] = await db
+    .select()
+    .from(crmLeads)
+    .where(
+      and(
+        eq(crmLeads.organizationId, organizationId),
+        eq(crmLeads.contactId, contactId),
+      ),
+    )
+    .orderBy(desc(crmLeads.createdAt))
+    .limit(1);
+  return row ?? null;
+}
+
 async function leadExistsForContactSource(
   organizationId: string,
   contactId: string,
@@ -436,6 +469,7 @@ export const CrmRepository = {
   listActivities,
   contactBelongsToOrganization,
   findContactByEmail,
+  findLeadByContact,
   leadExistsForContactSource,
   listCompanies,
   listContacts,
@@ -445,6 +479,7 @@ export const CrmRepository = {
   listStages,
   leadBelongsToOrganization,
   updateLead,
+  updateContactDetails,
   validateLeadRelations,
   getInquiry,
   linkInquiryToLead,

@@ -1,0 +1,3 @@
+ALTER TABLE "email_threads" ADD COLUMN "contact_id" text;--> statement-breakpoint
+ALTER TABLE "email_threads" ADD CONSTRAINT "email_threads_contact_id_crm_contacts_id_fk" FOREIGN KEY ("contact_id") REFERENCES "public"."crm_contacts"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
+CREATE INDEX "email_threads_org_contact_idx" ON "email_threads" USING btree ("organization_id","contact_id");

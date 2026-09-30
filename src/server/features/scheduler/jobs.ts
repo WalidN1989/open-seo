@@ -6,6 +6,7 @@ import { CommunicationsService } from "@/server/features/communications/services
 import { CatalogueSyncService } from "@/server/features/commerce/services/CatalogueSyncService";
 import { runDueVoiceLearning } from "@/server/features/communications/services/VoiceLearningService";
 import { syncMicrosoftMailboxes } from "@/server/features/email/services/MicrosoftMailSyncService";
+import { EmailCrmIngestService } from "@/server/features/email/services/EmailCrmIngestService";
 import { QuoteChaserService } from "@/server/features/quotes/services/QuoteChaserService";
 import { ClientLifecycleService } from "@/server/features/team/services/ClientLifecycleService";
 
@@ -55,6 +56,14 @@ export function registerBusinessCronJobs() {
     tier: "standard",
     run: async () => {
       await withPgClient(() => syncMicrosoftMailboxes());
+    },
+  });
+
+  registerCronJob({
+    name: "crm.ingestEmailJourneys",
+    tier: "standard",
+    run: async () => {
+      await withPgClient(() => EmailCrmIngestService.run());
     },
   });
 
