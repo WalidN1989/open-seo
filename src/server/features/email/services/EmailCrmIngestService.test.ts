@@ -84,4 +84,20 @@ Project details:
       ),
     ).toBeNull();
   });
+
+  it("does not copy the business phone or attachment digits from quoted text", () => {
+    const customer = identifyCustomer(
+      "Fence repair quote",
+      [
+        message({
+          fromAddress: "streeterkj@gmail.com",
+          textBody:
+            "Hi Mohammed,\nRegards\nKen Streeter\n\nOn Monday Mohammed wrote:\n0423 950 993\nIMG20260909153336.jpg",
+        }),
+      ],
+      "info@southsidefencing.com.au",
+    );
+    expect(customer).toMatchObject({ firstName: "Ken", lastName: "Streeter" });
+    expect(customer?.phone).toBeUndefined();
+  });
 });

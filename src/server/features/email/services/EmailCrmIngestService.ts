@@ -50,7 +50,8 @@ async function ingestAccount(
       createdContacts += 1;
     } else if (
       FORM_SUBJECT.test(thread.subject ?? "") ||
-      (identity.phone && !contact.phone)
+      (identity.phone && identity.phone !== contact.phone) ||
+      (identity.lastName && !contact.lastName)
     ) {
       contact =
         (await CrmRepository.updateContactDetails(
@@ -62,7 +63,12 @@ async function ingestAccount(
                   firstName: identity.firstName,
                   lastName: identity.lastName ?? null,
                 }
-              : {}),
+              : identity.lastName && !contact.lastName
+                ? {
+                    firstName: identity.firstName,
+                    lastName: identity.lastName,
+                  }
+                : {}),
             ...(identity.phone ? { phone: identity.phone } : {}),
           },
         )) ?? contact;

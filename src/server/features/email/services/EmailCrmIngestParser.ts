@@ -169,10 +169,17 @@ function signatureNameFor(messages: IngestMessage[]) {
 function phoneFor(messages: IngestMessage[]) {
   const body = messages
     .filter((message) => message.direction === "inbound")
-    .map((message) => message.textBody ?? "")
+    .map(
+      (message) =>
+        (message.textBody ?? "")
+          .replace(/\r/g, "")
+          .split(/\n(?:From:|On .+wrote:)/i)[0],
+    )
     .join("\n");
   return body
-    .match(/(?:\+?61\s?|0)(?:[23478]|4)(?:[\s-]?\d){8}/)?.[0]
+    .match(
+      /(?<!\d)(?:(?:\+?61\s?4|04)(?:[\s-]?\d){8}|(?:\+?61\s?[2378]|0[2378])(?:[\s-]?\d){8})(?!\d)/,
+    )?.[0]
     ?.replace(/\s+/g, " ")
     .trim();
 }
@@ -218,9 +225,9 @@ export function identifyCustomer(
     return null;
   const inboundName =
     party.message.direction === "inbound"
-      ? displayName(party.message.fromAddress) ||
-        signatureName(party.message) ||
-        signatureNameFor(messages)
+      ? signatureName(party.message) ||
+        signatureNameFor(messages) ||
+        displayName(party.message.fromAddress)
       : greetingName(party.message) || signatureNameFor(messages);
   return {
     email: party.email,
