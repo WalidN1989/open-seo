@@ -42,9 +42,10 @@ async function ensureStages(organizationId: string) {
 
 async function getLeadsWorkspace(organizationId: string, userId: string) {
   await BusinessModuleService.requireAccess(organizationId, userId, "leads");
-  const [rows, outreach, stages, members, hunter, hunterAlias] =
+  const [rows, contacts, outreach, stages, members, hunter, hunterAlias] =
     await Promise.all([
       CrmRepository.listLeads(organizationId),
+      CrmRepository.listContacts(organizationId),
       LeadDetailRepository.outreachByLead(organizationId),
       ensureStages(organizationId),
       BusinessModuleRepository.listMembers(organizationId),
@@ -63,6 +64,7 @@ async function getLeadsWorkspace(organizationId: string, userId: string) {
   }));
   return {
     leads,
+    contacts,
     stages,
     members,
     hunterConnections: [hunter, hunterAlias].filter(

@@ -42,6 +42,9 @@ export function LeadsWorkspace() {
     mutationFn: (input: {
       title: string;
       source?: string;
+      category?: string;
+      contactId?: string;
+      notes?: string;
       valueCents: number;
       assignedMemberId?: string;
       priority: "low" | "medium" | "high" | "urgent";
@@ -184,6 +187,7 @@ export function LeadsWorkspace() {
 
       {showCreate ? (
         <CreateLeadForm
+          contacts={data.contacts}
           members={data.members}
           pending={createMutation.isPending}
           onSubmit={(input) => createMutation.mutate(input)}
@@ -412,15 +416,28 @@ function Stat({ label, value }: { label: string; value: string }) {
 }
 
 function CreateLeadForm({
+  contacts,
   members,
   pending,
   onSubmit,
 }: {
   pending: boolean;
+  contacts: Array<{
+    contact: {
+      id: string;
+      firstName: string;
+      lastName: string | null;
+      email: string | null;
+      phone: string | null;
+    };
+  }>;
   members: Array<{ id: string; name: string | null; email: string }>;
   onSubmit: (input: {
     title: string;
     source?: string;
+    category?: string;
+    contactId?: string;
+    notes?: string;
     valueCents: number;
     assignedMemberId?: string;
     priority: "low" | "medium" | "high" | "urgent";
@@ -439,6 +456,9 @@ function CreateLeadForm({
         onSubmit({
           title: fieldValue(form, "title"),
           source: fieldValue(form, "source") || undefined,
+          category: fieldValue(form, "category") || undefined,
+          contactId: fieldValue(form, "contactId") || undefined,
+          notes: fieldValue(form, "notes") || undefined,
           valueCents: Math.round(Number(form.get("value") ?? 0) * 100),
           assignedMemberId: fieldValue(form, "assignedMemberId") || undefined,
           priority: priority.success ? priority.data : "medium",
@@ -453,6 +473,25 @@ function CreateLeadForm({
         className="input input-bordered input-sm w-full"
         placeholder="Lead or opportunity name"
       />
+      <select
+        name="contactId"
+        className="select select-bordered select-sm w-full"
+        defaultValue=""
+      >
+        <option value="">No linked contact</option>
+        {contacts.map(({ contact }) => {
+          const name = [contact.firstName, contact.lastName]
+            .filter(Boolean)
+            .join(" ");
+          const detail = contact.email ?? contact.phone;
+          return (
+            <option key={contact.id} value={contact.id}>
+              {name}
+              {detail ? ` — ${detail}` : ""}
+            </option>
+          );
+        })}
+      </select>
       <select
         name="priority"
         className="select select-bordered select-sm w-full"
@@ -488,12 +527,24 @@ function CreateLeadForm({
         placeholder="Source"
       />
       <input
+        name="category"
+        maxLength={100}
+        className="input input-bordered input-sm w-full"
+        placeholder="Service or category"
+      />
+      <input
         name="value"
         type="number"
         min="0"
         step="0.01"
         className="input input-bordered input-sm w-full"
         placeholder="Value"
+      />
+      <textarea
+        name="notes"
+        maxLength={10_000}
+        className="textarea textarea-bordered textarea-sm md:col-span-3"
+        placeholder="Inquiry details and response status"
       />
       <button className="btn btn-primary btn-sm" disabled={pending}>
         <Target className="size-4" /> Create
