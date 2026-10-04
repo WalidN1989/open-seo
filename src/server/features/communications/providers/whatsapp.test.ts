@@ -1,3 +1,4 @@
+import { loadWhatsappImage } from "./whatsapp-media";
 import { describe, expect, it } from "vitest";
 import {
   parseMetaPayload,
@@ -23,6 +24,36 @@ describe("WhatsApp provider boundaries", () => {
       body: "Hello",
       messageType: "text",
     });
+  });
+
+  it("keeps a Twilio image reference and caption", () => {
+    const message = parseTwilioPayload({
+      MessageSid: "SM123",
+      From: "whatsapp:+61400000000",
+      Body: "Do you stock this?",
+      MediaContentType0: "image/jpeg",
+      MediaUrl0:
+        "https://api.twilio.com/2010-04-01/Accounts/AC123/Messages/SM123/Media/ME123",
+    }).messages[0];
+    expect(message).toMatchObject({
+      body: "Do you stock this?",
+      messageType: "image",
+      mediaContentType: "image/jpeg",
+    });
+    expect(message.mediaUrl).toContain("/Media/ME123");
+  });
+
+  it("does not mistake an image without a caption for a status callback", () => {
+    const parsed = parseTwilioPayload({
+      MessageSid: "SM123",
+      MessageStatus: "received",
+      From: "whatsapp:+61400000000",
+      MediaContentType0: "image/jpeg",
+      MediaUrl0:
+        "https://api.twilio.com/2010-04-01/Accounts/AC123/Messages/SM123/Media/ME123",
+    });
+    expect(parsed.messages).toHaveLength(1);
+    expect(parsed.statuses).toHaveLength(0);
   });
 
   it("parses Meta messages and delivery updates", () => {
@@ -52,6 +83,93 @@ describe("WhatsApp provider boundaries", () => {
     expect(result[0].statuses).toEqual([
       { externalMessageId: "wamid.2", status: "delivered" },
     ]);
+  });
+
+  it("keeps a Meta image id and caption", () => {
+    const message = parseMetaPayload({
+      entry: [
+        {
+          changes: [
+            {
+              value: {
+                messages: [
+                  {
+                    id: "wamid.image",
+                    from: "94700000000",
+                    type: "image",
+                    image: {
+                      id: "123456789",
+                      mime_type: "image/png",
+                      caption: "This book?",
+                    },
+                  },
+                ],
+              },
+            },
+          ],
+        },
+      ],
+    })[0].messages[0];
+    expect(message).toMatchObject({
+      body: "This book?",
+      messageType: "image",
+      mediaId: "123456789",
+      mediaContentType: "image/png",
+    });
+  });
+
+  it("fetches a Meta image only from its trusted media host", async () => {
+    process.env.TEST_META_ACCESS_TOKEN = "private-token";
+    const fetcher = async (input: RequestInfo | URL, init?: RequestInit) => {
+      expect(init?.headers).toMatchObject({
+        Authorization: "Bearer private-token",
+      });
+      const url =
+        input instanceof URL
+          ? input.toString()
+          : typeof input === "string"
+            ? input
+            : input.url;
+      if (url.includes("graph.facebook.com")) {
+        return Response.json({
+          url: "https://lookaside.fbsbx.com/whatsapp_business/attachments/123",
+        });
+      }
+      return new Response(new Uint8Array([1, 2, 3]), {
+        headers: { "content-type": "image/png" },
+      });
+    };
+    const image = await loadWhatsappImage(
+      {
+        id: "connection",
+        provider: "meta_cloud",
+        displayPhoneNumber: null,
+        externalAccountId: "phone",
+        credentialReference: "TEST_META",
+      },
+      { mediaId: "123456789" },
+      fetcher,
+    );
+    expect(image).toEqual({ mediaType: "image/png", data: "AQID" });
+    delete process.env.TEST_META_ACCESS_TOKEN;
+  });
+
+  it("refuses an image redirect to an untrusted host", async () => {
+    process.env.TEST_META_ACCESS_TOKEN = "private-token";
+    await expect(
+      loadWhatsappImage(
+        {
+          id: "connection",
+          provider: "meta_cloud",
+          displayPhoneNumber: null,
+          externalAccountId: "phone",
+          credentialReference: "TEST_META",
+        },
+        { mediaId: "123456789" },
+        async () => Response.json({ url: "https://example.org/private" }),
+      ),
+    ).rejects.toThrow("Untrusted WhatsApp media URL");
+    delete process.env.TEST_META_ACCESS_TOKEN;
   });
 
   it("verifies Meta HMAC signatures", async () => {

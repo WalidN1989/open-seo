@@ -1,8 +1,34 @@
 import { describe, expect, it } from "vitest";
 import { generateWhatsappAiReply } from "./whatsapp-ai";
 import { isClientDataTopic } from "@/server/features/clients/clientDataTopics";
+import { z } from "zod";
 
 describe("WhatsApp Claude assistant", () => {
+  it("passes a customer's image to Claude alongside the question", async () => {
+    const fetcher = async (_input: RequestInfo | URL, init?: RequestInit) => {
+      const raw = typeof init?.body === "string" ? init.body : "";
+      const body = z
+        .object({ messages: z.array(z.object({ content: z.unknown() })) })
+        .parse(JSON.parse(raw));
+      expect(body.messages.at(-1)?.content).toEqual([
+        {
+          type: "image",
+          source: { type: "base64", media_type: "image/png", data: "AQID" },
+        },
+        { type: "text", text: "Do you have this book?" },
+      ]);
+      return Response.json({
+        content: [{ type: "text", text: "Let me check that title." }],
+      });
+    };
+    const result = await generateWhatsappAiReply({
+      history: [{ direction: "inbound", body: "Do you have this book?" }],
+      images: [{ mediaType: "image/png", data: "AQID" }],
+      apiKey: "tenant-key",
+      fetcher,
+    });
+    expect(result?.reply).toBe("Let me check that title.");
+  });
   it("sends grounded tenant context and returns approved actions", async () => {
     const fetcher = async (_input: RequestInfo | URL, init?: RequestInit) => {
       expect(init?.headers).toMatchObject({ "x-api-key": "tenant-key" });

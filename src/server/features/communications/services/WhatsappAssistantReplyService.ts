@@ -1,3 +1,4 @@
+import { loadWhatsappImage } from "../providers/whatsapp-media";
 import { getOptionalEnvValue } from "@/server/lib/runtime-env";
 import { ProjectContextService } from "@/server/features/project-context/services/ProjectContextService";
 import { CommunicationsRepository } from "../repositories/CommunicationsRepository";
@@ -18,6 +19,7 @@ import {
   type ClientAccess,
 } from "@/server/features/clients/services/ClientVerificationService";
 import { readClientData } from "@/server/features/clients/services/ClientDataService";
+import { findAccessCodeCandidate } from "@/server/features/clients/codeInMessage";
 import {
   CLIENT_DATA_TOPICS,
   CLIENT_DATA_TOPIC_HELP,
@@ -200,6 +202,7 @@ export async function replyToInbound(
   connection: Connection,
   conversationId: string,
   message: InboundWhatsappMessage,
+  options: { scheduled?: boolean } = {},
 ): Promise<boolean> {
   const organizationId = connection.organizationId;
   const body = message.body?.trim() ?? "";
@@ -309,7 +312,7 @@ export async function replyToInbound(
   );
   if (aiConnection?.status !== "connected") return false;
 
-  if (settings.replyDelaySeconds > 0) {
+  if (!options.scheduled && settings.replyDelaySeconds > 0) {
     // Let a burst of short messages settle; the last one answers for all.
     await sleep(Math.min(settings.replyDelaySeconds, 8) * 1000);
     const latest = await Repo.latestInboundExternalId(
@@ -328,8 +331,53 @@ export async function replyToInbound(
       businessContext(organizationId, settings),
       resolveAiKey(aiConnection),
     ]);
+    const lastOutbound = history.findLastIndex(
+      (item) => item.direction === "outbound",
+    );
+    const recentImages = history
+      .slice(lastOutbound + 1)
+      .filter(
+        (item) =>
+          item.direction === "inbound" &&
+          item.messageType === "image" &&
+          (item.mediaId || item.mediaUrl),
+      )
+      .slice(-3);
+    let images;
+    try {
+      images = await Promise.all(
+        recentImages.map((item) => loadWhatsappImage(connection, item)),
+      );
+      if (message.messageType === "image" && images.length === 0) {
+        throw new Error("Image reference was unavailable");
+      }
+    } catch (error) {
+      console.error("WhatsApp image could not be read", error);
+      const latest = await Repo.latestInboundExternalId(
+        organizationId,
+        conversationId,
+      );
+      if (latest && latest !== message.externalMessageId) return true;
+      await sendReply(
+        connection,
+        conversationId,
+        message.sender,
+        "I received your image, but I can't view it right now. Could you describe what you'd like us to check?",
+      );
+      return true;
+    }
     const result = await generateWhatsappAiReply({
-      history,
+      history: history.map((item) => ({
+        ...item,
+        body:
+          item.direction === "inbound" &&
+          findAccessCodeCandidate(item.body ?? "")
+            ? "[Access code withheld]"
+            : item.messageType === "image" && !item.body
+              ? "[Customer sent an image]"
+              : item.body,
+      })),
+      images,
       apiKey,
       model: settings.model ?? (await getOptionalEnvValue("WHATSAPP_AI_MODEL")),
       businessContext: context,
@@ -339,6 +387,18 @@ export async function replyToInbound(
       clientData: clientDataFor(access),
     });
     if (!result) return false;
+    // Another customer message may arrive while Claude is thinking. The
+    // newer scheduled job will answer the entire burst instead.
+    const latest = await Repo.latestInboundExternalId(
+      organizationId,
+      conversationId,
+    );
+    if (latest && latest !== message.externalMessageId) return true;
+    if (
+      (await Repo.getConversationStatus(organizationId, conversationId)) ===
+      "pending"
+    )
+      return true;
     await applyActions(organizationId, conversationId, result.actions);
     if (!result.reply) return false;
     await sendReply(

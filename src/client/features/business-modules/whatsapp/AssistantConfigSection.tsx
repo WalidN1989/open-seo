@@ -200,12 +200,12 @@ function ConfigForm({
         {channel === "whatsapp" ? (
           <Field
             label="Reply delay (seconds)"
-            hint="Waits this long after their last message so several quick messages get one considered reply. 0 to 8."
+            hint="Waits after the last message so several quick messages get one considered reply. 0 to 60 seconds."
           >
             <input
               type="number"
               min={0}
-              max={8}
+              max={60}
               className={input}
               value={form.replyDelaySeconds}
               onChange={(event) =>
@@ -213,7 +213,7 @@ function ConfigForm({
                   "replyDelaySeconds",
                   Math.max(
                     0,
-                    Math.min(8, Number(event.currentTarget.value) || 0),
+                    Math.min(60, Number(event.currentTarget.value) || 0),
                   ),
                 )
               }
