@@ -4,6 +4,46 @@ import { isClientDataTopic } from "@/server/features/clients/clientDataTopics";
 import { z } from "zod";
 
 describe("WhatsApp Claude assistant", () => {
+  it("grounds an order reply through the sender-bound callback before replying", async () => {
+    const lookup = vi.fn(async () =>
+      JSON.stringify({
+        found: true,
+        orderId: "SHOP-6603",
+        shipments: [{ status: "IN TRANSIT" }],
+      }),
+    );
+    let calls = 0;
+    const fetcher = async (_input: RequestInfo | URL, init?: RequestInit) => {
+      calls++;
+      const request = typeof init?.body === "string" ? init.body : "";
+      if (calls === 1) {
+        expect(request).toContain("lookup_order");
+        return Response.json({
+          content: [
+            {
+              type: "tool_use",
+              id: "order-lookup",
+              name: "lookup_order",
+              input: { order_id: "SHOP-6603" },
+            },
+          ],
+        });
+      }
+      expect(request).toContain("IN TRANSIT");
+      return Response.json({
+        content: [{ type: "text", text: "Order SHOP-6603 is in transit." }],
+      });
+    };
+    const result = await generateWhatsappAiReply({
+      history: [{ direction: "inbound", body: "Where is SHOP-6603?" }],
+      apiKey: "unit-test-key",
+      lookupOrder: lookup,
+      fetcher,
+    });
+    expect(lookup).toHaveBeenCalledWith("SHOP-6603");
+    expect(result?.reply).toBe("Order SHOP-6603 is in transit.");
+    expect(calls).toBe(2);
+  });
   it("passes a customer's image to Claude alongside the question", async () => {
     const fetcher = async (_input: RequestInfo | URL, init?: RequestInit) => {
       const raw = typeof init?.body === "string" ? init.body : "";

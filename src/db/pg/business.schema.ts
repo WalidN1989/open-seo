@@ -1444,6 +1444,22 @@ export const commerceOrders = pgTable(
     contactId: text("contact_id").references(() => crmContacts.id, {
       onDelete: "set null",
     }),
+    integrationConnectionId: text("integration_connection_id").references(
+      () => integrationConnections.id,
+      { onDelete: "set null" },
+    ),
+    approvalStatus: text("approval_status", {
+      enum: ["pending", "approved", "rejected"],
+    }),
+    externalUpdatedAt: text("external_updated_at"),
+    externalBasketKey: text("external_basket_key"),
+    currency: text("currency"),
+    customerName: text("customer_name"),
+    customerPhone: text("customer_phone"),
+    customerEmail: text("customer_email"),
+    shippingAddress: text("shipping_address"),
+    paidMinor: integer("paid_minor").notNull().default(0),
+    pickup: boolean("pickup").notNull().default(false),
     orderNumber: text("order_number").notNull(),
     status: text("status", {
       enum: ["draft", "confirmed", "cancelled", "returned"],
@@ -1512,6 +1528,9 @@ export const commerceOrderLines = pgTable(
     // must not rewrite what was actually sold.
     description: text("description").notNull(),
     sku: text("sku"),
+    externalId: text("external_id"),
+    externalVariantId: text("external_variant_id"),
+    priceReviewedAt: text("price_reviewed_at"),
     quantity: integer("quantity").notNull().default(1),
     unitPriceMinor: integer("unit_price_minor").notNull().default(0),
     lineTotalMinor: integer("line_total_minor").notNull().default(0),
@@ -2196,5 +2215,49 @@ export const clientLogins = pgTable(
       table.userId,
     ),
     index("client_logins_stage_idx").on(table.nudgeStage),
+  ],
+);
+
+/** Mirror-only ingestion while the legacy system owns operational effects. */
+export const commerceOrderSync = pgTable(
+  "commerce_order_sync",
+  {
+    connectionId: text("connection_id")
+      .primaryKey()
+      .references(() => integrationConnections.id, { onDelete: "cascade" }),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    enabled: boolean("enabled").notNull().default(false),
+    cursor: text("cursor"),
+    syncedCount: integer("synced_count").notNull().default(0),
+    lastSyncedAt: text("last_synced_at"),
+    courierCredentials: text("courier_credentials"),
+  },
+  (table) => [index("commerce_order_sync_org_idx").on(table.organizationId)],
+);
+export const commerceOrderShipments = pgTable(
+  "commerce_order_shipments",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    orderId: text("order_id")
+      .notNull()
+      .references(() => commerceOrders.id, { onDelete: "cascade" }),
+    provider: text("provider").notNull(),
+    trackingNumber: text("tracking_number").notNull(),
+    status: text("status").notNull().default("UNKNOWN"),
+    checkedAt: text("checked_at"),
+  },
+  (table) => [
+    uniqueIndex("commerce_order_shipments_identity_idx").on(
+      table.organizationId,
+      table.orderId,
+      table.provider,
+      table.trackingNumber,
+    ),
+    index("commerce_order_shipments_order_idx").on(table.orderId),
   ],
 );

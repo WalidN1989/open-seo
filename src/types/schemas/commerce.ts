@@ -143,6 +143,9 @@ export const createOrderSchema = z.object({
 export const orderIdSchema = z.object({ orderId: z.string().min(1) });
 
 export const listOrdersSchema = z.object({
+  search: z.string().trim().max(200).optional(),
+  tab: z.enum(["all", "pending", "adjustments"]).optional(),
+  offset: z.number().int().min(0).max(1_000_000).optional(),
   limit: z.number().int().min(1).max(200).default(50),
 });
 

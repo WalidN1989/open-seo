@@ -1,3 +1,4 @@
+import { OrderService } from "@/server/features/commerce/services/OrderService";
 import { loadWhatsappImage } from "../providers/whatsapp-media";
 import { getOptionalEnvValue } from "@/server/lib/runtime-env";
 import { ProjectContextService } from "@/server/features/project-context/services/ProjectContextService";
@@ -165,7 +166,7 @@ function accessNote(access: ClientAccess): string | null {
   }
   // Never give an example code. Any string that reads like one is a code
   // somebody holds, and the assistant would be reading it out on request.
-  return "This person has NOT verified which client they are. If they ask about their own account, site, rankings or results, do not discuss specifics — ask them to reply with the access code we sent them, described only as eight characters in two groups of four. Never state, guess at, or give an example of a code.";
+  return "This person has NOT verified which client they are. Only if they ask about private SEO client data such as their site, rankings or SEO results, do not discuss specifics — ask them to reply with the access code we sent them, described only as eight characters in two groups of four. Never state, guess at, or give an example of a code. This verification is only for private SEO data, never for retail orders, purchases or delivery enquiries.";
 }
 
 /**
@@ -384,6 +385,12 @@ export async function replyToInbound(
       persona: settings.persona,
       accessNote: accessNote(access),
       lookupProducts: (query) => lookupProducts(organizationId, query),
+      lookupOrder: (orderId) =>
+        OrderService.lookupCustomerOrder(
+          organizationId,
+          message.sender,
+          orderId,
+        ),
       clientData: clientDataFor(access),
     });
     if (!result) return false;

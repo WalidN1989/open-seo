@@ -23,6 +23,12 @@ vi.mock(
     BusinessModuleService: { requireAccess: mocks.requireAccess },
   }),
 );
+vi.mock(
+  "@/server/features/business-modules/services/BusinessSettingsService",
+  () => ({
+    BusinessSettingsService: { getSettings: async () => ({ currency: "LKR" }) },
+  }),
+);
 vi.mock("@/server/features/crm/repositories/CrmRepository", () => ({
   CrmRepository: {
     contactBelongsToOrganization: mocks.contactBelongsToOrganization,

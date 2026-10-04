@@ -1421,3 +1421,20 @@ runtime: it rejects `redirect: "error"` before sending a request. TypeSafe itsel
 returned HTTP 200 from the same production container. The provider now uses
 `redirect: "manual"`; any 3xx remains non-success and is rejected before the
 bearer credential can be forwarded.
+
+## 2026-10-04 — CRM orders mirror build (not deployed)
+
+The order mirror adds signed Shopify ingestion and paginated history import,
+local pending review with product/edition mapping and explicit price review,
+legacy Orders/Line Items CSV import, printable order summaries, existing Citypak
+tracking links/manual refresh, imported sequence-gap display and sender-bound
+WhatsApp order lookup. See `docs/ORDER_MIRROR_SETUP.md` for setup, limits and
+rollback. Credentials remain in the existing encrypted connection mechanism.
+
+The legacy fulfilment application remains connected. Mirror imports and local
+review decisions do not move stock, issue/send invoices, create shipments,
+refund payments or send customer confirmations. Native stock actions are blocked
+for mirrored orders. Those effects and automatic Citypak polling/callbacks are
+cutover work, deferred until the owner is comfortable with parallel results.
+Migrations are additive on both database schemas; no live configuration, webhook
+subscription or deployment was changed by this build.
