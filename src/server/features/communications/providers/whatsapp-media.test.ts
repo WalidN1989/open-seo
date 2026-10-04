@@ -73,4 +73,41 @@ describe("WhatsApp image redirects", () => {
     ).rejects.toThrow("Untrusted WhatsApp media URL");
     delete process.env.TEST_META_ACCESS_TOKEN;
   });
+
+  it("follows Twilio's exact media CDN redirect without forwarding the Auth Token", async () => {
+    process.env.TEST_TWILIO_AUTH_TOKEN = "private-token";
+    const fetcher = async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = requestUrl(input);
+      if (url.startsWith("https://api.twilio.com/")) {
+        expect(init?.headers).toEqual({
+          Authorization: `Basic ${btoa("AC123:private-token")}`,
+        });
+        return new Response(null, {
+          status: 307,
+          headers: { location: "https://mms.twiliocdn.com/image/123" },
+        });
+      }
+      expect(url).toBe("https://mms.twiliocdn.com/image/123");
+      expect(init?.headers).toBeUndefined();
+      return new Response(new Uint8Array([1, 2, 3]), {
+        headers: { "content-type": "image/jpeg" },
+      });
+    };
+    const image = await loadWhatsappImage(
+      {
+        id: "connection",
+        provider: "twilio",
+        displayPhoneNumber: null,
+        externalAccountId: "AC123",
+        credentialReference: "TEST_TWILIO",
+      },
+      {
+        mediaUrl:
+          "https://api.twilio.com/2010-04-01/Accounts/AC123/Messages/SM123/Media/ME123",
+      },
+      fetcher,
+    );
+    expect(image).toEqual({ mediaType: "image/jpeg", data: "AQID" });
+    delete process.env.TEST_TWILIO_AUTH_TOKEN;
+  });
 });

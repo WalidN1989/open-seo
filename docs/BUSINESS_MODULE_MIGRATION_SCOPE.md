@@ -15,19 +15,24 @@ poll the reply table while Railway is online.
 For Meta Cloud and Twilio, inbound image ids/URLs and MIME type are stored with
 the message. The assistant downloads at most three images from the current
 customer turn, from allowlisted provider hosts with a 4 MB cap and bounded,
-host-validated redirects,
-and sends transient base64 image blocks to the tenant's existing Claude key.
+host-validated redirects, and sends transient base64 image blocks to the
+tenant's existing Claude key.
 Image bytes are not stored in the application database. If an image cannot be
 read, the customer gets a request to describe it instead of a guessed answer.
 Audio/voice-note processing remains deliberately deferred.
 
 PR #18 merged and deployed. BooXworm's AI Config reply delay is set to 30
 seconds in production, and the fast ticker is running. A real inbound image on
-October 4 reached the inbox, but Meta returned HTTP 307 when the assistant
-fetched its bytes, causing the fallback reply. The follow-up redirect fix must
-be deployed and verified with another real image before image understanding is
-considered live. Do not switch off the older custom Zoho app until these live
-behaviors are confirmed.
+October 4 reached the inbox, but the Twilio media URL returned HTTP 307 when
+the assistant fetched its bytes, causing the fallback reply. PR #19 followed
+redirects, but a second real photo at 17:14 Dubai time received the same
+fallback because the Twilio CDN host was outside the allowlist. A read-only
+diagnostic scoped to the owner's test conversation confirmed the provider is
+Twilio: `api.twilio.com` redirects to `mms.twiliocdn.com`, which returns the
+JPEG with HTTP 200 without account credentials. The next fix allows that exact
+CDN host while withholding the Twilio Auth Token. It still needs a real-image
+retest before image understanding is considered live. Do not switch off the
+older custom Zoho app until these live behaviors are confirmed.
 
 ### 2026-10-04: BooXworm WhatsApp assistant credential diagnosis
 

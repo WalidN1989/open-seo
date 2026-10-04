@@ -21,12 +21,12 @@ function trustedMediaUrl(raw: string, provider: string): string {
   const host = url.hostname.toLowerCase();
   const trusted =
     provider === "twilio"
-      ? host === "api.twilio.com"
+      ? host === "api.twilio.com" || host === "mms.twiliocdn.com"
       : host === "lookaside.fbsbx.com" ||
         host === "graph.facebook.com" ||
         host.endsWith(".fbcdn.net");
   if (url.protocol !== "https:" || !trusted || url.username || url.password) {
-    throw new Error("Untrusted WhatsApp media URL");
+    throw new Error(`Untrusted WhatsApp media URL (host: ${host})`);
   }
   return url.toString();
 }
@@ -80,9 +80,10 @@ export async function loadWhatsappImage(
   for (let redirectCount = 0; redirectCount <= 3; redirectCount++) {
     const host = new URL(mediaUrl).hostname.toLowerCase();
     response = await fetcher(mediaUrl, {
-      // Meta's CDN redirect does not need the business access token.
+      // Provider CDN redirects do not need account credentials.
       headers:
-        connection.provider === "meta_cloud" && host.endsWith(".fbcdn.net")
+        (connection.provider === "meta_cloud" && host.endsWith(".fbcdn.net")) ||
+        (connection.provider === "twilio" && host === "mms.twiliocdn.com")
           ? undefined
           : { Authorization: authorization },
       redirect: "manual",
