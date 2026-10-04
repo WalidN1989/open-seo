@@ -1,5 +1,19 @@
 # OpenSEO business module migration scope
 
+### 2026-10-04: BooXworm WhatsApp assistant credential diagnosis
+
+BooXworm's Meta messages reach the Digital Urgency inbox, but a production
+assistant attempt at 14:46 Dubai failed with Anthropic's `API key is invalid`
+response. The tenant's connected `claude_haiku` integration took precedence over
+the Railway platform key. Its old health check verified only that a secret was
+stored, so "Connected" and "Anthropic secret is configured" did not prove that
+the key could generate replies. The health check now authenticates the active
+tenant key against Anthropic's models endpoint and reports a rejected credential
+without exposing it. The owner must replace a rejected key in BooXworm's
+integration, run Check now, then verify a new inbound message gets a reply.
+Earlier unanswered customer messages are not replayed automatically by this
+change; review them before sending follow-ups.
+
 ### 2026-09-29: Azure browser recording format correction
 
 Earlier UI/credential changes did not verify a complete spoken Azure turn.
