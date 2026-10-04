@@ -256,6 +256,13 @@ async function searchPricedProducts(
     ),
   );
   const whole = `%${query.trim().toLowerCase()}%`;
+  const nameMatches = sql<number>`(${sql.join(
+    words.map(
+      (word) =>
+        sql`case when lower(${commerceProducts.name}) like ${`%${word}%`} then 1 else 0 end`,
+    ),
+    sql` + `,
+  )})`;
   const rows = await db
     .select({
       name: commerceProducts.name,
@@ -263,6 +270,7 @@ async function searchPricedProducts(
       salePriceMinor: commerceProducts.salePriceMinor,
       productUrl: commerceProducts.productUrl,
       quantityOnHand: sum(commerceInventoryBalances.quantityOnHand),
+      nameMatches,
     })
     .from(commerceProducts)
     .leftJoin(
@@ -284,14 +292,19 @@ async function searchPricedProducts(
       ),
     )
     .groupBy(commerceProducts.id)
-    .orderBy(commerceProducts.name)
+    .orderBy(desc(nameMatches), commerceProducts.name)
     .limit(limit);
-  return rows.map((row) => ({
-    ...row,
-    // No balance row means stock is untracked, which is not the same as zero.
-    quantityOnHand:
-      row.quantityOnHand === null ? null : Number(row.quantityOnHand),
-  }));
+  // A description can mention another book. Keep the strongest title matches
+  // rather than presenting those references as editions of the requested item.
+  const bestNameMatches = Number(rows[0]?.nameMatches ?? 0);
+  return rows
+    .filter((row) => Number(row.nameMatches) === bestNameMatches)
+    .map(({ nameMatches: _nameMatches, ...row }) => ({
+      ...row,
+      // No balance row means stock is untracked, which is not the same as zero.
+      quantityOnHand:
+        row.quantityOnHand === null ? null : Number(row.quantityOnHand),
+    }));
 }
 
 /** The currency every stored amount is in, defaulting like the rest of the app. */

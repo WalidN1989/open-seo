@@ -22,7 +22,8 @@ beforeAll(async () => {
       ('perfect', 'books', 'The Let Them Theory: A Life-Changing Tool — Perfect', 'By Mel Robbins and Sawyer Robbins', 'BX-17', '9781401971366', 'active', 365000, 'https://books.test/let-them'),
       ('imperfect', 'books', 'The Let Them Theory: A Life-Changing Tool — Imperfect', 'By Mel Robbins and Sawyer Robbins', 'IMP-2544', null, 'active', 150000, 'https://books.test/let-them'),
       ('other-tenant', 'other', 'The Let Them Theory', 'By Mel Robbins', 'OTHER', null, 'active', 100, null),
-      ('archived', 'books', 'The Let Them Theory', 'By Mel Robbins', 'OLD', null, 'archived', 100, null);
+      ('archived', 'books', 'The Let Them Theory', 'By Mel Robbins', 'OLD', null, 'archived', 100, null),
+      ('related', 'books', 'The High Five Habit', 'By Mel Robbins, author of The Let Them Theory', 'BX-143', null, 'active', 345000, null);
     INSERT INTO commerce_inventory_balances VALUES
       ('books', 'perfect', 2), ('books', 'perfect', 3), ('books', 'imperfect', 0),
       ('other', 'perfect', 100);
@@ -50,7 +51,7 @@ describe("assistant catalogue search", () => {
     ).toHaveLength(2);
     expect(
       await Repo.searchPricedProducts("books", "Mel Robbins"),
-    ).toHaveLength(2);
+    ).toHaveLength(3);
   });
 
   it("preserves exact identifiers and rejects unrelated queries", async () => {

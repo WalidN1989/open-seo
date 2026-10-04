@@ -8,7 +8,9 @@ in the catalogue. Both Perfect (BX-17, LKR 3,650) and Imperfect (IMP-2544,
 LKR 1,500) are active production products. Their descriptions contain Mel
 Robbins, while their names omit the author. The assistant previously searched
 only product names, despite advertising author lookup. Search now matches each
-query word across name and description and normalizes punctuation, retaining
+query word across name and description and normalizes punctuation. Results
+retain the strongest product-name matches, so another book's description
+mentioning the requested title does not become an edition recommendation. This retains
 organization and active-status filters and live branch-stock aggregation.
 Image turns with catalogue access require a first lookup tool call; subsequent
 rounds remain free to answer from the result. Cover searches are instructed to
