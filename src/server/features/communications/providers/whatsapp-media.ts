@@ -22,11 +22,12 @@ function trustedMediaUrl(raw: string, provider: string): string {
   const trusted =
     provider === "twilio"
       ? host === "api.twilio.com"
-      : host === "lookaside.fbsbx.com" ||
-        host === "graph.facebook.com" ||
-        host.endsWith(".fbcdn.net");
+      : host === "graph.facebook.com" ||
+        host.endsWith(".fbsbx.com") ||
+        host.endsWith(".fbcdn.net") ||
+        host.endsWith(".whatsapp.net");
   if (url.protocol !== "https:" || !trusted || url.username || url.password) {
-    throw new Error("Untrusted WhatsApp media URL");
+    throw new Error(`Untrusted WhatsApp media URL (host: ${host})`);
   }
   return url.toString();
 }
@@ -82,7 +83,8 @@ export async function loadWhatsappImage(
     response = await fetcher(mediaUrl, {
       // Meta's CDN redirect does not need the business access token.
       headers:
-        connection.provider === "meta_cloud" && host.endsWith(".fbcdn.net")
+        connection.provider === "meta_cloud" &&
+        (host.endsWith(".fbcdn.net") || host.endsWith(".whatsapp.net"))
           ? undefined
           : { Authorization: authorization },
       redirect: "manual",

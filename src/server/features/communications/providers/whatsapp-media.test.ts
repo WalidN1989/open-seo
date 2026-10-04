@@ -32,10 +32,10 @@ describe("WhatsApp image redirects", () => {
         });
         return new Response(null, {
           status: 307,
-          headers: { location: "https://scontent.xx.fbcdn.net/image/123" },
+          headers: { location: "https://media.fna.whatsapp.net/image/123" },
         });
       }
-      expect(url).toBe("https://scontent.xx.fbcdn.net/image/123");
+      expect(url).toBe("https://media.fna.whatsapp.net/image/123");
       expect(init?.headers).toBeUndefined();
       return new Response(new Uint8Array([1, 2, 3]), {
         headers: { "content-type": "image/png" },

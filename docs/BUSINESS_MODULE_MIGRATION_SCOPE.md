@@ -24,10 +24,13 @@ Audio/voice-note processing remains deliberately deferred.
 PR #18 merged and deployed. BooXworm's AI Config reply delay is set to 30
 seconds in production, and the fast ticker is running. A real inbound image on
 October 4 reached the inbox, but Meta returned HTTP 307 when the assistant
-fetched its bytes, causing the fallback reply. The follow-up redirect fix must
-be deployed and verified with another real image before image understanding is
-considered live. Do not switch off the older custom Zoho app until these live
-behaviors are confirmed.
+fetched its bytes, causing the fallback reply. PR #19 followed redirects, but a
+second real photo at 17:14 Dubai time reached a media host outside the original
+allowlist and received the same fallback. The next fix allows only Meta and
+WhatsApp-owned media host suffixes and logs a rejected hostname without a path,
+query string, or token. It still needs a real-image retest before image
+understanding is considered live. Do not switch off the older custom Zoho app
+until these live behaviors are confirmed.
 
 ### 2026-10-04: BooXworm WhatsApp assistant credential diagnosis
 
