@@ -75,11 +75,29 @@ export async function loadWhatsappImage(
   } else {
     throw new Error("Unsupported WhatsApp image provider");
   }
-  const response = await fetcher(trustedMediaUrl(url, connection.provider), {
-    headers: { Authorization: authorization },
-    redirect: "manual",
-    signal: AbortSignal.timeout(15_000),
-  });
+  let mediaUrl = trustedMediaUrl(url, connection.provider);
+  let response: Response | undefined;
+  for (let redirectCount = 0; redirectCount <= 3; redirectCount++) {
+    const host = new URL(mediaUrl).hostname.toLowerCase();
+    response = await fetcher(mediaUrl, {
+      // Meta's CDN redirect does not need the business access token.
+      headers:
+        connection.provider === "meta_cloud" && host.endsWith(".fbcdn.net")
+          ? undefined
+          : { Authorization: authorization },
+      redirect: "manual",
+      signal: AbortSignal.timeout(15_000),
+    });
+    if (![301, 302, 303, 307, 308].includes(response.status)) break;
+    const location = response.headers.get("location");
+    if (!location || redirectCount === 3)
+      throw new Error("WhatsApp image redirect failed");
+    mediaUrl = trustedMediaUrl(
+      new URL(location, mediaUrl).toString(),
+      connection.provider,
+    );
+  }
+  if (!response) throw new Error("WhatsApp image download failed");
   if (!response.ok || !response.body)
     throw new Error(`WhatsApp image download failed (${response.status})`);
   const mediaType = (
