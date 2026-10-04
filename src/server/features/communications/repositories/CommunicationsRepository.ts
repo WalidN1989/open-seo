@@ -138,6 +138,9 @@ async function ingestWhatsappMessage(
       direction: "inbound",
       messageType: message.messageType,
       body: message.body,
+      mediaId: message.mediaId,
+      mediaUrl: message.mediaUrl,
+      mediaContentType: message.mediaContentType,
       status: "received",
       sentAt: message.receivedAt,
     })
@@ -307,6 +310,11 @@ async function getWhatsappConversationHistory(
     .select({
       direction: whatsappMessages.direction,
       body: whatsappMessages.body,
+      messageType: whatsappMessages.messageType,
+      mediaId: whatsappMessages.mediaId,
+      mediaUrl: whatsappMessages.mediaUrl,
+      mediaContentType: whatsappMessages.mediaContentType,
+      sentAt: whatsappMessages.sentAt,
     })
     .from(whatsappMessages)
     .where(

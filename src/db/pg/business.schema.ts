@@ -594,6 +594,9 @@ export const whatsappMessages = pgTable(
     direction: text("direction", { enum: ["inbound", "outbound"] }).notNull(),
     messageType: text("message_type").notNull().default("text"),
     body: text("body"),
+    mediaId: text("media_id"),
+    mediaUrl: text("media_url"),
+    mediaContentType: text("media_content_type"),
     status: text("status").notNull().default("queued"),
     sentAt: text("sent_at"),
     createdAt: createdAt(),
@@ -607,6 +610,26 @@ export const whatsappMessages = pgTable(
       table.organizationId,
       table.externalMessageId,
     ),
+  ],
+);
+
+export const whatsappReplyJobs = pgTable(
+  "whatsapp_reply_jobs",
+  {
+    conversationId: text("conversation_id")
+      .primaryKey()
+      .references(() => whatsappConversations.id, { onDelete: "cascade" }),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    latestMessageId: text("latest_message_id").notNull(),
+    dueAt: text("due_at").notNull(),
+    status: text("status").notNull().default("pending"),
+    claimExpiresAt: text("claim_expires_at"),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (table) => [
+    index("whatsapp_reply_jobs_due_idx").on(table.status, table.dueAt),
   ],
 );
 

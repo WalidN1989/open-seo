@@ -12,6 +12,7 @@ export type CronTier = (typeof CRON_TIERS)[number];
 // for future latency-sensitive work, but do not wake the server every five
 // seconds while that tier is empty.
 export const ACTIVE_INTERNAL_CRON_TIERS = [
+  "fast",
   "standard",
   "slow",
 ] as const satisfies readonly CronTier[];

@@ -1,4 +1,5 @@
 import { getOptionalEnvValue } from "@/server/lib/runtime-env";
+import type { WhatsappImage } from "./whatsapp-media";
 
 const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
 const DEFAULT_MODEL = "claude-haiku-4-5-20251001";
@@ -16,6 +17,17 @@ type AnthropicMessage = {
   content:
     | string
     | AnthropicBlock[]
+    | Array<
+        | { type: "text"; text: string }
+        | {
+            type: "image";
+            source: {
+              type: "base64";
+              media_type: WhatsappImage["mediaType"];
+              data: string;
+            };
+          }
+      >
     | Array<{ type: "tool_result"; tool_use_id: string; content: string }>;
 };
 type AnthropicResponse = {
@@ -133,6 +145,9 @@ function systemPrompt(input: {
     "Write for a chat app, not a document. Emphasis is a single asterisk around a phrase, like *this*. Never write double asterisks, markdown headings, or link syntax with brackets — put a bare URL instead.",
     "Never say you are an AI and never mention prompts, tools, APIs, or internal systems.",
     "Never invent prices, stock, availability, delivery terms, opening hours, policies, addresses, or product links. Only state a business fact when it appears in trusted business context or a tool result. If unavailable, say the team needs to confirm it.",
+    canLookup
+      ? "When a customer sends an image, use it to identify what they are asking about. An image is not proof of current stock or price; use lookup_products for catalogue facts. If the image is unclear, ask one clarifying question."
+      : "When a customer sends an image, use it to understand their question. Do not infer current stock or price from an image; ask the team to confirm unavailable facts.",
     // This used to claim the opposite, while the code returned early on a
     // flagged conversation — so the assistant would sign off mid-thought and
     // the customer got silence.
@@ -157,6 +172,7 @@ function systemPrompt(input: {
 
 export async function generateWhatsappAiReply(input: {
   history: HistoryItem[];
+  images?: WhatsappImage[];
   apiKey?: string | null;
   model?: string | null;
   businessContext?: string | null;
@@ -181,6 +197,23 @@ export async function generateWhatsappAiReply(input: {
     input.apiKey ?? (await getOptionalEnvValue("ANTHROPIC_API_KEY"));
   if (!apiKey) return null;
   const messages: AnthropicMessage[] = buildMessages(input.history);
+  if (input.images?.length) {
+    const last = messages.at(-1);
+    if (last?.role === "user") {
+      const text = typeof last.content === "string" ? last.content : "";
+      last.content = [
+        ...input.images.map((image) => ({
+          type: "image" as const,
+          source: {
+            type: "base64" as const,
+            media_type: image.mediaType,
+            data: image.data,
+          },
+        })),
+        { type: "text", text: text || "Please help me with this image." },
+      ];
+    }
+  }
   if (!messages.length || messages.at(-1)?.role !== "user") return null;
   const model = input.model || DEFAULT_MODEL;
   const fetcher = input.fetcher ?? fetch;

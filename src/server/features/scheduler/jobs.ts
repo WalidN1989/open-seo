@@ -8,6 +8,7 @@ import { runDueVoiceLearning } from "@/server/features/communications/services/V
 import { syncMicrosoftMailboxes } from "@/server/features/email/services/MicrosoftMailSyncService";
 import { QuoteChaserService } from "@/server/features/quotes/services/QuoteChaserService";
 import { ClientLifecycleService } from "@/server/features/team/services/ClientLifecycleService";
+import { runDueWhatsappReplies } from "@/server/features/communications/services/WhatsappReplyJobService";
 
 let registered = false;
 
@@ -25,6 +26,14 @@ let registered = false;
 export function registerBusinessCronJobs() {
   if (registered) return;
   registered = true;
+
+  registerCronJob({
+    name: "whatsapp.replyAfterBurst",
+    tier: "fast",
+    run: async () => {
+      await withPgClient(() => runDueWhatsappReplies());
+    },
+  });
 
   registerCronJob({
     name: "audit.reconcileStale",

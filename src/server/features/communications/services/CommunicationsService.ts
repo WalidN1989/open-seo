@@ -86,6 +86,10 @@ import { VoiceAnalystService } from "@/server/features/voice/services/VoiceAnaly
 import { BusinessAuditRepository } from "@/server/features/business-modules/repositories/BusinessAuditRepository";
 import { isUniqueViolation } from "@/server/lib/db-errors";
 import { replyToInbound } from "./WhatsappAssistantReplyService";
+import { runWhatsappAutomationFallback } from "./WhatsappAutomationFallback";
+import { WhatsappAssistantRepository } from "../repositories/WhatsappAssistantRepository";
+import { WhatsappReplyJobRepository } from "../repositories/WhatsappReplyJobRepository";
+import { findAccessCodeCandidate } from "@/server/features/clients/codeInMessage";
 import { BusinessModuleRepository } from "@/server/features/business-modules/repositories/BusinessModuleRepository";
 
 async function auditMutation(
@@ -1484,54 +1488,35 @@ async function ingestWhatsappGroup(
       message,
     );
     if (!ingestion.duplicate && ingestion.conversationId) {
+      const assistantSettings = await WhatsappAssistantRepository.getSettings(
+        connection.organizationId,
+      );
+      if (
+        (assistantSettings?.replyDelaySeconds ?? 3) > 8 &&
+        (message.messageType === "text" || message.messageType === "image") &&
+        !findAccessCodeCandidate(message.body ?? "")
+      ) {
+        await WhatsappReplyJobRepository.schedule(
+          connection.organizationId,
+          ingestion.conversationId,
+          message.externalMessageId,
+          assistantSettings.replyDelaySeconds,
+        );
+        continue;
+      }
       const handled = await replyToInbound(
         connection,
         ingestion.conversationId,
         message,
       );
       if (handled) continue;
-      const rules =
-        await CommunicationsRepository.listMatchingWhatsappAutomations(
-          connection.organizationId,
-          message.body,
-          ingestion.isNew,
-        );
-      for (const rule of rules) {
-        if (!rule.responseTemplateId) continue;
-        const template = await CommunicationsRepository.getWhatsappTemplate(
-          connection.organizationId,
-          rule.responseTemplateId,
-        );
-        if (!template) continue;
-        const queued =
-          await CommunicationsRepository.createQueuedWhatsappMessage(
-            connection.organizationId,
-            ingestion.conversationId,
-            template.body,
-          );
-        try {
-          const result = await sendWhatsappText(
-            connection,
-            message.sender,
-            template.body,
-          );
-          await CommunicationsRepository.completeWhatsappMessage(
-            connection.organizationId,
-            queued.id,
-            {
-              externalMessageId: result.externalMessageId,
-              status: result.status,
-              sentAt: new Date().toISOString(),
-            },
-          );
-        } catch {
-          await CommunicationsRepository.completeWhatsappMessage(
-            connection.organizationId,
-            queued.id,
-            { status: "failed" },
-          );
-        }
-      }
+      await runWhatsappAutomationFallback(
+        connection,
+        ingestion.conversationId,
+        message.sender,
+        message.body,
+        ingestion.isNew,
+      );
     }
   }
   for (const update of parsed.statuses) {

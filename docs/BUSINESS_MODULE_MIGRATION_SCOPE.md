@@ -1,5 +1,31 @@
 # OpenSEO business module migration scope
 
+### 2026-10-04: BooXworm WhatsApp burst replies and images
+
+BooXworm's legacy reply delay was 30 seconds; the new shared assistant capped
+it at eight and ran inside the provider webhook. This branch adds a durable,
+conversation-scoped reply job. Each incoming text or image reschedules the due
+time after the latest message, and the Railway fast scheduler sends one reply
+after the burst settles. The provider webhook acknowledges promptly. Access
+code messages still take the immediate verification path; code-like history is
+masked before Claude sees it. New customer messages supersede an in-flight
+reply before it sends. The 5-second fast tier is now active, so the ticker will
+poll the reply table while Railway is online.
+
+For Meta Cloud and Twilio, inbound image ids/URLs and MIME type are stored with
+the message. The assistant downloads at most three images from the current
+customer turn, from allowlisted provider hosts with a 4 MB cap and no redirects,
+and sends transient base64 image blocks to the tenant's existing Claude key.
+Image bytes are not stored in the application database. If an image cannot be
+read, the customer gets a request to describe it instead of a guessed answer.
+Audio/voice-note processing remains deliberately deferred.
+
+The code and both SQLite/Postgres migrations are prepared in
+`codex/booxworm-whatsapp-batching-media`. After merge and deployment, set
+BooXworm's AI Config reply delay to 30 seconds in the production UI, verify the
+fast ticker runs, and test a burst of texts plus a real inbound image. Do not
+switch off the older custom Zoho app until these live behaviors are confirmed.
+
 ### 2026-10-04: BooXworm WhatsApp assistant credential diagnosis
 
 BooXworm's Meta messages reach the Digital Urgency inbox, but a production

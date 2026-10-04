@@ -526,6 +526,13 @@
       "when": 1790052468013,
       "tag": "0074_sad_rocket_raccoon",
       "breakpoints": true
+    },
+    {
+      "idx": 75,
+      "version": "7",
+      "when": 1791116244970,
+      "tag": "0075_graceful_lilandra",
+      "breakpoints": true
     }
   ]
 }

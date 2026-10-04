@@ -27,7 +27,7 @@ export const ASSISTANT_MODELS = [
 export const updateAssistantSettingsSchema = z.object({
   autopilot: z.boolean().optional(),
   model: z.enum(ASSISTANT_MODELS).nullable().optional(),
-  replyDelaySeconds: z.number().int().min(0).max(8).optional(),
+  replyDelaySeconds: z.number().int().min(0).max(60).optional(),
   bookingLink: optionalText(500),
   timezone: optionalText(80),
   businessHoursStart: clockTime,

@@ -151,6 +151,7 @@ export const {
   whatsappConnections,
   whatsappConversations,
   whatsappMessages,
+  whatsappReplyJobs,
   smsConversations,
   smsMessages,
   whatsappContactProfiles,

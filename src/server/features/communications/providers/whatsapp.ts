@@ -1,3 +1,4 @@
+/* oxlint-disable max-lines */
 import { resolveConnectionCredential } from "@/server/lib/connection-secrets";
 import { z } from "zod";
 
@@ -7,6 +8,9 @@ export type InboundWhatsappMessage = {
   recipient?: string;
   body?: string;
   messageType: string;
+  mediaId?: string;
+  mediaUrl?: string;
+  mediaContentType?: string;
   receivedAt: string;
 };
 
@@ -42,7 +46,7 @@ export function parseTwilioPayload(payload: Readonly<Record<string, string>>): {
 } {
   const externalMessageId = payload.MessageSid || payload.SmsSid;
   const status = payload.MessageStatus || payload.SmsStatus;
-  if (externalMessageId && status && !payload.Body) {
+  if (externalMessageId && status && !payload.Body && !payload.MediaUrl0) {
     return { messages: [], statuses: [{ externalMessageId, status }] };
   }
   if (!externalMessageId || !payload.From)
@@ -60,6 +64,12 @@ export function parseTwilioPayload(payload: Readonly<Record<string, string>>): {
           : mediaType?.startsWith("image/")
             ? "image"
             : "text",
+        mediaUrl: mediaType?.startsWith("image/")
+          ? payload.MediaUrl0
+          : undefined,
+        mediaContentType: mediaType?.startsWith("image/")
+          ? mediaType
+          : undefined,
         receivedAt: new Date().toISOString(),
       },
     ],
@@ -95,6 +105,13 @@ const metaPayloadSchema = z.object({
                         type: z.string().optional(),
                         text: z
                           .object({ body: z.string().optional() })
+                          .optional(),
+                        image: z
+                          .object({
+                            id: z.string().optional(),
+                            mime_type: z.string().optional(),
+                            caption: z.string().optional(),
+                          })
                           .optional(),
                       }),
                     )
@@ -148,8 +165,11 @@ export function parseMetaPayload(payload: unknown): MetaChangeGroup[] {
         messages.push({
           externalMessageId: message.id,
           sender: message.from,
-          body: message.text?.body,
+          body: message.text?.body ?? message.image?.caption,
           messageType: message.type ?? "unknown",
+          mediaId: message.type === "image" ? message.image?.id : undefined,
+          mediaContentType:
+            message.type === "image" ? message.image?.mime_type : undefined,
           receivedAt: message.timestamp
             ? new Date(Number(message.timestamp) * 1000).toISOString()
             : new Date().toISOString(),
