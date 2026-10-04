@@ -168,12 +168,18 @@ export async function testIntegrationConnection(
         detail: "Hunter account authenticated",
       };
     }
-    case "claude_haiku":
-      await credentialValue(connection);
+    case "claude_haiku": {
+      const key = await credentialValue(connection);
+      await checkedJson(
+        "https://api.anthropic.com/v1/models?limit=1",
+        { "x-api-key": key, "anthropic-version": "2023-06-01" },
+        fetcher,
+      );
       return {
         providerKey: connection.providerKey,
-        detail: "Anthropic secret is configured",
+        detail: "Anthropic API key authenticated",
       };
+    }
     case "elevenlabs":
       await credentialValue(connection, "WEBHOOK_SECRET");
       return {

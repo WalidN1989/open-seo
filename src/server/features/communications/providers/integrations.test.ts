@@ -7,6 +7,44 @@ import {
 } from "./integrations";
 
 describe("integration provider health checks", () => {
+  it("authenticates the configured Claude key against Anthropic", async () => {
+    process.env.TEST_CLAUDE_API_KEY = "tenant-secret";
+    const fetcher = async (input: RequestInfo | URL, init?: RequestInit) => {
+      expect(input).toBe("https://api.anthropic.com/v1/models?limit=1");
+      expect(init).toMatchObject({
+        redirect: "manual",
+        headers: {
+          "x-api-key": "tenant-secret",
+          "anthropic-version": "2023-06-01",
+        },
+      });
+      return Response.json({ data: [] });
+    };
+    await expect(
+      testIntegrationConnection(
+        { providerKey: "claude_haiku", credentialReference: "TEST_CLAUDE" },
+        fetcher,
+      ),
+    ).resolves.toEqual({
+      providerKey: "claude_haiku",
+      detail: "Anthropic API key authenticated",
+    });
+    delete process.env.TEST_CLAUDE_API_KEY;
+  });
+
+  it("reports a rejected Claude key without exposing it", async () => {
+    process.env.TEST_CLAUDE_API_KEY = "invalid-tenant-secret";
+    await expect(
+      testIntegrationConnection(
+        { providerKey: "claude_haiku", credentialReference: "TEST_CLAUDE" },
+        invalidClaudeFetcher,
+      ),
+    ).rejects.toThrow(
+      "api.anthropic.com responded 401 — the credential was rejected.",
+    );
+    delete process.env.TEST_CLAUDE_API_KEY;
+  });
+
   it.each([
     ["apify", "https://api.apify.com/v2/users/me", "Authorization"],
     [
@@ -106,6 +144,11 @@ const redirectingFetcher = async () =>
   });
 const unauthorizedFetcher = async () =>
   Response.json({ error: "Unauthorized" }, { status: 401 });
+const invalidClaudeFetcher = async () =>
+  Response.json(
+    { error: { message: "invalid-tenant-secret" } },
+    { status: 401 },
+  );
 
 describe("how a provider check reaches the network", () => {
   // The workerd runtime this app serves from rejects redirect: "error"
