@@ -106,7 +106,13 @@ const lookupTool = {
     "Search the business's own catalogue by title, author, SKU or ISBN and get the live price. Always use this before saying an item is unavailable or quoting a price.",
   input_schema: {
     type: "object",
-    properties: { query: { type: "string" } },
+    properties: {
+      query: {
+        type: "string",
+        description:
+          "The item title, author, SKU or ISBN. For a book cover, search its short main title first, without promotional text or the customer's question.",
+      },
+    },
     required: ["query"],
   },
 } as const;
@@ -231,7 +237,7 @@ export async function generateWhatsappAiReply(input: {
     canReadClientData: Boolean(input.clientData),
     accessNote: input.accessNote,
   });
-  const call = async (conversation: AnthropicMessage[]) => {
+  const call = async (conversation: AnthropicMessage[], round: number) => {
     const response = await fetcher(ANTHROPIC_URL, {
       method: "POST",
       headers: {
@@ -245,6 +251,9 @@ export async function generateWhatsappAiReply(input: {
         system,
         messages: conversation,
         tools: toolset,
+        ...(round === 0 && input.images?.length && input.lookupProducts
+          ? { tool_choice: { type: "tool", name: "lookup_products" } }
+          : {}),
       }),
       signal: AbortSignal.timeout(45_000),
     });
@@ -264,7 +273,7 @@ export async function generateWhatsappAiReply(input: {
   // continues. An action tool only continues when the model said nothing
   // else, so the customer never gets silence. Three rounds is plenty.
   for (let round = 0; round < 3; round += 1) {
-    const content = await call(conversation);
+    const content = await call(conversation, round);
     reply = textOf(content);
     const toolUses = content.filter(
       (block): block is Extract<AnthropicBlock, { type: "tool_use" }> =>

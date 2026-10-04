@@ -232,7 +232,7 @@ async function listPricedProducts(organizationId: string) {
 
 /**
  * Catalogue lookup for the assistant: every word of the query must appear in
- * the name, or the whole query must match the SKU or ISBN. Case-insensitive
+ * the name or description, or the whole query must match the SKU or ISBN. Case-insensitive
  * on both dialects. A few rows is enough for a chat answer.
  */
 async function searchPricedProducts(
@@ -240,16 +240,19 @@ async function searchPricedProducts(
   query: string,
   limit = 8,
 ) {
-  const words = query
-    .toLowerCase()
-    .split(/\s+/)
-    .map((word) => word.trim())
-    .filter((word) => word.length > 1)
-    .slice(0, 6);
+  const words =
+    query
+      .toLowerCase()
+      .match(/[\p{L}\p{N}]+/gu)
+      ?.filter((word) => word.length > 1)
+      .slice(0, 6) ?? [];
   if (!words.length) return [];
-  const nameMatch = and(
+  const textMatch = and(
     ...words.map((word) =>
-      like(sql`lower(${commerceProducts.name})`, `%${word}%`),
+      or(
+        like(sql`lower(${commerceProducts.name})`, `%${word}%`),
+        like(sql`lower(${commerceProducts.description})`, `%${word}%`),
+      ),
     ),
   );
   const whole = `%${query.trim().toLowerCase()}%`;
@@ -274,7 +277,7 @@ async function searchPricedProducts(
         eq(commerceProducts.organizationId, organizationId),
         eq(commerceProducts.status, "active"),
         or(
-          nameMatch,
+          textMatch,
           like(sql`lower(${commerceProducts.sku})`, whole),
           like(sql`lower(${commerceProducts.isbn})`, whole),
         ),

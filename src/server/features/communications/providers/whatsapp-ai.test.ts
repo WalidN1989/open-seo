@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { generateWhatsappAiReply } from "./whatsapp-ai";
 import { isClientDataTopic } from "@/server/features/clients/clientDataTopics";
 import { z } from "zod";
@@ -142,6 +142,59 @@ describe("WhatsApp Claude assistant", () => {
     expect(bodies[1]).toContain('"tool_use_id":"tool-1"');
     expect(result?.reply).toContain("LKR 3,900");
     expect(result?.actions).toEqual([]);
+  });
+
+  it("requires catalogue evidence for a cover image before answering", async () => {
+    const requests: Array<Record<string, unknown>> = [];
+    const lookupProducts = vi.fn(
+      async () =>
+        "The Let Them Theory — Perfect: LKR 3,650; Imperfect: LKR 1,500",
+    );
+    const fetcher = async (_input: RequestInfo | URL, init?: RequestInit) => {
+      requests.push(
+        z
+          .record(z.string(), z.unknown())
+          .parse(JSON.parse(typeof init?.body === "string" ? init.body : "{}")),
+      );
+      return Response.json({
+        content:
+          requests.length === 1
+            ? [
+                {
+                  type: "tool_use",
+                  id: "image-lookup",
+                  name: "lookup_products",
+                  input: { query: "The Let Them Theory" },
+                },
+              ]
+            : [
+                {
+                  type: "text",
+                  text: "We have both editions: Perfect LKR 3,650, Imperfect LKR 1,500.",
+                },
+              ],
+      });
+    };
+    const result = await generateWhatsappAiReply({
+      history: [
+        {
+          direction: "inbound",
+          body: "do you have this book in stock and how much?",
+        },
+      ],
+      images: [{ mediaType: "image/jpeg", data: "test-image" }],
+      apiKey: "tenant-key",
+      lookupProducts,
+      fetcher,
+    });
+    expect(requests[0]?.tool_choice).toEqual({
+      type: "tool",
+      name: "lookup_products",
+    });
+    expect(requests[1]?.tool_choice).toBeUndefined();
+    expect(lookupProducts).toHaveBeenCalledWith("The Let Them Theory");
+    expect(JSON.stringify(requests[1])).toContain("LKR 3,650");
+    expect(result?.reply).toContain("Imperfect LKR 1,500");
   });
 
   it("offers no lookup tool when the tenant has no catalogue search", async () => {
