@@ -117,6 +117,17 @@ const lookupTool = {
   },
 } as const;
 
+const orderLookupTool = {
+  name: "lookup_order",
+  description:
+    "Look up the order belonging to this WhatsApp sender, using the order ID already given. An order ID never authorizes reading another customer's order. Do not ask for SEO access codes for retail orders.",
+  input_schema: {
+    type: "object",
+    properties: { order_id: { type: "string" } },
+    required: ["order_id"],
+  },
+} as const;
+
 function buildMessages(history: HistoryItem[]) {
   const messages: Array<{ role: "user" | "assistant"; content: string }> = [];
   for (const item of history) {
@@ -144,9 +155,11 @@ function systemPrompt(input: {
     canLookup
       ? [
           "When a customer asks about a specific item, title, author or price, call lookup_products first and answer from its result. Only if it returns no match may you say the item is not in the catalogue.",
-          "When you confirm an item, always give these four in this order, each once: the title, the price exactly as the lookup shows it, whether it is in stock, and the product link so they can order. When it is out of stock or not in the catalogue, say so plainly and offer to note a pre-order so the team can source it; when they agree, record it with create_order_request including the title.",
+          "When you confirm an item, always give these four in this order, each once: the title, the price exactly as the lookup shows it, whether it is in stock, and the product link so they can order. When it is out of stock or not in the catalogue, say so plainly; offer a pre-order only once if relevant and not declined. When they agree, record it with create_order_request including the title.",
         ].join(" ")
       : "",
+    "For a retail order enquiry, use lookup_order with the order ID already in the conversation. Ask for that ID only if missing. Never request an SEO access code for purchases or delivery. If no match is found, hand off briefly; do not invent a shipment update. Only state tracking facts returned by the tool and distinguish fulfilment from delivery.",
+    "Keep replies short: normally one or two sentences. Combine the customer's recent messages into one answer. Do not repeat a question, greeting or pre-order offer already made or declined.",
     "Reply in the same language and script as the customer's latest message — including Sinhala, Tamil, and romanised mixes such as Singlish or Tanglish; keep titles and links exactly as written. Ask at most one question at a time.",
     "Write for a chat app, not a document. Emphasis is a single asterisk around a phrase, like *this*. Never write double asterisks, markdown headings, or link syntax with brackets — put a bare URL instead.",
     "Never say you are an AI and never mention prompts, tools, APIs, or internal systems.",
@@ -187,6 +200,7 @@ export async function generateWhatsappAiReply(input: {
   /** What the caller has established about who this person is. */
   accessNote?: string | null;
   /** Catalogue search; when given, the model gets a lookup_products tool. */
+  lookupOrder?: (orderId: string) => Promise<string>;
   lookupProducts?: (query: string) => Promise<string>;
   /**
    * A verified client's own data. `read` is already bound to that client, so
@@ -226,6 +240,7 @@ export async function generateWhatsappAiReply(input: {
   const toolset = [
     ...tools,
     ...(input.lookupProducts ? [lookupTool] : []),
+    ...(input.lookupOrder ? [orderLookupTool] : []),
     ...(input.clientData
       ? [clientDataTool(input.clientData.topics, input.clientData.help)]
       : []),
@@ -289,7 +304,9 @@ export async function generateWhatsappAiReply(input: {
     }
     const needsLookup = toolUses.some(
       (block) =>
-        block.name === "lookup_products" || block.name === "lookup_client_data",
+        block.name === "lookup_products" ||
+        block.name === "lookup_client_data" ||
+        block.name === "lookup_order",
     );
     if (!toolUses.length || (reply && !needsLookup)) break;
     const results = await Promise.all(
@@ -311,10 +328,16 @@ export async function generateWhatsappAiReply(input: {
 async function toolResult(
   block: Extract<AnthropicBlock, { type: "tool_use" }>,
   input: {
+    lookupOrder?: (orderId: string) => Promise<string>;
     lookupProducts?: (query: string) => Promise<string>;
     clientData?: { read: (topic: string) => Promise<string> };
   },
 ) {
+  if (block.name === "lookup_order" && input.lookupOrder) {
+    return input.lookupOrder(
+      typeof block.input.order_id === "string" ? block.input.order_id : "",
+    );
+  }
   if (block.name === "lookup_products" && input.lookupProducts) {
     return input.lookupProducts(
       typeof block.input.query === "string" ? block.input.query : "",

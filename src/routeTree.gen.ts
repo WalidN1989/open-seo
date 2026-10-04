@@ -41,6 +41,7 @@ import { Route as ApiWhatsappMetaRouteImport } from './routes/api/whatsapp/meta'
 import { Route as ApiWhatsappConnectionIdRouteImport } from './routes/api/whatsapp/$connectionId'
 import { Route as ApiVoiceTurnRouteImport } from './routes/api/voice/turn'
 import { Route as ApiSocialMetaRouteImport } from './routes/api/social/meta'
+import { Route as ApiShopifyConnectionIdRouteImport } from './routes/api/shopify/$connectionId'
 import { Route as ApiEmailAccountIdRouteImport } from './routes/api/email/$accountId'
 import { Route as ApiAutumnSplatRouteImport } from './routes/api/autumn/$'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
@@ -260,6 +261,11 @@ const ApiVoiceTurnRoute = ApiVoiceTurnRouteImport.update({
 const ApiSocialMetaRoute = ApiSocialMetaRouteImport.update({
   id: '/api/social/meta',
   path: '/api/social/meta',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiShopifyConnectionIdRoute = ApiShopifyConnectionIdRouteImport.update({
+  id: '/api/shopify/$connectionId',
+  path: '/api/shopify/$connectionId',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiEmailAccountIdRoute = ApiEmailAccountIdRouteImport.update({
@@ -625,6 +631,7 @@ export interface FileRoutesByFullPath {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/autumn/$': typeof ApiAutumnSplatRoute
   '/api/email/$accountId': typeof ApiEmailAccountIdRoute
+  '/api/shopify/$connectionId': typeof ApiShopifyConnectionIdRoute
   '/api/social/meta': typeof ApiSocialMetaRoute
   '/api/voice/turn': typeof ApiVoiceTurnRoute
   '/api/whatsapp/$connectionId': typeof ApiWhatsappConnectionIdRoute
@@ -711,6 +718,7 @@ export interface FileRoutesByTo {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/autumn/$': typeof ApiAutumnSplatRoute
   '/api/email/$accountId': typeof ApiEmailAccountIdRoute
+  '/api/shopify/$connectionId': typeof ApiShopifyConnectionIdRoute
   '/api/social/meta': typeof ApiSocialMetaRoute
   '/api/voice/turn': typeof ApiVoiceTurnRoute
   '/api/whatsapp/$connectionId': typeof ApiWhatsappConnectionIdRoute
@@ -802,6 +810,7 @@ export interface FileRoutesById {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/autumn/$': typeof ApiAutumnSplatRoute
   '/api/email/$accountId': typeof ApiEmailAccountIdRoute
+  '/api/shopify/$connectionId': typeof ApiShopifyConnectionIdRoute
   '/api/social/meta': typeof ApiSocialMetaRoute
   '/api/voice/turn': typeof ApiVoiceTurnRoute
   '/api/whatsapp/$connectionId': typeof ApiWhatsappConnectionIdRoute
@@ -894,6 +903,7 @@ export interface FileRouteTypes {
     | '/api/auth/$'
     | '/api/autumn/$'
     | '/api/email/$accountId'
+    | '/api/shopify/$connectionId'
     | '/api/social/meta'
     | '/api/voice/turn'
     | '/api/whatsapp/$connectionId'
@@ -980,6 +990,7 @@ export interface FileRouteTypes {
     | '/api/auth/$'
     | '/api/autumn/$'
     | '/api/email/$accountId'
+    | '/api/shopify/$connectionId'
     | '/api/social/meta'
     | '/api/voice/turn'
     | '/api/whatsapp/$connectionId'
@@ -1070,6 +1081,7 @@ export interface FileRouteTypes {
     | '/api/auth/$'
     | '/api/autumn/$'
     | '/api/email/$accountId'
+    | '/api/shopify/$connectionId'
     | '/api/social/meta'
     | '/api/voice/turn'
     | '/api/whatsapp/$connectionId'
@@ -1145,6 +1157,7 @@ export interface RootRouteChildren {
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiAutumnSplatRoute: typeof ApiAutumnSplatRoute
   ApiEmailAccountIdRoute: typeof ApiEmailAccountIdRoute
+  ApiShopifyConnectionIdRoute: typeof ApiShopifyConnectionIdRoute
   ApiSocialMetaRoute: typeof ApiSocialMetaRoute
   ApiVoiceTurnRoute: typeof ApiVoiceTurnRoute
   ApiWhatsappConnectionIdRoute: typeof ApiWhatsappConnectionIdRoute
@@ -1384,6 +1397,13 @@ declare module '@tanstack/react-router' {
       path: '/api/social/meta'
       fullPath: '/api/social/meta'
       preLoaderRoute: typeof ApiSocialMetaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/shopify/$connectionId': {
+      id: '/api/shopify/$connectionId'
+      path: '/api/shopify/$connectionId'
+      fullPath: '/api/shopify/$connectionId'
+      preLoaderRoute: typeof ApiShopifyConnectionIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/email/$accountId': {
@@ -2092,6 +2112,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiAutumnSplatRoute: ApiAutumnSplatRoute,
   ApiEmailAccountIdRoute: ApiEmailAccountIdRoute,
+  ApiShopifyConnectionIdRoute: ApiShopifyConnectionIdRoute,
   ApiSocialMetaRoute: ApiSocialMetaRoute,
   ApiVoiceTurnRoute: ApiVoiceTurnRoute,
   ApiWhatsappConnectionIdRoute: ApiWhatsappConnectionIdRoute,

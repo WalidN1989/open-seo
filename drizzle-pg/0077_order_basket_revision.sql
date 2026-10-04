@@ -1,0 +1,1 @@
+ALTER TABLE "commerce_orders" ADD COLUMN "external_basket_key" text;

@@ -185,6 +185,8 @@ export const {
   commerceStockMovements,
   commerceInventoryAudits,
   commerceInventoryAuditItems,
+  commerceOrderSync,
+  commerceOrderShipments,
   commerceOrders,
   commerceOrderLines,
   invoiceSettings,
