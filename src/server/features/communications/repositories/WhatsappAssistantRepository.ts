@@ -232,7 +232,7 @@ async function listPricedProducts(organizationId: string) {
 
 /**
  * Catalogue lookup for the assistant: every word of the query must appear in
- * the name, or the whole query must match the SKU or ISBN. Case-insensitive
+ * the name or description, or the whole query must match the SKU or ISBN. Case-insensitive
  * on both dialects. A few rows is enough for a chat answer.
  */
 async function searchPricedProducts(
@@ -240,19 +240,29 @@ async function searchPricedProducts(
   query: string,
   limit = 8,
 ) {
-  const words = query
-    .toLowerCase()
-    .split(/\s+/)
-    .map((word) => word.trim())
-    .filter((word) => word.length > 1)
-    .slice(0, 6);
+  const words =
+    query
+      .toLowerCase()
+      .match(/[\p{L}\p{N}]+/gu)
+      ?.filter((word) => word.length > 1)
+      .slice(0, 6) ?? [];
   if (!words.length) return [];
-  const nameMatch = and(
+  const textMatch = and(
     ...words.map((word) =>
-      like(sql`lower(${commerceProducts.name})`, `%${word}%`),
+      or(
+        like(sql`lower(${commerceProducts.name})`, `%${word}%`),
+        like(sql`lower(${commerceProducts.description})`, `%${word}%`),
+      ),
     ),
   );
   const whole = `%${query.trim().toLowerCase()}%`;
+  const nameMatches = sql<number>`(${sql.join(
+    words.map(
+      (word) =>
+        sql`case when lower(${commerceProducts.name}) like ${`%${word}%`} then 1 else 0 end`,
+    ),
+    sql` + `,
+  )})`;
   const rows = await db
     .select({
       name: commerceProducts.name,
@@ -260,6 +270,7 @@ async function searchPricedProducts(
       salePriceMinor: commerceProducts.salePriceMinor,
       productUrl: commerceProducts.productUrl,
       quantityOnHand: sum(commerceInventoryBalances.quantityOnHand),
+      nameMatches,
     })
     .from(commerceProducts)
     .leftJoin(
@@ -274,21 +285,26 @@ async function searchPricedProducts(
         eq(commerceProducts.organizationId, organizationId),
         eq(commerceProducts.status, "active"),
         or(
-          nameMatch,
+          textMatch,
           like(sql`lower(${commerceProducts.sku})`, whole),
           like(sql`lower(${commerceProducts.isbn})`, whole),
         ),
       ),
     )
     .groupBy(commerceProducts.id)
-    .orderBy(commerceProducts.name)
+    .orderBy(desc(nameMatches), commerceProducts.name)
     .limit(limit);
-  return rows.map((row) => ({
-    ...row,
-    // No balance row means stock is untracked, which is not the same as zero.
-    quantityOnHand:
-      row.quantityOnHand === null ? null : Number(row.quantityOnHand),
-  }));
+  // A description can mention another book. Keep the strongest title matches
+  // rather than presenting those references as editions of the requested item.
+  const bestNameMatches = Number(rows[0]?.nameMatches ?? 0);
+  return rows
+    .filter((row) => Number(row.nameMatches) === bestNameMatches)
+    .map(({ nameMatches: _nameMatches, ...row }) => ({
+      ...row,
+      // No balance row means stock is untracked, which is not the same as zero.
+      quantityOnHand:
+        row.quantityOnHand === null ? null : Number(row.quantityOnHand),
+    }));
 }
 
 /** The currency every stored amount is in, defaulting like the rest of the app. */

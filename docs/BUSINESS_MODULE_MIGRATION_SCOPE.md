@@ -1,5 +1,27 @@
 # OpenSEO business module migration scope
 
+### 2026-10-04: image catalogue lookup correction
+
+PR #20 deployed and the owner confirmed that the book cover is now recognized.
+The live reply identified The Let Them Theory but incorrectly said it was not
+in the catalogue. Both Perfect (BX-17, LKR 3,650) and Imperfect (IMP-2544,
+LKR 1,500) are active production products. Their descriptions contain Mel
+Robbins, while their names omit the author. The assistant previously searched
+only product names, despite advertising author lookup. Search now matches each
+query word across name and description and normalizes punctuation. Results
+retain the strongest product-name matches, so another book's description
+mentioning the requested title does not become an edition recommendation. This retains
+organization and active-status filters and live branch-stock aggregation.
+Image turns with catalogue access require a first lookup tool call; subsequent
+rounds remain free to answer from the result. Cover searches are instructed to
+use the short title rather than promotional cover text. No schema, stock data,
+provider credentials or image download handling changes.
+
+Regression coverage uses both editions, author-bearing and quoted queries,
+prices, branch totals, cross-tenant exclusion, archived products, SKU/ISBN
+lookup and the image-to-catalogue tool loop. Production rollout and a fresh
+cover-photo reply still need verification for this correction.
+
 ### 2026-10-04: BooXworm WhatsApp burst replies and images
 
 BooXworm's legacy reply delay was 30 seconds; the new shared assistant capped
@@ -30,8 +52,9 @@ fallback because the Twilio CDN host was outside the allowlist. A read-only
 diagnostic scoped to the owner's test conversation confirmed the provider is
 Twilio: `api.twilio.com` redirects to `mms.twiliocdn.com`, which returns the
 JPEG with HTTP 200 without account credentials. The next fix allows that exact
-CDN host while withholding the Twilio Auth Token. It still needs a real-image
-retest before image understanding is considered live. Do not switch off the
+CDN host while withholding the Twilio Auth Token. PR #20 deployed and the owner
+confirmed recognition of the same book cover at 17:59 Dubai time. Catalogue
+matching is being corrected separately above. Do not switch off the
 older custom Zoho app until these live behaviors are confirmed.
 
 ### 2026-10-04: BooXworm WhatsApp assistant credential diagnosis
