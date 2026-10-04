@@ -14,17 +14,20 @@ poll the reply table while Railway is online.
 
 For Meta Cloud and Twilio, inbound image ids/URLs and MIME type are stored with
 the message. The assistant downloads at most three images from the current
-customer turn, from allowlisted provider hosts with a 4 MB cap and no redirects,
+customer turn, from allowlisted provider hosts with a 4 MB cap and bounded,
+host-validated redirects,
 and sends transient base64 image blocks to the tenant's existing Claude key.
 Image bytes are not stored in the application database. If an image cannot be
 read, the customer gets a request to describe it instead of a guessed answer.
 Audio/voice-note processing remains deliberately deferred.
 
-The code and both SQLite/Postgres migrations are prepared in
-`codex/booxworm-whatsapp-batching-media`. After merge and deployment, set
-BooXworm's AI Config reply delay to 30 seconds in the production UI, verify the
-fast ticker runs, and test a burst of texts plus a real inbound image. Do not
-switch off the older custom Zoho app until these live behaviors are confirmed.
+PR #18 merged and deployed. BooXworm's AI Config reply delay is set to 30
+seconds in production, and the fast ticker is running. A real inbound image on
+October 4 reached the inbox, but Meta returned HTTP 307 when the assistant
+fetched its bytes, causing the fallback reply. The follow-up redirect fix must
+be deployed and verified with another real image before image understanding is
+considered live. Do not switch off the older custom Zoho app until these live
+behaviors are confirmed.
 
 ### 2026-10-04: BooXworm WhatsApp assistant credential diagnosis
 
