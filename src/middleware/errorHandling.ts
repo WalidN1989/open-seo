@@ -1,6 +1,6 @@
 import { createMiddleware } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
-import { waitUntil } from "cloudflare:workers";
+import { waitUntil } from "@/db/background";
 import { shouldCaptureAppErrorCode } from "@/shared/error-codes";
 import { AppError, asAppError, toClientError } from "@/server/lib/errors";
 import { captureServerError } from "@/server/lib/posthog";

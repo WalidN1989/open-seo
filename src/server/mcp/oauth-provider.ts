@@ -1,4 +1,4 @@
-import { waitUntil } from "cloudflare:workers";
+import { waitUntil } from "@/db/background";
 import {
   AuthorizationError,
   OAuthError,

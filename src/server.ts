@@ -20,6 +20,7 @@ import { requestWithPublicOrigin } from "@/server/mcp/public-origin";
 import { MCP_ROUTE } from "@/server/mcp/context";
 import { handleSelfHostedOpenSeoMcpRequest } from "@/server/mcp/transport";
 import { withPgClient } from "@/db";
+import { withPgFetchClient } from "@/db/fetch";
 import {
   AUTUMN_WEBHOOK_PATH,
   handleAutumnWebhookRequest,
@@ -154,9 +155,11 @@ function fetch(
   env: Env,
   ctx: ExecutionContext,
 ): Promise<Response> {
-  // Scope a per-request Postgres client (no-op in D1 mode). The client isn't
-  // closed here — the Workers↔Hyperdrive socket is reclaimed at invocation end.
-  return withPgClient(() => Promise.resolve(handleFetch(request, env, ctx)));
+  return withPgFetchClient(
+    (scopedContext) =>
+      Promise.resolve(handleFetch(request, env, scopedContext)),
+    ctx,
+  );
 }
 
 function handleFetch(

@@ -1,3 +1,4 @@
+import { Buffer } from "node:buffer";
 import { z } from "zod";
 import { resolveCredential, type WhatsappConnectionRecord } from "./whatsapp";
 
@@ -91,6 +92,7 @@ export async function loadWhatsappImage(
     });
     if (![301, 302, 303, 307, 308].includes(response.status)) break;
     const location = response.headers.get("location");
+    await response.body?.cancel();
     if (!location || redirectCount === 3)
       throw new Error("WhatsApp image redirect failed");
     mediaUrl = trustedMediaUrl(
@@ -99,8 +101,10 @@ export async function loadWhatsappImage(
     );
   }
   if (!response) throw new Error("WhatsApp image download failed");
-  if (!response.ok || !response.body)
+  if (!response.ok || !response.body) {
+    await response.body?.cancel();
     throw new Error(`WhatsApp image download failed (${response.status})`);
+  }
   const mediaType = (
     response.headers.get("content-type") ??
     media.mediaContentType ??
@@ -109,20 +113,29 @@ export async function loadWhatsappImage(
     .split(";")[0]
     .trim()
     .toLowerCase();
-  if (!isImageType(mediaType)) throw new Error("Unsupported image type");
+  if (!isImageType(mediaType)) {
+    await response.body.cancel();
+    throw new Error("Unsupported image type");
+  }
   const maxBytes = 4_000_000;
   const reader = response.body.getReader();
   const chunks: Uint8Array[] = [];
   let length = 0;
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    length += value.length;
-    if (length > maxBytes) {
-      await reader.cancel();
-      throw new Error("WhatsApp image exceeds the vision limit");
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      length += value.length;
+      if (length > maxBytes)
+        throw new Error("WhatsApp image exceeds the vision limit");
+      chunks.push(value);
     }
-    chunks.push(value);
+  } finally {
+    try {
+      await reader.cancel();
+    } finally {
+      reader.releaseLock();
+    }
   }
   const bytes = new Uint8Array(length);
   let offset = 0;
@@ -130,10 +143,12 @@ export async function loadWhatsappImage(
     bytes.set(chunk, offset);
     offset += chunk.length;
   }
-  let binary = "";
-  for (const byte of bytes) binary += String.fromCharCode(byte);
   return {
     mediaType,
-    data: btoa(binary),
+    data: Buffer.from(
+      bytes.buffer,
+      bytes.byteOffset,
+      bytes.byteLength,
+    ).toString("base64"),
   };
 }
