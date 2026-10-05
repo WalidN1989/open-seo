@@ -4,6 +4,7 @@ import { ActivationRepository } from "@/server/features/activation/repositories/
 // this isolate. Only *first* timestamps matter, so after one successful write
 // these hot paths (every API-key /mcp request, every external tool call)
 // never touch the DB again for that org.
+const MAX_RECORDED_ORGS = 1000;
 const recordedAuthorizedOrgs = new Set<string>();
 const recordedToolCallOrgs = new Set<string>();
 
@@ -17,6 +18,8 @@ export async function recordMcpAuthorized(
   organizationId: string,
 ): Promise<void> {
   if (recordedAuthorizedOrgs.has(organizationId)) return;
+  if (recordedAuthorizedOrgs.size >= MAX_RECORDED_ORGS)
+    recordedAuthorizedOrgs.clear();
   recordedAuthorizedOrgs.add(organizationId);
   try {
     await ActivationRepository.recordFirstMcpAuthorized(organizationId);
@@ -31,6 +34,8 @@ export async function recordExternalMcpToolCall(
   organizationId: string,
 ): Promise<void> {
   if (recordedToolCallOrgs.has(organizationId)) return;
+  if (recordedToolCallOrgs.size >= MAX_RECORDED_ORGS)
+    recordedToolCallOrgs.clear();
   recordedToolCallOrgs.add(organizationId);
   try {
     await ActivationRepository.recordFirstMcpToolCall(organizationId);

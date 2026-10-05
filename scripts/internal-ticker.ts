@@ -33,6 +33,23 @@ if (!secret) {
 // One tick at a time per tier. A slow run must delay the next tick, never
 // overlap it, or a stuck job would pile up requests until the container dies.
 const running = new Set<CronTier>();
+let consecutiveFastFailures = 0;
+const startupDeadline = Date.now() + 120_000;
+let hasSuccessfulFastTick = false;
+
+function failed(tier: CronTier) {
+  if (tier !== "fast") return;
+  // Give Vite/workerd its normal cold-start window, but do not mask a worker
+  // that never starts. Once healthy, failures count immediately.
+  if (!hasSuccessfulFastTick && Date.now() < startupDeadline) return;
+  consecutiveFastFailures++;
+  if (consecutiveFastFailures >= 6) {
+    console.error(
+      "[ticker] six consecutive fast tick failures; restarting container",
+    );
+    process.exit(1);
+  }
+}
 
 async function tick(tier: CronTier) {
   if (running.has(tier)) return;
@@ -48,21 +65,28 @@ async function tick(tier: CronTier) {
     );
     if (!response.ok) {
       console.error(`[ticker] ${tier} tick returned ${response.status}`);
+      await response.body?.cancel();
+      failed(tier);
       return;
     }
     const body = (await response.json()) as {
       results?: { name: string; ok: boolean; error?: string }[];
     };
+    if (tier === "fast") {
+      consecutiveFastFailures = 0;
+      hasSuccessfulFastTick = true;
+    }
     for (const result of body.results ?? []) {
       if (!result.ok) console.error(`[ticker] ${result.name}: ${result.error}`);
     }
   } catch (error) {
     // The server may still be booting, or a job may have exceeded the timeout.
-    // Log and let the next tick try again; never exit.
+    // Repeated transport failures mean the worker is no longer serving.
     console.error(
       `[ticker] ${tier} tick failed:`,
       error instanceof Error ? error.message : error,
     );
+    failed(tier);
   } finally {
     running.delete(tier);
   }

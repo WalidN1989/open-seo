@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { waitUntil } from "cloudflare:workers";
+import { waitUntil } from "@/db/background";
 import { RankTrackingRepository } from "@/server/features/rank-tracking/repositories/RankTrackingRepository";
 import { RankTrackingService } from "@/server/features/rank-tracking/services/RankTrackingService";
 import { getLatestResults } from "@/server/features/rank-tracking/services/rankTrackingResults";

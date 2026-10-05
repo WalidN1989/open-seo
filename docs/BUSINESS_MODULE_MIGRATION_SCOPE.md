@@ -1421,3 +1421,21 @@ runtime: it rejects `redirect: "error"` before sending a request. TypeSafe itsel
 returned HTTP 200 from the same production container. The provider now uses
 `redirect: "manual"`; any 3xx remains non-success and is rejected before the
 bearer credential can be forwarded.
+
+## Worker memory and restart recovery — 2026-10-05
+
+Branch `fix/worker-memory-leak` fixes the shared Postgres request lifecycle:
+explicitly close pools and clear completed AsyncLocalStorage database references
+after response streams and registered background work finish. Local workerd
+testing retained 43.7 MB after 500 original requests versus 7.7 MB after 5,000
+fixed requests. Details and limitations are in [WORKER_MEMORY_LEAK.md](WORKER_MEMORY_LEAK.md).
+
+The fast ticker exits after six consecutive failures, with startup grace and a
+reset on success. A Node PID 1 supervisor stops the whole container when the
+ticker, server or mail bridge dies. WhatsApp media cleanup and MCP activation
+cache limits are included; no webhook, database migration or provider change
+is required. Existing scheduler cadence and jobs remain intact.
+
+Production deployment and actual Railway ON_FAILURE policy verification remain
+pending merge and owner release approval. The repository already declares that
+policy; the live service has not been modified.

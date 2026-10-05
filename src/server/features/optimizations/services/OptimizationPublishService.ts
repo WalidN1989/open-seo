@@ -1,4 +1,4 @@
-import { waitUntil } from "cloudflare:workers";
+import { waitUntil } from "@/db/background";
 import { and, desc, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { integrationConnections } from "@/db/schema";

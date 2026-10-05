@@ -1,5 +1,5 @@
 /* oxlint-disable max-lines, max-depth, max-params */
-import { waitUntil } from "cloudflare:workers";
+import { waitUntil } from "@/db/background";
 import type { z } from "zod";
 import { BusinessModuleService } from "@/server/features/business-modules/services/BusinessModuleService";
 import { AppError } from "@/server/lib/errors";
