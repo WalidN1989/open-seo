@@ -1437,8 +1437,11 @@ Agent screen.
 
 No schema migration, destructive database cleanup or Azure cloud-resource
 removal is required. Azure Communication Services for the separate 306 SIP
-project is not removed. No deployment has occurred. Production has newer
-unmerged changes recorded in the owner's primary ledger; do not deploy this
-current-main worktree over that runtime without reconciling its source first.
-Release requires the owner's approval after checks and review. Rollback is the
-previous application revision; no database restore is needed.
+project is not removed. No deployment has occurred. Railway CLI verified the actual Open SEO service
+(`14a612e0-57e2-4c19-8928-081886d8fd3d`) currently runs main revision
+`df15ccff6255d79fe3b64e4b9500167de73cabd5`, deployed successfully on October 4
+as `d4c79cea-abd9-4d01-b238-58f76d98647b`. That matches this branch's base and
+supersedes the older October 3 production-source warning. The Railway connector
+is signed into a different workspace; use the locally linked owner CLI for this
+service. Release requires the owner's approval after checks and review. Rollback
+is the previous application revision; no database restore is needed.
