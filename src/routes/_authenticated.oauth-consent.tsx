@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Check, Database, KeyRound, User } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useSession } from "@/lib/auth-client";
 import { captureClientEvent } from "@/client/lib/posthog";
 
@@ -8,18 +8,33 @@ export const Route = createFileRoute("/_authenticated/oauth-consent")({
   component: OAuthConsentPage,
 });
 
-const SCOPES = [
-  {
-    icon: Database,
-    label: "Read your Digital Urgency data",
-    description: "Projects, keyword reports, and audit results.",
+const SCOPE_COPY: Record<string, { label: string; description: string }> = {
+  offline_access: {
+    label: "Stay connected",
+    description: "Refresh access without asking you to sign in every time.",
   },
-  {
-    icon: KeyRound,
-    label: "Act on your behalf via MCP",
-    description: "Run tools and write results back to your workspace.",
+  mcp: {
+    label: "Use Digital Urgency through MCP",
+    description: "Projects, SEO tools, reports, and the existing MCP surface.",
   },
-];
+  "business:read": {
+    label: "Read business and CRM data",
+    description: "Customers, leads, quotes, invoices, messages, and history.",
+  },
+  "business:write": {
+    label: "Edit business data and contact customers",
+    description:
+      "Create and update records, save drafts, and—after your explicit approval—send email, SMS, WhatsApp, or client reports.",
+  },
+  "voice:read": {
+    label: "Read voice-agent data",
+    description: "Agents, calls, transcripts, summaries, and recordings.",
+  },
+  "voice:write": {
+    label: "Edit voice-agent settings",
+    description: "Prompts, greetings, hours, voices, and agent status.",
+  },
+};
 
 function OAuthConsentPage() {
   const { data: session } = useSession();
@@ -27,6 +42,12 @@ function OAuthConsentPage() {
   const [error, setError] = useState<string | null>(null);
 
   const userEmail = session?.user?.email ?? null;
+  const requestedScopes = useMemo(() => {
+    if (typeof window === "undefined") return ["offline_access", "mcp"];
+    const raw = new URLSearchParams(window.location.search).get("scope") ?? "";
+    const scopes = raw.split(/\s+/).filter((scope) => scope in SCOPE_COPY);
+    return scopes.length ? [...new Set(scopes)] : ["offline_access", "mcp"];
+  }, []);
 
   useEffect(() => {
     captureClientEvent("mcp:consent_viewed");
@@ -100,17 +121,23 @@ function OAuthConsentPage() {
           This will allow it to
         </div>
         <ul className="mt-3 space-y-3">
-          {SCOPES.map((scope) => (
-            <li key={scope.label} className="flex gap-3">
-              <Check className="mt-0.5 size-4 shrink-0 text-primary" />
-              <div>
-                <div className="text-sm font-medium">{scope.label}</div>
-                <div className="text-xs text-base-content/60">
-                  {scope.description}
+          {requestedScopes.map((scopeName) => {
+            const scope = SCOPE_COPY[scopeName];
+            const Icon = scopeName === "mcp" ? KeyRound : Database;
+            return (
+              <li key={scopeName} className="flex gap-3">
+                <Check className="mt-0.5 size-4 shrink-0 text-primary" />
+                <div>
+                  <div className="flex items-center gap-1.5 text-sm font-medium">
+                    <Icon className="size-3.5" /> {scope.label}
+                  </div>
+                  <div className="text-xs text-base-content/60">
+                    {scope.description}
+                  </div>
                 </div>
-              </div>
-            </li>
-          ))}
+              </li>
+            );
+          })}
         </ul>
       </div>
 

@@ -95,6 +95,7 @@ import { Route as ProjectPProjectIdOptimizationsIndexRouteImport } from './route
 import { Route as ProjectPProjectIdCompetitorsIndexRouteImport } from './routes/_project/p/$projectId/competitors/index'
 import { Route as ProjectPProjectIdAuditIndexRouteImport } from './routes/_project/p/$projectId/audit/index'
 import { Route as AppModulesCrmProductsIndexRouteImport } from './routes/_app/modules/crm/products.index'
+import { Route as ApiVoiceCallsCallIdRecordingRouteImport } from './routes/api/voice/calls/$callId/recording'
 import { Route as ApiEmailAttachmentsMessageIdAttachmentIdRouteImport } from './routes/api/email/attachments/$messageId/$attachmentId'
 import { Route as ProjectPProjectIdSettingsIntegrationsRouteImport } from './routes/_project/p/$projectId/settings/integrations'
 import { Route as ProjectPProjectIdSettingsContextRouteImport } from './routes/_project/p/$projectId/settings/context'
@@ -554,6 +555,12 @@ const AppModulesCrmProductsIndexRoute =
     path: '/',
     getParentRoute: () => AppModulesCrmProductsRoute,
   } as any)
+const ApiVoiceCallsCallIdRecordingRoute =
+  ApiVoiceCallsCallIdRecordingRouteImport.update({
+    id: '/api/voice/calls/$callId/recording',
+    path: '/api/voice/calls/$callId/recording',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiEmailAttachmentsMessageIdAttachmentIdRoute =
   ApiEmailAttachmentsMessageIdAttachmentIdRouteImport.update({
     id: '/api/email/attachments/$messageId/$attachmentId',
@@ -673,6 +680,7 @@ export interface FileRoutesByFullPath {
   '/p/$projectId/settings/context': typeof ProjectPProjectIdSettingsContextRoute
   '/p/$projectId/settings/integrations': typeof ProjectPProjectIdSettingsIntegrationsRoute
   '/api/email/attachments/$messageId/$attachmentId': typeof ApiEmailAttachmentsMessageIdAttachmentIdRoute
+  '/api/voice/calls/$callId/recording': typeof ApiVoiceCallsCallIdRecordingRoute
   '/modules/crm/products/': typeof AppModulesCrmProductsIndexRoute
   '/p/$projectId/audit/': typeof ProjectPProjectIdAuditIndexRoute
   '/p/$projectId/competitors/': typeof ProjectPProjectIdCompetitorsIndexRoute
@@ -755,6 +763,7 @@ export interface FileRoutesByTo {
   '/p/$projectId/settings/context': typeof ProjectPProjectIdSettingsContextRoute
   '/p/$projectId/settings/integrations': typeof ProjectPProjectIdSettingsIntegrationsRoute
   '/api/email/attachments/$messageId/$attachmentId': typeof ApiEmailAttachmentsMessageIdAttachmentIdRoute
+  '/api/voice/calls/$callId/recording': typeof ApiVoiceCallsCallIdRecordingRoute
   '/modules/crm/products': typeof AppModulesCrmProductsIndexRoute
   '/p/$projectId/audit': typeof ProjectPProjectIdAuditIndexRoute
   '/p/$projectId/competitors': typeof ProjectPProjectIdCompetitorsIndexRoute
@@ -850,6 +859,7 @@ export interface FileRoutesById {
   '/_project/p/$projectId/settings/context': typeof ProjectPProjectIdSettingsContextRoute
   '/_project/p/$projectId/settings/integrations': typeof ProjectPProjectIdSettingsIntegrationsRoute
   '/api/email/attachments/$messageId/$attachmentId': typeof ApiEmailAttachmentsMessageIdAttachmentIdRoute
+  '/api/voice/calls/$callId/recording': typeof ApiVoiceCallsCallIdRecordingRoute
   '/_app/modules/crm/products/': typeof AppModulesCrmProductsIndexRoute
   '/_project/p/$projectId/audit/': typeof ProjectPProjectIdAuditIndexRoute
   '/_project/p/$projectId/competitors/': typeof ProjectPProjectIdCompetitorsIndexRoute
@@ -942,6 +952,7 @@ export interface FileRouteTypes {
     | '/p/$projectId/settings/context'
     | '/p/$projectId/settings/integrations'
     | '/api/email/attachments/$messageId/$attachmentId'
+    | '/api/voice/calls/$callId/recording'
     | '/modules/crm/products/'
     | '/p/$projectId/audit/'
     | '/p/$projectId/competitors/'
@@ -1024,6 +1035,7 @@ export interface FileRouteTypes {
     | '/p/$projectId/settings/context'
     | '/p/$projectId/settings/integrations'
     | '/api/email/attachments/$messageId/$attachmentId'
+    | '/api/voice/calls/$callId/recording'
     | '/modules/crm/products'
     | '/p/$projectId/audit'
     | '/p/$projectId/competitors'
@@ -1118,6 +1130,7 @@ export interface FileRouteTypes {
     | '/_project/p/$projectId/settings/context'
     | '/_project/p/$projectId/settings/integrations'
     | '/api/email/attachments/$messageId/$attachmentId'
+    | '/api/voice/calls/$callId/recording'
     | '/_app/modules/crm/products/'
     | '/_project/p/$projectId/audit/'
     | '/_project/p/$projectId/competitors/'
@@ -1158,6 +1171,7 @@ export interface RootRouteChildren {
   ApiVoiceElevenlabsCallerConnectionIdRoute: typeof ApiVoiceElevenlabsCallerConnectionIdRoute
   ApiVoiceElevenlabsConnectionIdRoute: typeof ApiVoiceElevenlabsConnectionIdRoute
   ApiEmailAttachmentsMessageIdAttachmentIdRoute: typeof ApiEmailAttachmentsMessageIdAttachmentIdRoute
+  ApiVoiceCallsCallIdRecordingRoute: typeof ApiVoiceCallsCallIdRecordingRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -1764,6 +1778,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppModulesCrmProductsIndexRouteImport
       parentRoute: typeof AppModulesCrmProductsRoute
     }
+    '/api/voice/calls/$callId/recording': {
+      id: '/api/voice/calls/$callId/recording'
+      path: '/api/voice/calls/$callId/recording'
+      fullPath: '/api/voice/calls/$callId/recording'
+      preLoaderRoute: typeof ApiVoiceCallsCallIdRecordingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/email/attachments/$messageId/$attachmentId': {
       id: '/api/email/attachments/$messageId/$attachmentId'
       path: '/api/email/attachments/$messageId/$attachmentId'
@@ -2107,6 +2128,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiVoiceElevenlabsConnectionIdRoute: ApiVoiceElevenlabsConnectionIdRoute,
   ApiEmailAttachmentsMessageIdAttachmentIdRoute:
     ApiEmailAttachmentsMessageIdAttachmentIdRoute,
+  ApiVoiceCallsCallIdRecordingRoute: ApiVoiceCallsCallIdRecordingRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

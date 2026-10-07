@@ -1,3 +1,4 @@
+/* oxlint-disable max-lines */
 import { z } from "zod";
 import { formatMoney } from "@/server/features/invoicing/invoiceTotals";
 import { QuoteFlowService } from "@/server/features/quotes/services/QuoteFlowService";
@@ -6,6 +7,7 @@ import { AppError } from "@/server/lib/errors";
 import { mcpResponse } from "@/server/mcp/formatters";
 import type { McpModuleSurface } from "@/server/mcp/module-registry";
 import { withMcpOrganizationAuth } from "@/server/mcp/organization-auth";
+import { setMcpWriteAudit } from "@/server/mcp/context";
 import {
   looseObjectOutputSchema,
   optionalMetaOutputSchema,
@@ -214,11 +216,6 @@ const lineSchema = z.object({
 
 const draftInput = {
   organizationId: organizationIdSchema,
-  quoteId: z
-    .string()
-    .min(1)
-    .optional()
-    .describe("Pass to revise an existing draft; omit to create one."),
   leadId: z
     .string()
     .min(1)
@@ -239,7 +236,9 @@ const draftInput = {
   lines: z.array(lineSchema).min(1).max(50),
 } as const;
 
-type DraftArgs = z.infer<z.ZodObject<typeof draftInput>>;
+type DraftArgs = z.infer<z.ZodObject<typeof draftInput>> & {
+  quoteId?: string;
+};
 
 async function resolveLines(
   organizationId: string,
@@ -280,12 +279,59 @@ async function resolveLines(
   });
 }
 
+type QuoteAuthContext = Parameters<
+  Parameters<typeof withMcpOrganizationAuth<DraftArgs, unknown>>[0]
+>[1];
+
+async function saveQuoteDraft(args: DraftArgs, context: QuoteAuthContext) {
+  const { organizationId } = context;
+  const userId = context.auth.userId;
+  const prefill = args.leadId
+    ? await QuoteFlowService.prefillFromLead(
+        organizationId,
+        userId,
+        args.leadId,
+      )
+    : null;
+  const workspace = await QuoteService.workspace(organizationId, userId);
+  const clientName = args.clientName ?? prefill?.clientName;
+  if (!clientName) {
+    throw new AppError(
+      "VALIDATION_ERROR",
+      "Give a clientName, or a leadId to take it from.",
+    );
+  }
+  const issueDate = new Date().toISOString().slice(0, 10);
+  const quote = await QuoteService.save(organizationId, userId, {
+    quoteId: args.quoteId ?? null,
+    leadId: args.leadId ?? null,
+    title: args.title ?? prefill?.title ?? null,
+    clientName,
+    clientEmail: args.clientEmail ?? prefill?.clientEmail ?? null,
+    clientAddressLines: args.clientAddressLines ?? null,
+    currency: prefill?.currency ?? workspace.settings.defaultCurrency,
+    issueDate,
+    validUntil:
+      args.validUntil ??
+      prefill?.validUntil ??
+      new Date(Date.now() + workspace.settings.quoteValidityDays * 86_400_000)
+        .toISOString()
+        .slice(0, 10),
+    notes: args.notes ?? null,
+    lines: await resolveLines(organizationId, userId, args.lines),
+  });
+  return mcpResponse({
+    text: `Draft ${quote.number} for ${quote.clientName} — ${formatMoney(quote.totalMinor, quote.currency)}. A person still has to review and send it.`,
+    structuredContent: { quote },
+  });
+}
+
 const draftQuoteTool = {
   name: "draft_quote",
   config: {
-    title: "Create or revise a quote draft",
+    title: "Create a quote draft",
     description:
-      "Writes a DRAFT quote a person then reviews and sends. With leadId, the client details come from the CRM lead and the quote shows on that lead. Lines can reference catalogue items by productId. There is no tool to send a quote, record the client's answer, or convert it to an invoice.",
+      "Creates a DRAFT quote a person then reviews and sends. With leadId, the client details come from the CRM lead and the quote shows on that lead. Lines can reference catalogue items by productId. There is no tool to send a quote, record the client's answer, or convert it to an invoice.",
     inputSchema: draftInput,
     outputSchema: {
       quote: looseObjectOutputSchema,
@@ -297,48 +343,41 @@ const draftQuoteTool = {
       destructiveHint: false,
     },
   },
-  handler: withMcpOrganizationAuth(async (args: DraftArgs, context) => {
-    const { organizationId } = context;
-    const userId = context.auth.userId;
-    const prefill = args.leadId
-      ? await QuoteFlowService.prefillFromLead(
-          organizationId,
-          userId,
-          args.leadId,
-        )
-      : null;
-    const workspace = await QuoteService.workspace(organizationId, userId);
-    const clientName = args.clientName ?? prefill?.clientName;
-    if (!clientName) {
-      throw new AppError(
-        "VALIDATION_ERROR",
-        "Give a clientName, or a leadId to take it from.",
+  handler: withMcpOrganizationAuth(saveQuoteDraft),
+};
+
+const updateQuoteDraftTool = {
+  ...draftQuoteTool,
+  name: "update_quote_draft",
+  config: {
+    ...draftQuoteTool.config,
+    title: "Update quote draft",
+    description:
+      "Updates an existing draft quote only. Issued quotes remain locked, and this tool never sends a quote.",
+    inputSchema: { ...draftInput, quoteId: z.string().min(1) },
+  },
+  handler: withMcpOrganizationAuth(
+    async (args: DraftArgs & { quoteId: string }, context) => {
+      const before = await QuoteService.detail(
+        context.organizationId,
+        context.auth.userId,
+        args.quoteId,
       );
-    }
-    const issueDate = new Date().toISOString().slice(0, 10);
-    const quote = await QuoteService.save(organizationId, userId, {
-      quoteId: args.quoteId ?? null,
-      leadId: args.leadId ?? null,
-      title: args.title ?? prefill?.title ?? null,
-      clientName,
-      clientEmail: args.clientEmail ?? prefill?.clientEmail ?? null,
-      clientAddressLines: args.clientAddressLines ?? null,
-      currency: prefill?.currency ?? workspace.settings.defaultCurrency,
-      issueDate,
-      validUntil:
-        args.validUntil ??
-        prefill?.validUntil ??
-        new Date(Date.now() + workspace.settings.quoteValidityDays * 86_400_000)
-          .toISOString()
-          .slice(0, 10),
-      notes: args.notes ?? null,
-      lines: await resolveLines(organizationId, userId, args.lines),
-    });
-    return mcpResponse({
-      text: `Draft ${quote.number} for ${quote.clientName} — ${formatMoney(quote.totalMinor, quote.currency)}. A person still has to review and send it.`,
-      structuredContent: { quote },
-    });
-  }),
+      const response = await saveQuoteDraft(args, context);
+      const after = await QuoteService.detail(
+        context.organizationId,
+        context.auth.userId,
+        args.quoteId,
+      );
+      setMcpWriteAudit(context, {
+        targetType: "quote",
+        targetId: args.quoteId,
+        before,
+        after,
+      });
+      return response;
+    },
+  ),
 };
 
 const documentInput = {
@@ -386,6 +425,12 @@ const getQuoteDocumentTool = {
 };
 
 export const quoteSurface: McpModuleSurface = {
+  access: {
+    readScope: "business:read",
+    writeScope: "business:write",
+    legacyCompatible: true,
+    strictTools: ["update_quote_draft"],
+  },
   key: "quotes",
   scope: "organization",
   summary:
@@ -395,6 +440,7 @@ export const quoteSurface: McpModuleSurface = {
     listQuotesTool,
     getQuoteTool,
     draftQuoteTool,
+    updateQuoteDraftTool,
     getQuoteDocumentTool,
   ],
   withheld: [

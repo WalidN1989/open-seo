@@ -8,6 +8,7 @@
  */
 import type {
   McpModuleSurface,
+  McpToolAccessPolicy,
   McpToolLike,
 } from "@/server/mcp/module-registry";
 import { addRankTrackingKeywordsTool } from "@/server/mcp/tools/add-rank-tracking-keywords";
@@ -15,7 +16,9 @@ import { createProjectTool } from "@/server/mcp/tools/create-project";
 import { createRankTrackerTool } from "@/server/mcp/tools/create-rank-tracker";
 import { commerceSurface } from "@/server/mcp/tools/branch-stock-tools";
 import { crmSurface } from "@/server/mcp/tools/crm-tools";
+import { crmWriteSurface } from "@/server/mcp/tools/crm-write-tools";
 import { emailSurface } from "@/server/mcp/tools/email-tools";
+import { draftWriteSurface } from "@/server/mcp/tools/draft-write-tools";
 import { estimateRankTrackerCostTool } from "@/server/mcp/tools/estimate-rank-tracker-cost";
 import {
   findSerpCompetitorsTool,
@@ -77,17 +80,21 @@ import { saveKeywordsTool } from "@/server/mcp/tools/save-keywords";
 import { smsSurface } from "@/server/mcp/tools/sms-tools";
 import { whatsappSurface } from "@/server/mcp/tools/whatsapp-tools";
 import { whoamiTool } from "@/server/mcp/tools/whoami";
+import { voiceSurface } from "@/server/mcp/tools/voice-tools";
 
 export const MODULE_SURFACES: readonly McpModuleSurface[] = [
   optimizationsSurface,
   invoiceSurface,
   quoteSurface,
   crmSurface,
+  crmWriteSurface,
   commerceSurface,
   reportSurface,
   emailSurface,
+  draftWriteSurface,
   smsSurface,
   whatsappSurface,
+  voiceSurface,
 ];
 
 export const ALL_MCP_TOOLS: readonly McpToolLike[] = [
@@ -139,3 +146,34 @@ export const ALL_MCP_TOOLS: readonly McpToolLike[] = [
   getAuditPagesTool,
   ...MODULE_SURFACES.flatMap((surface) => surface.tools),
 ];
+
+function isReadOnlyTool(tool: McpToolLike) {
+  const annotations = tool.config.annotations;
+  return (
+    typeof annotations === "object" &&
+    annotations !== null &&
+    "readOnlyHint" in annotations &&
+    annotations.readOnlyHint === true
+  );
+}
+
+/** Scope policy for Business-module tools; SEO tools intentionally have none. */
+export const MCP_TOOL_ACCESS = new Map<string, McpToolAccessPolicy>(
+  MODULE_SURFACES.flatMap((surface) =>
+    surface.tools.map((tool) => {
+      const readOnly = isReadOnlyTool(tool);
+      return [
+        tool.name,
+        {
+          scope: readOnly
+            ? surface.access.readScope
+            : surface.access.writeScope,
+          legacyCompatible:
+            surface.access.legacyCompatible &&
+            !surface.access.strictTools?.includes(tool.name),
+          tenantScope: surface.scope,
+        },
+      ] as const;
+    }),
+  ),
+);

@@ -59,6 +59,10 @@ import {
   runIntegrationAction,
 } from "@/serverFunctions/communications";
 import {
+  approveCommunicationDraft,
+  rejectCommunicationDraft,
+} from "@/serverFunctions/communication-drafts";
+import {
   deleteWhatsappTemplate,
   refreshWhatsappTemplate,
 } from "@/serverFunctions/communications-admin";
@@ -334,6 +338,24 @@ export function WhatsappWorkspace({
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: ["whatsapp"] });
       toast.success("Message sent");
+    },
+    onError: showError,
+  });
+  const approveAgentDraft = useMutation({
+    mutationFn: (draftId: string) =>
+      approveCommunicationDraft({ data: { draftId } }),
+    onSuccess: async () => {
+      await client.invalidateQueries({ queryKey: ["whatsapp"] });
+      toast.success("Draft approved and sent");
+    },
+    onError: showError,
+  });
+  const rejectAgentDraft = useMutation({
+    mutationFn: (draftId: string) =>
+      rejectCommunicationDraft({ data: { draftId } }),
+    onSuccess: async () => {
+      await client.invalidateQueries({ queryKey: ["whatsapp"] });
+      toast.success("Draft rejected");
     },
     onError: showError,
   });
@@ -625,6 +647,48 @@ export function WhatsappWorkspace({
           <Settings2 className="size-4" /> Settings
         </button>
       </nav>
+      {data.drafts.length ? (
+        <section className="mx-4 mt-4 rounded-xl border border-warning/40 bg-warning/10 p-4">
+          <h2 className="text-sm font-semibold">
+            Agent drafts awaiting approval
+          </h2>
+          <div className="mt-2 grid gap-2 md:grid-cols-2">
+            {data.drafts.map((draft) => (
+              <div
+                key={draft.id}
+                className="rounded-lg bg-base-100 p-3 text-sm"
+              >
+                <div className="font-medium">To {draft.recipient}</div>
+                <p className="mt-1 whitespace-pre-wrap text-base-content/70">
+                  {draft.body}
+                </p>
+                <div className="mt-3 flex gap-2">
+                  <button
+                    type="button"
+                    className="btn btn-primary btn-xs"
+                    disabled={
+                      approveAgentDraft.isPending || rejectAgentDraft.isPending
+                    }
+                    onClick={() => approveAgentDraft.mutate(draft.id)}
+                  >
+                    Approve & send
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-xs"
+                    disabled={
+                      approveAgentDraft.isPending || rejectAgentDraft.isPending
+                    }
+                    onClick={() => rejectAgentDraft.mutate(draft.id)}
+                  >
+                    Reject
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      ) : null}
       <div className={isSettings ? "wa-settings-layout" : "wa-content"}>
         {isSettings ? (
           <aside className="wa-settings-nav" aria-label="WhatsApp settings">

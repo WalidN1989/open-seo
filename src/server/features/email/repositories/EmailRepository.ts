@@ -1,3 +1,4 @@
+/* oxlint-disable max-lines */
 import { and, desc, eq, isNull } from "drizzle-orm";
 import { db } from "@/db";
 import { emailPerformance } from "@/server/features/performance/repositories/email";
@@ -347,6 +348,7 @@ async function draftOnThread(organizationId: string, threadId: string) {
         eq(emailMessages.organizationId, organizationId),
         eq(emailMessages.threadId, threadId),
         eq(emailMessages.direction, "draft"),
+        eq(emailMessages.status, "draft"),
         isNull(emailMessages.externalMessageId),
       ),
     )
@@ -371,6 +373,7 @@ async function listDrafts(organizationId: string) {
       and(
         eq(emailMessages.organizationId, organizationId),
         eq(emailMessages.direction, "draft"),
+        eq(emailMessages.status, "draft"),
         isNull(emailMessages.externalMessageId),
       ),
     )

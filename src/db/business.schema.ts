@@ -193,6 +193,9 @@ export const crmLeads = sqliteTable(
     priority: text("priority", { enum: ["low", "medium", "high", "urgent"] })
       .notNull()
       .default("medium"),
+    temperature: text("temperature", {
+      enum: ["cold", "warm", "hot"],
+    }),
     valueCents: integer("value_cents").notNull().default(0),
     leadScore: integer("lead_score").notNull().default(0),
     nextAction: text("next_action"),
@@ -338,6 +341,10 @@ export const crmActivities = sqliteTable(
     outcome: text("outcome"),
     occurredAt: text("occurred_at").notNull(),
     createdAt: createdAt(),
+    updatedAt: text("updated_at")
+      .notNull()
+      .default(sql`(current_timestamp)`),
+    deletedAt: text("deleted_at"),
   },
   (table) => [
     index("crm_activities_org_occurred_idx").on(
@@ -983,6 +990,11 @@ export const voiceAgentConfigs = sqliteTable(
       .notNull()
       .references(() => organization.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
+    prompt: text("prompt"),
+    greeting: text("greeting"),
+    businessHoursJson: text("business_hours_json").notNull().default("{}"),
+    voice: text("voice"),
+    phoneNumber: text("phone_number"),
     speechToTextProvider: text("speech_to_text_provider"),
     textToSpeechProvider: text("text_to_speech_provider"),
     modelProvider: text("model_provider"),
@@ -995,6 +1007,30 @@ export const voiceAgentConfigs = sqliteTable(
       .default(sql`(current_timestamp)`),
   },
   (table) => [index("voice_agent_configs_org_idx").on(table.organizationId)],
+);
+
+export const voiceAgentVersions = sqliteTable(
+  "voice_agent_versions",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    agentConfigId: text("agent_config_id")
+      .notNull()
+      .references(() => voiceAgentConfigs.id, { onDelete: "cascade" }),
+    version: integer("version").notNull(),
+    snapshotJson: text("snapshot_json").notNull(),
+    createdByUserId: text("created_by_user_id").notNull(),
+    createdAt: createdAt(),
+  },
+  (table) => [
+    uniqueIndex("voice_agent_versions_agent_version_idx").on(
+      table.agentConfigId,
+      table.version,
+    ),
+    index("voice_agent_versions_org_idx").on(table.organizationId),
+  ],
 );
 
 /** Durable, tenant-safe lessons mined from an agent's own conversations. */
@@ -1813,6 +1849,33 @@ export const emailMessages = sqliteTable(
     ),
     index("email_messages_thread_idx").on(table.threadId, table.occurredAt),
     index("email_messages_org_status_idx").on(
+      table.organizationId,
+      table.status,
+    ),
+  ],
+);
+
+export const communicationDrafts = sqliteTable(
+  "communication_drafts",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    channel: text("channel", { enum: ["whatsapp", "sms"] }).notNull(),
+    conversationId: text("conversation_id"),
+    recipient: text("recipient").notNull(),
+    body: text("body").notNull(),
+    status: text("status").notNull().default("draft"),
+    authoredBy: text("authored_by").notNull(),
+    createdAt: createdAt(),
+    updatedAt: text("updated_at")
+      .notNull()
+      .default(sql`(current_timestamp)`),
+    deletedAt: text("deleted_at"),
+  },
+  (table) => [
+    index("communication_drafts_org_status_idx").on(
       table.organizationId,
       table.status,
     ),

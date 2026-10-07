@@ -1,3 +1,4 @@
+/* oxlint-disable max-lines */
 import { z } from "zod";
 import { BriefingService } from "@/server/features/crm/services/BriefingService";
 import { CrmService } from "@/server/features/crm/services/CrmService";
@@ -70,6 +71,9 @@ const listLeadsTool = {
         .map((row) => ({
           id: row.lead.id,
           title: row.lead.title,
+          contactId: row.contact?.id ?? null,
+          companyId: row.company?.id ?? null,
+          stageId: row.stage?.id ?? null,
           company: row.company?.name ?? null,
           contact: row.contact
             ? [row.contact.firstName, row.contact.lastName]
@@ -155,6 +159,9 @@ const getLeadTool = {
         title: detail.lead.title,
         status: detail.lead.status,
         priority: detail.lead.priority,
+        contactId: detail.contact?.id ?? null,
+        companyId: detail.company?.id ?? null,
+        stageId: detail.stage?.id ?? null,
         stage: detail.stage?.name ?? null,
         nextAction: detail.lead.nextAction,
         nextActionDue: detail.lead.nextActionDue,
@@ -172,12 +179,14 @@ const getLeadTool = {
           : null,
       };
       const journal = detail.activities.slice(0, 20).map((entry) => ({
+        id: entry.id,
         at: entry.occurredAt,
         type: entry.activityType,
         subject: entry.subject,
         notes: entry.notes?.slice(0, 600) ?? null,
         outcome: entry.outcome,
         byPerson: Boolean(entry.createdByMemberId),
+        editableByCaller: entry.createdByMemberId === detail.callerMemberId,
       }));
       const quotes = quoteList.quotes.map((quote) => ({
         id: quote.id,
@@ -378,6 +387,11 @@ const businessBriefingTool = {
 };
 
 export const crmSurface: McpModuleSurface = {
+  access: {
+    readScope: "business:read",
+    writeScope: "business:write",
+    legacyCompatible: true,
+  },
   key: "leads",
   scope: "organization",
   summary:

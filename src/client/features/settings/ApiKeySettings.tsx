@@ -1,12 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Trash2 } from "lucide-react";
 import { useState } from "react";
+import { z } from "zod";
 import { toast } from "sonner";
 import { PortalMenu } from "@/client/components/PortalMenu";
 import { CopyButton } from "@/client/features/ai-mcp/SetupControls";
 import { getStandardErrorMessage } from "@/client/lib/error-messages";
 import { captureClientEvent } from "@/client/lib/posthog";
 import { authClient } from "@/lib/auth-client";
+import { updateApiKeyMcpScopes } from "@/serverFunctions/api-keys";
+import { MCP_ACCESS_SCOPES } from "@/lib/oauth-resource";
 
 // Better Auth rejects longer names with INVALID_NAME_LENGTH.
 const MAX_KEY_NAME_LENGTH = 32;
@@ -29,13 +32,25 @@ export function ApiKeySettings() {
       if (result.error) {
         throw new Error(result.error.message ?? "Failed to load API keys");
       }
-      return result.data.apiKeys.map((key) => ({
-        id: key.id,
-        name: key.name,
-        start: key.start,
-        createdAt: new Date(key.createdAt),
-        lastRequest: key.lastRequest ? new Date(key.lastRequest) : null,
-      }));
+      return result.data.apiKeys.map((key) => {
+        const permissions = z
+          .object({ mcpScopes: z.array(z.string()).optional() })
+          .passthrough()
+          .safeParse(key.permissions);
+        const scopes = (
+          permissions.success ? (permissions.data.mcpScopes ?? []) : []
+        ).flatMap((scope) =>
+          MCP_ACCESS_SCOPES.filter((allowed) => allowed === scope),
+        );
+        return {
+          id: key.id,
+          name: key.name,
+          start: key.start,
+          createdAt: new Date(key.createdAt),
+          lastRequest: key.lastRequest ? new Date(key.lastRequest) : null,
+          scopes,
+        };
+      });
     },
   });
 
@@ -73,6 +88,21 @@ export function ApiKeySettings() {
     onError: (error) => {
       toast.error(getStandardErrorMessage(error));
     },
+  });
+
+  const scopesMutation = useMutation({
+    mutationFn: ({
+      keyId,
+      scopes,
+    }: {
+      keyId: string;
+      scopes: (typeof MCP_ACCESS_SCOPES)[number][];
+    }) => updateApiKeyMcpScopes({ data: { keyId, scopes } }),
+    onSuccess: () => {
+      toast.success("API key access updated");
+      void queryClient.invalidateQueries({ queryKey: ["apiKeys"] });
+    },
+    onError: (error) => toast.error(getStandardErrorMessage(error)),
   });
 
   const apiKeys = apiKeysQuery.data ?? [];
@@ -125,6 +155,7 @@ export function ApiKeySettings() {
                 <th>Name</th>
                 <th>Key</th>
                 <th>Created</th>
+                <th>Business and voice access</th>
                 <th>Last used</th>
                 <th className="w-10"></th>
               </tr>
@@ -143,6 +174,30 @@ export function ApiKeySettings() {
                   </td>
                   <td className="text-xs text-base-content/70">
                     {key.createdAt.toLocaleDateString()}
+                  </td>
+                  <td>
+                    <div className="flex flex-wrap gap-x-3 gap-y-1">
+                      {MCP_ACCESS_SCOPES.map((scope) => (
+                        <label
+                          key={scope}
+                          className="label cursor-pointer gap-1.5 p-0 text-xs"
+                        >
+                          <input
+                            type="checkbox"
+                            className="checkbox checkbox-xs"
+                            checked={key.scopes.includes(scope)}
+                            disabled={scopesMutation.isPending}
+                            onChange={(event) => {
+                              const scopes = event.currentTarget.checked
+                                ? [...key.scopes, scope]
+                                : key.scopes.filter((item) => item !== scope);
+                              scopesMutation.mutate({ keyId: key.id, scopes });
+                            }}
+                          />
+                          <span>{scope}</span>
+                        </label>
+                      ))}
+                    </div>
                   </td>
                   <td className="text-xs text-base-content/70">
                     {key.lastRequest

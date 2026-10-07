@@ -49,6 +49,7 @@ async function requireProjectAccess(
     // The row is already fetched for the auth gate; exposing it lets tools
     // fall back to the project's default market without another query.
     project,
+    writeAudit: toolContext.writeAudit,
   };
 }
 

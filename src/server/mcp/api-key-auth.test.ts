@@ -1,6 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { MCP_AUTH_CONTEXT_PROP } from "@/server/mcp/context";
-import { MCP_OAUTH_SCOPES } from "@/lib/oauth-resource";
 import type { handleAuthenticatedOpenSeoMcpRequest } from "@/server/mcp/transport";
 
 const mocks = vi.hoisted(() => ({
@@ -100,7 +99,7 @@ describe("handleMcpApiKeyRequest", () => {
         userId: "user-1",
         userEmail: "person@example.com",
         organizationId: "org-1",
-        scopes: [...MCP_OAUTH_SCOPES],
+        scopes: ["mcp"],
         clientId: "api_key",
         baseUrl: "https://app.openseo.so",
       },

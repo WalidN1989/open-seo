@@ -4,7 +4,7 @@ import {
   type ToolAnnotations,
 } from "@modelcontextprotocol/server";
 import type { z } from "zod";
-import { ALL_MCP_TOOLS } from "@/server/mcp/catalogue";
+import { ALL_MCP_TOOLS, MCP_TOOL_ACCESS } from "@/server/mcp/catalogue";
 import {
   createMcpToolContext,
   type McpProps,
@@ -55,6 +55,7 @@ function registerOpenSeoTool<Input extends ToolSchema>(
     tool.name,
     outputSchema,
     tool.handler,
+    MCP_TOOL_ACCESS.get(tool.name),
   );
 
   server.registerTool(

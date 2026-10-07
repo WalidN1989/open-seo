@@ -37,6 +37,7 @@ function analystRules(agentName: string, analystContext: string) {
 /** Everything the agent is told before it answers, in one place. */
 function systemPrompt(input: {
   agentName: string;
+  agentInstructions?: string | null;
   businessContext?: string | null;
   analystContext?: string | null;
 }) {
@@ -55,7 +56,12 @@ function systemPrompt(input: {
     input.businessContext?.trim()
       ? `Trusted platform and organization context:\n${input.businessContext.trim()}`
       : "No trusted organization facts are available.",
-  ].join("\n\n");
+    input.agentInstructions?.trim()
+      ? `Workspace-approved agent instructions:\n${input.agentInstructions.trim()}`
+      : null,
+  ]
+    .filter(Boolean)
+    .join("\n\n");
 }
 
 type Message = {
@@ -75,6 +81,7 @@ function historyMessages(history: VoiceHistory[]): Message[] {
 
 type VoiceReplyInput = {
   agentName: string;
+  agentInstructions?: string | null;
   credentialReference: string | null;
   history: VoiceHistory[];
   businessContext?: string | null;

@@ -153,6 +153,11 @@ const sendSmsTool = {
 };
 
 export const smsSurface: McpModuleSurface = {
+  access: {
+    readScope: "business:read",
+    writeScope: "business:write",
+    legacyCompatible: true,
+  },
   key: "sms",
   scope: "organization",
   summary:

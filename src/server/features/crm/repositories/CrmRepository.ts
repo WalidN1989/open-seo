@@ -1,5 +1,5 @@
 /* oxlint-disable max-lines */
-import { and, asc, desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq, isNull } from "drizzle-orm";
 import { db } from "@/db";
 import { leadPerformance } from "@/server/features/performance/repositories/operations";
 import {
@@ -245,6 +245,38 @@ async function createContact(
   return row;
 }
 
+async function getContact(organizationId: string, id: string) {
+  const [row] = await db
+    .select()
+    .from(crmContacts)
+    .where(
+      and(
+        eq(crmContacts.organizationId, organizationId),
+        eq(crmContacts.id, id),
+      ),
+    )
+    .limit(1);
+  return row ?? null;
+}
+
+async function updateContact(
+  organizationId: string,
+  id: string,
+  patch: Partial<CreateContactInput>,
+) {
+  const [row] = await db
+    .update(crmContacts)
+    .set({ ...patch, updatedAt: new Date().toISOString() })
+    .where(
+      and(
+        eq(crmContacts.organizationId, organizationId),
+        eq(crmContacts.id, id),
+      ),
+    )
+    .returning();
+  return row ?? null;
+}
+
 async function findContactByEmail(organizationId: string, email: string) {
   const [row] = await db
     .select()
@@ -297,6 +329,38 @@ async function createCompany(
   return row;
 }
 
+async function getCompany(organizationId: string, id: string) {
+  const [row] = await db
+    .select()
+    .from(crmCompanies)
+    .where(
+      and(
+        eq(crmCompanies.organizationId, organizationId),
+        eq(crmCompanies.id, id),
+      ),
+    )
+    .limit(1);
+  return row ?? null;
+}
+
+async function updateCompany(
+  organizationId: string,
+  id: string,
+  patch: Partial<CreateCompanyInput>,
+) {
+  const [row] = await db
+    .update(crmCompanies)
+    .set({ ...patch, updatedAt: new Date().toISOString() })
+    .where(
+      and(
+        eq(crmCompanies.organizationId, organizationId),
+        eq(crmCompanies.id, id),
+      ),
+    )
+    .returning();
+  return row ?? null;
+}
+
 async function listActivities(organizationId: string, leadId: string) {
   return db
     .select()
@@ -305,9 +369,67 @@ async function listActivities(organizationId: string, leadId: string) {
       and(
         eq(crmActivities.organizationId, organizationId),
         eq(crmActivities.leadId, leadId),
+        isNull(crmActivities.deletedAt),
       ),
     )
     .orderBy(desc(crmActivities.occurredAt));
+}
+
+async function getActivity(organizationId: string, id: string) {
+  const [row] = await db
+    .select()
+    .from(crmActivities)
+    .where(
+      and(
+        eq(crmActivities.organizationId, organizationId),
+        eq(crmActivities.id, id),
+        isNull(crmActivities.deletedAt),
+      ),
+    )
+    .limit(1);
+  return row ?? null;
+}
+
+async function updateOwnedActivity(
+  organizationId: string,
+  memberId: string,
+  id: string,
+  values: { notes?: string; outcome?: string | null; occurredAt?: string },
+) {
+  const [row] = await db
+    .update(crmActivities)
+    .set({ ...values, updatedAt: new Date().toISOString() })
+    .where(
+      and(
+        eq(crmActivities.organizationId, organizationId),
+        eq(crmActivities.createdByMemberId, memberId),
+        eq(crmActivities.id, id),
+        isNull(crmActivities.deletedAt),
+      ),
+    )
+    .returning();
+  return row ?? null;
+}
+
+async function softDeleteOwnedActivity(
+  organizationId: string,
+  memberId: string,
+  id: string,
+) {
+  const at = new Date().toISOString();
+  const [row] = await db
+    .update(crmActivities)
+    .set({ deletedAt: at, updatedAt: at })
+    .where(
+      and(
+        eq(crmActivities.organizationId, organizationId),
+        eq(crmActivities.createdByMemberId, memberId),
+        eq(crmActivities.id, id),
+        isNull(crmActivities.deletedAt),
+      ),
+    )
+    .returning();
+  return row ?? null;
 }
 
 async function createActivity(
@@ -425,10 +547,15 @@ async function createMeeting(
 }
 
 export const CrmRepository = {
+  getActivity,
+  updateOwnedActivity,
+  softDeleteOwnedActivity,
   getPerformance: leadPerformance,
   createActivity,
   createCompany,
   createContact,
+  getContact,
+  updateContact,
   createInquiry,
   createLead,
   createMeeting,
@@ -438,6 +565,8 @@ export const CrmRepository = {
   findContactByEmail,
   leadExistsForContactSource,
   listCompanies,
+  getCompany,
+  updateCompany,
   listContacts,
   listInquiries,
   listLeads,

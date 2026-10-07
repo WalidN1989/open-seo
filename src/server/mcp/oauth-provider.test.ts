@@ -178,6 +178,11 @@ describe("OpenSEO OAuth provider configuration", () => {
     mocks.purges.length = 0;
   });
 
+  it("does not grant new business or voice scopes when OAuth omits scope", async () => {
+    const { getGrantedMcpScopes } = await import("./oauth-provider");
+    expect(getGrantedMcpScopes([])).toEqual(["offline_access", "mcp"]);
+  });
+
   it("binds tokens and protected-resource metadata to the canonical MCP URL", async () => {
     const { createOpenSeoOAuthProvider } = await import("./oauth-provider");
     const provider = createOpenSeoOAuthProvider(() => new Response("app"));
@@ -187,12 +192,22 @@ describe("OpenSEO OAuth provider configuration", () => {
     expect(mocks.options).toHaveLength(1);
     expect(mocks.options[0]?.resourceMetadata).toEqual({
       resource: "https://app.openseo.so/mcp",
-      scopes_supported: ["mcp"],
+      scopes_supported: [
+        "mcp",
+        "business:read",
+        "business:write",
+        "voice:read",
+        "voice:write",
+      ],
       resource_name: "Digital Urgency MCP",
     });
     expect(mocks.options[0]?.scopesSupported).toEqual([
       "offline_access",
       "mcp",
+      "business:read",
+      "business:write",
+      "voice:read",
+      "voice:write",
     ]);
     expect(mocks.options[0]?.clientRegistrationTTL).toBe(60 * 60 * 24 * 365);
   });

@@ -310,6 +310,11 @@ const sendEmailTool = {
 };
 
 export const emailSurface: McpModuleSurface = {
+  access: {
+    readScope: "business:read",
+    writeScope: "business:write",
+    legacyCompatible: true,
+  },
   key: "email",
   scope: "organization",
   summary:

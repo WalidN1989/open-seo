@@ -1,7 +1,13 @@
 import { useState } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { Link } from "@tanstack/react-router";
 import { MessageSquareText, Plus, Send } from "lucide-react";
 import { getStandardErrorMessage } from "@/client/lib/error-messages";
+import {
+  approveCommunicationDraft,
+  rejectCommunicationDraft,
+} from "@/serverFunctions/communication-drafts";
 import { smsTime, useSendSms, useSmsThread, useSmsWorkspace } from "./smsQuery";
 
 /**
@@ -9,9 +15,28 @@ import { smsTime, useSendSms, useSmsThread, useSmsWorkspace } from "./smsQuery";
  * the selected one on the right, and a composer that can start a new text.
  */
 export function SmsWorkspace() {
+  const queryClient = useQueryClient();
   const workspace = useSmsWorkspace();
   const [selected, setSelected] = useState<string | null>(null);
   const [composingNew, setComposingNew] = useState(false);
+  const approveDraft = useMutation({
+    mutationFn: (draftId: string) =>
+      approveCommunicationDraft({ data: { draftId } }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["sms"] });
+      toast.success("Draft approved and sent");
+    },
+    onError: (error) => toast.error(getStandardErrorMessage(error)),
+  });
+  const rejectDraft = useMutation({
+    mutationFn: (draftId: string) =>
+      rejectCommunicationDraft({ data: { draftId } }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["sms"] });
+      toast.success("Draft rejected");
+    },
+    onError: (error) => toast.error(getStandardErrorMessage(error)),
+  });
 
   if (workspace.isPending) {
     return (
@@ -27,7 +52,7 @@ export function SmsWorkspace() {
       </div>
     );
   }
-  const { numbers, conversations } = workspace.data;
+  const { numbers, conversations, drafts } = workspace.data;
   const active = selected ?? conversations[0]?.id ?? null;
 
   return (
@@ -64,6 +89,45 @@ export function SmsWorkspace() {
           </Link>
         )}
       </div>
+
+      {drafts.length ? (
+        <section className="rounded-xl border border-warning/40 bg-warning/10 p-4">
+          <h2 className="text-sm font-semibold">
+            Agent drafts awaiting approval
+          </h2>
+          <div className="mt-2 space-y-2">
+            {drafts.map((draft) => (
+              <div
+                key={draft.id}
+                className="rounded-lg bg-base-100 p-3 text-sm"
+              >
+                <div className="font-medium">To {draft.recipient}</div>
+                <p className="mt-1 whitespace-pre-wrap text-base-content/70">
+                  {draft.body}
+                </p>
+                <div className="mt-3 flex gap-2">
+                  <button
+                    type="button"
+                    className="btn btn-primary btn-xs"
+                    disabled={approveDraft.isPending || rejectDraft.isPending}
+                    onClick={() => approveDraft.mutate(draft.id)}
+                  >
+                    Approve & send
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-xs"
+                    disabled={approveDraft.isPending || rejectDraft.isPending}
+                    onClick={() => rejectDraft.mutate(draft.id)}
+                  >
+                    Reject
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       <div className="grid gap-4 md:grid-cols-[18rem_1fr]">
         <aside className="rounded-xl border border-base-300">

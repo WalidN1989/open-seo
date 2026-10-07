@@ -355,6 +355,11 @@ const getOptimizationFeedbackTool = {
 };
 
 export const optimizationsSurface: McpModuleSurface = {
+  access: {
+    readScope: "business:read",
+    writeScope: "business:write",
+    legacyCompatible: true,
+  },
   key: "optimizations",
   scope: "project",
   summary:

@@ -1421,3 +1421,29 @@ runtime: it rejects `redirect: "error"` before sending a request. TypeSafe itsel
 returned HTTP 200 from the same production container. The provider now uses
 `redirect: "manual"`; any 3xx remains non-success and is rejected before the
 bearer credential can be forwarded.
+
+## MCP Business and voice access — 2026-10-07
+
+Branch `codex/mcp-business-access` expands the existing MCP server with
+project-scoped voice-call and voice-agent reads, versioned voice-agent edits,
+CRM create/update/archive tools, caller-owned activity edits, messaging drafts,
+and draft-only quote updates. OAuth/API-key scopes are split into
+`business:read`, `business:write`, `voice:read`, and `voice:write`; legacy keys
+are marked during migration, while new grants fail closed until scopes are
+explicitly enabled in Settings.
+
+Every MCP write now reserves one organization-scoped audit event before the
+mutation, enforces a per-token rate limit, and finalizes that event with
+before/after data. Audit-finalization failure after a successful external
+mutation is logged without returning a retryable failure. MCP deletes remain
+soft deletes. SMS and WhatsApp agent drafts require a human to approve and send
+or reject them in the app. Voice recording URLs are short-lived signed proxy
+links; provider credentials are never returned.
+
+Migrations `drizzle/0097_bouncy_ultimo.sql` and
+`drizzle-pg/0076_fair_captain_stacy.sql` add communication drafts, immutable
+voice-agent versions, voice-agent configuration fields, CRM activity soft
+deletion, and lead temperature. They also mark pre-existing API keys for legacy
+Business-tool compatibility. Run the migration before starting the new app.
+The implementation reuses the shared database client/pool and adds no Railway
+service, scheduler, provider credential, or background job.

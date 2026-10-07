@@ -38,18 +38,27 @@ async function getLeadDetail(
   const phones = [contact?.phone, contact?.whatsappPhone].filter(
     (value): value is string => Boolean(value),
   );
-  const [stages, activities, calls, whatsapp, sms, emails, reminders] =
-    await Promise.all([
-      CrmService.ensureStages(organizationId),
-      CrmRepository.listActivities(organizationId, leadId),
-      Repo.listCalls(organizationId, leadId),
-      contact ? Repo.listWhatsapp(organizationId, contact.id, phones) : [],
-      contact
-        ? SmsRepository.listForContact(organizationId, contact.id, phones)
-        : [],
-      contact?.email ? Repo.listEmails(organizationId, contact.email) : [],
-      ReminderRepository.listPendingForLead(organizationId, leadId),
-    ]);
+  const [
+    stages,
+    activities,
+    calls,
+    whatsapp,
+    sms,
+    emails,
+    reminders,
+    membership,
+  ] = await Promise.all([
+    CrmService.ensureStages(organizationId),
+    CrmRepository.listActivities(organizationId, leadId),
+    Repo.listCalls(organizationId, leadId),
+    contact ? Repo.listWhatsapp(organizationId, contact.id, phones) : [],
+    contact
+      ? SmsRepository.listForContact(organizationId, contact.id, phones)
+      : [],
+    contact?.email ? Repo.listEmails(organizationId, contact.email) : [],
+    ReminderRepository.listPendingForLead(organizationId, leadId),
+    BusinessModuleRepository.findMembership(organizationId, userId),
+  ]);
   return {
     ...row,
     stages,
@@ -59,6 +68,7 @@ async function getLeadDetail(
     sms,
     emails,
     reminders,
+    callerMemberId: membership?.id ?? null,
   };
 }
 
@@ -161,4 +171,75 @@ function reminderNote(
   );
 }
 
-export const LeadDetailService = { getLeadDetail, logActivity };
+async function editOwnActivity(
+  organizationId: string,
+  userId: string,
+  activityId: string,
+  patch: { notes?: string; outcome?: string | null; occurredAt?: string },
+) {
+  await BusinessModuleService.requireAccess(
+    organizationId,
+    userId,
+    "leads",
+    "manage",
+  );
+  const membership = await BusinessModuleRepository.findMembership(
+    organizationId,
+    userId,
+  );
+  if (!membership) throw new AppError("FORBIDDEN");
+  const before = await CrmRepository.getActivity(organizationId, activityId);
+  if (!before) throw new AppError("NOT_FOUND");
+  if (before.createdByMemberId !== membership.id)
+    throw new AppError(
+      "FORBIDDEN",
+      "Only the member who created a journal entry can edit it.",
+    );
+  const after = await CrmRepository.updateOwnedActivity(
+    organizationId,
+    membership.id,
+    activityId,
+    patch,
+  );
+  if (!after) throw new AppError("NOT_FOUND");
+  return { before, after };
+}
+
+async function deleteOwnActivity(
+  organizationId: string,
+  userId: string,
+  activityId: string,
+) {
+  await BusinessModuleService.requireAccess(
+    organizationId,
+    userId,
+    "leads",
+    "manage",
+  );
+  const membership = await BusinessModuleRepository.findMembership(
+    organizationId,
+    userId,
+  );
+  if (!membership) throw new AppError("FORBIDDEN");
+  const before = await CrmRepository.getActivity(organizationId, activityId);
+  if (!before) throw new AppError("NOT_FOUND");
+  if (before.createdByMemberId !== membership.id)
+    throw new AppError(
+      "FORBIDDEN",
+      "Only the member who created a journal entry can delete it.",
+    );
+  const after = await CrmRepository.softDeleteOwnedActivity(
+    organizationId,
+    membership.id,
+    activityId,
+  );
+  if (!after) throw new AppError("NOT_FOUND");
+  return { before, after };
+}
+
+export const LeadDetailService = {
+  getLeadDetail,
+  logActivity,
+  editOwnActivity,
+  deleteOwnActivity,
+};

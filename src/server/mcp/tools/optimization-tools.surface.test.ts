@@ -126,6 +126,7 @@ describe("the quote MCP surface", () => {
       "get_quote_document",
       "list_quotes",
       "search_quote_catalogue",
+      "update_quote_draft",
     ]);
   });
 
@@ -222,12 +223,15 @@ describe("the module registry", () => {
     expect(surfaces.toSorted()).toEqual([
       "commerceSurface",
       "crmSurface",
+      "crmWriteSurface",
+      "draftWriteSurface",
       "emailSurface",
       "invoiceSurface",
       "optimizationsSurface",
       "quoteSurface",
       "reportSurface",
       "smsSurface",
+      "voiceSurface",
       "whatsappSurface",
     ]);
   });

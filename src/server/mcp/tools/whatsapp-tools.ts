@@ -216,6 +216,11 @@ const sendWhatsappTemplateTool = {
 };
 
 export const whatsappSurface: McpModuleSurface = {
+  access: {
+    readScope: "business:read",
+    writeScope: "business:write",
+    legacyCompatible: true,
+  },
   key: "whatsapp",
   scope: "organization",
   summary:

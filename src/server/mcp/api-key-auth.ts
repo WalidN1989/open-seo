@@ -1,6 +1,7 @@
 import { getAuth, getHostedBaseUrl } from "@/lib/auth";
+import { z } from "zod";
 import { API_KEY_PREFIX } from "@/lib/auth-api-key";
-import { MCP_OAUTH_SCOPES } from "@/lib/oauth-resource";
+import { MCP_ACCESS_SCOPES, MCP_SCOPE } from "@/lib/oauth-resource";
 import { getOrCreateDefaultHostedOrganization } from "@/server/auth/default-hosted-organization";
 import { AuthRepository } from "@/server/auth/repositories/AuthRepository";
 import { recordMcpAuthorized } from "@/server/features/activation/mcpActivation";
@@ -108,15 +109,30 @@ export async function handleMcpApiKeyRequest(
       (body) => authApi.createOrganization({ body }),
     );
 
-    // clientId "api_key" satisfies the hosted transport's fail-closed props
+    const permissions = z
+      .object({
+        mcpScopes: z.array(z.string()).optional(),
+        mcpLegacyBusinessAccess: z.boolean().optional(),
+      })
+      .passthrough()
+      .safeParse(result.key.permissions);
+    const granted = (
+      permissions.success ? (permissions.data.mcpScopes ?? []) : []
+    ).filter((scope) => MCP_ACCESS_SCOPES.some((allowed) => allowed === scope));
+
+    // The key id is an audit-safe token identity; the secret is never logged.
     // schema and counts these calls as external MCP clients in telemetry.
     const props = createWorkersOAuthMcpProps({
       userId,
       userEmail: user.email,
       organizationId,
       baseUrl: getHostedBaseUrl(),
-      scopes: [...MCP_OAUTH_SCOPES],
-      clientId: "api_key",
+      scopes: [MCP_SCOPE, ...granted],
+      clientId: result.key.id ? `api_key:${result.key.id}` : "api_key",
+      tokenId: result.key.id ? `api_key:${result.key.id}` : "api_key",
+      legacyBusinessAccess:
+        permissions.success &&
+        permissions.data.mcpLegacyBusinessAccess === true,
     });
 
     await recordMcpAuthorized(organizationId);

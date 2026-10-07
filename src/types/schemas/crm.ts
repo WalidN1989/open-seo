@@ -32,6 +32,7 @@ export const createLeadSchema = z.object({
   source: z.string().trim().max(100).optional(),
   category: z.string().trim().max(100).optional(),
   priority: leadPrioritySchema.default("medium"),
+  temperature: z.enum(["cold", "warm", "hot"]).optional(),
   valueCents: z.number().int().min(0).max(1_000_000_000).default(0),
   contactId: z.string().min(1).optional(),
   companyId: z.string().min(1).optional(),

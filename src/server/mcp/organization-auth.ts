@@ -56,6 +56,7 @@ async function requireOrganizationAccess(
     baseUrl,
     billing: buildBillingCustomer(resolvedAuth, resolved),
     organizationId: resolved,
+    writeAudit: toolContext.writeAudit,
   };
 }
 

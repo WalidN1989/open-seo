@@ -10,11 +10,23 @@ const mocks = vi.hoisted(() => ({
   captureServerEvent: vi.fn(),
   recordExternalMcpToolCall: vi.fn(),
   incrementSelfHostMcpToolCallCount: vi.fn(),
+  completeMcpWrite: vi.fn(),
+  requireMcpToolAccess: vi.fn(),
+  reserveMcpWrite: vi.fn(),
+  resolveMcpWriteOrganization: vi.fn(),
 }));
 
 // waitUntil runs the capture promise inline so assertions see the call.
 vi.mock("cloudflare:workers", () => ({
+  env: {},
   waitUntil: (promise: Promise<unknown>) => void promise,
+}));
+
+vi.mock("@/server/mcp/access-control", () => ({
+  completeMcpWrite: mocks.completeMcpWrite,
+  requireMcpToolAccess: mocks.requireMcpToolAccess,
+  reserveMcpWrite: mocks.reserveMcpWrite,
+  resolveMcpWriteOrganization: mocks.resolveMcpWriteOrganization,
 }));
 
 vi.mock("@/server/lib/posthog", () => ({
@@ -35,6 +47,22 @@ vi.mock("@/server/lib/self-host-telemetry", () => ({
 const outputSchema = z.object({
   items: z.array(z.object({}).passthrough()),
 });
+
+const NEW_WRITE_TOOLS = [
+  "create_lead",
+  "update_lead",
+  "update_lead_stage",
+  "set_lead_follow_up",
+  "archive_lead",
+  "edit_log_entry",
+  "delete_log_entry",
+  "update_email_draft",
+  "delete_email_draft",
+  "draft_whatsapp_reply",
+  "draft_sms_reply",
+  "update_quote_draft",
+  "update_voice_agent",
+] as const;
 
 function okResult(structuredContent: Record<string, unknown>): CallToolResult {
   return { content: [{ type: "text", text: "ok" }], structuredContent };
@@ -57,6 +85,10 @@ describe("instrumentMcpToolHandler", () => {
     mocks.captureServerEvent.mockReset();
     mocks.recordExternalMcpToolCall.mockReset();
     mocks.incrementSelfHostMcpToolCallCount.mockReset();
+    mocks.completeMcpWrite.mockReset();
+    mocks.requireMcpToolAccess.mockReset();
+    mocks.reserveMcpWrite.mockReset();
+    mocks.resolveMcpWriteOrganization.mockReset();
   });
 
   it("passes a valid result through without reporting", async () => {
@@ -221,4 +253,76 @@ describe("instrumentMcpToolHandler", () => {
 
     expect(mocks.recordExternalMcpToolCall).not.toHaveBeenCalled();
   });
+
+  it("reserves and completes an audit around every scoped write", async () => {
+    mocks.resolveMcpWriteOrganization.mockResolvedValue("org-1");
+    mocks.reserveMcpWrite.mockResolvedValue({
+      id: "audit-1",
+      tokenId: "grant-1",
+    });
+    const mutation = vi.fn().mockResolvedValue(okResult({ items: [] }));
+    const wrapped = instrumentMcpToolHandler(
+      "create_lead",
+      outputSchema,
+      mutation,
+      {
+        scope: "business:write",
+        legacyCompatible: false,
+        tenantScope: "organization",
+      },
+    );
+
+    await wrapped({ organizationId: "org-1" }, toolContext);
+
+    expect(mocks.reserveMcpWrite).toHaveBeenCalledOnce();
+    expect(mocks.completeMcpWrite).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tool: "create_lead",
+        after: { items: [] },
+      }),
+    );
+    expect(mocks.reserveMcpWrite.mock.invocationCallOrder[0]).toBeLessThan(
+      mutation.mock.invocationCallOrder[0],
+    );
+  });
+
+  it.each(NEW_WRITE_TOOLS)(
+    "%s succeeds through tenant resolution and one audit lifecycle",
+    async (toolName) => {
+      const voice = toolName === "update_voice_agent";
+      mocks.resolveMcpWriteOrganization.mockResolvedValue("org-1");
+      mocks.reserveMcpWrite.mockResolvedValue({
+        id: `audit-${toolName}`,
+        tokenId: "grant-1",
+      });
+      mocks.completeMcpWrite.mockResolvedValue(undefined);
+      const mutation = vi.fn().mockResolvedValue(okResult({ id: toolName }));
+      const policy = {
+        scope: voice ? ("voice:write" as const) : ("business:write" as const),
+        legacyCompatible: false,
+        tenantScope: voice ? ("project" as const) : ("organization" as const),
+      };
+      const wrapped = instrumentMcpToolHandler(
+        toolName,
+        z.object({ id: z.string() }),
+        mutation,
+        policy,
+      );
+      const args = voice
+        ? { projectId: "project-1" }
+        : { organizationId: "org-1" };
+
+      await expect(wrapped(args, toolContext)).resolves.toMatchObject({
+        structuredContent: { id: toolName },
+      });
+      expect(mocks.resolveMcpWriteOrganization).toHaveBeenCalledWith(
+        toolContext.auth,
+        args,
+        policy,
+      );
+      expect(mocks.reserveMcpWrite).toHaveBeenCalledOnce();
+      expect(mocks.completeMcpWrite).toHaveBeenCalledOnce();
+      expect(mutation).toHaveBeenCalledOnce();
+    },
+  );
 });

@@ -296,6 +296,11 @@ const draftInvoiceTool = {
 };
 
 export const invoiceSurface: McpModuleSurface = {
+  access: {
+    readScope: "business:read",
+    writeScope: "business:write",
+    legacyCompatible: true,
+  },
   key: "invoicing",
   scope: "organization",
   summary:

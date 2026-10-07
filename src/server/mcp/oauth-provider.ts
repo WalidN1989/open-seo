@@ -11,6 +11,7 @@ import { z } from "zod";
 import { getHostedBaseUrl } from "@/lib/auth";
 import {
   getMcpResource,
+  MCP_ACCESS_SCOPES,
   MCP_OAUTH_SCOPES,
   MCP_SCOPE,
 } from "@/lib/oauth-resource";
@@ -223,9 +224,12 @@ function buildAuthorizeRequestFromConsentQuery(
   });
 }
 
-function getGrantedMcpScopes(requestedScopes: string[]) {
+export function getGrantedMcpScopes(requestedScopes: string[]) {
   if (requestedScopes.length === 0) {
-    return [...MCP_OAUTH_SCOPES];
+    // OAuth 2 allows clients to omit scope. Keep that legacy path limited to
+    // the original MCP grant: newly introduced business and voice privileges
+    // must always be requested explicitly and shown on the consent screen.
+    return ["offline_access", MCP_SCOPE];
   }
 
   const requested = new Set(requestedScopes);
@@ -339,7 +343,9 @@ async function handleOAuthConsentResponse(
     organizationId: context.organizationId,
     baseUrl: getHostedBaseUrl(),
     clientId: authRequest.clientId,
+    tokenId: `oauth_grant:${crypto.randomUUID()}`,
     scopes,
+    legacyBusinessAccess: false,
   });
 
   const { redirectTo } = await oauth.completeAuthorization({
@@ -410,7 +416,7 @@ function createProvider(appFetch: AppFetch, resource: string) {
     clientRegistrationTTL: MCP_CLIENT_REGISTRATION_TTL_SECONDS,
     resourceMetadata: {
       resource,
-      scopes_supported: [MCP_SCOPE],
+      scopes_supported: [MCP_SCOPE, ...MCP_ACCESS_SCOPES],
       resource_name: "Digital Urgency MCP",
     },
     tokenExchangeCallback: ({ props, requestedScope }) => {

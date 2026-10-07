@@ -2,6 +2,7 @@ import { BusinessAuditRepository } from "@/server/features/business-modules/repo
 import { BusinessModuleService } from "@/server/features/business-modules/services/BusinessModuleService";
 import { outreachDecision } from "@/server/features/communications/outreachRules";
 import { WhatsappAssistantRepository } from "@/server/features/communications/repositories/WhatsappAssistantRepository";
+import { CommunicationDraftService } from "@/server/features/communications/services/CommunicationDraftService";
 import { normalisePhone } from "@/server/features/voice-calls/elevenlabsWebhook";
 import { decryptCredentials } from "@/server/lib/connection-secrets";
 import { AppError } from "@/server/lib/errors";
@@ -27,9 +28,10 @@ function nameOf(row: { firstName: string | null; lastName: string | null }) {
 
 async function workspace(organizationId: string, userId: string) {
   await BusinessModuleService.requireAccess(organizationId, userId, MODULE);
-  const [connections, conversations] = await Promise.all([
+  const [connections, conversations, drafts] = await Promise.all([
     Repo.listConnections(organizationId),
     Repo.listConversations(organizationId),
+    CommunicationDraftService.listPending(organizationId, userId, "sms"),
   ]);
   const numbers = await Promise.all(
     connections.map(async (connection) => {
@@ -43,6 +45,7 @@ async function workspace(organizationId: string, userId: string) {
   );
   return {
     numbers,
+    drafts,
     conversations: conversations.map((row) => ({
       id: row.conversation.id,
       phone: row.conversation.phone,

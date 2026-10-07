@@ -15,6 +15,13 @@
 
 export type McpModuleScope = "organization" | "project";
 
+export type McpToolAccessPolicy = {
+  scope: "business:read" | "business:write" | "voice:read" | "voice:write";
+  tenantScope: McpModuleScope;
+  /** Existing tools remain usable by legacy tokens until any granular scope is granted. */
+  legacyCompatible: boolean;
+};
+
 export type McpModuleSurface = {
   /** Matches the business-module key where one exists. */
   key: string;
@@ -22,6 +29,14 @@ export type McpModuleSurface = {
   /** One line, for the agent contract doc. */
   summary: string;
   tools: readonly McpToolLike[];
+  /** Explicit authorization contract for this surface. */
+  access: {
+    readScope: "business:read" | "voice:read";
+    writeScope: "business:write" | "voice:write";
+    legacyCompatible: boolean;
+    /** New tools on an otherwise legacy-compatible surface. */
+    strictTools?: readonly string[];
+  };
   /**
    * Actions an agent must not be able to take, and why.
    *

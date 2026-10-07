@@ -196,6 +196,11 @@ export const branchStockTool = {
 };
 
 export const commerceSurface: McpModuleSurface = {
+  access: {
+    readScope: "business:read",
+    writeScope: "business:write",
+    legacyCompatible: true,
+  },
   key: "crm",
   scope: "organization",
   summary: "Read live product availability and addresses by branch.",

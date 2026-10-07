@@ -167,6 +167,11 @@ const sendClientReportTool = {
 };
 
 export const reportSurface: McpModuleSurface = {
+  access: {
+    readScope: "business:read",
+    writeScope: "business:write",
+    legacyCompatible: true,
+  },
   key: "reports",
   scope: "organization",
   summary:

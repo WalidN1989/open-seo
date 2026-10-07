@@ -313,6 +313,129 @@ async function createCompany(
   return company;
 }
 
+type LeadRelationInput = {
+  contact?: { id?: string } & Partial<CreateContactInput>;
+  company?: { id?: string } & Partial<CreateCompanyInput>;
+  stageName?: string;
+};
+
+/**
+ * Resolve human-friendly MCP relation input into tenant-checked normalized
+ * record ids. Existing records are edited in place; missing ids create a new
+ * contact/company so callers never have to invent opaque foreign keys.
+ */
+async function resolveLeadRelations(
+  organizationId: string,
+  userId: string,
+  input: LeadRelationInput,
+) {
+  await BusinessModuleService.requireAccess(
+    organizationId,
+    userId,
+    "crm",
+    "manage",
+  );
+  const relationChanges: Array<{
+    targetType: "contact" | "company";
+    before: unknown;
+    after: unknown;
+  }> = [];
+  let companyId: string | undefined;
+  if (input.company) {
+    const { id, ...patch } = input.company;
+    if (id) {
+      const existing = await CrmRepository.getCompany(organizationId, id);
+      if (!existing) throw new AppError("NOT_FOUND", "Company not found.");
+      companyId = id;
+      if (Object.keys(patch).length) {
+        const after = await CrmRepository.updateCompany(
+          organizationId,
+          id,
+          patch,
+        );
+        relationChanges.push({
+          targetType: "company",
+          before: existing,
+          after,
+        });
+      }
+    } else {
+      if (!patch.name) {
+        throw new AppError("VALIDATION_ERROR", "A new company needs a name.");
+      }
+      const company = await createCompany(organizationId, userId, {
+        ...patch,
+        name: patch.name,
+      });
+      companyId = company.id;
+      relationChanges.push({
+        targetType: "company",
+        before: null,
+        after: company,
+      });
+    }
+  }
+
+  let contactId: string | undefined;
+  if (input.contact) {
+    const { id, ...patch } = input.contact;
+    const contactPatch = {
+      ...patch,
+      ...(companyId && patch.companyId === undefined ? { companyId } : {}),
+    };
+    if (id) {
+      const existing = await CrmRepository.getContact(organizationId, id);
+      if (!existing) throw new AppError("NOT_FOUND", "Contact not found.");
+      contactId = id;
+      if (Object.keys(contactPatch).length) {
+        const after = await CrmRepository.updateContact(
+          organizationId,
+          id,
+          contactPatch,
+        );
+        relationChanges.push({
+          targetType: "contact",
+          before: existing,
+          after,
+        });
+      }
+    } else {
+      if (!contactPatch.firstName) {
+        throw new AppError(
+          "VALIDATION_ERROR",
+          "A new contact needs a first name.",
+        );
+      }
+      const contact = await createContact(organizationId, userId, {
+        ...contactPatch,
+        firstName: contactPatch.firstName,
+      });
+      contactId = contact.id;
+      relationChanges.push({
+        targetType: "contact",
+        before: null,
+        after: contact,
+      });
+    }
+  }
+
+  let stageId: string | undefined;
+  if (input.stageName) {
+    const stages = await ensureStages(organizationId);
+    stageId = stages.find(
+      (stage) =>
+        stage.name.toLocaleLowerCase() === input.stageName?.toLocaleLowerCase(),
+    )?.id;
+    if (!stageId) {
+      throw new AppError(
+        "NOT_FOUND",
+        `Pipeline stage '${input.stageName}' was not found.`,
+      );
+    }
+  }
+  return { companyId, contactId, stageId, relationChanges };
+}
+
 async function listActivities(
   organizationId: string,
   userId: string,
@@ -511,5 +634,6 @@ export const CrmService = {
   importHunterDomain,
   listActivities,
   promoteInquiry,
+  resolveLeadRelations,
   updateLead,
 };

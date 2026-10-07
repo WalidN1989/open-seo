@@ -7,11 +7,86 @@ import { captureServerError, captureServerEvent } from "@/server/lib/posthog";
 import { shouldCaptureAppErrorCode } from "@/shared/error-codes";
 import { type ToolContext } from "@/server/mcp/context";
 import { incrementSelfHostMcpToolCallCount } from "@/server/lib/self-host-telemetry";
+import {
+  completeMcpWrite,
+  requireMcpToolAccess,
+  resolveMcpWriteOrganization,
+  reserveMcpWrite,
+} from "@/server/mcp/access-control";
+import type { McpToolAccessPolicy } from "@/server/mcp/module-registry";
 
 type ToolHandler<TArgs> = (
   args: TArgs,
   context: ToolContext,
 ) => CallToolResult | Promise<CallToolResult>;
+
+function withMcpAccessPolicy<TArgs>(
+  toolName: string,
+  policy: McpToolAccessPolicy | undefined,
+  handler: ToolHandler<TArgs>,
+): ToolHandler<TArgs> {
+  if (!policy) return handler;
+  return async (args, context) => {
+    requireMcpToolAccess(context.auth, policy);
+    if (!policy.scope.endsWith(":write")) return handler(args, context);
+    const argsRecord: Record<string, unknown> = isRecord(args) ? args : {};
+    const projectId =
+      typeof argsRecord.projectId === "string" ? argsRecord.projectId : null;
+    const organizationId = await resolveMcpWriteOrganization(
+      context.auth,
+      argsRecord,
+      policy,
+    );
+    const reservation = await reserveMcpWrite({
+      auth: context.auth,
+      organizationId,
+      tool: toolName,
+      projectId,
+      args,
+    });
+    context.writeAudit = {};
+    let result: CallToolResult;
+    try {
+      result = await handler(args, context);
+    } catch (error) {
+      await completeMcpWrite({
+        reservation,
+        organizationId,
+        tool: toolName,
+        projectId,
+        before: null,
+        after: {
+          error: error instanceof Error ? error.message : "Unknown tool error",
+        },
+        failed: true,
+      }).catch((auditError: unknown) => {
+        console.error("Failed to finalize MCP write audit", auditError);
+      });
+      throw error;
+    }
+    const audit = context.writeAudit.details;
+    // The external mutation has already succeeded. Audit-finalization failure
+    // must never become a retryable tool failure (especially for real sends).
+    try {
+      await completeMcpWrite({
+        reservation,
+        organizationId,
+        tool: toolName,
+        projectId,
+        targetType: audit?.targetType,
+        targetId: audit?.targetId,
+        before: audit?.before ?? null,
+        after: audit?.after ?? result.structuredContent ?? null,
+      });
+    } catch (auditError) {
+      console.error(
+        "Failed to finalize successful MCP write audit",
+        auditError,
+      );
+    }
+    return result;
+  };
+}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
@@ -82,11 +157,17 @@ export function instrumentMcpToolHandler<TArgs>(
   toolName: string,
   outputSchema: z.ZodType | undefined,
   handler: ToolHandler<TArgs>,
+  accessPolicy?: McpToolAccessPolicy,
 ): (args: TArgs, context: ToolContext) => Promise<CallToolResult> {
+  const authorizedHandler = withMcpAccessPolicy(
+    toolName,
+    accessPolicy,
+    handler,
+  );
   return async (args, context) => {
     const startedAt = performance.now();
     try {
-      const result = await handler(args, context);
+      const result = await authorizedHandler(args, context);
       // The SDK converts an output-schema mismatch into a client-visible
       // JSON-RPC error, so count it as a failed call, not a success.
       let outputValidationFailed = false;

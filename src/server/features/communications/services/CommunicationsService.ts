@@ -91,6 +91,7 @@ import { WhatsappAssistantRepository } from "../repositories/WhatsappAssistantRe
 import { WhatsappReplyJobRepository } from "../repositories/WhatsappReplyJobRepository";
 import { findAccessCodeCandidate } from "@/server/features/clients/codeInMessage";
 import { BusinessModuleRepository } from "@/server/features/business-modules/repositories/BusinessModuleRepository";
+import { CommunicationDraftService } from "./CommunicationDraftService";
 
 async function auditMutation(
   organizationId: string,
@@ -112,9 +113,10 @@ async function auditMutation(
 
 async function whatsappWorkspace(organizationId: string, userId: string) {
   await BusinessModuleService.requireAccess(organizationId, userId, "whatsapp");
-  const [workspace, members] = await Promise.all([
+  const [workspace, members, drafts] = await Promise.all([
     CommunicationsRepository.getWhatsappWorkspace(organizationId),
     BusinessModuleRepository.listMembers(organizationId),
+    CommunicationDraftService.listPending(organizationId, userId, "whatsapp"),
   ]);
   // The encrypted token never leaves the server. The UI is told which
   // credentials are set so it can say "configured", never their values.
@@ -124,6 +126,7 @@ async function whatsappWorkspace(organizationId: string, userId: string) {
       workspace.connections.map((connection) => stripCredentials(connection)),
     ),
     members,
+    drafts,
   };
 }
 /**
@@ -823,7 +826,7 @@ async function startVoiceConversation(
         input.contactId,
       )
     : true;
-  if (!agent || !contactValid)
+  if (!agent || !contactValid || agent.status !== "active")
     throw new Error("Voice agent or contact not found.");
   const conversation = await CommunicationsRepository.startVoiceConversation(
     organizationId,
@@ -844,7 +847,7 @@ async function startVoiceConversation(
     conversation.id,
     { agentConfigId: conversation.agentConfigId },
   );
-  return conversation;
+  return { ...conversation, greeting: agent.greeting };
 }
 
 async function appendVoiceTranscript(
@@ -1053,6 +1056,14 @@ async function transcribeVoiceAudio(
       ]);
       const generated = await generateVoiceAgentReply({
         agentName: agent.name,
+        agentInstructions: [
+          agent.prompt,
+          agent.businessHoursJson !== "{}"
+            ? `Business hours configuration: ${agent.businessHoursJson}`
+            : null,
+        ]
+          .filter(Boolean)
+          .join("\n"),
         credentialReference:
           agent.credentialReference ??
           (agent.speechToTextProvider === "microsoft_azure"
@@ -1082,7 +1093,11 @@ async function transcribeVoiceAudio(
       const speech =
         agent.textToSpeechProvider === "microsoft_azure" && azureConnection
           ? await speakWithAzure(azureConnection, spokenReply)
-          : await speakWithDeepgram(agent.credentialReference, spokenReply);
+          : await speakWithDeepgram(
+              agent.credentialReference,
+              spokenReply,
+              agent.voice ?? undefined,
+            );
       await CommunicationsRepository.appendVoiceTranscript(organizationId, {
         conversationId: input.conversationId,
         speaker: "agent",

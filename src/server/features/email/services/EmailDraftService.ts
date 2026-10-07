@@ -141,4 +141,49 @@ async function saveComposeDraft(
   };
 }
 
-export const EmailDraftService = { saveReplyDraft, saveComposeDraft };
+async function updateDraft(
+  organizationId: string,
+  userId: string,
+  messageId: string,
+  patch: { text?: string; cc?: string[]; bcc?: string[] },
+) {
+  await requireAccount(organizationId, userId);
+  const before = await Repo.getMessage(organizationId, messageId);
+  if (!before || before.direction !== "draft" || before.status !== "draft")
+    throw new AppError("NOT_FOUND", "Draft not found.");
+  const after = await Repo.updateMessage(organizationId, messageId, {
+    ...(patch.text !== undefined ? { textBody: patch.text } : {}),
+    ...(patch.cc !== undefined ? { ccAddresses: patch.cc } : {}),
+    ...(patch.bcc !== undefined ? { bccAddresses: patch.bcc } : {}),
+    occurredAt: new Date().toISOString(),
+  });
+  if (!after) throw new AppError("NOT_FOUND");
+  await audit(organizationId, userId, "email.draft.updated", messageId);
+  return { before, after };
+}
+
+async function softDeleteDraft(
+  organizationId: string,
+  userId: string,
+  messageId: string,
+) {
+  await requireAccount(organizationId, userId);
+  const before = await Repo.getMessage(organizationId, messageId);
+  if (!before || before.direction !== "draft" || before.status !== "draft")
+    throw new AppError("NOT_FOUND", "Draft not found.");
+  const after = await Repo.updateMessage(organizationId, messageId, {
+    status: "deleted",
+  });
+  if (!after) throw new AppError("NOT_FOUND");
+  await audit(organizationId, userId, "email.draft.deleted", messageId, {
+    softDelete: true,
+  });
+  return { before, after };
+}
+
+export const EmailDraftService = {
+  saveReplyDraft,
+  saveComposeDraft,
+  updateDraft,
+  softDeleteDraft,
+};

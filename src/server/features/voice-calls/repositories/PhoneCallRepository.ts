@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, notInArray, or } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, notInArray, or } from "drizzle-orm";
 import { db } from "@/db";
 import {
   crmActivities,
@@ -82,7 +82,11 @@ async function welcomeSentTo(organizationId: string, contactId: string) {
   return Boolean(row);
 }
 
-async function listCalls(organizationId: string, limit = 100) {
+async function listCalls(
+  organizationId: string,
+  limit = 100,
+  filters?: { since?: string; status?: string },
+) {
   return db
     .select({
       call: voicePhoneCalls,
@@ -90,11 +94,61 @@ async function listCalls(organizationId: string, limit = 100) {
       lead: crmLeads,
     })
     .from(voicePhoneCalls)
-    .leftJoin(crmContacts, eq(crmContacts.id, voicePhoneCalls.contactId))
-    .leftJoin(crmLeads, eq(crmLeads.id, voicePhoneCalls.leadId))
-    .where(eq(voicePhoneCalls.organizationId, organizationId))
+    .leftJoin(
+      crmContacts,
+      and(
+        eq(crmContacts.id, voicePhoneCalls.contactId),
+        eq(crmContacts.organizationId, voicePhoneCalls.organizationId),
+      ),
+    )
+    .leftJoin(
+      crmLeads,
+      and(
+        eq(crmLeads.id, voicePhoneCalls.leadId),
+        eq(crmLeads.organizationId, voicePhoneCalls.organizationId),
+      ),
+    )
+    .where(
+      and(
+        eq(voicePhoneCalls.organizationId, organizationId),
+        filters?.since
+          ? gte(voicePhoneCalls.createdAt, filters.since)
+          : undefined,
+        filters?.status
+          ? eq(voicePhoneCalls.callSuccessful, filters.status)
+          : undefined,
+      ),
+    )
     .orderBy(desc(voicePhoneCalls.createdAt))
     .limit(limit);
+}
+
+async function getCall(organizationId: string, callId: string) {
+  const [row] = await db
+    .select({ call: voicePhoneCalls, contact: crmContacts, lead: crmLeads })
+    .from(voicePhoneCalls)
+    .leftJoin(
+      crmContacts,
+      and(
+        eq(crmContacts.id, voicePhoneCalls.contactId),
+        eq(crmContacts.organizationId, voicePhoneCalls.organizationId),
+      ),
+    )
+    .leftJoin(
+      crmLeads,
+      and(
+        eq(crmLeads.id, voicePhoneCalls.leadId),
+        eq(crmLeads.organizationId, voicePhoneCalls.organizationId),
+      ),
+    )
+    .where(
+      and(
+        eq(voicePhoneCalls.organizationId, organizationId),
+        eq(voicePhoneCalls.id, callId),
+      ),
+    )
+    .limit(1);
+  return row ?? null;
 }
 
 /** A contact whose phone or WhatsApp number is this number. */
@@ -290,6 +344,7 @@ export const PhoneCallRepository = {
   setRecapEmailStatus,
   welcomeSentTo,
   listCalls,
+  getCall,
   findContactByPhone,
   findContactByEmail,
   completeContact,

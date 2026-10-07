@@ -9,12 +9,31 @@ export type ToolAuthContext = {
   organizationId: string;
   scopes: string[];
   clientId: string | null;
+  /** Audit-safe grant/key identity; never the bearer token itself. */
+  tokenId?: string;
+  /** True only for grants/keys issued before granular Business scopes existed. */
+  legacyBusinessAccess?: boolean;
   baseUrl: string;
 };
 
 export type ToolContext = {
   auth: ToolAuthContext;
+  writeAudit?: {
+    details?: {
+      targetType: string;
+      targetId?: string | null;
+      before: unknown;
+      after: unknown;
+    };
+  };
 };
+
+export function setMcpWriteAudit(
+  context: Pick<ToolContext, "writeAudit">,
+  details: NonNullable<ToolContext["writeAudit"]>["details"],
+) {
+  if (context.writeAudit) context.writeAudit.details = details;
+}
 
 export const MCP_AUTH_CONTEXT_PROP = "openSeoAuth";
 export const MCP_ROUTE = "/mcp";
@@ -32,6 +51,8 @@ const applicationAuthContextSchema = z.object({
   // clientId/scopes in transport.ts from authInfo instead of props.
   clientId: z.string().min(1).nullable().optional(),
   scopes: z.array(z.string()).optional(),
+  tokenId: z.string().min(1).optional(),
+  legacyBusinessAccess: z.boolean().optional(),
 });
 
 type ApplicationAuthContext = z.infer<typeof applicationAuthContextSchema>;
@@ -81,6 +102,9 @@ export function createMcpToolContext(
       ...applicationAuth,
       clientId,
       scopes,
+      // Old serialized OAuth grants do not contain the marker. New grants and
+      // API keys always stamp it explicitly, so only old grants inherit access.
+      legacyBusinessAccess: applicationAuth.legacyBusinessAccess ?? true,
     },
   };
 }
