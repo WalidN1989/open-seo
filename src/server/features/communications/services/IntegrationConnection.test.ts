@@ -12,6 +12,10 @@ vi.mock("cloudflare:workers", () => ({ env: mockEnv }));
 
 const mocks = vi.hoisted(() => ({
   requireAccess: vi.fn(),
+  createVoiceAgent: vi.fn(),
+  getVoiceAgent: vi.fn(),
+  getVoiceConversation: vi.fn(),
+  startVoiceConversation: vi.fn(),
   createIntegration: vi.fn(),
   getIntegration: vi.fn(),
   updateIntegration: vi.fn(),
@@ -27,6 +31,10 @@ vi.mock(
 );
 vi.mock("../repositories/CommunicationsRepository", () => ({
   CommunicationsRepository: {
+    createVoiceAgent: mocks.createVoiceAgent,
+    getVoiceAgent: mocks.getVoiceAgent,
+    getVoiceConversation: mocks.getVoiceConversation,
+    startVoiceConversation: mocks.startVoiceConversation,
     createIntegration: mocks.createIntegration,
     getIntegration: mocks.getIntegration,
     updateIntegration: mocks.updateIntegration,
@@ -185,5 +193,60 @@ describe("integration connection audit trail", () => {
     expect(mocks.record).toHaveBeenCalledWith(
       expect.objectContaining({ action: "integration.deleted" }),
     );
+  });
+});
+
+describe("retired Azure voice", () => {
+  it("rejects new Azure agents and integration connections", async () => {
+    await expect(
+      CommunicationsService.createVoiceAgent(ORG, USER, {
+        name: "Retired test",
+        speechToTextProvider: "microsoft_azure",
+      }),
+    ).rejects.toThrow("Azure voice has been removed");
+    await expect(
+      CommunicationsService.createIntegration(ORG, USER, {
+        displayName: "Retired Speech",
+        providerKey: "microsoft_azure",
+      }),
+    ).rejects.toThrow("Azure voice has been removed");
+    expect(mocks.createVoiceAgent).not.toHaveBeenCalled();
+    expect(mocks.createIntegration).not.toHaveBeenCalled();
+  });
+
+  it.each(["speechToTextProvider", "textToSpeechProvider"])(
+    "blocks legacy agents using Azure for %s",
+    async (providerField) => {
+      mocks.getVoiceAgent.mockResolvedValue({
+        id: "legacy",
+        [providerField]: "microsoft_azure",
+      });
+      await expect(
+        CommunicationsService.startVoiceConversation(ORG, USER, {
+          agentConfigId: "legacy",
+        }),
+      ).rejects.toThrow("Azure voice has been removed");
+      expect(mocks.startVoiceConversation).not.toHaveBeenCalled();
+    },
+  );
+
+  it("blocks recordings sent from an already open Azure session", async () => {
+    mocks.getVoiceConversation.mockResolvedValue({
+      status: "active",
+      agentConfigId: "legacy",
+    });
+    mocks.getVoiceAgent.mockResolvedValue({
+      id: "legacy",
+      speechToTextProvider: "microsoft_azure",
+      textToSpeechProvider: "microsoft_azure",
+    });
+    await expect(
+      CommunicationsService.transcribeVoiceAudio(ORG, USER, {
+        conversationId: "legacy-session",
+        audioBase64: "YXVkaW8=",
+        mimeType: "audio/wav",
+        language: "si-LK",
+      }),
+    ).rejects.toThrow("no longer available");
   });
 });

@@ -1421,3 +1421,27 @@ runtime: it rejects `redirect: "error"` before sending a request. TypeSafe itsel
 returned HTTP 200 from the same production container. The provider now uses
 `redirect: "manual"`; any 3xx remains non-success and is rejected before the
 bearer credential can be forwarded.
+
+### October 7, 2026 — retire Azure Sinhala voice (pending release)
+
+The owner requested removal of the failed Azure Sinhala experiment and an
+ElevenLabs-only business Voice Agent screen. The `codex/elevenlabs-only-voice`
+branch removes the business browser test controls, Azure recorder/converter,
+Azure Speech STT/TTS, transcript translation and Azure integration catalogue
+entry/health check. Old Azure agent records cannot start or process audio;
+new Azure agents/connections are rejected. Existing call and test records are
+preserved in storage. ElevenLabs phone webhooks, caller initiation, credentials,
+CRM links and telephone routing are unchanged. The separate internal workspace
+analyst's Deepgram code is retained; it is not offered in the business Voice
+Agent screen.
+
+No schema migration, destructive database cleanup or Azure cloud-resource
+removal is required. Azure Communication Services for the separate 306 SIP
+project is not removed. No deployment has occurred. Railway CLI verified the actual Open SEO service
+(`14a612e0-57e2-4c19-8928-081886d8fd3d`) currently runs main revision
+`df15ccff6255d79fe3b64e4b9500167de73cabd5`, deployed successfully on October 4
+as `d4c79cea-abd9-4d01-b238-58f76d98647b`. That matches this branch's base and
+supersedes the older October 3 production-source warning. The Railway connector
+is signed into a different workspace; use the locally linked owner CLI for this
+service. Release requires the owner's approval after checks and review. Rollback
+is the previous application revision; no database restore is needed.

@@ -81,58 +81,6 @@ describe("integration provider health checks", () => {
       delete process.env[secretName];
     },
   );
-
-  it("authenticates Azure Speech without exposing the returned token", async () => {
-    process.env.TEST_AZURE_SPEECH_REGION = "southeastasia";
-    process.env.TEST_AZURE_SPEECH_KEY = "speech-secret";
-    const fetcher = async (input: RequestInfo | URL, init?: RequestInit) => {
-      expect(input).toBe(
-        "https://southeastasia.api.cognitive.microsoft.com/sts/v1.0/issueToken",
-      );
-      expect(init).toMatchObject({
-        method: "POST",
-        redirect: "manual",
-        headers: { "Ocp-Apim-Subscription-Key": "speech-secret" },
-      });
-      return new Response("short-lived-token");
-    };
-    await expect(
-      testIntegrationConnection(
-        {
-          providerKey: "microsoft_azure",
-          credentialReference: "TEST_AZURE",
-        },
-        fetcher,
-      ),
-    ).resolves.toEqual({
-      providerKey: "microsoft_azure",
-      detail: "Azure Speech authenticated in southeastasia",
-    });
-    delete process.env.TEST_AZURE_SPEECH_REGION;
-    delete process.env.TEST_AZURE_SPEECH_KEY;
-  });
-
-  it("rejects an invalid Azure region before sending the Speech key", async () => {
-    process.env.TEST_AZURE_SPEECH_REGION = "https://example.com";
-    process.env.TEST_AZURE_SPEECH_KEY = "speech-secret";
-    let called = false;
-    const fetcher = async () => {
-      called = true;
-      return new Response("unused");
-    };
-    await expect(
-      testIntegrationConnection(
-        {
-          providerKey: "microsoft_azure",
-          credentialReference: "TEST_AZURE",
-        },
-        fetcher,
-      ),
-    ).rejects.toThrow(/region must look like/);
-    expect(called).toBe(false);
-    delete process.env.TEST_AZURE_SPEECH_REGION;
-    delete process.env.TEST_AZURE_SPEECH_KEY;
-  });
 });
 
 // Fixed answers for the redirect and rejection cases; neither depends on the

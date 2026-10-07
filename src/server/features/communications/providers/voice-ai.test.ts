@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { generateVoiceAgentReply, translateVoiceTranscript } from "./voice-ai";
+import { generateVoiceAgentReply } from "./voice-ai";
 
 describe("voice Claude agent", () => {
   it("uses tenant credentials and forbids invented business facts", async () => {
@@ -53,28 +53,4 @@ describe("voice Claude agent", () => {
     delete process.env.OPENROUTER_API_KEY;
     if (previousAnthropic) process.env.ANTHROPIC_API_KEY = previousAnthropic;
   });
-});
-
-it("translates the display transcript without applying agent reply instructions", async () => {
-  process.env.TRANSLATION_ANTHROPIC_API_KEY = "test-key";
-  try {
-    const result = await translateVoiceTranscript(
-      "TRANSLATION",
-      "User: ආයුබෝවන්",
-      async (_input, init) => {
-        const body = typeof init?.body === "string" ? init.body : "";
-        expect(body).toContain(
-          "Translate the supplied conversation into English",
-        );
-        expect(body).not.toContain("Reply in the same language");
-        expect(body).toContain("User: ආයුබෝවන්");
-        return Response.json({
-          content: [{ type: "text", text: "User: Hello" }],
-        });
-      },
-    );
-    expect(result.reply).toBe("User: Hello");
-  } finally {
-    delete process.env.TRANSLATION_ANTHROPIC_API_KEY;
-  }
 });

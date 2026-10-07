@@ -63,12 +63,7 @@ import {
   verifyTwilioSignature,
 } from "../providers/signatures";
 import { deliverWebhook, validateWebhookUrl } from "../providers/webhooks";
-import {
-  speakWithAzure,
-  speakWithDeepgram,
-  transcribeWithAzure,
-  transcribeWithDeepgram,
-} from "../providers/voice";
+import { speakWithDeepgram, transcribeWithDeepgram } from "../providers/voice";
 import { buildVoiceAgentContext } from "./VoiceAgentContext";
 import { learnFromConversation, rememberNow } from "./VoiceLearningService";
 import { asksToRemember } from "@/server/features/voice/remember";
@@ -78,10 +73,7 @@ import {
   scrapeWithFirecrawl,
   testIntegrationConnection,
 } from "../providers/integrations";
-import {
-  generateVoiceAgentReply,
-  translateVoiceTranscript,
-} from "../providers/voice-ai";
+import { generateVoiceAgentReply } from "../providers/voice-ai";
 import { VoiceAnalystService } from "@/server/features/voice/services/VoiceAnalystService";
 import { BusinessAuditRepository } from "@/server/features/business-modules/repositories/BusinessAuditRepository";
 import { isUniqueViolation } from "@/server/lib/db-errors";
@@ -774,7 +766,16 @@ async function createWhatsappOrder(
 }
 async function voiceWorkspace(organizationId: string, userId: string) {
   await BusinessModuleService.requireAccess(organizationId, userId, "voice");
-  return CommunicationsRepository.getVoiceWorkspace(organizationId);
+  const workspace =
+    await CommunicationsRepository.getVoiceWorkspace(organizationId);
+  return {
+    ...workspace,
+    agents: workspace.agents.filter(
+      (agent) =>
+        agent.speechToTextProvider !== "microsoft_azure" &&
+        agent.textToSpeechProvider !== "microsoft_azure",
+    ),
+  };
 }
 async function createVoiceAgent(
   organizationId: string,
@@ -787,6 +788,14 @@ async function createVoiceAgent(
     "voice",
     "admin",
   );
+  if (
+    input.speechToTextProvider === "microsoft_azure" ||
+    input.textToSpeechProvider === "microsoft_azure"
+  ) {
+    throw new Error(
+      "Azure voice has been removed. Use ElevenLabs for business calls.",
+    );
+  }
   const agent = await CommunicationsRepository.createVoiceAgent(
     organizationId,
     input,
@@ -825,6 +834,14 @@ async function startVoiceConversation(
     : true;
   if (!agent || !contactValid)
     throw new Error("Voice agent or contact not found.");
+  if (
+    agent.speechToTextProvider === "microsoft_azure" ||
+    agent.textToSpeechProvider === "microsoft_azure"
+  ) {
+    throw new Error(
+      "Azure voice has been removed. Use ElevenLabs for business calls.",
+    );
+  }
   const conversation = await CommunicationsRepository.startVoiceConversation(
     organizationId,
     input,
@@ -977,38 +994,21 @@ async function transcribeVoiceAudio(
     organizationId,
     input.conversationId,
   );
-  const azureConnection =
-    agent.speechToTextProvider === "microsoft_azure" ||
-    agent.textToSpeechProvider === "microsoft_azure"
-      ? await CommunicationsRepository.getIntegrationByProvider(
-          organizationId,
-          "microsoft_azure",
-        )
-      : undefined;
-  if (azureConnection && azureConnection.status !== "connected") {
-    throw new Error("Test the Microsoft Azure integration before using it.");
+  if (
+    agent.speechToTextProvider !== "deepgram" ||
+    agent.textToSpeechProvider !== "deepgram"
+  ) {
+    throw new Error(
+      "This browser voice provider is no longer available. Use ElevenLabs for business calls.",
+    );
   }
   const startedAt = Date.now();
-  const result =
-    agent.speechToTextProvider === "microsoft_azure" && azureConnection
-      ? await transcribeWithAzure(
-          azureConnection,
-          input.audioBase64,
-          input.mimeType,
-          input.language,
-        )
-      : agent.speechToTextProvider === "deepgram"
-        ? await transcribeWithDeepgram(
-            agent.credentialReference,
-            input.audioBase64,
-            input.mimeType,
-            input.language,
-          )
-        : (() => {
-            throw new Error(
-              "This voice agent has no supported speech provider.",
-            );
-          })();
+  const result = await transcribeWithDeepgram(
+    agent.credentialReference,
+    input.audioBase64,
+    input.mimeType,
+    input.language,
+  );
   const heardAt = Date.now();
   // Nothing was said. Save no turn and generate no reply: an empty message
   // would pollute the transcript and the history the agent learns from.
@@ -1026,11 +1026,7 @@ async function transcribeVoiceAudio(
       (error) => console.error("[voice-learning] remember failed:", error),
     );
   }
-  if (
-    agent.modelProvider === "anthropic" &&
-    (agent.textToSpeechProvider === "deepgram" ||
-      agent.textToSpeechProvider === "microsoft_azure")
-  ) {
+  if (agent.modelProvider === "anthropic") {
     try {
       const history =
         await CommunicationsRepository.getVoiceConversationMessages(
@@ -1053,11 +1049,7 @@ async function transcribeVoiceAudio(
       ]);
       const generated = await generateVoiceAgentReply({
         agentName: agent.name,
-        credentialReference:
-          agent.credentialReference ??
-          (agent.speechToTextProvider === "microsoft_azure"
-            ? "OPENSEO_VOICE"
-            : null),
+        credentialReference: agent.credentialReference,
         history,
         businessContext,
         analystContext: analystContext.text,
@@ -1067,22 +1059,10 @@ async function transcribeVoiceAudio(
         .replaceAll(/https?:\/\/\S+/g, "")
         .replaceAll(/\s{2,}/g, " ")
         .trim();
-      const translation =
-        agent.speechToTextProvider === "microsoft_azure"
-          ? translateVoiceTranscript(
-              agent.credentialReference ?? "OPENSEO_VOICE",
-              `User: ${result.transcript}\nAgent: ${generated.reply}`,
-            )
-              .then((value) => ({
-                englishTranscript: value.reply,
-                translationError: false,
-              }))
-              .catch(() => ({ englishTranscript: "", translationError: true }))
-          : Promise.resolve({ englishTranscript: "", translationError: false });
-      const speech =
-        agent.textToSpeechProvider === "microsoft_azure" && azureConnection
-          ? await speakWithAzure(azureConnection, spokenReply)
-          : await speakWithDeepgram(agent.credentialReference, spokenReply);
+      const speech = await speakWithDeepgram(
+        agent.credentialReference,
+        spokenReply,
+      );
       await CommunicationsRepository.appendVoiceTranscript(organizationId, {
         conversationId: input.conversationId,
         speaker: "agent",
@@ -1096,7 +1076,6 @@ async function transcribeVoiceAudio(
       return {
         ...result,
         ...speech,
-        ...(await translation),
         reply: generated.reply,
         endsConversation: isFarewell(result.transcript),
       };
@@ -1175,6 +1154,11 @@ async function createIntegration(
     "integrations",
     "admin",
   );
+  if (input.providerKey === "microsoft_azure") {
+    throw new Error(
+      "Azure voice has been removed. Use ElevenLabs for business calls.",
+    );
+  }
   const connection = await CommunicationsRepository.createIntegration(
     organizationId,
     {
