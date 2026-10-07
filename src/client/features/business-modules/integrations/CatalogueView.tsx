@@ -23,7 +23,6 @@ const logos: Record<string, string> = {
   wordpress: "wordpress",
   instagram: "instagram",
   messenger: "messenger",
-  microsoft_azure: "azure",
   google_sheets: "googlesheets",
   zoho: "zoho",
   hubspot: "hubspot",

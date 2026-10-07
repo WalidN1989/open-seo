@@ -24,16 +24,6 @@ export const integrationProviders = [
     credentialSuffixes: ["SIGNING_SECRET"],
   },
   {
-    key: "microsoft_azure",
-    name: "Microsoft Azure",
-    capabilities: ["speech recognition", "text to speech", "SIP calling"],
-    credentialSuffixes: [
-      "SPEECH_REGION",
-      "SPEECH_KEY",
-      "COMMUNICATION_SERVICES_CONNECTION_STRING",
-    ],
-  },
-  {
     key: "woocommerce",
     name: "WooCommerce",
     capabilities: ["customers", "orders", "products"],

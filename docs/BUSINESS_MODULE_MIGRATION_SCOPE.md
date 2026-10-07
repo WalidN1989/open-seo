@@ -1421,3 +1421,24 @@ runtime: it rejects `redirect: "error"` before sending a request. TypeSafe itsel
 returned HTTP 200 from the same production container. The provider now uses
 `redirect: "manual"`; any 3xx remains non-success and is rejected before the
 bearer credential can be forwarded.
+
+### October 7, 2026 — retire Azure Sinhala voice (pending release)
+
+The owner requested removal of the failed Azure Sinhala experiment and an
+ElevenLabs-only business Voice Agent screen. The `codex/elevenlabs-only-voice`
+branch removes the business browser test controls, Azure recorder/converter,
+Azure Speech STT/TTS, transcript translation and Azure integration catalogue
+entry/health check. Old Azure agent records cannot start or process audio;
+new Azure agents/connections are rejected. Existing call and test records are
+preserved in storage. ElevenLabs phone webhooks, caller initiation, credentials,
+CRM links and telephone routing are unchanged. The separate internal workspace
+analyst's Deepgram code is retained; it is not offered in the business Voice
+Agent screen.
+
+No schema migration, destructive database cleanup or Azure cloud-resource
+removal is required. Azure Communication Services for the separate 306 SIP
+project is not removed. No deployment has occurred. Production has newer
+unmerged changes recorded in the owner's primary ledger; do not deploy this
+current-main worktree over that runtime without reconciling its source first.
+Release requires the owner's approval after checks and review. Rollback is the
+previous application revision; no database restore is needed.

@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import { PhoneIncoming, Globe, Clock, ChevronDown } from "lucide-react";
+import { PhoneIncoming, Clock, ChevronDown } from "lucide-react";
 import "./calls.css";
 import { listPhoneCalls } from "@/serverFunctions/voiceCalls";
 
@@ -22,14 +22,11 @@ function length(seconds: number | null) {
   return minutes ? `${minutes}m ${Math.round(seconds % 60)}s` : `${seconds}s`;
 }
 
-/** Which agent took the call and where: the phone line or the website. */
-function source(call: { provider: string; agentName: string | null }) {
-  const website = call.provider === "deepgram";
+function source(call: { agentName: string | null }) {
   return {
-    agent:
-      call.agentName?.trim() || (website ? "Website agent" : "Phone agent"),
-    channel: website ? "Website" : "Phone",
-    badge: website ? "badge-secondary" : "badge-primary",
+    agent: call.agentName?.trim() || "ElevenLabs agent",
+    channel: "Phone",
+    badge: "badge-primary",
   };
 }
 
@@ -40,10 +37,6 @@ function fieldLabel(key: string) {
     .replace(/^\w/, (c) => c.toUpperCase());
 }
 
-/**
- * Calls answered by the voice agents — the phone line (ElevenLabs) and the
- * website (Deepgram) — each already turned into a CRM contact and lead.
- */
 export function PhoneCallsSection() {
   const query = useQuery({
     queryKey: ["voice", "phone-calls"],
@@ -52,7 +45,9 @@ export function PhoneCallsSection() {
     refetchIntervalInBackground: false,
   });
   const [open, setOpen] = useState<string | null>(null);
-  const calls = query.data ?? [];
+  const calls = (query.data ?? []).filter(
+    (call) => call.provider === "elevenlabs",
+  );
 
   return (
     <section className="voice-calls space-y-4">
@@ -60,12 +55,6 @@ export function PhoneCallsSection() {
         <div className="voice-call-stats">
           {[
             { label: "Recent calls", value: calls.length, Icon: PhoneIncoming },
-            {
-              label: "Website calls",
-              value: calls.filter((call) => call.provider === "deepgram")
-                .length,
-              Icon: Globe,
-            },
             {
               label: "Recorded duration",
               value:
@@ -103,9 +92,8 @@ export function PhoneCallsSection() {
         </p>
       ) : calls.length === 0 ? (
         <p className="text-sm text-base-content/60">
-          No calls yet. Connect ElevenLabs (phone line) or Deepgram (website
-          voice agent) under Integrations; every call then lands here and in the
-          CRM.
+          No calls yet. Connect ElevenLabs under Integrations; calls then appear
+          here and in the CRM.
         </p>
       ) : (
         <ul className="voice-call-grid">
