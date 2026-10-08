@@ -30,7 +30,10 @@ A confirmed action creates `AI_VISIBILITY_WORKFLOW`, registered in
 retries. Repeat submissions of the same run id are idempotent; a database
 constraint allows only one active run per project. Refreshing results reconciles
 terminal workflow status. An unavailable workflow status service leaves the
-active run intact rather than risking duplicate paid collection.
+active run intact rather than risking duplicate paid collection. An ambiguous
+creation response also preserves the active run. If a run is stranded, an
+operator must confirm the workflow is absent or terminate it before finalizing
+the run; a lookup failure or elapsed time alone is not proof it stopped.
 
 The branch adds seven normalized tables and migrations for SQLite and Postgres.
 The existing deployment migration procedure must apply the appropriate

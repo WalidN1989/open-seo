@@ -197,11 +197,8 @@ async function start(
       const instance = await env.AI_VISIBILITY_WORKFLOW.get(runId);
       await instance.status();
     } catch {
-      await repo.finishRun(projectId, runId);
-      throw new AppError(
-        "INTERNAL_ERROR",
-        "Could not start the AI check. No automatic retry was made.",
-      );
+      // Status may be unavailable after creation succeeded. Preserve the lock
+      // until a terminal workflow status is confirmed; never replay paid work.
     }
   }
   return { runId };

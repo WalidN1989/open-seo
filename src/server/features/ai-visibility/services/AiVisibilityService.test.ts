@@ -231,11 +231,26 @@ describe("manual AI Visibility", () => {
     expect((await repo.getDetails("p1", id))?.run.status).toBe("partial");
     expect(await repo.getActiveRun("p1")).toBeNull();
   });
-  it("does not leave an active run when workflow creation fails", async () => {
-    mocks.create.mockRejectedValueOnce(new Error("unavailable"));
-    await expect(start()).rejects.toThrow("Could not start");
-    expect(await repo.getActiveRun("p1")).toBeNull();
+  it("retains the active lock when creation times out and workflow status is unavailable", async () => {
+    mocks.create.mockRejectedValueOnce(new Error("timeout"));
+    const status = vi
+      .fn()
+      .mockRejectedValue(new Error("status API unavailable"));
+    mocks.get.mockResolvedValue({ status });
+    const id = await start();
+    expect((await repo.getRun("p1", id))?.status).toBe("queued");
+    await expect(start()).rejects.toThrow("already running");
+    expect(mocks.create).toHaveBeenCalledTimes(1);
     expect(mocks.provider).not.toHaveBeenCalled();
+  });
+  it("releases an interrupted run only after a confirmed terminal workflow status", async () => {
+    const id = await start();
+    mocks.get.mockResolvedValueOnce({
+      status: async () => ({ status: "errored" }),
+    });
+    const state = await service.state("p1", id);
+    expect(state.details?.run.status).toBe("failed");
+    expect(await repo.getActiveRun("p1")).toBeNull();
   });
   it("checks that an ambiguous workflow creation actually exists before accepting it", async () => {
     mocks.create.mockRejectedValueOnce(new Error("timeout"));

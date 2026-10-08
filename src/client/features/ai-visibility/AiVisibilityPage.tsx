@@ -356,7 +356,9 @@ function AiVisibilityView({
                   });
                   onSelectRun(result.runId);
                   setPreview(undefined);
-                  setNotice("Check started. Refresh results in a few minutes.");
+                  setNotice(
+                    "Check requested. Refresh results in a few minutes.",
+                  );
                 })
               }
             >
