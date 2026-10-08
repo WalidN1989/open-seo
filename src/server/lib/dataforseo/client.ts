@@ -197,6 +197,7 @@ export function createDataforseoClient(customer: BillingCustomerContext) {
         (s) => s.fetchLlmCrossAggregatedMetrics,
       ),
       llmResponse: meter(customer, (s) => s.fetchLlmResponse),
+      visibilityLive: meter(customer, (s) => s.fetchAiVisibilityLive),
     },
   } as const;
 }

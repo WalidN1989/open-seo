@@ -76,6 +76,7 @@ OpenSEO exposes an MCP server so AI agents like Claude Code, OpenClaw, and Herme
 Beyond SEO, an organisation can switch on business modules from the Business page: CRM and Leads, WhatsApp (shared inbox with an AI assistant, templates, campaigns, orders), Voice Agent, Integrations, and Email. Each is scoped to its own organisation, so one business never sees another's data.
 
 - [Business module scope and migration](./docs/BUSINESS_MODULE_MIGRATION_SCOPE.md)
+- [Manual AI Visibility](./docs/AI_VISIBILITY.md)
 - [Email module (AgentMail)](./docs/EMAIL_MODULE.md) — how a business connects an inbox, what happens to mail, and what is deliberately not built
 
 ## Self-Hosting

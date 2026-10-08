@@ -27,6 +27,8 @@ import * as pgGa4 from "./pg/ga4.schema";
 import * as pgGsc from "./pg/gsc.schema";
 import * as pgTelemetry from "./pg/telemetry.schema";
 import * as pgBusiness from "./pg/business.schema";
+import * as sqliteAiVisibility from "./ai-visibility.schema";
+import * as pgAiVisibility from "./pg/ai-visibility.schema";
 
 // Canonical schema barrel. Repositories import their tables from here and the
 // provider-aware `db` from "@/db", so each repository is written ONCE for both
@@ -51,7 +53,8 @@ type AppSchema = typeof sqliteApp &
   typeof sqliteGa4 &
   typeof sqliteGsc &
   typeof sqliteTelemetry &
-  typeof sqliteBusiness;
+  typeof sqliteBusiness &
+  typeof sqliteAiVisibility;
 
 const runtimeSchema =
   getDatabaseProvider() === "postgres"
@@ -70,6 +73,7 @@ const runtimeSchema =
         ...pgGsc,
         ...pgTelemetry,
         ...pgBusiness,
+        ...pgAiVisibility,
       }
     : {
         ...sqliteApp,
@@ -86,6 +90,7 @@ const runtimeSchema =
         ...sqliteGsc,
         ...sqliteTelemetry,
         ...sqliteBusiness,
+        ...sqliteAiVisibility,
       };
 
 // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- guarded by schema-parity.test.ts
@@ -200,4 +205,11 @@ export const {
   clientContacts,
   clientAccessEvents,
   clientLogins,
+  aiVisibilitySettings,
+  aiVisibilityPrompts,
+  aiVisibilityRuns,
+  aiVisibilityRunBrands,
+  aiVisibilityObservations,
+  aiVisibilityCitations,
+  aiVisibilityMentions,
 } = schema;

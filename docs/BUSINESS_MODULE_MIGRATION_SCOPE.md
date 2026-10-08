@@ -1499,3 +1499,17 @@ for email-listener compatibility, and no other Railway application was stopped.
 The upstream README recommends Cloudflare for internet-facing installations;
 this fork's existing Docker/Railway hosting and business modules are customized.
 No hosting migration or upstream reset was performed.
+
+## October 8: manual AI Visibility branch
+
+Development is isolated in `codex/ai-visibility`, based on main `51f66f79`.
+The owner requested branch preparation and a local preview; no merge or live
+deployment is authorized by that request. Production remains unchanged during
+the one-week cost comparison.
+
+The module adds a manually started AI Visibility workflow for ChatGPT, Gemini
+and Google AI Overviews, saved prompts and captured evidence. It uses the
+existing DataForSEO account and purchase ledger, with no new subscription gate.
+There are no recurring jobs, automatic prompt research, idle polls, WhatsApp
+changes or scheduler hooks. SQLite and Postgres migrations add seven tables.
+See `docs/AI_VISIBILITY.md` for operation, deferred scope and rollback limits.

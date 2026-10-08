@@ -21,6 +21,11 @@
   },
   "workflows": [
     {
+      "binding": "AI_VISIBILITY_WORKFLOW",
+      "name": "ai-visibility-workflow",
+      "class_name": "AiVisibilityWorkflow",
+    },
+    {
       "name": "site-audit-workflow",
       "binding": "SITE_AUDIT_WORKFLOW",
       "class_name": "SiteAuditWorkflow",

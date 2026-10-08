@@ -533,6 +533,13 @@
       "when": 1791116244970,
       "tag": "0075_graceful_lilandra",
       "breakpoints": true
+    },
+    {
+      "idx": 76,
+      "version": "7",
+      "when": 1791487278256,
+      "tag": "0076_windy_lionheart",
+      "breakpoints": true
     }
   ]
 }
