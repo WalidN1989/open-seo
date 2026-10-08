@@ -5,5 +5,5 @@ export const Route = createFileRoute("/_project/p/$projectId/ai-visibility")({
 });
 function AiVisibilityRoute() {
   const { projectId } = Route.useParams();
-  return <AiVisibilityPage projectId={projectId} />;
+  return <AiVisibilityPage key={projectId} projectId={projectId} />;
 }
