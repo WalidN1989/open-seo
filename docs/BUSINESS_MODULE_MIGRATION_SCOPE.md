@@ -1478,3 +1478,24 @@ rank-check and checkout progress observation remains separate from idle polling.
 No schema migration, provider credentials, telephone routing, or Grok automation
 was added. Work is isolated in codex/neon-no-polling, leaving the older dirty
 primary checkout untouched. Deployment and final validation recorded below.
+
+Owner approved proceeding with OpenSEO cost reduction on October 8. Local full
+`ci:check` and GitHub `ci`/`docker-build` passed on f57402d4; the targeted
+reply runner, authorization, repository, webhook tenancy and cron tests passed
+(31 tests). CLI deployment 7967b195-46ec-44c4-b0de-45971e77b001 succeeded.
+Live health returned ok in selfhosted authenticated mode, and startup logged
+“Event-driven replies enabled; no recurring queue checks”. The fork's recovery
+guide requires a GitHub main release, so the approved PR is being merged to
+keep future autodeploys aligned with this release rather than relying on the
+CLI upload. Previous known-good main: f1c27e2733967b32061263a924a493b6dd69a311.
+
+Read-only process measurements before release totalled approximately 1.5 GB
+RSS, including 966 MB in workerd. Immediately after release total RSS was
+approximately 1.0 GB. Restart changes runtime age, so this does not establish
+a sustained memory saving or diagnose a leak. Direct Node entrypoints avoid
+resident CLI wrapper overhead, while removing recurring background requests
+reduces idle work. No arbitrary memory cap was applied, Serverless remains off
+for email-listener compatibility, and no other Railway application was stopped.
+The upstream README recommends Cloudflare for internet-facing installations;
+this fork's existing Docker/Railway hosting and business modules are customized.
+No hosting migration or upstream reset was performed.

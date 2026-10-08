@@ -91,7 +91,7 @@ docker compose down
 
 ## Health and troubleshooting
 
-Startup checks appear in `docker compose logs` before the build. Once running, `/api/health` reports configuration and database status, and `docker compose ps` reports container health.
+Startup checks appear in `docker compose logs`. Once running, `/api/health` reports configuration readiness without querying the database, so routine probes do not keep a serverless database awake. Use the authenticated setup checks to verify database connectivity. `docker compose ps` reports container health.
 
 ## Troubleshooting environment variables
 
