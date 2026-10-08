@@ -48,6 +48,8 @@ export {
   postRankCheckTasks,
 } from "@/server/lib/dataforseo/serp";
 
+export { fetchAiVisibilityLive } from "@/server/lib/dataforseo/ai-visibility";
+
 export { fetchLighthouseResult } from "@/server/lib/dataforseo/lighthouse";
 
 export {

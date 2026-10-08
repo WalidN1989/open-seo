@@ -21,6 +21,7 @@ declare namespace Cloudflare {
 		POSTHOG_HOST: string;
 		POSTHOG_PUBLIC_KEY: string;
 		SITE_AUDIT_WORKFLOW: Workflow<Parameters<import("./src/server").SiteAuditWorkflow['run']>[0]['payload']>;
+		AI_VISIBILITY_WORKFLOW: Workflow<Parameters<import("./src/server").AiVisibilityWorkflow['run']>[0]['payload']>;
 		RANK_CHECK_WORKFLOW: Workflow<Parameters<import("./src/server").RankCheckWorkflow['run']>[0]['payload']>;
 	}
 }

@@ -13,6 +13,25 @@ import { getRequiredEnvValue } from "@/server/lib/runtime-env";
 import type { ErrorCode } from "@/shared/error-codes";
 
 const API_BASE = "https://api.dataforseo.com";
+
+// LLM scraper endpoints missing from our pinned SDK share its transport.
+// Paid live requests get ONE attempt: an ambiguous failure must not double bill.
+export async function postAiVisibilityLive(
+  path: string,
+  body: unknown,
+  classify: DataforseoErrorClassifier,
+): Promise<unknown> {
+  const response = await createAuthenticatedFetch(classify, 0)(
+    `${API_BASE}${path}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(150_000),
+    },
+  );
+  return response.json();
+}
 const MAX_DATAFORSEO_ERROR_PAYLOAD_LENGTH = 1600;
 // Safety ceiling on any live call (Lighthouse is the slowest, ~tens of seconds).
 const DATAFORSEO_REQUEST_TIMEOUT_MS = 60_000;

@@ -273,3 +273,5 @@ export default {
     if (watchdogError) throw watchdogError;
   },
 };
+
+export { AiVisibilityWorkflow } from "./server/workflows/AiVisibilityWorkflow";
