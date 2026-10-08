@@ -1446,7 +1446,6 @@ is signed into a different workspace; use the locally linked owner CLI for this
 service. Release requires the owner's approval after checks and review. Rollback
 is the previous application revision; no database restore is needed.
 
-
 ### 2026-10-08 — Remove idle database polling for cost containment
 
 Owner explicitly requested removing polling completely while there are no paying
