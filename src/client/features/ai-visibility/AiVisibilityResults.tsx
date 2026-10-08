@@ -31,9 +31,10 @@ export function AiVisibilityResults({
     <section className={panel}>
       <div className="flex flex-wrap items-center justify-between gap-4">
         <h2 className="font-semibold">Saved results</h2>
-        <label className="flex items-center gap-2 text-sm">
-          Check
+        <div className="flex items-center gap-2 text-sm">
+          <label htmlFor="ai-history-run">Check</label>
           <select
+            id="ai-history-run"
             className={input}
             value={selectedRun ?? state.runs[0]?.id ?? ""}
             onChange={(e) => onSelectRun(e.target.value)}
@@ -45,7 +46,7 @@ export function AiVisibilityResults({
               </option>
             ))}
           </select>
-        </label>
+        </div>
       </div>
       {!details && (
         <p className="mt-4 text-sm text-base-content/65">
