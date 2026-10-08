@@ -1445,3 +1445,57 @@ supersedes the older October 3 production-source warning. The Railway connector
 is signed into a different workspace; use the locally linked owner CLI for this
 service. Release requires the owner's approval after checks and review. Rollback
 is the previous application revision; no database restore is needed.
+
+### 2026-10-08 — Remove idle database polling for cost containment
+
+Owner explicitly requested removing polling completely while there are no paying
+customers; any future hourly Grok routine will be set up separately by the owner.
+Production baseline f1c27e27 contains a fast WhatsApp queue job every five seconds,
+which explains approximately 6 CU-hours/day at Neon's 0.25 CU minimum.
+
+Replaced the container ticker with a loopback-only, secret-authenticated reply
+runner. Incoming messages queue the existing durable reply row and notify a
+one-time timer. Message bursts supersede the timer, and startup reads pending
+rows once, including processing lease deadlines. Processing claims only the
+notified conversation. Three unsuccessful attempts leave the durable row for
+manual retry; an empty queue creates no timer or repeated database request.
+Cloudflare's platform scheduling is separate; the runner URL is advertised only
+by the container entrypoint and included in runtime bindings.
+
+Railway no longer automatically runs any cron tier. Catalogue sync, Microsoft
+mail sync, quote follow-ups, lifecycle nudges, webhook retries, rank checks,
+stale-audit reconciliation and voice-learning sweeps now require explicit
+operator requests through the existing secret-protected cron route. The ticker
+script is a one-time tier command, not a daemon. Incoming webhooks and existing
+IMAP IDLE event delivery continue. Mailbox configuration loads once at startup
+and on explicit reload rather than on a thirty-minute timer. Routine health
+checks validate setup without opening a database connection; telemetry remains
+opted out, with its existing deployment flag now explicitly allowlisted.
+Removed persistent inbox, phone-call, integration and reminder refresh timers;
+views refresh on navigation/focus/actions or browser reload. User-triggered audit,
+rank-check and checkout progress observation remains separate from idle polling.
+
+No schema migration, provider credentials, telephone routing, or Grok automation
+was added. Work is isolated in codex/neon-no-polling, leaving the older dirty
+primary checkout untouched. Deployment and final validation recorded below.
+
+Owner approved proceeding with OpenSEO cost reduction on October 8. Local full
+`ci:check` and GitHub `ci`/`docker-build` passed on f57402d4; the targeted
+reply runner, authorization, repository, webhook tenancy and cron tests passed
+(31 tests). CLI deployment 7967b195-46ec-44c4-b0de-45971e77b001 succeeded.
+Live health returned ok in selfhosted authenticated mode, and startup logged
+“Event-driven replies enabled; no recurring queue checks”. The fork's recovery
+guide requires a GitHub main release, so the approved PR is being merged to
+keep future autodeploys aligned with this release rather than relying on the
+CLI upload. Previous known-good main: f1c27e2733967b32061263a924a493b6dd69a311.
+
+Read-only process measurements before release totalled approximately 1.5 GB
+RSS, including 966 MB in workerd. Immediately after release total RSS was
+approximately 1.0 GB. Restart changes runtime age, so this does not establish
+a sustained memory saving or diagnose a leak. Direct Node entrypoints avoid
+resident CLI wrapper overhead, while removing recurring background requests
+reduces idle work. No arbitrary memory cap was applied, Serverless remains off
+for email-listener compatibility, and no other Railway application was stopped.
+The upstream README recommends Cloudflare for internet-facing installations;
+this fork's existing Docker/Railway hosting and business modules are customized.
+No hosting migration or upstream reset was performed.

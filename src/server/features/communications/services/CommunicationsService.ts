@@ -1,5 +1,6 @@
 /* oxlint-disable max-lines, max-depth, max-params */
 import { waitUntil } from "cloudflare:workers";
+import { wakeWhatsappReply } from "./WhatsappReplyWakeupService";
 import type { z } from "zod";
 import { BusinessModuleService } from "@/server/features/business-modules/services/BusinessModuleService";
 import { AppError } from "@/server/lib/errors";
@@ -1480,12 +1481,16 @@ async function ingestWhatsappGroup(
         (message.messageType === "text" || message.messageType === "image") &&
         !findAccessCodeCandidate(message.body ?? "")
       ) {
-        await WhatsappReplyJobRepository.schedule(
+        const wakeup = await WhatsappReplyJobRepository.schedule(
           connection.organizationId,
           ingestion.conversationId,
           message.externalMessageId,
           assistantSettings.replyDelaySeconds,
         );
+        await wakeWhatsappReply(wakeup).catch((error: unknown) => {
+          // The durable row survives; startup recovery or a manual run can retry it.
+          console.error("Could not schedule WhatsApp reply wakeup", error);
+        });
         continue;
       }
       const handled = await replyToInbound(

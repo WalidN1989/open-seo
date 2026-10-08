@@ -11,8 +11,6 @@ export function useEmailWorkspace() {
     queryFn: () => getEmailWorkspace(),
     // A webhook lands whenever a customer writes; keep the inbox current
     // while it is on screen without anyone pressing refresh.
-    refetchInterval: 5_000,
-    refetchIntervalInBackground: false,
   });
 }
 
@@ -21,8 +19,6 @@ export function useEmailThread(threadId: string | null) {
     queryKey: ["email", "thread", threadId],
     queryFn: () => getEmailThread({ data: { threadId: threadId ?? "" } }),
     enabled: Boolean(threadId),
-    refetchInterval: 5_000,
-    refetchIntervalInBackground: false,
   });
 }
 
