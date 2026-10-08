@@ -27,6 +27,7 @@ const runtimeVariableNames = [
   "MICROSOFT_MAIL_TENANT_ID",
   "OPENROUTER_API_KEY",
   "OPENROUTER_MODEL",
+  "OPENSEO_TELEMETRY_DISABLED",
   "OPENSEO_VOICE_ANTHROPIC_API_KEY",
   "OPENSEO_VOICE_DEEPGRAM_API_KEY",
   "POLICY_AUD",
@@ -51,6 +52,7 @@ const runtimeVariableNames = [
   "TURNSTILE_SECRET_KEY",
   "TURNSTILE_SITE_KEY",
   "VOICE_AI_MODEL",
+  "WHATSAPP_REPLY_RUNNER_URL",
 ] as const;
 
 const outputPath = process.argv[2];

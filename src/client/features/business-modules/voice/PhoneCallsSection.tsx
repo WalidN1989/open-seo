@@ -41,8 +41,6 @@ export function PhoneCallsSection() {
   const query = useQuery({
     queryKey: ["voice", "phone-calls"],
     queryFn: () => listPhoneCalls(),
-    refetchInterval: 15_000,
-    refetchIntervalInBackground: false,
   });
   const [open, setOpen] = useState<string | null>(null);
   const calls = (query.data ?? []).filter(

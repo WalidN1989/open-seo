@@ -31,15 +31,6 @@ export function IntegrationProviderDetailView() {
   const workspace = useQuery({
     queryKey: WORKSPACE_KEY,
     queryFn: () => getIntegrationsWorkspace(),
-    // A large catalogue syncs across several scheduler runs. Without polling
-    // the panel would sit at whatever it said when the page loaded, which
-    // reads as "nothing is happening" for minutes at a time.
-    refetchInterval: (query) => {
-      const status = query.state.data?.connections.find(
-        (item) => item.providerKey === providerKey,
-      )?.syncStatus;
-      return status === "running" || status === "queued" ? 4000 : false;
-    },
   });
 
   const connection = workspace.data?.connections.find(

@@ -27,6 +27,8 @@ import {
 import { maybeSendSelfHostHeartbeat } from "@/server/lib/self-host-telemetry";
 import { handleGdprStorageErasure } from "@/server/gdpr/storage-erasure";
 import { GDPR_STORAGE_ERASURE_PATH } from "@/shared/gdpr-erasure";
+import { WHATSAPP_REPLY_WAKEUP_PATH } from "@/shared/whatsapp-reply-wakeup";
+import { handleWhatsappReplyWakeup } from "@/server/features/communications/replyWakeupHandler";
 import { INTERNAL_CRON_PATH } from "@/shared/internal-cron";
 import { handleInternalCronRequest } from "@/server/features/scheduler/handler";
 import { MAIL_BRIDGE_INTERNAL_PREFIX } from "@/shared/mail-bridge";
@@ -172,6 +174,9 @@ function handleFetch(
 
   // Before the auth-mode branches: the ticker carries a shared secret, not a
   // user session, so it must not be routed into the OAuth provider.
+  if (pathname === WHATSAPP_REPLY_WAKEUP_PATH) {
+    return handleWhatsappReplyWakeup(publicRequest);
+  }
   if (pathname === INTERNAL_CRON_PATH) {
     return handleInternalCronRequest(publicRequest, env);
   }

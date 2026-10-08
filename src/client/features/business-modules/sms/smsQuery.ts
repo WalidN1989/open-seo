@@ -8,8 +8,6 @@ export function useSmsWorkspace() {
     queryKey: ["sms", "workspace"],
     queryFn: () => getSmsWorkspace(),
     // A text lands by webhook; keep the inbox current while it is on screen.
-    refetchInterval: 10_000,
-    refetchIntervalInBackground: false,
   });
 }
 
@@ -19,8 +17,6 @@ export function useSmsThread(conversationId: string | null) {
     queryFn: () =>
       getSmsThread({ data: { conversationId: conversationId ?? "" } }),
     enabled: Boolean(conversationId),
-    refetchInterval: 10_000,
-    refetchIntervalInBackground: false,
   });
 }
 

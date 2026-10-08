@@ -4,8 +4,8 @@ import { replyToInbound } from "./WhatsappAssistantReplyService";
 import { runWhatsappAutomationFallback } from "./WhatsappAutomationFallback";
 
 /** Run settled customer conversations outside Meta and Twilio's webhook timeout. */
-export async function runDueWhatsappReplies() {
-  const due = await Jobs.claimDue();
+export async function runDueWhatsappReplies(conversationId?: string) {
+  const due = await Jobs.claimDue(new Date(), conversationId);
   await Promise.all(
     due.map(async (job) => {
       try {

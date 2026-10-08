@@ -8,8 +8,6 @@ export function useSocialWorkspace() {
     queryKey: ["social", "workspace"],
     queryFn: () => getSocialWorkspace(),
     // A DM lands by webhook; keep the inbox current while it is on screen.
-    refetchInterval: 5_000,
-    refetchIntervalInBackground: false,
   });
 }
 
@@ -19,8 +17,6 @@ export function useSocialThread(conversationId: string | null) {
     queryFn: () =>
       getSocialThread({ data: { conversationId: conversationId ?? "" } }),
     enabled: Boolean(conversationId),
-    refetchInterval: 5_000,
-    refetchIntervalInBackground: false,
   });
 }
 

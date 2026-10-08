@@ -1,4 +1,4 @@
-import { and, asc, eq, lte, or } from "drizzle-orm";
+import { and, asc, eq, inArray, lte, or } from "drizzle-orm";
 import { db } from "@/db";
 import { whatsappMessages, whatsappReplyJobs } from "@/db/schema";
 
@@ -32,22 +32,28 @@ async function schedule(
         updatedAt,
       },
     });
+  return { conversationId, dueAt };
 }
 
-async function claimDue(now = new Date()) {
+async function claimDue(now = new Date(), conversationId?: string) {
   const timestamp = now.toISOString();
   const candidates = await db
     .select()
     .from(whatsappReplyJobs)
     .where(
-      or(
-        and(
-          eq(whatsappReplyJobs.status, "pending"),
-          lte(whatsappReplyJobs.dueAt, timestamp),
-        ),
-        and(
-          eq(whatsappReplyJobs.status, "processing"),
-          lte(whatsappReplyJobs.claimExpiresAt, timestamp),
+      and(
+        conversationId
+          ? eq(whatsappReplyJobs.conversationId, conversationId)
+          : undefined,
+        or(
+          and(
+            eq(whatsappReplyJobs.status, "pending"),
+            lte(whatsappReplyJobs.dueAt, timestamp),
+          ),
+          and(
+            eq(whatsappReplyJobs.status, "processing"),
+            lte(whatsappReplyJobs.claimExpiresAt, timestamp),
+          ),
         ),
       ),
     )
@@ -125,7 +131,35 @@ async function retry(conversationId: string, latestMessageId: string) {
     );
 }
 
+/** Read once on startup, or after processing a known conversation. No idle polling. */
+async function pendingWakeups(conversationId?: string) {
+  const rows = await db
+    .select({
+      conversationId: whatsappReplyJobs.conversationId,
+      dueAt: whatsappReplyJobs.dueAt,
+      status: whatsappReplyJobs.status,
+      claimExpiresAt: whatsappReplyJobs.claimExpiresAt,
+    })
+    .from(whatsappReplyJobs)
+    .where(
+      and(
+        inArray(whatsappReplyJobs.status, ["pending", "processing"]),
+        conversationId
+          ? eq(whatsappReplyJobs.conversationId, conversationId)
+          : undefined,
+      ),
+    );
+  return rows.map((row) => ({
+    conversationId: row.conversationId,
+    dueAt:
+      row.status === "processing"
+        ? (row.claimExpiresAt ?? row.dueAt)
+        : row.dueAt,
+  }));
+}
+
 export const WhatsappReplyJobRepository = {
+  pendingWakeups,
   schedule,
   claimDue,
   inboundMessage,

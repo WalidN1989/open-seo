@@ -250,10 +250,7 @@ export function WhatsappWorkspace({
   const query = useQuery({
     queryKey: ["whatsapp", "workspace"],
     queryFn: () => getWhatsappWorkspace(),
-    // Meta reaches the server quickly. Poll only while this page is visible so
-    // the operator sees inbound messages without manually refreshing.
-    refetchInterval: 2_500,
-    refetchIntervalInBackground: false,
+    // Refresh on navigation, focus, and mutations; do not keep Neon awake on a timer.
   });
   const operations = useQuery({
     queryKey: ["whatsapp", "operations"],
