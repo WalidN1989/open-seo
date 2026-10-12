@@ -65,7 +65,39 @@ async function listProducts(organizationId: string, input: ListProductsInput) {
       .offset(input.offset),
     db.select({ value: count() }).from(commerceProducts).where(where),
   ]);
-  return { products: rows, total: totals[0]?.value ?? 0 };
+  const quantities = new Map<string, number>();
+  // Bound each query for D1's parameter limit; one grouped read per chunk,
+  // rather than a separate inventory lookup for every product.
+  for (let i = 0; i < rows.length; i += 80) {
+    const balances = await db
+      .select({
+        productId: commerceInventoryBalances.productId,
+        quantity:
+          sql<number>`sum(${commerceInventoryBalances.quantityOnHand})`.mapWith(
+            Number,
+          ),
+      })
+      .from(commerceInventoryBalances)
+      .where(
+        and(
+          eq(commerceInventoryBalances.organizationId, organizationId),
+          inArray(
+            commerceInventoryBalances.productId,
+            rows.slice(i, i + 80).map((row) => row.id),
+          ),
+        ),
+      )
+      .groupBy(commerceInventoryBalances.productId);
+    for (const balance of balances)
+      quantities.set(balance.productId, balance.quantity);
+  }
+  return {
+    products: rows.map((row) => ({
+      ...row,
+      quantityOnHand: quantities.get(row.id) ?? 0,
+    })),
+    total: totals[0]?.value ?? 0,
+  };
 }
 
 async function getProduct(organizationId: string, productId: string) {

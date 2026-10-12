@@ -1,8 +1,9 @@
+import { ProductsTable } from "./ProductsTable";
 import { ProductExportButton } from "./ProductExportButton";
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Package, Plus, Upload } from "lucide-react";
+import { Plus, Upload } from "lucide-react";
 import {
   createCommerceProduct,
   listCommerceProducts,
@@ -257,49 +258,11 @@ export function CrmProductsView() {
             {search ? "No product matches that search" : "No products yet"}
           </p>
         ) : (
-          <div className="divide-y divide-base-300">
-            {products.map((product) => (
-              <button
-                key={product.id}
-                type="button"
-                onClick={() => setEditingId(product.id)}
-                className="flex w-full items-center justify-between gap-3 p-4 text-left hover:bg-base-200"
-              >
-                <div className="flex min-w-0 items-center gap-3">
-                  <span className="rounded-lg bg-base-200 p-2">
-                    <Package className="size-4" />
-                  </span>
-                  <div className="min-w-0">
-                    <p className="flex items-center gap-2 truncate font-medium">
-                      {product.name}
-                      {product.itemType === "service" ? (
-                        <span className="badge badge-sm border-violet-200 bg-violet-50 text-violet-700">
-                          Service
-                        </span>
-                      ) : null}
-                    </p>
-                    <p className="truncate text-xs text-base-content/50">
-                      {product.sku}
-                      {product.category ? ` · ${product.category}` : ""}
-                      {product.externalSource === "woocommerce"
-                        ? " · WooCommerce"
-                        : product.externalSource === "shopify"
-                          ? " · Shopify"
-                          : ""}
-                    </p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className="font-medium">
-                    {money.format(product.salePriceMinor)}
-                  </p>
-                  {product.status === "archived" ? (
-                    <span className="badge badge-ghost badge-xs">Archived</span>
-                  ) : null}
-                </div>
-              </button>
-            ))}
-          </div>
+          <ProductsTable
+            products={products}
+            formatMoney={money.format}
+            onEdit={setEditingId}
+          />
         )}
 
         {/* A second pager under a long list, so nobody scrolls back up. */}
