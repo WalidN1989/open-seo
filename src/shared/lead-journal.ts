@@ -119,15 +119,6 @@ export const PICKABLE_OUTCOMES = [
   "lost",
 ] as const;
 
-export const TEMPERATURES = [
-  { key: "hot", label: "Hot", active: "bg-orange-500 text-white" },
-  { key: "warm", label: "Warm", active: "bg-amber-400 text-amber-950" },
-  { key: "cold", label: "Cold", active: "bg-sky-300 text-sky-950" },
-  { key: "frozen", label: "Frozen", active: "bg-slate-200 text-slate-700" },
-  { key: "dead", label: "Dead", active: "bg-zinc-400 text-white" },
-  { key: "won", label: "Won", active: "bg-emerald-500 text-white" },
-] as const;
-
 function startOfDay(date: Date) {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate());
 }
