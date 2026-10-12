@@ -119,7 +119,10 @@ export function CrmInventoryView() {
           <AuditsTab branchId={branchId} />
         ) : null}
         {branchId && tab === "transfer" ? (
-          <StockTransferTab branchId={branchId} />
+          <StockTransferTab
+            branchId={branchId}
+            branchName={branchName ?? "Selected branch"}
+          />
         ) : null}
         {branchId && tab === "asOf" ? (
           <StockAsOfTab branchId={branchId} />

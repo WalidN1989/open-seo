@@ -1,3 +1,4 @@
+import { runBatch } from "@/db/runBatch";
 import { and, desc, eq } from "drizzle-orm";
 import { db } from "@/db";
 import {
@@ -108,6 +109,45 @@ async function upsertAuditItem(
   return row;
 }
 
+async function createImportedAudit(
+  organizationId: string,
+  input: {
+    branchId: string;
+    name: string;
+    note: string;
+    createdByUserId: string;
+  },
+  items: Array<{
+    productId: string;
+    expectedQuantity: number;
+    countedQuantity: number;
+  }>,
+) {
+  const id = crypto.randomUUID();
+  await runBatch((tx) => {
+    const inserts = [];
+    for (let i = 0; i < items.length; i += 10) {
+      inserts.push(
+        tx.insert(commerceInventoryAuditItems).values(
+          items.slice(i, i + 10).map((item) => ({
+            id: crypto.randomUUID(),
+            organizationId,
+            auditId: id,
+            ...item,
+          })),
+        ),
+      );
+    }
+    return [
+      tx
+        .insert(commerceInventoryAudits)
+        .values({ id, organizationId, ...input }),
+      ...inserts,
+    ];
+  });
+  return { id };
+}
+
 async function setAuditStatus(
   organizationId: string,
   auditId: string,
@@ -134,6 +174,7 @@ async function setAuditStatus(
 
 export const InventoryAuditRepository = {
   createAudit,
+  createImportedAudit,
   listAudits,
   getAudit,
   listAuditItems,

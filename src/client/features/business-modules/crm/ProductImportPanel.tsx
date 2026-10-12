@@ -1,3 +1,9 @@
+import { PRODUCT_IMPORT_COLUMNS } from "@/shared/product-csv";
+import {
+  readImportFile,
+  IMPORT_FILE_TYPES,
+} from "@/client/lib/importSpreadsheet";
+import { buildCsv, downloadCsv } from "@/client/lib/csv";
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Upload } from "lucide-react";
@@ -31,6 +37,18 @@ export function ProductImportPanel() {
     onError: (error: unknown) => toast.error(getStandardErrorMessage(error)),
   });
 
+  const readFile = useMutation({
+    mutationFn: readImportFile,
+    onSuccess: (text) => {
+      setCsv(text);
+      setResult(null);
+    },
+    onError: (error) => {
+      setCsv("");
+      toast.error(getStandardErrorMessage(error));
+    },
+  });
+
   return (
     <section className="space-y-3 rounded-lg border border-base-300 p-4">
       <div>
@@ -38,25 +56,26 @@ export function ProductImportPanel() {
           <Upload className="size-4" /> Import a catalogue
         </h3>
         <p className="mt-1 text-xs text-base-content/60">
-          A CSV whose first row names the columns. It needs <code>name</code>{" "}
-          and <code>sku</code>; <code>category</code>, <code>price</code>,{" "}
-          <code>productUrl</code> and <code>description</code> are used when
-          present and anything else is ignored. Run the same file again to
-          update prices — matching happens on SKU, so nothing is duplicated.
+          Upload CSV or Excel (.xlsx, first worksheet), or paste CSV below. Use
+          name and SKU (Item Name and Item Code also work). Price, category,
+          barcode, productUrl and description are optional. Blank prices keep
+          existing prices. This imports products only; import quantities under
+          Inventory.
         </p>
       </div>
 
       <input
         type="file"
-        accept=".csv,text/csv,text/plain"
+        accept={IMPORT_FILE_TYPES}
+        disabled={readFile.isPending || run.isPending}
         className="file-input file-input-bordered file-input-sm w-full"
         onChange={(event) => {
           const file = event.target.files?.[0];
-          if (!file) return;
-          void file.text().then((text) => {
-            setCsv(text);
-            setResult(null);
-          });
+          event.target.value = "";
+          if (file) {
+            setCsv("");
+            readFile.mutate(file);
+          }
         }}
       />
 
@@ -72,8 +91,22 @@ export function ProductImportPanel() {
       <div className="flex flex-wrap items-center gap-3">
         <button
           type="button"
+          className="btn btn-outline btn-sm"
+          onClick={() =>
+            downloadCsv(
+              "products-template.csv",
+              buildCsv(PRODUCT_IMPORT_COLUMNS, []),
+            )
+          }
+        >
+          Download template
+        </button>
+        <button
+          type="button"
           className="btn btn-primary btn-sm"
-          disabled={run.isPending || csv.trim().length === 0}
+          disabled={
+            readFile.isPending || run.isPending || csv.trim().length === 0
+          }
           onClick={() => run.mutate()}
         >
           {run.isPending ? "Importing…" : "Import products"}

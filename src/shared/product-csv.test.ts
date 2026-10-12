@@ -1,25 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  parseProductCsv,
-  priceToMinorUnits,
-  splitCsvLine,
-} from "./product-csv";
-
-describe("splitCsvLine", () => {
-  it("keeps commas that are inside quotes", () => {
-    expect(splitCsvLine('Shoe, black,P1,"Comfy, soft leather"')).toEqual([
-      "Shoe",
-      "black",
-      "P1",
-      "Comfy, soft leather",
-    ]);
-  });
-
-  it("reads doubled quotes as one, and accepts tabs", () => {
-    expect(splitCsvLine('"He said ""hi""",P2')).toEqual(['He said "hi"', "P2"]);
-    expect(splitCsvLine("Shoe\tP3")).toEqual(["Shoe", "P3"]);
-  });
-});
+import { parseProductCsv, priceToMinorUnits } from "./product-csv";
 
 describe("parseProductCsv", () => {
   const csv = [

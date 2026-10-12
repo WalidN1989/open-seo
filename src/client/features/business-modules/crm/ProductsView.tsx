@@ -1,3 +1,4 @@
+import { ProductExportButton } from "./ProductExportButton";
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -86,6 +87,7 @@ export function CrmProductsView() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <ProductExportButton search={search} source={source} />
           <button
             className="btn btn-outline btn-sm"
             onClick={() => setImporting((open) => !open)}
