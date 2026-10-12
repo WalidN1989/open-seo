@@ -24,8 +24,10 @@ type ClientModule = {
 export function ClientModuleList({
   modules,
   icons,
+  onNavigate,
 }: {
   modules: ClientModule[];
+  onNavigate?: () => void;
   icons: Record<BusinessModuleKey, ComponentType<{ className?: string }>>;
 }) {
   const available = modules.filter(
@@ -52,11 +54,12 @@ export function ClientModuleList({
               label={module.label}
               Icon={icons[module.key]}
               accessible={true}
+              onNavigate={onNavigate}
             />
           </article>
         ))}
         {available.some((module) => module.key === "crm") ? (
-          <InventoryLauncher />
+          <InventoryLauncher onNavigate={onNavigate} />
         ) : null}
       </div>
     </section>

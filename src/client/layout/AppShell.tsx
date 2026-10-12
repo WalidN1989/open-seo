@@ -1,3 +1,4 @@
+import { ModulePicker } from "@/client/features/business-modules/ModulePicker";
 import { ReminderPopup } from "@/client/features/reminders/ReminderPopup";
 import { PerformanceLauncher } from "@/client/features/performance/PerformanceLauncher";
 import * as React from "react";
@@ -174,6 +175,7 @@ export function AuthenticatedAppLayout({
 
       <ReminderPopup />
       <PerformanceLauncher />
+      <ModulePicker />
     </div>
   );
 }

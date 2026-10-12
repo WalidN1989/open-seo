@@ -3,19 +3,7 @@ import { InventoryLauncher } from "@/client/features/business-modules/InventoryL
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
-import {
-  FileBarChart,
-  Blocks,
-  Bot,
-  ContactRound,
-  Mail,
-  MessagesSquare,
-  PlugZap,
-  ReceiptText,
-  ShieldCheck,
-  Share2,
-  MessageSquareText,
-} from "lucide-react";
+import { businessModuleIcons as icons } from "@/client/features/business-modules/moduleIcons";
 import { toast } from "sonner";
 import {
   getBusinessModuleAccess,
@@ -35,20 +23,6 @@ import { useWorkspaceAccess } from "@/client/features/team/workspaceAccess";
 export const Route = createFileRoute("/_app/modules/")({
   component: BusinessModulesPage,
 });
-
-const icons = {
-  leads: ContactRound,
-  crm: Blocks,
-  whatsapp: MessagesSquare,
-  sms: MessageSquareText,
-  voice: Bot,
-  email: Mail,
-  social: Share2,
-  invoicing: ReceiptText,
-  reports: FileBarChart,
-  clients: ShieldCheck,
-  integrations: PlugZap,
-} satisfies Record<BusinessModuleKey, typeof Blocks>;
 
 function useEntitlementMutation() {
   const queryClient = useQueryClient();
