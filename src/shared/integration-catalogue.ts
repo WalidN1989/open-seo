@@ -347,6 +347,13 @@ export const integrationCatalogue: readonly IntegrationCatalogueEntry[] = [
         help: "Shown once when you create the post-call webhook in ElevenLabs (Settings → Webhooks).",
       },
       {
+        key: "API_KEY",
+        label: "Recording API key (optional)",
+        type: "secret",
+        required: false,
+        help: "Use an ElevenLabs API key allowed to read this agent's conversation history and audio. Required for recording links; webhook transcripts continue working without it.",
+      },
+      {
         key: "WELCOME_TEMPLATE",
         label: "WhatsApp welcome template (optional)",
         type: "text",
