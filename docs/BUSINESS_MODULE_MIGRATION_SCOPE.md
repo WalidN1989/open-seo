@@ -1527,3 +1527,23 @@ retry matches those products without duplicating them. No schema migration,
 provider change, scheduler change or production data import is included. Release
 requires owner approval; rollback is the prior application revision and any
 created products/drafts remain compatible with it.
+
+### October 12, 2026 — reuse a customer's last invoice
+
+New Invoice now offers a Customer selector populated from saved invoices in the
+current organization. Each billing name uses its latest non-void invoice; credit
+notes and proformas are excluded. The customer query is separate from the
+200-invoice workspace limit so older customers remain available. Selecting one
+copies billing details, registration, currency, descriptions, quantities, unit
+prices, notes and service period into a new editable draft. The issue date stays
+current; the due date uses the previous invoice's payment terms. Invoice number,
+paid/sent state and issuer snapshot are not copied. The service period is copied
+exactly, with a visible reminder to review it for the new month.
+
+Customer loading disables the form and a failed load cannot save stale customer
+details. New customer resets copied fields. Existing draft editing remains
+available. Billing information remains stored as invoice snapshots; no schema
+migration, external provider call, automatic issuing or customer message is
+introduced. Rollback is the prior application revision; existing invoices are
+not rewritten. Browser fixture checks covered copied fields/prices, fresh dates
+and save identity, fractional quantities, errors, reset, draft editing and mobile.

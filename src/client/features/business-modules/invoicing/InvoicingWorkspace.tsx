@@ -189,6 +189,7 @@ export function InvoicingWorkspace() {
     return (
       <InvoiceEditor
         settings={data.settings}
+        customers={data.customers}
         existing={editing === "existing" ? (editingDetail.data ?? null) : null}
         onDone={() => setEditing(null)}
       />

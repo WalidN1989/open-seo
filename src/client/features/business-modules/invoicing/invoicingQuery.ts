@@ -45,6 +45,23 @@ export function useInvoiceDetail(invoiceId: string | null) {
   });
 }
 
+export function useInvoiceTemplate() {
+  return useMutation({
+    mutationFn: async (invoiceId: string) => {
+      const result = await getInvoice({ data: { invoiceId } });
+      if (
+        result.invoice.status === "void" ||
+        result.invoice.documentType !== "invoice"
+      ) {
+        throw new Error(
+          "This invoice cannot be reused. Please choose another customer.",
+        );
+      }
+      return result;
+    },
+  });
+}
+
 function useInvoicingMutation<TInput, TResult>(
   run: (input: TInput) => Promise<TResult>,
 ) {

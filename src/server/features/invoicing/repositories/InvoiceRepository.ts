@@ -1,4 +1,4 @@
-import { and, asc, desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq, ne, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { invoiceLineItems, invoiceSettings, invoices } from "@/db/schema";
 
@@ -45,6 +45,38 @@ async function listInvoices(organizationId: string) {
     .where(eq(invoices.organizationId, organizationId))
     .orderBy(desc(invoices.issueDate), desc(invoices.createdAt))
     .limit(200);
+}
+
+/** One latest usable invoice per saved billing name, including older customers. */
+async function listCustomers(organizationId: string) {
+  const ranked = db
+    .select({
+      invoiceId: invoices.id,
+      clientName: invoices.clientName,
+      number: invoices.number,
+      rank: sql<number>`row_number() over (
+      partition by lower(trim(${invoices.clientName}))
+      order by ${invoices.issueDate} desc, ${invoices.createdAt} desc, ${invoices.id} desc
+    )`.as("customer_rank"),
+    })
+    .from(invoices)
+    .where(
+      and(
+        eq(invoices.organizationId, organizationId),
+        eq(invoices.documentType, "invoice"),
+        ne(invoices.status, "void"),
+      ),
+    )
+    .as("ranked_customers");
+  return db
+    .select({
+      invoiceId: ranked.invoiceId,
+      clientName: ranked.clientName,
+      number: ranked.number,
+    })
+    .from(ranked)
+    .where(eq(ranked.rank, 1))
+    .orderBy(asc(ranked.clientName));
 }
 
 async function getInvoice(organizationId: string, id: string) {
@@ -120,6 +152,7 @@ export const InvoiceRepository = {
   getSettings,
   upsertSettings,
   listInvoices,
+  listCustomers,
   getInvoice,
   listLines,
   insertInvoice,
