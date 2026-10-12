@@ -1547,3 +1547,33 @@ migration, external provider call, automatic issuing or customer message is
 introduced. Rollback is the prior application revision; existing invoices are
 not rewritten. Browser fixture checks covered copied fields/prices, fresh dates
 and save identity, fractional quantities, errors, reset, draft editing and mobile.
+
+### 2026-10-13 — South Side Fencing MCP quotes and voice call reads
+
+Diagnosed quotes FORBIDDEN for sales@digitalurgency.com.au: the account is an
+existing workspace owner, but South Side Fencing's invoicing entitlement was
+absent. Quotes use invoicing view access, not a separate OAuth scope. Automatic
+approval review initially rejected enabling the whole module; the owner then
+explicitly approved "Enable invoicing with existing owner access". Enabled only
+organization f4c8bbd2bc174de2a62538563e2e7a1f and recorded module.enabled in its
+audit trail. No role, member permission or token scope changed. Production
+list_quotes succeeds with an empty list; get_quote and get_quote_document reach
+NOT_FOUND for a nonexistent ID instead of FORBIDDEN. There are no real quotes
+in this workspace to verify a document against.
+
+Added read-only list_calls/get_call with existing membership and voice-view
+checks. Calls use stored transcripts/summaries, start-time filtering and bounded
+lists; related CRM joins and provider connections are organization-scoped.
+Recording links require a signed-in session and repeat voice authorization;
+provider keys remain server-side. South Side Fencing's ElevenLabs connection
+has no API_KEY, so recordings return null with credentials_missing; stored
+transcripts remain available. Owner must enter that workspace's provider API
+key in Integrations to enable recording retrieval. Do not copy another tenant's
+key or change the phone routing/webhook/send tools.
+
+list_projects now includes organizationId and organizationName alongside the
+project domain, including project 16b1e2f1-5969-4a3f-beb3-3b9f08b51437. No schema
+migration or sending behavior changed. Local protocol happy/empty/error/foreign
+workspace checks and an independent read-only consumer probe passed; ci:check,
+2,656 regression tests and selfhost build passed. Release deployment and real
+MCP-token call verification are pending the feature PR's checks and merge.
