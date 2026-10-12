@@ -29,12 +29,22 @@ const defaultStages = [
   { name: "Purchase order", position: 5, stageType: "open" as const },
   { name: "Won", position: 6, stageType: "won" as const },
   { name: "Lost", position: 7, stageType: "lost" as const },
+  { name: "Disqualified", position: 8, stageType: "lost" as const },
 ] as const;
 
 async function ensureStages(organizationId: string) {
   let stages = await CrmRepository.listStages(organizationId);
   if (stages.length === 0) {
     await CrmRepository.createStages(organizationId, defaultStages);
+    stages = await CrmRepository.listStages(organizationId);
+  } else if (!stages.some((stage) => stage.name === "Disqualified")) {
+    await CrmRepository.createStages(organizationId, [
+      {
+        name: "Disqualified",
+        position: Math.max(...stages.map((stage) => stage.position)) + 1,
+        stageType: "lost",
+      },
+    ]);
     stages = await CrmRepository.listStages(organizationId);
   }
   return stages;
