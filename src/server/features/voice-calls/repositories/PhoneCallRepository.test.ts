@@ -1,0 +1,69 @@
+import { beforeAll, afterAll, describe, it, expect, vi } from "vitest";
+import { createClient } from "@libsql/client";
+import { drizzle } from "drizzle-orm/libsql";
+import { getTableConfig } from "drizzle-orm/sqlite-core";
+import * as schema from "@/db/business.schema";
+const state = vi.hoisted(() => ({ db: null as unknown }));
+vi.mock("@/db", () => ({
+  get db() {
+    return state.db;
+  },
+}));
+vi.mock("@/db/schema", async () => import("@/db/business.schema"));
+import { PhoneCallRepository } from "./PhoneCallRepository";
+const client = createClient({ url: ":memory:" });
+beforeAll(async () => {
+  state.db = drizzle(client);
+  for (const table of [
+    schema.voicePhoneCalls,
+    schema.crmContacts,
+    schema.crmLeads,
+  ]) {
+    const config = getTableConfig(table);
+    await client.execute(
+      `create table "${config.name}" (${config.columns.map((column) => `"${column.name}" ${column.getSQLType()}`).join(",")})`,
+    );
+  }
+  await client.execute(
+    "insert into crm_contacts (id,organization_id,first_name) values ('foreign-contact','org-b','Private')",
+  );
+  await client.execute(
+    "insert into crm_leads (id,organization_id,title) values ('foreign-lead','org-b','Private lead')",
+  );
+  await client.execute(
+    "insert into voice_phone_calls (id,organization_id,started_at,created_at,contact_id,lead_id) values ('old','org-a','2026-09-01T00:00:00.000Z','2026-10-12T00:00:00.000Z',null,null),('recent','org-a','2026-10-11T00:00:00.000Z','2026-10-11T00:00:00.000Z','foreign-contact','foreign-lead'),('fallback','org-a',null,'2026-10-10T00:00:00.000Z',null,null),('other','org-b','2026-10-12T00:00:00.000Z','2026-10-12T00:00:00.000Z',null,null)",
+  );
+});
+afterAll(() => {
+  client.close();
+});
+describe("call repository tenant and time filters", () => {
+  it("orders by start time, uses creation only when start is absent, and bounds rows", async () => {
+    expect(
+      (await PhoneCallRepository.listCalls("org-a", 2)).map(
+        (row) => row.call.id,
+      ),
+    ).toEqual(["recent", "fallback"]);
+  });
+  it("filters by the actual start time rather than late webhook delivery", async () => {
+    expect(
+      (
+        await PhoneCallRepository.listCalls("org-a", 10, {
+          since: "2026-10-09T00:00:00.000Z",
+        })
+      ).map((row) => row.call.id),
+    ).toEqual(["recent", "fallback"]);
+  });
+  it("does not return a call belonging to another workspace", async () => {
+    expect(
+      await PhoneCallRepository.listCalls("org-a", 1, { callId: "other" }),
+    ).toEqual([]);
+  });
+  it("does not join CRM records from a different organization", async () => {
+    const [row] = await PhoneCallRepository.listCalls("org-a", 1, {
+      callId: "recent",
+    });
+    expect(row?.contact).toBeNull();
+    expect(row?.lead).toBeNull();
+  });
+});

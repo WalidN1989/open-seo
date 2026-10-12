@@ -220,6 +220,7 @@ describe("the module registry", () => {
       (match) => match[1],
     );
     expect(surfaces.toSorted()).toEqual([
+      "callSurface",
       "commerceSurface",
       "crmSurface",
       "emailSurface",

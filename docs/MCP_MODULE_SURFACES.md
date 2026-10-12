@@ -134,3 +134,27 @@ can be misconfigured, and nobody re-reads it.
 Agents are backstage. The app never shows a tool name, a model name, an API
 key, or the word MCP to a client. Anything an agent writes surfaces as ordinary
 product content under Open SEO's own name.
+
+### Voice calls — organization-scoped, read-only
+
+`list_calls(organizationId?, sinceHours?, limit?)` and
+`get_call(callId, organizationId?)` reuse the stored phone-call data and check
+workspace membership plus the voice module's view permission on every read.
+Start times include the UTC offset (`Z`) and an explicit `timezone: "UTC"`;
+durations are in seconds. Responses include caller/called numbers, CRM contact
+and lead, direction, outcome, voice-agent summary and the full transcript.
+Lists order by call start time, default to 20 records, and accept at most 50.
+`sinceHours` filters by start time, using creation time only if start is absent.
+
+If ElevenLabs reports existing audio, `recordingUrl` points to the application's
+recording route. Playback requires a signed-in session and repeats workspace
+and voice-module authorization. Provider credentials never appear in the URL.
+A null URL is accompanied by `recordingStatus`: `not_recorded`,
+`credentials_missing`, or `unavailable` (connection/provider lookup unavailable).
+Missing provider credentials do not prevent reading stored transcripts.
+No dialing, send or voice-configuration tools are exposed.
+
+`list_projects` includes `organizationId` and `organizationName` beside each
+project's existing domain, allowing callers to map projects to workspaces.
+Quotes continue to require the invoicing entitlement and member permission;
+there is no MCP-specific permission bypass.

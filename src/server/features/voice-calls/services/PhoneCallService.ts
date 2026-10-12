@@ -13,7 +13,10 @@ import {
   type PhoneRegion,
 } from "../elevenlabsWebhook";
 import { activityNotes, duration, inSentence, splitName } from "../callNotes";
-import { PhoneCallRepository as Repo } from "../repositories/PhoneCallRepository";
+import {
+  PhoneCallRepository as Repo,
+  type CallReadOptions,
+} from "../repositories/PhoneCallRepository";
 import { CallQuoteService } from "./CallQuoteService";
 import { CallWelcomeService } from "./CallWelcomeService";
 import { CallRecapService } from "./CallRecapService";
@@ -343,9 +346,17 @@ async function processElevenLabsWebhook(
   return { status: 200, body: result.duplicate ? "duplicate" : "recorded" };
 }
 
-async function listCalls(organizationId: string, userId: string) {
+async function listCalls(
+  organizationId: string,
+  userId: string,
+  options: CallReadOptions = {},
+) {
   await BusinessModuleService.requireAccess(organizationId, userId, "voice");
-  const rows = await Repo.listCalls(organizationId);
+  const rows = await Repo.listCalls(
+    organizationId,
+    options.limit ?? 100,
+    options,
+  );
   return rows.map(({ call, contact, lead }) => ({
     id: call.id,
     provider: call.provider,

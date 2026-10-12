@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, notInArray, or } from "drizzle-orm";
+import { and, desc, eq, inArray, notInArray, or, gte, sql } from "drizzle-orm";
 import { db } from "@/db";
 import {
   crmActivities,
@@ -82,7 +82,17 @@ async function welcomeSentTo(organizationId: string, contactId: string) {
   return Boolean(row);
 }
 
-async function listCalls(organizationId: string, limit = 100) {
+export type CallReadOptions = {
+  limit?: number;
+  since?: string;
+  callId?: string;
+};
+
+async function listCalls(
+  organizationId: string,
+  limit = 100,
+  options: CallReadOptions = {},
+) {
   return db
     .select({
       call: voicePhoneCalls,
@@ -90,10 +100,38 @@ async function listCalls(organizationId: string, limit = 100) {
       lead: crmLeads,
     })
     .from(voicePhoneCalls)
-    .leftJoin(crmContacts, eq(crmContacts.id, voicePhoneCalls.contactId))
-    .leftJoin(crmLeads, eq(crmLeads.id, voicePhoneCalls.leadId))
-    .where(eq(voicePhoneCalls.organizationId, organizationId))
-    .orderBy(desc(voicePhoneCalls.createdAt))
+    .leftJoin(
+      crmContacts,
+      and(
+        eq(crmContacts.id, voicePhoneCalls.contactId),
+        eq(crmContacts.organizationId, organizationId),
+      ),
+    )
+    .leftJoin(
+      crmLeads,
+      and(
+        eq(crmLeads.id, voicePhoneCalls.leadId),
+        eq(crmLeads.organizationId, organizationId),
+      ),
+    )
+    .where(
+      and(
+        eq(voicePhoneCalls.organizationId, organizationId),
+        options.callId ? eq(voicePhoneCalls.id, options.callId) : undefined,
+        options.since
+          ? gte(
+              sql<string>`coalesce(${voicePhoneCalls.startedAt}, ${voicePhoneCalls.createdAt})`,
+              options.since,
+            )
+          : undefined,
+      ),
+    )
+    .orderBy(
+      desc(
+        sql`coalesce(${voicePhoneCalls.startedAt}, ${voicePhoneCalls.createdAt})`,
+      ),
+      desc(voicePhoneCalls.id),
+    )
     .limit(limit);
 }
 
