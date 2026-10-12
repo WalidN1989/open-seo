@@ -2,7 +2,7 @@ import { Boxes } from "lucide-react";
 import { ModuleLauncher } from "./ModuleLauncher";
 
 /** Inventory inherits CRM access; this is a shortcut, not a new entitlement. */
-export function InventoryLauncher() {
+export function InventoryLauncher({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <article className="business-access-card">
       <ModuleLauncher
@@ -11,6 +11,7 @@ export function InventoryLauncher() {
         Icon={Boxes}
         accessible
         inventory
+        onNavigate={onNavigate}
       />
     </article>
   );

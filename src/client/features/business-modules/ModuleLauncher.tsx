@@ -9,12 +9,14 @@ export function ModuleLauncher({
   Icon,
   accessible,
   inventory = false,
+  onNavigate,
 }: {
   moduleKey: BusinessModuleKey;
   label: string;
   Icon: ComponentType<{ className?: string }>;
   accessible: boolean;
   inventory?: boolean;
+  onNavigate?: () => void;
 }) {
   return (
     <div className="business-access-launcher">
@@ -30,7 +32,8 @@ export function ModuleLauncher({
                   : "/modules/$moduleKey"
           }
           params={{ moduleKey }}
-          className="business-access-launch-link"
+          onClick={onNavigate}
+          className="business-access-launch-link z-10"
           aria-label={`Open ${label}`}
         />
       ) : null}
