@@ -1577,3 +1577,16 @@ migration or sending behavior changed. Local protocol happy/empty/error/foreign
 workspace checks and an independent read-only consumer probe passed; ci:check,
 2,656 regression tests and selfhost build passed. Release deployment and real
 MCP-token call verification are pending the feature PR's checks and merge.
+
+### October 13, 2026 — advance monthly invoice service periods
+
+The invoice editor now aligns recognized monthly service ranges with the issue
+month, retaining their billing days. It handles year transitions, leap years
+and month-end clamping. Customer prefill and issue-date changes update automatic
+periods; typing a manual service period disables further automatic changes in
+that draft. Unsupported prose and non-monthly ranges stay editable and are not
+guessed. Existing draft editing aligns recognized ranges before the owner saves;
+issued documents are not rewritten. No schema or provider change is needed.
+Unit and isolated browser tests cover monthly prefill, date changes, manual
+overrides, save payloads and calendar boundaries. Rollback is the prior app
+revision; corrected draft periods remain compatible with it.
