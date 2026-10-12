@@ -1,3 +1,4 @@
+import { monthlyServicePeriod } from "./servicePeriod";
 import { useState } from "react";
 import {
   fromMinor,
@@ -44,6 +45,7 @@ function blankDraft(settings: IssuerSettings, issueDate = today()) {
     dueDate: addDays(issueDate, settings.paymentTermsDays),
     paymentTermsDays: settings.paymentTermsDays,
     servicePeriod: "",
+    periodAuto: false,
     notes: "",
     lines: [{ ...BLANK_LINE }],
   };
@@ -72,7 +74,12 @@ export function useInvoiceDraft(
       issueDate: invoice.issueDate,
       dueDate: invoice.dueDate,
       paymentTermsDays: termsFrom(invoice, settings.paymentTermsDays),
-      servicePeriod: invoice.servicePeriod ?? "",
+      servicePeriod:
+        monthlyServicePeriod(invoice.servicePeriod, invoice.issueDate) ??
+        invoice.servicePeriod ??
+        "",
+      periodAuto:
+        monthlyServicePeriod(invoice.servicePeriod, invoice.issueDate) !== null,
       notes: invoice.notes ?? "",
       lines: draftLines(existing.lines),
     };
@@ -81,7 +88,12 @@ export function useInvoiceDraft(
   const [selectedCustomer, setSelectedCustomer] = useState("");
   const [copiedNumber, setCopiedNumber] = useState("");
   const updateDraft = (patch: Partial<typeof draft>) =>
-    setDraft((current) => ({ ...current, ...patch }));
+    setDraft((current) => ({
+      ...current,
+      ...patch,
+      periodAuto:
+        patch.servicePeriod === undefined ? current.periodAuto : false,
+    }));
   const updateLine = (index: number, patch: Partial<typeof BLANK_LINE>) =>
     setDraft((current) => ({
       ...current,
@@ -94,6 +106,10 @@ export function useInvoiceDraft(
       ...current,
       issueDate: value,
       dueDate: addDays(value, current.paymentTermsDays),
+      servicePeriod: current.periodAuto
+        ? (monthlyServicePeriod(current.servicePeriod, value) ??
+          current.servicePeriod)
+        : current.servicePeriod,
     }));
   const selectCustomer = (invoiceId: string) => {
     template.reset();
@@ -115,7 +131,13 @@ export function useInvoiceDraft(
           clientTaxLabel: source.clientTaxIdLabel ?? "ABN",
           clientTaxValue: source.clientTaxIdValue ?? "",
           currency: source.currency,
-          servicePeriod: source.servicePeriod ?? "",
+          servicePeriod:
+            monthlyServicePeriod(source.servicePeriod, current.issueDate) ??
+            source.servicePeriod ??
+            "",
+          periodAuto:
+            monthlyServicePeriod(source.servicePeriod, current.issueDate) !==
+            null,
           notes: source.notes ?? "",
           lines: draftLines(previous.lines),
           paymentTermsDays: terms,
