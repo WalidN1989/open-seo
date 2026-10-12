@@ -32,7 +32,8 @@ function valuesFor(row: ProductCsvRow) {
     category: row.category || undefined,
     productUrl: row.productUrl || undefined,
     description: row.description || undefined,
-    salePriceMinor: priceToMinorUnits(row.price),
+    salePriceMinor: row.price ? priceToMinorUnits(row.price) : undefined,
+    barcode: row.barcode || undefined,
   };
 }
 
@@ -70,8 +71,8 @@ async function importProducts(
   );
 
   const failed = [...problems];
-  const fresh = rows.filter((row) => !existing.has(row.sku));
-  const known = rows.filter((row) => existing.has(row.sku));
+  const fresh = rows.filter((row) => !existing.has(row.sku.toUpperCase()));
+  const known = rows.filter((row) => existing.has(row.sku.toUpperCase()));
 
   let created = 0;
   for (let at = 0; at < fresh.length; at += BATCH) {
@@ -82,8 +83,10 @@ async function importProducts(
         batch.map((row) => ({
           sku: row.sku,
           reorderThreshold: 0,
+          inventoryMode: "multi" as const,
           status: "active" as const,
           ...valuesFor(row),
+          salePriceMinor: priceToMinorUnits(row.price),
         })),
       );
     } catch (error) {
@@ -99,7 +102,7 @@ async function importProducts(
   for (const row of known) {
     try {
       await CommerceRepository.updateProduct(organizationId, {
-        id: existing.get(row.sku) ?? "",
+        id: existing.get(row.sku.toUpperCase()) ?? "",
         ...valuesFor(row),
       });
       updated += 1;

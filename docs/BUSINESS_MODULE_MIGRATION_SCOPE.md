@@ -1499,3 +1499,31 @@ for email-listener compatibility, and no other Railway application was stopped.
 The upstream README recommends Cloudflare for internet-facing installations;
 this fork's existing Docker/Railway hosting and business modules are customized.
 No hosting migration or upstream reset was performed.
+
+### October 12, 2026 — Excel product and count imports (pending release)
+
+The `codex/excel-product-stock-import` branch adds browser-side XLSX reading
+(first worksheet) alongside CSV/TSV for Products and Inventory. Legacy XLS and
+Numbers files must be saved as XLSX or CSV first. Reports with Item Code,
+Item Name, Location and Current Stock are recognised. The original workbook
+and its contents are not copied into the repository.
+
+Products can export their full filtered catalogue across pages and download a
+blank CSV template. Stock templates remain downloadable with an empty catalogue.
+Stock upload presents the file location, selected destination branch, distinct
+counts and identical duplicate count before confirmation. Users may explicitly
+create missing products from SKU and name; existing product metadata and prices
+are preserved. Newly imported products support named branches and start at price
+zero, which the UI asks the user to set in Products. Stock counts create a draft
+audit; only the existing privileged publish workflow changes balances. Multiple
+locations, conflicting duplicates, ambiguous identifiers and invalid counts are
+rejected. Blank counts remain uncounted, while explicit zero is retained.
+
+Catalogue imports no longer overwrite prices absent from a file. SKU matching
+is case-insensitive and organization-scoped; writes are bounded for D1 and use
+the shared atomic batch helper for D1/Postgres. Count rows and their draft audit
+are written atomically. Product creation may remain after a later import failure;
+retry matches those products without duplicating them. No schema migration,
+provider change, scheduler change or production data import is included. Release
+requires owner approval; rollback is the prior application revision and any
+created products/drafts remain compatible with it.

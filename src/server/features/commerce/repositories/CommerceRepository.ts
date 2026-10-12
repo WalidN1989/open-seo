@@ -1,3 +1,4 @@
+import { runBatch } from "@/db/runBatch";
 import {
   and,
   asc,
@@ -104,16 +105,30 @@ async function findProductBySku(organizationId: string, sku: string) {
  */
 async function findProductIdsBySkus(organizationId: string, skus: string[]) {
   if (skus.length === 0) return new Map<string, string>();
-  const rows = await db
-    .select({ id: commerceProducts.id, sku: commerceProducts.sku })
-    .from(commerceProducts)
-    .where(
-      and(
-        eq(commerceProducts.organizationId, organizationId),
-        inArray(commerceProducts.sku, skus),
-      ),
-    );
-  return new Map(rows.map((row) => [row.sku, row.id]));
+  const found = new Map<string, string>();
+  for (let i = 0; i < skus.length; i += 80) {
+    const rows = await db
+      .select({ id: commerceProducts.id, sku: commerceProducts.sku })
+      .from(commerceProducts)
+      .where(
+        and(
+          eq(commerceProducts.organizationId, organizationId),
+          inArray(
+            sql`upper(${commerceProducts.sku})`,
+            skus.slice(i, i + 80).map((sku) => sku.toUpperCase()),
+          ),
+        ),
+      );
+    for (const row of rows) {
+      const key = row.sku.toUpperCase();
+      if (found.has(key) && found.get(key) !== row.id)
+        throw new Error(
+          `SKU ${row.sku} matches multiple products. Resolve the duplicate first.`,
+        );
+      found.set(key, row.id);
+    }
+  }
+  return found;
 }
 
 /** Insert many at once; the caller decides how big a batch the driver takes. */
@@ -122,19 +137,27 @@ async function createProducts(
   inputs: CreateProductInput[],
 ) {
   if (inputs.length === 0) return 0;
-  await db.insert(commerceProducts).values(
-    inputs.map((input) => ({
-      id: crypto.randomUUID(),
-      organizationId,
-      ...input,
-      barcode: input.barcode || null,
-      isbn: input.isbn || null,
-      description: input.description || null,
-      category: input.category || null,
-      parentProductId: input.parentProductId ?? null,
-      costPriceMinor: input.costPriceMinor ?? null,
-    })),
-  );
+  await runBatch((tx) => {
+    const inserts = [];
+    for (let i = 0; i < inputs.length; i += 4) {
+      inserts.push(
+        tx.insert(commerceProducts).values(
+          inputs.slice(i, i + 4).map((input) => ({
+            id: crypto.randomUUID(),
+            organizationId,
+            ...input,
+            barcode: input.barcode || null,
+            isbn: input.isbn || null,
+            description: input.description || null,
+            category: input.category || null,
+            parentProductId: input.parentProductId ?? null,
+            costPriceMinor: input.costPriceMinor ?? null,
+          })),
+        ),
+      );
+    }
+    return inserts;
+  });
   return inputs.length;
 }
 

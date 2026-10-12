@@ -1,3 +1,4 @@
+import Papa from "papaparse";
 /**
  * Reading a product catalogue out of a spreadsheet.
  *
@@ -6,9 +7,6 @@
  * a time is the reason a catalogue never gets entered at all. This turns that
  * file into rows; the service decides what to do with them.
  *
- * Written by hand rather than with a library because the input is a file a
- * shopkeeper made: quoted commas and stray blank lines are ordinary, and a
- * dependency that throws on the third row helps nobody.
  */
 
 export type ProductCsvRow = {
@@ -18,6 +16,7 @@ export type ProductCsvRow = {
   price?: string;
   productUrl?: string;
   description?: string;
+  barcode?: string;
 };
 
 type ProductCsvResult = {
@@ -26,40 +25,15 @@ type ProductCsvResult = {
   problems: string[];
 };
 
-/** Splits one line, honouring "quoted, fields" and doubled "" escapes. */
-export function splitCsvLine(line: string) {
-  const cells: string[] = [];
-  let cell = "";
-  let quoted = false;
-  for (let i = 0; i < line.length; i += 1) {
-    const char = line[i];
-    if (quoted) {
-      if (char === '"' && line[i + 1] === '"') {
-        cell += '"';
-        i += 1;
-      } else if (char === '"') {
-        quoted = false;
-      } else {
-        cell += char;
-      }
-      continue;
-    }
-    if (char === '"') quoted = true;
-    else if (char === "," || char === "\t") {
-      cells.push(cell.trim());
-      cell = "";
-    } else cell += char;
-  }
-  cells.push(cell.trim());
-  return cells;
-}
-
 const HEADINGS: Record<string, keyof ProductCsvRow> = {
   name: "name",
   product: "name",
   title: "name",
+  "item name": "name",
+  "product name": "name",
   sku: "sku",
   code: "sku",
+  "item code": "sku",
   category: "category",
   type: "category",
   price: "price",
@@ -69,6 +43,7 @@ const HEADINGS: Record<string, keyof ProductCsvRow> = {
   "product url": "productUrl",
   link: "productUrl",
   description: "description",
+  barcode: "barcode",
 };
 
 /**
@@ -77,14 +52,22 @@ const HEADINGS: Record<string, keyof ProductCsvRow> = {
  * export with forty columns still works.
  */
 export function parseProductCsv(text: string): ProductCsvResult {
-  const lines = text.split(/\r?\n/).filter((line) => line.trim().length > 0);
+  const parsed = Papa.parse<string[]>(text.trim(), {
+    skipEmptyLines: "greedy",
+  });
+  if (parsed.errors.length)
+    return {
+      rows: [],
+      problems: ["The CSV has invalid quoting or delimiters."],
+    };
+  const lines = parsed.data;
   if (lines.length < 2) {
     return {
       rows: [],
       problems: ["Needs a heading row and at least one product."],
     };
   }
-  const headings = splitCsvLine(lines[0]).map((cell) =>
+  const headings = lines[0].map((cell) =>
     cell.toLowerCase().replace(/^﻿/, "").trim(),
   );
   const columns = headings.map((heading) => HEADINGS[heading]);
@@ -101,7 +84,7 @@ export function parseProductCsv(text: string): ProductCsvResult {
   const problems: string[] = [];
   const seen = new Set<string>();
   for (const [index, line] of lines.slice(1).entries()) {
-    const cells = splitCsvLine(line);
+    const cells = line.map((cell) => cell.trim());
     const row: Partial<ProductCsvRow> = {};
     for (const [position, column] of columns.entries()) {
       if (column && cells[position]) row[column] = cells[position];
@@ -131,3 +114,13 @@ export function priceToMinorUnits(price: string | undefined) {
   const amount = Number(digits);
   return Number.isFinite(amount) ? Math.round(amount * 100) : 0;
 }
+
+export const PRODUCT_IMPORT_COLUMNS = [
+  "name",
+  "sku",
+  "barcode",
+  "category",
+  "price",
+  "productUrl",
+  "description",
+];
