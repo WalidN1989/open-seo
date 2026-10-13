@@ -21,6 +21,7 @@ import type {
   CreateInquiryInput,
   CreateMeetingInput,
   UpdateLeadInput,
+  UpdateContactInput,
 } from "@/types/schemas/crm";
 
 const isPresent = <T>(query: Promise<T[]>) =>
@@ -245,6 +246,35 @@ async function createContact(
   return row;
 }
 
+async function updateContact(
+  organizationId: string,
+  input: UpdateContactInput,
+) {
+  const { id, ...changes } = input;
+  const [row] = await db
+    .update(crmContacts)
+    .set({
+      ...changes,
+      lastName:
+        changes.lastName === undefined ? undefined : changes.lastName || null,
+      email: changes.email === undefined ? undefined : changes.email || null,
+      phone: changes.phone === undefined ? undefined : changes.phone || null,
+      whatsappPhone:
+        changes.whatsappPhone === undefined
+          ? undefined
+          : changes.whatsappPhone || null,
+      updatedAt: new Date().toISOString(),
+    })
+    .where(
+      and(
+        eq(crmContacts.id, id),
+        eq(crmContacts.organizationId, organizationId),
+      ),
+    )
+    .returning();
+  return row ?? null;
+}
+
 async function findContactByEmail(organizationId: string, email: string) {
   const [row] = await db
     .select()
@@ -429,6 +459,7 @@ export const CrmRepository = {
   createActivity,
   createCompany,
   createContact,
+  updateContact,
   createInquiry,
   createLead,
   createMeeting,

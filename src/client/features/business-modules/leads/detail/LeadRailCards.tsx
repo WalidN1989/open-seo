@@ -5,6 +5,7 @@ import {
   Phone,
   XCircle,
 } from "lucide-react";
+import { ContactEditButton } from "../../crm/ContactEditButton";
 import { timeAgo } from "@/shared/leads-command";
 import { whenLabel } from "@/shared/lead-journal";
 import { outreachState, type OutreachResult } from "./journalEntries";
@@ -120,7 +121,8 @@ export function ContactCard({ detail }: { detail: LeadDetail }) {
             {contact.email ?? contact.phone ?? "No details"}
           </div>
         </div>
-        <div className="flex">
+        <div className="flex items-center">
+          <ContactEditButton contact={contact} />
           {contact.email ? (
             <a
               href={`mailto:${contact.email}`}

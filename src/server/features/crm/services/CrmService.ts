@@ -13,6 +13,7 @@ import type {
   CreateMeetingInput,
   PromoteInquiryInput,
   UpdateLeadInput,
+  UpdateContactInput,
   ImportHunterDomainInput,
 } from "@/types/schemas/crm";
 import { CrmRepository } from "../repositories/CrmRepository";
@@ -296,6 +297,29 @@ async function createContact(
   return contact;
 }
 
+async function updateContact(
+  organizationId: string,
+  userId: string,
+  input: UpdateContactInput,
+) {
+  await BusinessModuleService.requireAccess(
+    organizationId,
+    userId,
+    "crm",
+    "manage",
+  );
+  const contact = await CrmRepository.updateContact(organizationId, input);
+  if (!contact) throw new AppError("NOT_FOUND");
+  await BusinessAuditRepository.record({
+    organizationId,
+    actorUserId: userId,
+    action: "contact.updated",
+    targetType: "contact",
+    targetId: contact.id,
+  });
+  return contact;
+}
+
 async function createCompany(
   organizationId: string,
   userId: string,
@@ -513,6 +537,7 @@ export const CrmService = {
   createActivity,
   createCompany,
   createContact,
+  updateContact,
   createInquiry,
   createLead,
   createMeeting,
