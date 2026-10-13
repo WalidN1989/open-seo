@@ -57,6 +57,7 @@ export const sendWhatsappMessageSchema = z.object({
   body: z.string().trim().min(1).max(4096),
 });
 export const updateWhatsappConversationSchema = z.object({
+  replyMode: z.enum(["auto", "manual"]).optional(),
   conversationId: z.string().min(1),
   assignedMemberId: z.string().min(1).nullable().optional(),
   contactId: z.string().min(1).nullable().optional(),

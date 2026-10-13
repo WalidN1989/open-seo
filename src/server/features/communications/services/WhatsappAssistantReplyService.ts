@@ -38,6 +38,8 @@ import {
   type Connection,
 } from "./WhatsappAssistantService";
 
+import { isPersonalMoneyRequest } from "../providers/whatsapp-reply-policy";
+
 const { withDefaults } = WhatsappAssistantService;
 const PROMPT_PRICE_LIMIT = 120;
 
@@ -93,6 +95,11 @@ async function sendReply(
   recipient: string,
   body: string,
 ) {
+  const current = await Repo.getConversationReplyState(
+    connection.organizationId,
+    conversationId,
+  );
+  if (!current || current.replyMode !== "auto") return;
   const queued = await CommunicationsRepository.createQueuedWhatsappMessage(
     connection.organizationId,
     conversationId,
@@ -206,6 +213,18 @@ export async function replyToInbound(
 ): Promise<boolean> {
   const organizationId = connection.organizationId;
   const body = message.body?.trim() ?? "";
+  const conversation = await Repo.getConversationReplyState(
+    organizationId,
+    conversationId,
+  );
+  if (!conversation || conversation.replyMode !== "auto") return true;
+  if (isPersonalMoneyRequest(body)) {
+    await CommunicationsRepository.updateWhatsappConversation(organizationId, {
+      conversationId,
+      replyMode: "manual",
+    });
+    return true;
+  }
   const settings = withDefaults(await Repo.getSettings(organizationId));
 
   if (looksLikeQuestion(body)) {
@@ -216,11 +235,6 @@ export async function replyToInbound(
       console.error("Could not record an asked question", error);
     });
   }
-
-  const status = await Repo.getConversationStatus(
-    organizationId,
-    conversationId,
-  );
 
   // Before anything else, including the model: a message carrying a code is
   // handled here and never reaches the assistant.
@@ -267,7 +281,7 @@ export async function replyToInbound(
   }
 
   // A person is handling this thread, so the assistant stays out of it.
-  if (status === "pending") return true;
+  if (conversation.status === "pending") return true;
 
   const keyword = matchesEscalation(
     body,
@@ -394,11 +408,26 @@ export async function replyToInbound(
       conversationId,
     );
     if (latest && latest !== message.externalMessageId) return true;
+    const current = await Repo.getConversationReplyState(
+      organizationId,
+      conversationId,
+    );
     if (
-      (await Repo.getConversationStatus(organizationId, conversationId)) ===
-      "pending"
+      !current ||
+      current.replyMode !== "auto" ||
+      current.status === "pending"
     )
       return true;
+    if (result.ignore) {
+      await CommunicationsRepository.updateWhatsappConversation(
+        organizationId,
+        {
+          conversationId,
+          replyMode: "manual",
+        },
+      );
+      return true;
+    }
     await applyActions(organizationId, conversationId, result.actions);
     if (!result.reply) return false;
     await sendReply(

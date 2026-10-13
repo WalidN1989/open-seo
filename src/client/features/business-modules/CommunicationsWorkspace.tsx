@@ -327,6 +327,7 @@ export function WhatsappWorkspace({
       assignedMemberId?: string | null;
       contactId?: string | null;
       status?: "open" | "pending" | "closed";
+      replyMode?: "auto" | "manual";
     }) => updateWhatsappConversation({ data }),
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: ["whatsapp"] });
@@ -1006,6 +1007,30 @@ export function WhatsappWorkspace({
                       </div>
                       {selectedConversation ? (
                         <>
+                          <label className="flex items-center gap-2 text-sm">
+                            Replies
+                            <select
+                              className="select select-sm select-bordered"
+                              aria-label="Automatic replies for this chat"
+                              value={selectedConversation.replyMode}
+                              disabled={updateConversation.isPending}
+                              onChange={(event) => {
+                                updateConversation.mutate({
+                                  conversationId: selectedConversation.id,
+                                  replyMode:
+                                    event.target.value === "auto"
+                                      ? "auto"
+                                      : "manual",
+                                });
+                              }}
+                              title="Manual stops all automatic replies. You can still send messages yourself."
+                            >
+                              <option value="auto">Auto</option>
+                              <option value="manual">
+                                Manual — auto replies off
+                              </option>
+                            </select>
+                          </label>
                           <span
                             className={`wa-status badge badge-sm ${
                               selectedConversation.status === "pending"
@@ -1037,6 +1062,7 @@ export function WhatsappWorkspace({
                                 updateConversation.mutate({
                                   conversationId: selectedConversation.id,
                                   status: "open",
+                                  replyMode: "auto",
                                 });
                               }}
                             >

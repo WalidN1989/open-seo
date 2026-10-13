@@ -321,3 +321,38 @@ describe("a verified client's own data", () => {
     expect(isClientDataTopic("../other-org")).toBe(false);
   });
 });
+
+it("ignores solicitation without returning text or actions, even if the model emits both", async () => {
+  let calls = 0;
+  const result = await generateWhatsappAiReply({
+    history: [{ direction: "inbound", body: "I need financial assistance" }],
+    apiKey: "tenant-key",
+    fetcher: async (_input, init) => {
+      calls++;
+      const request = typeof init?.body === "string" ? init.body : "";
+      expect(request).toContain("ignore_conversation");
+      expect(request).toContain("Business pricing, invoices, refunds");
+      return Response.json({
+        content: [
+          { type: "text", text: "Please contact a charity" },
+          {
+            type: "tool_use",
+            id: "order",
+            name: "create_order_request",
+            input: { summary: "donation" },
+          },
+          {
+            type: "tool_use",
+            id: "ignore",
+            name: "ignore_conversation",
+            input: {},
+          },
+        ],
+      });
+    },
+  });
+  expect(result?.ignore).toBe(true);
+  expect(result?.reply).toBe("");
+  expect(result?.actions).toEqual([]);
+  expect(calls).toBe(1);
+});

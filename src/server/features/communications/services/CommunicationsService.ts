@@ -388,6 +388,7 @@ async function updateWhatsappConversation(
       assignedMemberId: conversation.assignedMemberId,
       contactId: conversation.contactId,
       status: conversation.status,
+      replyMode: conversation.replyMode,
     },
   });
   return conversation;
