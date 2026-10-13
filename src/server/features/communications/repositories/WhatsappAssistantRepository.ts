@@ -337,12 +337,15 @@ async function projectIdForOrganization(organizationId: string) {
   return row?.id ?? null;
 }
 
-async function getConversationStatus(
+async function getConversationReplyState(
   organizationId: string,
   conversationId: string,
 ) {
   const [row] = await db
-    .select({ status: whatsappConversations.status })
+    .select({
+      status: whatsappConversations.status,
+      replyMode: whatsappConversations.replyMode,
+    })
     .from(whatsappConversations)
     .where(
       and(
@@ -351,7 +354,7 @@ async function getConversationStatus(
       ),
     )
     .limit(1);
-  return row?.status ?? null;
+  return row ?? null;
 }
 
 /** The newest inbound message's external id, to tell if a later one arrived. */
@@ -392,6 +395,6 @@ export const WhatsappAssistantRepository = {
   currencyFor,
   projectIdForOrganization,
   projectForOrganization,
-  getConversationStatus,
+  getConversationReplyState,
   latestInboundExternalId,
 };

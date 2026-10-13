@@ -1577,3 +1577,15 @@ migration or sending behavior changed. Local protocol happy/empty/error/foreign
 workspace checks and an independent read-only consumer probe passed; ci:check,
 2,656 regression tests and selfhost build passed. Release deployment and real
 MCP-token call verification are pending the feature PR's checks and merge.
+
+### 2026-10-13 — WhatsApp Auto/Manual replies release preparation
+
+Owner explicitly requested deployment. Isolated the reply controls on current
+production main, preserving newer WhatsApp image handling, access-code redaction,
+durable delayed replies and stale-message checks. Added per-chat persisted Auto /
+Manual mode, applied before automatic replies and again before send/queue. Manual
+stops verification, instant answers, model responses and fallback templates;
+operator Send remains available. Personal money solicitation silently selects
+Manual through explicit patterns or the model's ignore_conversation tool. Normal
+business payments, invoices, pricing and refunds remain eligible. Existing/new
+chats default to Auto. No customer message is sent for release verification.

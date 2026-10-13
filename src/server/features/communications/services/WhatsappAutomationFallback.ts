@@ -1,3 +1,4 @@
+import { WhatsappAssistantRepository } from "../repositories/WhatsappAssistantRepository";
 import { CommunicationsRepository } from "../repositories/CommunicationsRepository";
 import { sendWhatsappText } from "../providers/whatsapp";
 
@@ -23,6 +24,16 @@ export async function runWhatsappAutomationFallback(
       rule.responseTemplateId,
     );
     if (!template) continue;
+    const current = await WhatsappAssistantRepository.getConversationReplyState(
+      connection.organizationId,
+      conversationId,
+    );
+    if (
+      !current ||
+      current.replyMode !== "auto" ||
+      current.status === "pending"
+    )
+      return;
     const queued = await CommunicationsRepository.createQueuedWhatsappMessage(
       connection.organizationId,
       conversationId,
