@@ -8,7 +8,7 @@ enquiries. This release runs alongside the existing fulfilment application.
 
 Shopify remains authoritative for the basket, payment and fulfilment snapshots.
 The existing application continues issuing invoices, moving stock, creating
-Citypak shipments, handling returns/refunds and sending customer confirmations.
+Citypak shipments, handling returns/refunds with legacy WhatsApp disconnected. DU automatic confirmations are not enabled.
 DigitalUrgency approval/rejection records a local review decision only. It does
 not approve, reject or cancel the upstream order, change catalogue prices, send
 an invoice or create a courier shipment. Imported orders cannot use the native
@@ -25,7 +25,7 @@ workflow. The bill is a printable order summary, not a second issued invoice.
 ## Configure after release approval
 
 1. Apply the additive migrations through the normal deployment migration runner.
-   SQLite: `0098_bitter_iron_fist`.
+   SQLite: `0098_melted_red_shift`.
    Postgres: `0077_violet_echo`.
 2. Open CRM → Orders → Shopify order connection. Select the existing connected
    Shopify integration and enable **Mirror orders**. New connections start with

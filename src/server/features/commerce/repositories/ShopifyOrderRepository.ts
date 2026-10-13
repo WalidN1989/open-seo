@@ -320,8 +320,8 @@ async function ingest(
               commerceOrderShipments.trackingNumber,
             ],
             set: {
-              status: fulfillment.status,
-              checkedAt: values.externalUpdatedAt,
+              status: sql`case when ${commerceOrderShipments.provider} = 'Citypak' then ${commerceOrderShipments.status} else ${fulfillment.status} end`,
+              checkedAt: sql`case when ${commerceOrderShipments.provider} = 'Citypak' then ${commerceOrderShipments.checkedAt} else ${values.externalUpdatedAt} end`,
             },
             setWhere: applied,
           }),

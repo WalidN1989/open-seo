@@ -1,3 +1,4 @@
+import { BusinessModuleRepository } from "@/server/features/business-modules/repositories/BusinessModuleRepository";
 import { BusinessSettingsService } from "@/server/features/business-modules/services/BusinessSettingsService";
 import type { z } from "zod";
 import type { orderReviewSchema } from "@/types/schemas/orderReview";
@@ -103,6 +104,17 @@ async function lookupCustomerOrder(
   sender: string,
   query: string,
 ) {
+  const entitlements =
+    await BusinessModuleRepository.listEntitlements(organizationId);
+  if (
+    !entitlements.some(
+      (row) => row.moduleKey === "crm" && row.status === "enabled",
+    )
+  )
+    return JSON.stringify({
+      found: false,
+      next: "Order lookup is unavailable. Hand off to the team.",
+    });
   const phone = orderPhone(
     sender.startsWith("whatsapp:") ? sender.slice(9) : sender,
   );

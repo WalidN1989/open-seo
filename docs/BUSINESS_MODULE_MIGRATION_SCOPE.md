@@ -1632,3 +1632,28 @@ the unrelated inactive Optimize SEO project; Lovable shows out of credits.
 GitHub synchronization does not deploy changed Edge Functions. The owner
 unlocked the legacy UI, which confirms the current confirmation remains there.
 No confirmation replacement was enabled and no customer message was sent.
+
+### 2026-10-14 — Shopify webhook mirror release preparation
+
+Owner requested Shopify integration into DU. Reused booxworm-confirmation on
+codex/shopify-webhook-du at 7c2bf4bf to isolate PR #23's order mirror from the
+unfinished operational automation in booxworm-orders-citypak (93cc7754).
+Includes current production main/PR #38. Added live module entitlement checks,
+preserved Citypak status on Shopify refresh, aligned SQLite connection deletion
+with schema, and fixed test dependency mocks. Full regression: 2,714 tests pass;
+ci:check and selfhost production build pass. Independent security/billing,
+idioms/migration and complexity/cruft reviews found no remaining blockers.
+This release has no automatic confirmations, invoice sends, stock movements,
+loyalty effects or Citypak creation. Legacy WhatsApp must remain disconnected.
+
+Live Shopify Admin still shows legacy order-create and order-cancelled webhooks
+plus checkout-update to the legacy abandoned-checkout handler. No subscriptions
+changed. DU's existing Shopify connection 45876de3-bdbe-42cd-9e60-4498e4db72d8 is
+connected to d80e66.myshopify.com, with encrypted SHOP_DOMAIN/CLIENT_ID/
+CLIENT_SECRET. Read-only access-scope check confirms only read_inventory and
+read_products: read_orders permission is missing. App-created subscriptions can
+use the existing client secret once order access is granted; an Admin-created
+subscription instead requires its distinct signing secret. Never mix signing
+secrets within one DU connection. Keep existing ZOHO fulfillment webhooks and
+unrelated FitSMS/mydemoview subscriptions until full parity. Receiver remains
+undeployed and mirror disabled at this checkpoint; no customer send/test order.
