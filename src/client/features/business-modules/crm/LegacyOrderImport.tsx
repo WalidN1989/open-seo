@@ -113,7 +113,8 @@ export function LegacyOrderImport({ connectionId }: { connectionId: string }) {
         <p>{progress}</p>
         <p>
           To refresh existing Citypak tracking, enter its API key. This enables
-          tracking reads only.
+          tracking reads; shipment creation requires separately enabling order
+          automation.
         </p>
         <input
           type="password"

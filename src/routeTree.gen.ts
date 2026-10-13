@@ -61,6 +61,7 @@ import { Route as ApiVoiceElevenlabsCallerConnectionIdRouteImport } from './rout
 import { Route as ApiVoiceDeepgramConnectionIdRouteImport } from './routes/api/voice/deepgram/$connectionId'
 import { Route as ApiSmsTwilioConnectionIdRouteImport } from './routes/api/sms/twilio/$connectionId'
 import { Route as ApiQuotesQuoteIdPdfRouteImport } from './routes/api/quotes/$quoteId/pdf'
+import { Route as ApiOrdersOrderIdLabelRouteImport } from './routes/api/orders/$orderId/label'
 import { Route as ApiGscOauthCallbackRouteImport } from './routes/api/gsc/oauth/callback'
 import { Route as ApiGa4OauthCallbackRouteImport } from './routes/api/ga4/oauth/callback'
 import { Route as ApiEmailMicrosoftCallbackRouteImport } from './routes/api/email/microsoft/callback'
@@ -89,6 +90,7 @@ import { Route as AppModulesCrmInventoryRouteImport } from './routes/_app/module
 import { Route as AppModulesCrmInquiriesRouteImport } from './routes/_app/modules/crm/inquiries'
 import { Route as AppModulesCrmContactsRouteImport } from './routes/_app/modules/crm/contacts'
 import { Route as AppModulesCrmCompaniesRouteImport } from './routes/_app/modules/crm/companies'
+import { Route as AppModulesCrmCitypakRouteImport } from './routes/_app/modules/crm/citypak'
 import { Route as AppModulesCrmAnalyticsRouteImport } from './routes/_app/modules/crm/analytics'
 import { Route as ProjectPProjectIdSettingsIndexRouteImport } from './routes/_project/p/$projectId/settings/index'
 import { Route as ProjectPProjectIdRankTrackingIndexRouteImport } from './routes/_project/p/$projectId/rank-tracking/index'
@@ -370,6 +372,11 @@ const ApiQuotesQuoteIdPdfRoute = ApiQuotesQuoteIdPdfRouteImport.update({
   path: '/api/quotes/$quoteId/pdf',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiOrdersOrderIdLabelRoute = ApiOrdersOrderIdLabelRouteImport.update({
+  id: '/api/orders/$orderId/label',
+  path: '/api/orders/$orderId/label',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiGscOauthCallbackRoute = ApiGscOauthCallbackRouteImport.update({
   id: '/api/gsc/oauth/callback',
   path: '/api/gsc/oauth/callback',
@@ -520,6 +527,11 @@ const AppModulesCrmCompaniesRoute = AppModulesCrmCompaniesRouteImport.update({
   path: '/companies',
   getParentRoute: () => AppModulesCrmRoute,
 } as any)
+const AppModulesCrmCitypakRoute = AppModulesCrmCitypakRouteImport.update({
+  id: '/citypak',
+  path: '/citypak',
+  getParentRoute: () => AppModulesCrmRoute,
+} as any)
 const AppModulesCrmAnalyticsRoute = AppModulesCrmAnalyticsRouteImport.update({
   id: '/analytics',
   path: '/analytics',
@@ -646,6 +658,7 @@ export interface FileRoutesByFullPath {
   '/modules/': typeof AppModulesIndexRoute
   '/onboarding/': typeof AuthenticatedOnboardingIndexRoute
   '/modules/crm/analytics': typeof AppModulesCrmAnalyticsRoute
+  '/modules/crm/citypak': typeof AppModulesCrmCitypakRoute
   '/modules/crm/companies': typeof AppModulesCrmCompaniesRoute
   '/modules/crm/contacts': typeof AppModulesCrmContactsRoute
   '/modules/crm/inquiries': typeof AppModulesCrmInquiriesRoute
@@ -674,6 +687,7 @@ export interface FileRoutesByFullPath {
   '/api/email/microsoft/callback': typeof ApiEmailMicrosoftCallbackRoute
   '/api/ga4/oauth/callback': typeof ApiGa4OauthCallbackRoute
   '/api/gsc/oauth/callback': typeof ApiGscOauthCallbackRoute
+  '/api/orders/$orderId/label': typeof ApiOrdersOrderIdLabelRoute
   '/api/quotes/$quoteId/pdf': typeof ApiQuotesQuoteIdPdfRoute
   '/api/sms/twilio/$connectionId': typeof ApiSmsTwilioConnectionIdRoute
   '/api/voice/deepgram/$connectionId': typeof ApiVoiceDeepgramConnectionIdRoute
@@ -734,6 +748,7 @@ export interface FileRoutesByTo {
   '/modules': typeof AppModulesIndexRoute
   '/onboarding': typeof AuthenticatedOnboardingIndexRoute
   '/modules/crm/analytics': typeof AppModulesCrmAnalyticsRoute
+  '/modules/crm/citypak': typeof AppModulesCrmCitypakRoute
   '/modules/crm/companies': typeof AppModulesCrmCompaniesRoute
   '/modules/crm/contacts': typeof AppModulesCrmContactsRoute
   '/modules/crm/inquiries': typeof AppModulesCrmInquiriesRoute
@@ -758,6 +773,7 @@ export interface FileRoutesByTo {
   '/api/email/microsoft/callback': typeof ApiEmailMicrosoftCallbackRoute
   '/api/ga4/oauth/callback': typeof ApiGa4OauthCallbackRoute
   '/api/gsc/oauth/callback': typeof ApiGscOauthCallbackRoute
+  '/api/orders/$orderId/label': typeof ApiOrdersOrderIdLabelRoute
   '/api/quotes/$quoteId/pdf': typeof ApiQuotesQuoteIdPdfRoute
   '/api/sms/twilio/$connectionId': typeof ApiSmsTwilioConnectionIdRoute
   '/api/voice/deepgram/$connectionId': typeof ApiVoiceDeepgramConnectionIdRoute
@@ -827,6 +843,7 @@ export interface FileRoutesById {
   '/_app/modules/': typeof AppModulesIndexRoute
   '/_authenticated/onboarding/': typeof AuthenticatedOnboardingIndexRoute
   '/_app/modules/crm/analytics': typeof AppModulesCrmAnalyticsRoute
+  '/_app/modules/crm/citypak': typeof AppModulesCrmCitypakRoute
   '/_app/modules/crm/companies': typeof AppModulesCrmCompaniesRoute
   '/_app/modules/crm/contacts': typeof AppModulesCrmContactsRoute
   '/_app/modules/crm/inquiries': typeof AppModulesCrmInquiriesRoute
@@ -855,6 +872,7 @@ export interface FileRoutesById {
   '/api/email/microsoft/callback': typeof ApiEmailMicrosoftCallbackRoute
   '/api/ga4/oauth/callback': typeof ApiGa4OauthCallbackRoute
   '/api/gsc/oauth/callback': typeof ApiGscOauthCallbackRoute
+  '/api/orders/$orderId/label': typeof ApiOrdersOrderIdLabelRoute
   '/api/quotes/$quoteId/pdf': typeof ApiQuotesQuoteIdPdfRoute
   '/api/sms/twilio/$connectionId': typeof ApiSmsTwilioConnectionIdRoute
   '/api/voice/deepgram/$connectionId': typeof ApiVoiceDeepgramConnectionIdRoute
@@ -921,6 +939,7 @@ export interface FileRouteTypes {
     | '/modules/'
     | '/onboarding/'
     | '/modules/crm/analytics'
+    | '/modules/crm/citypak'
     | '/modules/crm/companies'
     | '/modules/crm/contacts'
     | '/modules/crm/inquiries'
@@ -949,6 +968,7 @@ export interface FileRouteTypes {
     | '/api/email/microsoft/callback'
     | '/api/ga4/oauth/callback'
     | '/api/gsc/oauth/callback'
+    | '/api/orders/$orderId/label'
     | '/api/quotes/$quoteId/pdf'
     | '/api/sms/twilio/$connectionId'
     | '/api/voice/deepgram/$connectionId'
@@ -1009,6 +1029,7 @@ export interface FileRouteTypes {
     | '/modules'
     | '/onboarding'
     | '/modules/crm/analytics'
+    | '/modules/crm/citypak'
     | '/modules/crm/companies'
     | '/modules/crm/contacts'
     | '/modules/crm/inquiries'
@@ -1033,6 +1054,7 @@ export interface FileRouteTypes {
     | '/api/email/microsoft/callback'
     | '/api/ga4/oauth/callback'
     | '/api/gsc/oauth/callback'
+    | '/api/orders/$orderId/label'
     | '/api/quotes/$quoteId/pdf'
     | '/api/sms/twilio/$connectionId'
     | '/api/voice/deepgram/$connectionId'
@@ -1101,6 +1123,7 @@ export interface FileRouteTypes {
     | '/_app/modules/'
     | '/_authenticated/onboarding/'
     | '/_app/modules/crm/analytics'
+    | '/_app/modules/crm/citypak'
     | '/_app/modules/crm/companies'
     | '/_app/modules/crm/contacts'
     | '/_app/modules/crm/inquiries'
@@ -1129,6 +1152,7 @@ export interface FileRouteTypes {
     | '/api/email/microsoft/callback'
     | '/api/ga4/oauth/callback'
     | '/api/gsc/oauth/callback'
+    | '/api/orders/$orderId/label'
     | '/api/quotes/$quoteId/pdf'
     | '/api/sms/twilio/$connectionId'
     | '/api/voice/deepgram/$connectionId'
@@ -1178,6 +1202,7 @@ export interface RootRouteChildren {
   ApiEmailMicrosoftCallbackRoute: typeof ApiEmailMicrosoftCallbackRoute
   ApiGa4OauthCallbackRoute: typeof ApiGa4OauthCallbackRoute
   ApiGscOauthCallbackRoute: typeof ApiGscOauthCallbackRoute
+  ApiOrdersOrderIdLabelRoute: typeof ApiOrdersOrderIdLabelRoute
   ApiQuotesQuoteIdPdfRoute: typeof ApiQuotesQuoteIdPdfRoute
   ApiSmsTwilioConnectionIdRoute: typeof ApiSmsTwilioConnectionIdRoute
   ApiVoiceDeepgramConnectionIdRoute: typeof ApiVoiceDeepgramConnectionIdRoute
@@ -1553,6 +1578,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiQuotesQuoteIdPdfRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/orders/$orderId/label': {
+      id: '/api/orders/$orderId/label'
+      path: '/api/orders/$orderId/label'
+      fullPath: '/api/orders/$orderId/label'
+      preLoaderRoute: typeof ApiOrdersOrderIdLabelRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/gsc/oauth/callback': {
       id: '/api/gsc/oauth/callback'
       path: '/api/gsc/oauth/callback'
@@ -1749,6 +1781,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppModulesCrmCompaniesRouteImport
       parentRoute: typeof AppModulesCrmRoute
     }
+    '/_app/modules/crm/citypak': {
+      id: '/_app/modules/crm/citypak'
+      path: '/citypak'
+      fullPath: '/modules/crm/citypak'
+      preLoaderRoute: typeof AppModulesCrmCitypakRouteImport
+      parentRoute: typeof AppModulesCrmRoute
+    }
     '/_app/modules/crm/analytics': {
       id: '/_app/modules/crm/analytics'
       path: '/analytics'
@@ -1867,6 +1906,7 @@ const AppModulesCrmProductsRouteWithChildren =
 
 interface AppModulesCrmRouteChildren {
   AppModulesCrmAnalyticsRoute: typeof AppModulesCrmAnalyticsRoute
+  AppModulesCrmCitypakRoute: typeof AppModulesCrmCitypakRoute
   AppModulesCrmCompaniesRoute: typeof AppModulesCrmCompaniesRoute
   AppModulesCrmContactsRoute: typeof AppModulesCrmContactsRoute
   AppModulesCrmInquiriesRoute: typeof AppModulesCrmInquiriesRoute
@@ -1882,6 +1922,7 @@ interface AppModulesCrmRouteChildren {
 
 const AppModulesCrmRouteChildren: AppModulesCrmRouteChildren = {
   AppModulesCrmAnalyticsRoute: AppModulesCrmAnalyticsRoute,
+  AppModulesCrmCitypakRoute: AppModulesCrmCitypakRoute,
   AppModulesCrmCompaniesRoute: AppModulesCrmCompaniesRoute,
   AppModulesCrmContactsRoute: AppModulesCrmContactsRoute,
   AppModulesCrmInquiriesRoute: AppModulesCrmInquiriesRoute,
@@ -2141,6 +2182,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiEmailMicrosoftCallbackRoute: ApiEmailMicrosoftCallbackRoute,
   ApiGa4OauthCallbackRoute: ApiGa4OauthCallbackRoute,
   ApiGscOauthCallbackRoute: ApiGscOauthCallbackRoute,
+  ApiOrdersOrderIdLabelRoute: ApiOrdersOrderIdLabelRoute,
   ApiQuotesQuoteIdPdfRoute: ApiQuotesQuoteIdPdfRoute,
   ApiSmsTwilioConnectionIdRoute: ApiSmsTwilioConnectionIdRoute,
   ApiVoiceDeepgramConnectionIdRoute: ApiVoiceDeepgramConnectionIdRoute,

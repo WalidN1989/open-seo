@@ -50,3 +50,26 @@ export const orderDecisionSchema = z.object({
   orderId: z.string().min(1),
   revision: z.string().min(1),
 });
+
+export const orderOperationsSchema = z.object({
+  connectionId: z.string().min(1),
+  confirmationStartedAt: z.string().datetime().nullable(),
+  operationsStartedAt: z.string().datetime().nullable(),
+  confirmationSenderId: z.string().min(1).nullable(),
+  confirmationTemplateId: z.string().min(1).nullable(),
+  pickupTemplateId: z.string().min(1).nullable(),
+  cancellationTemplateId: z.string().min(1).nullable(),
+  invoiceEnabled: z.boolean(),
+  loyaltyMinorPerPoint: z.number().int().min(0).max(2_147_483_647),
+  senderName: z.string().trim().max(100).nullable(),
+  senderPhone: z
+    .string()
+    .trim()
+    .regex(/^\+[1-9]\d{7,14}$/)
+    .nullable(),
+  senderAddress1: z.string().trim().max(200).nullable(),
+  senderAddress2: z.string().trim().max(200).nullable(),
+  senderAddress3: z.string().trim().max(200).nullable(),
+  senderCity: z.string().trim().max(100).nullable(),
+  parcelWeightGrams: z.number().int().min(1).max(50_000),
+});

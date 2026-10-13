@@ -6,6 +6,7 @@ CREATE TABLE `commerce_order_shipments` (
 	`tracking_number` text NOT NULL,
 	`status` text DEFAULT 'UNKNOWN' NOT NULL,
 	`checked_at` text,
+	`created_at` text DEFAULT (current_timestamp) NOT NULL,
 	FOREIGN KEY (`organization_id`) REFERENCES `organization`(`id`) ON UPDATE no action ON DELETE cascade,
 	FOREIGN KEY (`order_id`) REFERENCES `commerce_orders`(`id`) ON UPDATE no action ON DELETE cascade
 );
@@ -28,7 +29,7 @@ CREATE INDEX `commerce_order_sync_org_idx` ON `commerce_order_sync` (`organizati
 ALTER TABLE `commerce_order_lines` ADD `external_id` text;--> statement-breakpoint
 ALTER TABLE `commerce_order_lines` ADD `external_variant_id` text;--> statement-breakpoint
 ALTER TABLE `commerce_order_lines` ADD `price_reviewed_at` text;--> statement-breakpoint
-ALTER TABLE `commerce_orders` ADD `integration_connection_id` text REFERENCES integration_connections(id);--> statement-breakpoint
+ALTER TABLE `commerce_orders` ADD `integration_connection_id` text REFERENCES integration_connections(id) ON DELETE SET NULL;--> statement-breakpoint
 ALTER TABLE `commerce_orders` ADD `approval_status` text;--> statement-breakpoint
 ALTER TABLE `commerce_orders` ADD `external_updated_at` text;--> statement-breakpoint
 ALTER TABLE `commerce_orders` ADD `external_basket_key` text;--> statement-breakpoint

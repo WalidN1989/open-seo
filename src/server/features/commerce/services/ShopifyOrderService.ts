@@ -1,3 +1,5 @@
+import { BusinessModuleRepository } from "@/server/features/business-modules/repositories/BusinessModuleRepository";
+import { OrderOperationsService } from "./OrderOperationsService";
 import { z } from "zod";
 import { BusinessModuleService } from "@/server/features/business-modules/services/BusinessModuleService";
 import {
@@ -140,6 +142,17 @@ async function webhook(connectionId: string, headers: Headers, body: string) {
   if (new TextEncoder().encode(body).length > 2_000_000) return 413;
   const connection = await Repo.enabledConnection(connectionId);
   if (!connection) return 404;
+  const entitlements = await BusinessModuleRepository.listEntitlements(
+    connection.organizationId,
+  );
+  if (
+    !["crm", "integrations"].every((key) =>
+      entitlements.some(
+        (row) => row.moduleKey === key && row.status === "enabled",
+      ),
+    )
+  )
+    return 404;
   const domain = await shopDomainFor(connection);
   if (headers.get("x-shopify-shop-domain")?.toLowerCase() !== domain)
     return 401;
@@ -186,6 +199,12 @@ async function webhook(connectionId: string, headers: Headers, body: string) {
     connection.id,
     branch.id,
     parsed.data,
+  );
+  await OrderOperationsService.enqueueForWebhook(
+    connection.organizationId,
+    connectionId,
+    `shopify:${connectionId}:${parsed.data.id}`,
+    topic,
   );
   return 200;
 }

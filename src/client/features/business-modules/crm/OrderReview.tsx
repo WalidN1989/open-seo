@@ -51,7 +51,7 @@ export function OrderReview({ detail }: { detail: Detail }) {
       }),
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: ["commerce"] });
-      toast.success("Order reviewed. Zoho continues fulfillment.");
+      toast.success("Order approved. Enabled DU automations are queued.");
     },
     onError: (error) => toast.error(getStandardErrorMessage(error)),
   });

@@ -1,4 +1,6 @@
-import { z } from "zod";
+import { OrderOperationsRepository } from "../repositories/OrderOperationsRepository";
+import { trackCitypakOrder, citypakLabel } from "../providers/citypak";
+import type { z } from "zod";
 import { OrderShipmentRepository as Repo } from "../repositories/OrderShipmentRepository";
 import { BusinessModuleService } from "@/server/features/business-modules/services/BusinessModuleService";
 import {
@@ -78,48 +80,78 @@ async function refresh(
       "INTEGRATION_CHECK_FAILED",
       "Enter the Citypak API key in this order's connection settings first.",
     );
-  const url = new URL("https://falcon.citypak.lk/customer_api/v1/track");
-  url.searchParams.set("tracking_number", shipment.trackingNumber);
-  const response = await fetch(url.href, {
-    headers: {
-      Authorization: `Bearer ${credentials.API_KEY}`,
-      Accept: "application/json",
-    },
-    redirect: "manual",
-    signal: AbortSignal.timeout(20_000),
-  });
-  const payload: unknown = await response.json().catch(() => null);
-  const parsed = z
-    .object({
-      success: z.boolean().optional(),
-      is_success: z.boolean().optional(),
-      data: z.object({
-        is_delivered: z.boolean().optional(),
-        tracking_history: z
-          .array(
-            z.object({
-              status_type: z.string().max(120).optional(),
-              status: z.string().max(120).optional(),
-            }),
-          )
-          .default([]),
-      }),
-    })
-    .safeParse(payload);
+  const tracking = await trackCitypakOrder(
+    credentials.API_KEY,
+    shipment.trackingNumber,
+  );
+  for (const event of tracking.events) {
+    if (event.eventAt)
+      await OrderOperationsRepository.shipmentEvent(
+        organizationId,
+        shipment.id,
+        { ...event, eventAt: event.eventAt, source: "pull" },
+      );
+  }
   if (
-    !response.ok ||
-    !parsed.success ||
-    !(parsed.data.success || parsed.data.is_success)
-  )
-    throw new AppError(
-      "INTEGRATION_CHECK_FAILED",
-      "Citypak tracking is unavailable. The previous status is retained.",
-    );
-  const history = parsed.data.data.tracking_history;
-  const latest = history.at(-1);
-  const status = parsed.data.data.is_delivered
-    ? "DELIVERED"
-    : latest?.status_type || latest?.status || "UNKNOWN";
-  await Repo.recordStatus(organizationId, orderId, shipmentId, status);
+    tracking.events.length &&
+    !tracking.events.some((event) => event.eventAt) &&
+    !["DELIVERED", "RETURNED"].includes(shipment.status)
+  ) {
+    const latest = tracking.events.at(-1)!;
+    await OrderOperationsRepository.shipmentEvent(organizationId, shipment.id, {
+      ...latest,
+      eventAt: new Date().toISOString(),
+      source: "pull",
+    });
+  }
+  if (
+    tracking.delivered &&
+    !tracking.events.some(
+      (event) => event.status === "DELIVERED" && event.eventAt,
+    )
+  ) {
+    await OrderOperationsRepository.shipmentEvent(organizationId, shipment.id, {
+      status: "DELIVERED",
+      eventAt: new Date().toISOString(),
+      reason: null,
+      source: "pull",
+    });
+  }
 }
-export const OrderShipmentService = { link, configure, refresh };
+async function dashboard(organizationId: string, userId: string) {
+  await BusinessModuleService.requireAccess(organizationId, userId, "crm");
+  return {
+    organizationId,
+    rows: await OrderOperationsRepository.shipments(organizationId),
+  };
+}
+async function label(
+  organizationId: string,
+  userId: string,
+  orderId: string,
+  shipmentId: string,
+  size: "A4" | "4X6",
+) {
+  await BusinessModuleService.requireAccess(organizationId, userId, "crm");
+  const order = await OrderRepository.getOrder(organizationId, orderId);
+  const shipment = (
+    await OrderRepository.shipments(organizationId, orderId)
+  ).find((row) => row.id === shipmentId && row.provider === "Citypak");
+  if (!order?.integrationConnectionId || !shipment)
+    throw new AppError("NOT_FOUND");
+  const config = await Repo.configuration(
+    organizationId,
+    order.integrationConnectionId,
+  );
+  const credentials = await decryptCredentials(config?.courierCredentials);
+  if (!credentials.API_KEY)
+    throw new AppError("INTEGRATION_CHECK_FAILED", "Connect Citypak first.");
+  return citypakLabel(credentials.API_KEY, shipment.trackingNumber, size);
+}
+export const OrderShipmentService = {
+  link,
+  configure,
+  refresh,
+  dashboard,
+  label,
+};

@@ -1,3 +1,7 @@
+import { OrderOperationsRepository } from "../repositories/OrderOperationsRepository";
+import { OrderLoyaltyRepository } from "../repositories/OrderLoyaltyRepository";
+import { BusinessModuleRepository } from "@/server/features/business-modules/repositories/BusinessModuleRepository";
+import { OrderOperationsService } from "./OrderOperationsService";
 import { BusinessSettingsService } from "@/server/features/business-modules/services/BusinessSettingsService";
 import type { z } from "zod";
 import type { orderReviewSchema } from "@/types/schemas/orderReview";
@@ -71,6 +75,7 @@ async function approveImportedOrder(
       result.externalUpdatedAt !== input.revision)
   )
     throw new AppError("CONFLICT", "The order changed; reopen its review.");
+  await OrderOperationsService.enqueueApproved(organizationId, order.id);
   return result;
 }
 
@@ -103,6 +108,17 @@ async function lookupCustomerOrder(
   sender: string,
   query: string,
 ) {
+  const entitlements =
+    await BusinessModuleRepository.listEntitlements(organizationId);
+  if (
+    !entitlements.some(
+      (row) => row.moduleKey === "crm" && row.status === "enabled",
+    )
+  )
+    return JSON.stringify({
+      found: false,
+      next: "Order lookup is unavailable. Hand off to the team.",
+    });
   const phone = orderPhone(
     sender.startsWith("whatsapp:") ? sender.slice(9) : sender,
   );
@@ -167,7 +183,23 @@ async function missingSequence(organizationId: string, userId: string) {
   };
 }
 
+async function overview(
+  organizationId: string,
+  userId: string,
+  orderId: string,
+) {
+  await BusinessModuleService.requireAccess(organizationId, userId, "crm");
+  const order = await OrderRepository.getOrder(organizationId, orderId);
+  if (!order) throw new AppError("NOT_FOUND");
+  return {
+    effects: await OrderOperationsRepository.effects(organizationId, orderId),
+    loyaltyBalance: order.contactId
+      ? await OrderLoyaltyRepository.loyalty(organizationId, order.contactId)
+      : 0,
+  };
+}
 export const RetailOrderService = {
+  overview,
   approveImportedOrder,
   rejectImportedOrder,
   lookupCustomerOrder,

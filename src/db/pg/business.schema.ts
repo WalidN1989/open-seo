@@ -1461,6 +1461,7 @@ export const commerceOrders = pgTable(
     customerPhone: text("customer_phone"),
     customerEmail: text("customer_email"),
     shippingAddress: text("shipping_address"),
+    shippingCity: text("shipping_city"),
     paidMinor: integer("paid_minor").notNull().default(0),
     pickup: boolean("pickup").notNull().default(false),
     orderNumber: text("order_number").notNull(),
@@ -1948,6 +1949,7 @@ export const invoices = pgTable(
     subtotalMinor: integer("subtotal_minor").notNull().default(0),
     taxMinor: integer("tax_minor").notNull().default(0),
     totalMinor: integer("total_minor").notNull().default(0),
+    paidMinor: integer("paid_minor").notNull().default(0),
     issuerSnapshotJson: text("issuer_snapshot_json"),
     sentAt: text("sent_at"),
     paidAt: text("paid_at"),
@@ -2236,6 +2238,35 @@ export const commerceOrderSync = pgTable(
     syncedCount: integer("synced_count").notNull().default(0),
     lastSyncedAt: text("last_synced_at"),
     courierCredentials: text("courier_credentials"),
+    confirmationStartedAt: text("confirmation_started_at"),
+    operationsStartedAt: text("operations_started_at"),
+    confirmationSenderId: text("confirmation_sender_id").references(
+      () => whatsappConnections.id,
+      { onDelete: "set null" },
+    ),
+    confirmationTemplateId: text("confirmation_template_id").references(
+      () => whatsappTemplates.id,
+      { onDelete: "set null" },
+    ),
+    pickupTemplateId: text("pickup_template_id").references(
+      () => whatsappTemplates.id,
+      { onDelete: "set null" },
+    ),
+    cancellationTemplateId: text("cancellation_template_id").references(
+      () => whatsappTemplates.id,
+      { onDelete: "set null" },
+    ),
+    invoiceEnabled: boolean("invoice_enabled").notNull().default(false),
+    loyaltyMinorPerPoint: integer("loyalty_minor_per_point")
+      .notNull()
+      .default(0),
+    senderName: text("sender_name"),
+    senderPhone: text("sender_phone"),
+    senderAddress1: text("sender_address_1"),
+    senderAddress2: text("sender_address_2"),
+    senderAddress3: text("sender_address_3"),
+    senderCity: text("sender_city"),
+    parcelWeightGrams: integer("parcel_weight_grams").notNull().default(500),
   },
   (table) => [index("commerce_order_sync_org_idx").on(table.organizationId)],
 );
@@ -2253,6 +2284,10 @@ export const commerceOrderShipments = pgTable(
     trackingNumber: text("tracking_number").notNull(),
     status: text("status").notNull().default("UNKNOWN"),
     checkedAt: text("checked_at"),
+    externalId: text("external_id"),
+    lastEventAt: text("last_event_at"),
+    reason: text("reason"),
+    createdAt: createdAt(),
   },
   (table) => [
     uniqueIndex("commerce_order_shipments_identity_idx").on(
@@ -2262,5 +2297,114 @@ export const commerceOrderShipments = pgTable(
       table.trackingNumber,
     ),
     index("commerce_order_shipments_order_idx").on(table.orderId),
+  ],
+);
+
+export const commerceOrderEffects = pgTable(
+  "commerce_order_effects",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    orderId: text("order_id")
+      .notNull()
+      .references(() => commerceOrders.id, { onDelete: "cascade" }),
+    kind: text("kind", {
+      enum: ["confirmation", "cancellation", "invoice", "citypak"],
+    }).notNull(),
+    status: text("status", {
+      enum: [
+        "queued",
+        "sending",
+        "succeeded",
+        "failed",
+        "unknown",
+        "legacy",
+        "skipped",
+      ],
+    })
+      .notNull()
+      .default("queued"),
+    messageId: text("message_id").references(() => whatsappMessages.id, {
+      onDelete: "set null",
+    }),
+    invoiceId: text("invoice_id").references(() => invoices.id, {
+      onDelete: "set null",
+    }),
+    externalId: text("external_id"),
+    error: text("error"),
+    claimedAt: text("claimed_at"),
+    nextAttemptAt: text("next_attempt_at"),
+    completedAt: text("completed_at"),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    uniqueIndex("commerce_order_effects_once_idx").on(
+      t.organizationId,
+      t.orderId,
+      t.kind,
+    ),
+    index("commerce_order_effects_due_idx").on(t.status, t.createdAt),
+  ],
+);
+
+export const commerceLoyaltyEntries = pgTable(
+  "commerce_loyalty_entries",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    contactId: text("contact_id")
+      .notNull()
+      .references(() => crmContacts.id, { onDelete: "no action" }),
+    orderId: text("order_id").references(() => commerceOrders.id, {
+      onDelete: "no action",
+    }),
+    sourceId: text("source_id").notNull(),
+    kind: text("kind", {
+      enum: ["earned", "redeemed", "reversed", "imported"],
+    }).notNull(),
+    points: integer("points").notNull(),
+    note: text("note"),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    uniqueIndex("commerce_loyalty_entries_source_idx").on(
+      t.organizationId,
+      t.sourceId,
+      t.kind,
+    ),
+    index("commerce_loyalty_entries_contact_idx").on(
+      t.organizationId,
+      t.contactId,
+    ),
+  ],
+);
+
+export const commerceShipmentEvents = pgTable(
+  "commerce_shipment_events",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    shipmentId: text("shipment_id")
+      .notNull()
+      .references(() => commerceOrderShipments.id, { onDelete: "cascade" }),
+    status: text("status").notNull(),
+    reason: text("reason"),
+    eventAt: text("event_at").notNull(),
+    source: text("source").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    uniqueIndex("commerce_shipment_events_identity_idx").on(
+      t.organizationId,
+      t.shipmentId,
+      t.status,
+      t.eventAt,
+    ),
   ],
 );

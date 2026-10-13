@@ -1632,3 +1632,49 @@ the unrelated inactive Optimize SEO project; Lovable shows out of credits.
 GitHub synchronization does not deploy changed Edge Functions. The owner
 unlocked the legacy UI, which confirms the current confirmation remains there.
 No confirmation replacement was enabled and no customer message was sent.
+
+### 2026-10-14 — order migration checkpoint and Lovable Cloud data access
+
+Owner confirmed the legacy database is available only through Lovable Cloud.
+Its SQL editor works with the existing signed-in account; separate Supabase
+project membership is not needed for read-only inspection/export. Identified
+Enix Solution PVT LTD (95caecda-9451-4d7e-888e-54f26841db43) as the BooXworm
+online-bookstore tenant, distinct from Stationary and Jumpbook. Read-only counts:
+2,282 orders, 3 pending approvals, 904 non-null waybills, 1,142 invoice send
+logs and 1,143 loyalty entries. Downloaded a tenant-scoped 7,827-row CSV of orders,
+3,260 order lines, invoice send logs and loyalty entries. JSON payloads validated;
+private local copy /private/tmp/booxworm-cutover-records-2026-10-14.csv (0600).
+Excluded invoice public tokens/HTML and courier raw payloads. The tracking-event
+join returned no rows; status/history currently lives on the sales orders.
+No legacy database mutation or customer/provider send was performed.
+
+Active worktree booxworm-orders-citypak / branch codex/booxworm-order-cutover
+extends PR #23's mirror with per-order durable effects, atomic dispatch claims,
+no automatic retry after an ambiguous provider result, gated confirmation and
+Citypak/invoice creation, normalized loyalty/events, label route, waybill view
+and floating shortcut. New schema is LOCAL ONLY (SQLite 0098–0101, PG 0077–0080).
+Settings PR #38 remains the only deployed release from this task. Shopify order
+webhooks have NOT been switched and DU automatic order confirmation is OFF.
+ZOHO remains disconnected from Twilio, as verified on Oct 13; do not reconnect.
+
+Independent reviews verified and fixes applied: defer blocked jobs so they do
+not starve later orders; skip queued confirmation after cancellation; enforce
+CRM/Integrations webhook entitlements and CRM order lookup entitlement; respect
+active connection/config before loyalty/operations; preserve courier-owned
+status on Shopify updates; reconcile invoice merchandise/delivery/discount/
+adjustment/tax and paid amounts; prevent generic edits of order invoices; show
+newest 1,000 waybills and truthful filter limit. Focused 21 tests passed and local
+typecheck/targeted lint passed. Full branch ci:check, browser verification and
+final delta review are still required; this is NOT merge-ready or deployable.
+
+Remaining before full retirement/cutover: import/reconcile the scoped snapshots
+and existing action outcomes, pending-order ownership, customer/product mappings;
+loyalty redemption/refund reversals; native order/return workflow parity; current
+payment updates to issued retail invoices; Citypak authenticated callbacks and
+scheduled tracking; server pagination beyond dashboard cap; provider template
+compatibility and race checks immediately before dispatch. Obtain Citypak key
+through direct user entry (Cloud only exposes its secret name), sender settings
+and webhook secret. Do not enable loyalty earning until reversal parity exists.
+Do not disconnect legacy Shopify/Citypak/invoice/loyalty processing until verified
+DU parity and an explicit cutover checkpoint. Keep unrelated FitSMS/mydemoview
+Shopify subscriptions and the separate Point of Sale Twilio connector untouched.

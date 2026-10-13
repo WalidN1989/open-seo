@@ -1,3 +1,5 @@
+import { OrderOperationsConfigService } from "@/server/features/commerce/services/OrderOperationsConfigService";
+import { orderOperationsSchema } from "@/types/schemas/orderReview";
 import { orderDecisionSchema } from "@/types/schemas/orderReview";
 import { orderWebhookSecretSchema } from "@/types/schemas/orderReview";
 import { LegacyOrderService } from "@/server/features/commerce/services/LegacyOrderService";
@@ -121,4 +123,36 @@ export const rejectImportedOrder = createServerFn({ method: "POST" })
       data.orderId,
       data.revision,
     ),
+  );
+
+export const configureOrderOperations = createServerFn({ method: "POST" })
+  .middleware(requireAuthenticatedContext)
+  .validator(orderOperationsSchema)
+  .handler(({ context, data }) =>
+    OrderOperationsConfigService.configure(
+      context.organizationId,
+      context.userId,
+      data,
+    ),
+  );
+export const getOrderOperations = createServerFn({ method: "GET" })
+  .middleware(requireAuthenticatedContext)
+  .validator(z.object({ orderId: z.string().min(1) }))
+  .handler(({ context, data }) =>
+    OrderService.overview(context.organizationId, context.userId, data.orderId),
+  );
+export const getOrderOperationsSettings = createServerFn({ method: "GET" })
+  .middleware(requireAuthenticatedContext)
+  .validator(z.object({ connectionId: z.string().min(1) }))
+  .handler(({ context, data }) =>
+    OrderOperationsConfigService.settings(
+      context.organizationId,
+      context.userId,
+      data.connectionId,
+    ),
+  );
+export const getCitypakDashboard = createServerFn({ method: "GET" })
+  .middleware(requireAuthenticatedContext)
+  .handler(({ context }) =>
+    OrderShipmentService.dashboard(context.organizationId, context.userId),
   );

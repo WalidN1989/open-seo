@@ -13,6 +13,7 @@ type InvoiceDetail = Awaited<ReturnType<typeof getInvoice>>;
  */
 export function InvoiceDocument({ detail }: { detail: InvoiceDetail }) {
   const { invoice, issuer, lines, heading } = detail;
+  const outstanding = Math.max(0, invoice.totalMinor - invoice.paidMinor);
   const money = (minor: number) => formatMoney(minor, invoice.currency);
 
   return (
@@ -63,8 +64,7 @@ export function InvoiceDocument({ detail }: { detail: InvoiceDetail }) {
       </section>
 
       <p className="invoice-amount-due">
-        {money(invoice.totalMinor)} {invoice.currency} due{" "}
-        {longDate(invoice.dueDate)}
+        {money(outstanding)} {invoice.currency} due {longDate(invoice.dueDate)}
       </p>
       {invoice.servicePeriod ? (
         <p className="invoice-period">{invoice.servicePeriod}</p>
@@ -103,18 +103,27 @@ export function InvoiceDocument({ detail }: { detail: InvoiceDetail }) {
           <span>Subtotal</span>
           <span>{money(invoice.subtotalMinor)}</span>
         </div>
-        {invoice.taxRatePercent > 0 ? (
+        {invoice.taxMinor !== 0 ? (
           <div>
             <span>
-              {invoice.taxLabel ?? "Tax"} ({invoice.taxRatePercent}%)
+              {invoice.taxLabel ?? "Tax"}
+              {invoice.taxRatePercent > 0
+                ? ` (${invoice.taxRatePercent}%)`
+                : ""}
             </span>
             <span>{money(invoice.taxMinor)}</span>
+          </div>
+        ) : null}
+        {invoice.paidMinor > 0 ? (
+          <div>
+            <span>Paid</span>
+            <span>{money(invoice.paidMinor)}</span>
           </div>
         ) : null}
         <div className="invoice-total-row">
           <span>Amount due</span>
           <span>
-            {money(invoice.totalMinor)} {invoice.currency}
+            {money(outstanding)} {invoice.currency}
           </span>
         </div>
       </div>

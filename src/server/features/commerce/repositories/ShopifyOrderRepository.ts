@@ -308,6 +308,12 @@ async function ingest(
                 checkedAt: sql<string>`${values.externalUpdatedAt}`.as(
                   "checkedAt",
                 ),
+                externalId: sql<string | null>`${fulfillment.id}`.as(
+                  "externalId",
+                ),
+                lastEventAt: sql<string | null>`null`.as("lastEventAt"),
+                reason: sql<string | null>`null`.as("reason"),
+                createdAt: sql<string>`${values.createdAt}`.as("createdAt"),
               })
               .from(commerceOrders)
               .where(revision),
@@ -323,7 +329,10 @@ async function ingest(
               status: fulfillment.status,
               checkedAt: values.externalUpdatedAt,
             },
-            setWhere: applied,
+            setWhere: and(
+              applied,
+              sql`${commerceOrderShipments.lastEventAt} is null`,
+            ),
           }),
       ),
     ),

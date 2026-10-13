@@ -1,3 +1,4 @@
+import { OrderOperationsService } from "@/server/features/commerce/services/OrderOperationsService";
 import { withPgClient } from "@/db";
 import { registerCronJob } from "./registry";
 import { reconcileStaleAudits } from "@/server/features/audit/services/auditReconciler";
@@ -26,6 +27,13 @@ let registered = false;
 export function registerBusinessCronJobs() {
   if (registered) return;
   registered = true;
+  registerCronJob({
+    name: "commerce.orderOperations",
+    tier: "fast",
+    run: async () => {
+      await withPgClient(() => OrderOperationsService.runDue());
+    },
+  });
 
   registerCronJob({
     name: "whatsapp.replyAfterBurst",

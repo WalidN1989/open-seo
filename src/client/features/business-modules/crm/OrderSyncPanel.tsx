@@ -1,3 +1,4 @@
+import { OrderOperationsSettings } from "./OrderOperationsSettings";
 import { LegacyOrderImport } from "./LegacyOrderImport";
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -54,8 +55,9 @@ export function OrderSyncPanel() {
       {open ? (
         <div className="mt-3 space-y-3">
           <p className="text-sm text-base-content/60">
-            Zoho continues handling invoices, stock and courier shipments.
-            DigitalUrgency mirrors orders for review and customer enquiries.
+            Configure DU order automation below after stopping the corresponding
+            legacy workflow. DigitalUrgency mirrors orders for review and
+            customer enquiries.
           </p>
           {!configs.data?.length ? (
             <p className="text-sm">Connect Shopify in Integrations first.</p>
@@ -168,6 +170,7 @@ export function OrderSyncPanel() {
                   </p>
                 </>
               ) : null}
+              <OrderOperationsSettings connectionId={config.connectionId} />
               <LegacyOrderImport connectionId={config.connectionId} />
             </div>
           ))}

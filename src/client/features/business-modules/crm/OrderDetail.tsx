@@ -1,3 +1,4 @@
+import { OrderOperationsPanel } from "./OrderOperationsPanel";
 import { formatMoney } from "@/shared/currencies";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -70,6 +71,7 @@ export function OrderDetail({
 
   return (
     <div className="mt-4 space-y-3 rounded-lg border border-base-300 p-3">
+      <OrderOperationsPanel orderId={orderId} />
       {order ? (
         <div className="space-y-1 text-sm">
           <p>{order.customerName}</p>

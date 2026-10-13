@@ -51,6 +51,7 @@ function publicInvoice(row: InvoiceRow) {
     subtotalMinor: row.subtotalMinor,
     taxMinor: row.taxMinor,
     totalMinor: row.totalMinor,
+    paidMinor: row.status === "paid" ? row.totalMinor : row.paidMinor,
     sentAt: row.sentAt,
     paidAt: row.paidAt,
     createdAt: row.createdAt,
@@ -153,6 +154,11 @@ async function save(
   if (input.invoiceId && !existing) {
     throw new AppError("NOT_FOUND", "Invoice not found.");
   }
+  if (existing?.id.startsWith("retail:"))
+    throw new AppError(
+      "VALIDATION_ERROR",
+      "This invoice reflects an order. Correct the order before issuing a replacement.",
+    );
   if (existing && existing.status !== "draft") {
     throw new AppError(
       "VALIDATION_ERROR",

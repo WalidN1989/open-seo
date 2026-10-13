@@ -140,6 +140,7 @@ export function shopifyOrderValues(order: ShopifyOrder) {
         order.billing_address?.phone,
     ),
     customerEmail: order.email || null,
+    shippingCity: shipping?.city || null,
     shippingAddress: shipping
       ? [
           shipping.address1,
