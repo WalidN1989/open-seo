@@ -1606,3 +1606,29 @@ operator Send remains available. Personal money solicitation silently selects
 Manual through explicit patterns or the model's ignore_conversation tool. Normal
 business payments, invoices, pricing and refunds remain eligible. Existing/new
 chats default to Auto. No customer message is sent for release verification.
+
+### 2026-10-13 — BooXworm sender and database verification
+
+Owner requested fixing the connection display and moving order confirmations
+to Digital Urgency without duplicate customer messages, then emphasized checking
+the database separation before cutover. Verified the linked Railway production
+Open SEO service has DATABASE_PROVIDER=postgres and POSTGRES_DATABASE_URL to
+Neon with sslmode=require. A read-only transaction succeeded and confirmed
+BooXworm's Twilio connection afaf5a7d-bb10-480b-adb6-6e1b916f1dc8 shows
++94766523362 / connected; the separate Meta test sender also remains connected.
+No database routing, credentials, customer records or provider callbacks changed.
+
+Isolated worktree booxworm-confirmation restores per-sender settings and editing,
+puts connected Twilio senders first, and exposes their callback URLs. Local
+implementation only; not deployed. The supplied legacy repository is
+WalidN1989/bookstoresrilanka, verified as Lovable's connected main branch. Its
+shopify-order-webhook sends order_confirmation directly through Lovable's Twilio
+gateway; outbound-whatsapp can manually send/resend the same template. Both
+paths must use the same order-level deduplication before cutover. Keep legacy
+Supabase order operations separate from Digital Urgency's Neon records.
+
+Legacy deployment access remains unresolved: the Supabase connector lists only
+the unrelated inactive Optimize SEO project; Lovable shows out of credits.
+GitHub synchronization does not deploy changed Edge Functions. The owner
+unlocked the legacy UI, which confirms the current confirmation remains there.
+No confirmation replacement was enabled and no customer message was sent.
