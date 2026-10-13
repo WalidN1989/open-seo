@@ -58,6 +58,9 @@ vi.mock("./WhatsappAssistantService", () => ({
   resolveAiKey: mocks.key,
   DEFAULT_HANDOFF_MESSAGE: "Team will help",
 }));
+vi.mock("@/server/features/commerce/services/OrderService", () => ({
+  OrderService: { lookupCustomerOrder: vi.fn() },
+}));
 import { replyToInbound } from "./WhatsappAssistantReplyService";
 
 const connection: Parameters<typeof replyToInbound>[0] = {

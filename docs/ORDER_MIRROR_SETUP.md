@@ -6,27 +6,33 @@ enquiries. This release runs alongside the existing fulfilment application.
 
 ## Ownership while validating
 
-Shopify remains authoritative for the basket, payment and fulfilment snapshots.
-The existing application continues issuing invoices, moving stock, creating
-Citypak shipments, handling returns/refunds and sending customer confirmations.
-DigitalUrgency approval/rejection records a local review decision only. It does
-not approve, reject or cancel the upstream order, change catalogue prices, send
-an invoice or create a courier shipment. Imported orders cannot use the native
-CRM stock-confirm/cancel/return actions.
+Shopify remains authoritative for imported basket, payment and fulfillment
+snapshots. Legacy WhatsApp is disconnected. DU automatic confirmations and
+operational effects remain off until their per-connection activation dates and
+settings are explicitly configured after reconciliation.
 
-Do not disconnect the existing application during validation. Financial refunds,
-return processing, shipment creation, delivery-status webhooks, automatic courier
-polling, stock ownership and missing-sequence cancellation markers require a
-separate cutover after the owner approves the observed results. The Returns &
-Refunds tab currently displays upstream cancelled/refunded/returned records; it
-is not a financial refund editor. Create Order retains the existing native CRM
-workflow. The bill is a printable order summary, not a second issued invoice.
+With those gates off, imported approval is a local review decision. It never
+approves or cancels an upstream Shopify order or changes catalog prices. When
+operational gates are enabled, approval can enqueue invoice and Citypak work and
+award loyalty. Native orders choose an explicit operations profile and use atomic
+stock transitions; imported orders cannot use native stock actions.
+
+Keep the existing application until the separate cutover is verified. The Returns
+& Refunds view reports recorded history; unavailable refund/courier amounts are
+not zero, and this is not a financial refund editor. Missing Sequence annotations
+are local reconciliation markers, not upstream cancellation. Bill preview prints
+an order summary without issuing or sending another invoice. Provider outcomes
+that may already have succeeded are never automatically retried.
+
+Before enabling operations, reconcile legacy order/customer, invoice-send, loyalty
+and waybill history; establish pending-order ownership; enter and verify Citypak
+credentials and callback support. The migration ledger records the live state.
 
 ## Configure after release approval
 
 1. Apply the additive migrations through the normal deployment migration runner.
-   SQLite: `0098_melted_red_shift`.
-   Postgres: `0077_violet_echo`.
+   The order mirror starts at SQLite `0098` / Postgres `0077`; the
+   operational workspace adds SQLite `0099`–`0104` / Postgres `0078`–`0083`.
 2. Open CRM → Orders → Shopify order connection. Select the existing connected
    Shopify integration and enable **Mirror orders**. New connections start with
    mirroring disabled.

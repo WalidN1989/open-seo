@@ -70,6 +70,24 @@ beforeAll(async () => {
 });
 afterAll(() => fixture.client.close());
 describe("Shopify mirror database invariants", () => {
+  it("preserves reviewed product mapping when a line has no Shopify variant", async () => {
+    const first = payload(909);
+    first.line_items[0].variant_id = null;
+    first.line_items[0].sku = null;
+    const id = await Repo.ingest(ORG_A, connection, `default:${ORG_A}`, first);
+    const detail = await Orders.getOrder(ORG_A, USER_OWNER_A, id);
+    await fixture.db
+      .update(schema.commerceOrderLines)
+      .set({ productId: PRODUCT_A })
+      .where(eq(schema.commerceOrderLines.id, detail.lines[0].id));
+    await Repo.ingest(ORG_A, connection, `default:${ORG_A}`, {
+      ...first,
+      updated_at: "2026-10-05T10:00:00Z",
+    });
+    expect(
+      (await Orders.getOrder(ORG_A, USER_OWNER_A, id)).lines[0].productId,
+    ).toBe(PRODUCT_A);
+  });
   it("reverses a fully refunded award without changing an issued invoice into debt", async () => {
     const data = payload(902);
     const id = await Repo.ingest(ORG_A, connection, `default:${ORG_A}`, data);
