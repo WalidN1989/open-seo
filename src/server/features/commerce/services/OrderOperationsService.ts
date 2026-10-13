@@ -132,6 +132,13 @@ async function sendNotification(context: ActionContext) {
   const result = await sendWhatsappTemplate(sender, order.customerPhone, {
     ...template,
     variables,
+  }).catch(async (error: unknown) => {
+    await CommunicationsRepository.completeWhatsappMessage(
+      effect.organizationId,
+      messageId,
+      { status: "unknown" },
+    );
+    throw error;
   });
   await CommunicationsRepository.completeWhatsappMessage(
     effect.organizationId,
@@ -276,10 +283,10 @@ async function issueOrderInvoice(context: ActionContext) {
       },
     );
     if (sent)
-      await InvoiceRepository.updateInvoice(effect.organizationId, invoiceId, {
-        status: order.paymentStatus === "paid" ? "paid" : "sent",
-        sentAt: new Date().toISOString(),
-      });
+      await InvoiceRepository.recordInvoiceSent(
+        effect.organizationId,
+        invoiceId,
+      );
   }
   await Repo.finish(effect.organizationId, claim.id, {
     status: "succeeded",

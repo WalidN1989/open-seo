@@ -74,7 +74,7 @@ describe("durable order actions", () => {
     const claim = await repo.claim(ORG_A, id, "confirmation", revision);
     expect(claim).not.toBeNull();
     expect(
-      await repo.canDispatch(ORG_A, claim!.id, id, {
+      await repo.canDispatch(ORG_A, claim.id, id, {
         kind: "confirmation",
         revision,
       }),
@@ -84,7 +84,7 @@ describe("durable order actions", () => {
       .set({ status: "cancelled" })
       .where(eq(schema.commerceOrders.id, id));
     expect(
-      await repo.canDispatch(ORG_A, claim!.id, id, {
+      await repo.canDispatch(ORG_A, claim.id, id, {
         kind: "confirmation",
         revision,
       }),
@@ -116,7 +116,7 @@ describe("durable order actions", () => {
       .set({ updatedAt: "2026-10-14T00:00:01Z" })
       .where(eq(schema.commerceOrders.id, id));
     expect(
-      await repo.canDispatch(ORG_A, claim!.id, id, {
+      await repo.canDispatch(ORG_A, claim.id, id, {
         kind: "confirmation",
         revision,
       }),
@@ -131,33 +131,29 @@ describe("durable order actions", () => {
     const id = "order-opt-out-race";
     const revision = "2026-10-14T00:00:00Z";
     const phone = "+94770000001";
-    await fixture.db
-      .insert(schema.commerceOrders)
-      .values({
-        ...original,
-        id,
-        orderNumber: "RACE-3",
-        status: "draft",
-        customerPhone: phone,
-        updatedAt: revision,
-      });
+    await fixture.db.insert(schema.commerceOrders).values({
+      ...original,
+      id,
+      orderNumber: "RACE-3",
+      status: "draft",
+      customerPhone: phone,
+      updatedAt: revision,
+    });
     await repo.configure(ORG_A, "operations-fixture", {
       confirmationSenderId: WHATSAPP_A,
     });
     await repo.enqueue(ORG_A, id, "confirmation");
     const claim = await repo.claim(ORG_A, id, "confirmation", revision);
     expect(claim).not.toBeNull();
-    await fixture.db
-      .insert(schema.whatsappConversations)
-      .values({
-        id: "opt-out-chat",
-        organizationId: ORG_A,
-        connectionId: WHATSAPP_A,
-        externalConversationId: phone,
-        optedOutAt: "2026-10-14T00:00:01Z",
-      });
+    await fixture.db.insert(schema.whatsappConversations).values({
+      id: "opt-out-chat",
+      organizationId: ORG_A,
+      connectionId: WHATSAPP_A,
+      externalConversationId: phone,
+      optedOutAt: "2026-10-14T00:00:01Z",
+    });
     expect(
-      await repo.canDispatch(ORG_A, claim!.id, id, {
+      await repo.canDispatch(ORG_A, claim.id, id, {
         kind: "confirmation",
         revision,
       }),

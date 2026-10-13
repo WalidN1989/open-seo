@@ -160,7 +160,6 @@ describe("order lifecycle and stock", () => {
     branchId: `default:${ORG}`,
     status: "confirmed",
   };
-
   it("deducts stock exactly once on confirm", async () => {
     mocks.getOrder.mockResolvedValue({ ...confirmed, status: "draft" });
     mocks.listLines.mockResolvedValue([{ productId: "p1", quantity: 3 }]);

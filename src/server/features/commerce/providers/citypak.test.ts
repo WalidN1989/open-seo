@@ -84,16 +84,14 @@ describe("Citypak order boundaries", () => {
 
 describe("Citypak legacy response and callback parity", () => {
   it("sanitizes contacts and accepts a direct provider tracking identity", async () => {
-    const fetcher = vi
-      .fn<typeof fetch>()
-      .mockResolvedValue(
-        new Response(
-          JSON.stringify({
-            success: true,
-            data: { order_id: 42, tracking_number: "D42" },
-          }),
-        ),
-      );
+    const fetcher = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          success: true,
+          data: { order_id: 42, tracking_number: "D42" },
+        }),
+      ),
+    );
     expect(
       await createCitypakOrder(
         "test-key",
@@ -106,7 +104,9 @@ describe("Citypak legacy response and callback parity", () => {
         fetcher,
       ),
     ).toEqual({ trackingNumber: "D42", externalId: "42" });
-    expect(JSON.parse(String(fetcher.mock.calls[0][1]?.body))).toMatchObject({
+    const body = fetcher.mock.calls[0][1]?.body;
+    if (typeof body !== "string") throw new Error("Expected JSON request body");
+    expect(JSON.parse(body)).toMatchObject({
       token: "test-key",
       to_name: "Nimal",
       from_address_line_1: "Colombo",
@@ -120,7 +120,8 @@ describe("Citypak legacy response and callback parity", () => {
         new Response("pdf", { headers: { "content-type": "application/pdf" } }),
       );
     await citypakLabel("test-key", "D42", "A4", fetcher, "42");
-    const url = new URL(String(fetcher.mock.calls[0][0]));
+    const input = fetcher.mock.calls[0][0];
+    const url = new URL(input instanceof Request ? input.url : input);
     expect(url.pathname).toBe("/customer_api/v1/orders/42/waybills");
     expect(url.searchParams.get("per_page_waybill_count")).toBe("4");
   });

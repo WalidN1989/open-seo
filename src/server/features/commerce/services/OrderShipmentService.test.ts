@@ -10,6 +10,10 @@ const mocks = vi.hoisted(() => ({
   listEntitlements: vi.fn(),
   decryptCredentials: vi.fn(),
   trackCitypakOrder: vi.fn(),
+  citypakLabel: vi.fn(),
+  getOrder: vi.fn(),
+  shipments: vi.fn(),
+  configuration: vi.fn(),
 }));
 vi.mock("../repositories/CitypakRepository", () => ({
   CitypakRepository: mocks,
@@ -30,15 +34,18 @@ vi.mock(
   () => ({ BusinessModuleService: { requireAccess: vi.fn() } }),
 );
 vi.mock("../repositories/OrderShipmentRepository", () => ({
-  OrderShipmentRepository: {},
+  OrderShipmentRepository: { configuration: mocks.configuration },
 }));
-vi.mock("../repositories/OrderRepository", () => ({ OrderRepository: {} }));
+vi.mock("../repositories/OrderRepository", () => ({
+  OrderRepository: { getOrder: mocks.getOrder, shipments: mocks.shipments },
+}));
 vi.mock("../repositories/IntegrationSyncRepository", () => ({
   IntegrationSyncRepository: {},
 }));
 vi.mock("../providers/citypak", async (importOriginal) => ({
   ...(await importOriginal<typeof CitypakProvider>()),
   trackCitypakOrder: mocks.trackCitypakOrder,
+  citypakLabel: mocks.citypakLabel,
 }));
 import { OrderShipmentService } from "./OrderShipmentService";
 const secret = "test-citypak-secret";
@@ -68,6 +75,31 @@ beforeEach(() => {
   });
 });
 describe("Citypak isolated tracking boundaries", () => {
+  it("uses tracking for older Shopify rows instead of their unrelated fulfillment ID", async () => {
+    const orderId = "shopify:connection-a:1";
+    mocks.getOrder.mockResolvedValue({
+      id: orderId,
+      integrationConnectionId: "connection-a",
+    });
+    mocks.configuration.mockResolvedValue({ courierCredentials: "encrypted" });
+    for (const [id, externalId, expected] of [
+      [`${orderId}:fulfillment:999:D42`, "999", null],
+      ["courier-shipment", "42", "42"],
+      ["manual-shipment", null, null],
+    ] as const) {
+      mocks.shipments.mockResolvedValue([
+        { id, provider: "Citypak", trackingNumber: "D42", externalId },
+      ]);
+      await OrderShipmentService.label("org-a", "user-a", orderId, id, "A4");
+      expect(mocks.citypakLabel).toHaveBeenLastCalledWith(
+        "test-key",
+        "D42",
+        "A4",
+        fetch,
+        expected,
+      );
+    }
+  });
   it("requires the callback secret before looking up shipments", async () => {
     expect(
       await OrderShipmentService.callback("connection-a", null, event),

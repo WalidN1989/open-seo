@@ -99,3 +99,61 @@ describe("native creation retry and profile boundaries", () => {
     expect(mocks.transitionNative).not.toHaveBeenCalled();
   });
 });
+
+describe("native inventory and fulfillment policy", () => {
+  const confirmed = {
+    id: "o1",
+    orderNumber: "ORD-00001",
+    updatedAt: "revision",
+    branchId: `default:${ORG}`,
+    status: "confirmed",
+  };
+  it("rejects restoring a single-location product to a named branch", async () => {
+    mocks.getOrder.mockResolvedValue({
+      ...confirmed,
+      branchId: "named-branch",
+    });
+    mocks.listLines.mockResolvedValue([{ productId: "p1", quantity: 3 }]);
+    await expect(OrderService.returnOrder(ORG, USER, "o1")).rejects.toThrow(
+      "Enable multi-branch inventory",
+    );
+    await expect(OrderService.cancelOrder(ORG, USER, "o1")).rejects.toThrow(
+      "Enable multi-branch inventory",
+    );
+    expect(mocks.transitionNative).not.toHaveBeenCalled();
+  });
+  it("does not create inventory movements for services", async () => {
+    mocks.getOrder.mockResolvedValue({ ...confirmed, status: "draft" });
+    mocks.listLines.mockResolvedValue([{ productId: "p1", quantity: 3 }]);
+    mocks.getProduct.mockResolvedValue({
+      id: "p1",
+      itemType: "service",
+      inventoryMode: "single",
+    });
+    await OrderService.confirmOrder(ORG, USER, "o1");
+    expect(mocks.transitionNative).toHaveBeenCalledWith(
+      ORG,
+      "o1",
+      expect.objectContaining({ movements: [] }),
+    );
+  });
+  it("keeps profile-backed delivery unfulfilled while retaining POS and pickup confirmation", async () => {
+    mocks.listLines.mockResolvedValue([]);
+    for (const [operationsConnectionId, pickup, expected] of [
+      ["profile", false, "unfulfilled"],
+      [undefined, false, "fulfilled"],
+      ["profile", true, "fulfilled"],
+    ] as const) {
+      mocks.getOrder.mockResolvedValue({
+        ...confirmed,
+        status: "draft",
+        operationsConnectionId,
+        pickup,
+      });
+      await OrderService.confirmOrder(ORG, USER, "o1");
+      expect(mocks.transitionNative.mock.lastCall?.[2]).toMatchObject({
+        values: { fulfilmentStatus: expected },
+      });
+    }
+  });
+});

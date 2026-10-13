@@ -321,9 +321,9 @@ async function ingest(
                 checkedAt: sql<string>`${values.externalUpdatedAt}`.as(
                   "checkedAt",
                 ),
-                externalId: sql<string | null>`${fulfillment.id}`.as(
-                  "externalId",
-                ),
+                // Shopify's fulfillment ID is already in this row's ID; it is
+                // not the courier's order ID used by provider label requests.
+                externalId: sql<string | null>`null`.as("externalId"),
                 lastEventAt: sql<string | null>`null`.as("lastEventAt"),
                 reason: sql<string | null>`null`.as("reason"),
                 createdAt: sql<string>`${values.createdAt}`.as("createdAt"),

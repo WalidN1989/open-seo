@@ -64,8 +64,11 @@ credentials and callback support. The migration ledger records the live state.
 7. Enter the Citypak API key in connection settings to enable **Refresh status**.
    Existing tracking references can also be linked manually. Tracking uses the
    fixed Citypak endpoint, performs a read-only GET, and preserves cached status
-   when the provider fails. No shipment is created. There is no automatic
-   Citypak refresh or new courier callback in this release.
+   when the provider fails. Tracking reads do not create shipments. Automatic
+   polling is separately enabled in Citypak connection settings. A courier callback
+   is available at `/api/citypak/{connectionId}` and requires the configured shared
+   secret. Keep both tracking gates off until the provider contract is verified.
+   Waybill creation requires the separate order-automation activation gate.
 8. WhatsApp's order tool matches the recorded order ID **and** an exact E.164
    sender phone within the business. It returns recorded order/tracking facts,
    without customer addresses or email. An ambiguous national phone or mismatch

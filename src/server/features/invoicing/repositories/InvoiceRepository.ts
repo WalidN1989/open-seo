@@ -150,6 +150,23 @@ async function deleteInvoice(organizationId: string, id: string) {
     );
 }
 
+/** Email completion cannot overwrite a payment or void recorded during send. */
+async function recordInvoiceSent(organizationId: string, invoiceId: string) {
+  await db
+    .update(invoices)
+    .set({
+      status: sql`case when ${invoices.status} in ('paid','void') then ${invoices.status} else 'sent' end`,
+      sentAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    })
+    .where(
+      and(
+        eq(invoices.organizationId, organizationId),
+        eq(invoices.id, invoiceId),
+      ),
+    );
+}
+
 async function issueInvoice(
   order: typeof commerceOrders.$inferSelect,
   lines: (typeof invoiceLineItems.$inferInsert)[],
@@ -222,6 +239,7 @@ async function issueInvoice(
   return id;
 }
 export const InvoiceRepository = {
+  recordInvoiceSent,
   issueInvoice,
   getSettings,
   upsertSettings,

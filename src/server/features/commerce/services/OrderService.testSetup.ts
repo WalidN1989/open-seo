@@ -109,7 +109,12 @@ export const USER = "user_1";
 beforeEach(() => {
   for (const mock of Object.values(mocks)) mock.mockReset();
   mocks.requireAccess.mockResolvedValue(undefined);
-  mocks.getProduct.mockResolvedValue({ id: "p1", sku: "SKU-1" });
+  mocks.getProduct.mockResolvedValue({
+    id: "p1",
+    sku: "SKU-1",
+    itemType: "product",
+    inventoryMode: "single",
+  });
   mocks.getContact.mockResolvedValue({
     firstName: "Customer",
     lastName: null,

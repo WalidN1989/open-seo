@@ -159,7 +159,16 @@ async function leadBelongsToOrganization(
  * attaching a contact to an order.
  */
 async function getContact(organizationId: string, contactId: string) {
-  const [contact] = await db.select().from(crmContacts).where(and(eq(crmContacts.id, contactId), eq(crmContacts.organizationId, organizationId))).limit(1);
+  const [contact] = await db
+    .select()
+    .from(crmContacts)
+    .where(
+      and(
+        eq(crmContacts.id, contactId),
+        eq(crmContacts.organizationId, organizationId),
+      ),
+    )
+    .limit(1);
   return contact ?? null;
 }
 

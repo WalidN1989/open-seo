@@ -1,5 +1,6 @@
 import { CommerceRepository } from "../repositories/CommerceRepository";
 import { NativeOrderCreationService } from "./NativeOrderCreationService";
+import { assertProductCanUseBranch } from "./inventoryMode";
 export { calculateTotals } from "./NativeOrderCreationService";
 import { OrderOperationsService } from "./OrderOperationsService";
 import { RetailOrderService } from "./RetailOrderService";
@@ -209,6 +210,14 @@ async function transition(
       );
   }
   for (const [productId, quantity] of quantities) {
+    const product = await CommerceRepository.getProduct(
+      organizationId,
+      productId,
+    );
+    if (!product)
+      throw new AppError("NOT_FOUND", "A product on this order was not found.");
+    if (product.itemType === "service") continue;
+    assertProductCanUseBranch(organizationId, product, order.branchId);
     const already = await InventoryRepository.findMovementByReference(
       organizationId,
       spec.reference,
@@ -237,7 +246,12 @@ async function transition(
       fromStatus: order.status === "draft" ? "draft" : "confirmed",
       values: {
         status: spec.to,
-        fulfilmentStatus: spec.fulfilmentStatus,
+        fulfilmentStatus:
+          spec.to === "confirmed" &&
+          order.operationsConnectionId &&
+          !order.pickup
+            ? "unfulfilled"
+            : spec.fulfilmentStatus,
         confirmedAt:
           spec.to === "confirmed" ? new Date().toISOString() : undefined,
         cancelledAt:

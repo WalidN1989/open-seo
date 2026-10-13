@@ -25,7 +25,6 @@ import {
   createProductSchema,
   importProductsSchema,
   listMovementsSchema,
-  listOrdersSchema,
   orderIdSchema,
   recordAuditCountSchema,
   setSyncScheduleSchema,
@@ -191,13 +190,6 @@ export const revertInventoryAudit = createServerFn({ method: "POST" })
       context.userId,
       data.auditId,
     ),
-  );
-
-export const listCommerceOrders = createServerFn({ method: "GET" })
-  .middleware(requireAuthenticatedContext)
-  .validator(listOrdersSchema)
-  .handler(({ context, data }) =>
-    OrderService.listOrders(context.organizationId, context.userId, data),
   );
 
 export const getCommerceOrder = createServerFn({ method: "GET" })

@@ -339,7 +339,11 @@ async function label(
     shipment.trackingNumber,
     size,
     fetch,
-    shipment.externalId,
+    // Older mirror rows stored Shopify fulfillment IDs in this field. Their
+    // stable row provenance keeps those IDs out of the Citypak order endpoint.
+    shipment.id.startsWith(`${order.id}:fulfillment:`)
+      ? null
+      : shipment.externalId,
   );
 }
 export const OrderShipmentService = {

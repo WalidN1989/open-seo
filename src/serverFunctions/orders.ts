@@ -103,12 +103,6 @@ export const importLegacyOrders = createServerFn({ method: "POST" })
     LegacyOrderService.importPage(context.organizationId, context.userId, data),
   );
 
-export const getOrderSequence = createServerFn({ method: "GET" })
-  .middleware(requireAuthenticatedContext)
-  .handler(({ context }) =>
-    OrderService.missingSequence(context.organizationId, context.userId),
-  );
-
 export const configureOrderWebhook = createServerFn({ method: "POST" })
   .middleware(requireAuthenticatedContext)
   .validator(orderWebhookSecretSchema)

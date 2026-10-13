@@ -19,7 +19,7 @@ async function history(
 ) {
   // Keep the outer reference qualified inside correlated SELECT expressions.
   const orderId = sql.raw('"commerce_orders"."id"');
-  const returned = sql`(${commerceOrders.status} = 'returned' or ${commerceOrders.fulfilmentStatus} = 'returned' or exists (select 1 from ${commerceOrderShipments} where ${commerceOrderShipments.organizationId} = ${organizationId} and ${commerceOrderShipments.orderId} = ${orderId} and ${commerceOrderShipments.status} = 'RETURNED'))`;
+  const returned = sql`(${commerceOrders.status} = 'returned' or ${commerceOrders.fulfilmentStatus} = 'returned' or exists (select 1 from ${commerceOrderShipments} where ${commerceOrderShipments.organizationId} = ${organizationId} and ${commerceOrderShipments.orderId} = ${orderId} and ${commerceOrderShipments.status} in ('RETURNED','RTM')))`;
   const delivered = sql`exists (select 1 from ${commerceOrderShipments} where ${commerceOrderShipments.organizationId} = ${organizationId} and ${commerceOrderShipments.orderId} = ${orderId} and ${commerceOrderShipments.status} = 'DELIVERED')`;
   const status = sql<Category | null>`case when ${returned} and ${commerceOrders.paymentStatus} = 'refunded' then 'returned_refunded' when ${commerceOrders.paymentStatus} = 'refunded' then 'refunded' when ${commerceOrders.status} = 'cancelled' then 'cancelled' when ${returned} then 'returned' when ${delivered} then 'delivered' else null end`;
   const monthFilter = and(
@@ -47,10 +47,10 @@ async function history(
         createdAt: commerceOrders.createdAt,
         orderStatus: commerceOrders.status,
         status,
-        date: sql<string>`coalesce(case when ${status} = 'cancelled' then ${commerceOrders.cancelledAt} when ${status} in ('delivered','returned','returned_refunded') then (select max(${commerceOrderShipments.lastEventAt}) from ${commerceOrderShipments} where ${commerceOrderShipments.organizationId} = ${organizationId} and ${commerceOrderShipments.orderId} = ${orderId} and ${commerceOrderShipments.status} in ('DELIVERED', 'RETURNED')) end, ${commerceOrders.updatedAt})`,
+        date: sql<string>`coalesce(case when ${status} = 'cancelled' then ${commerceOrders.cancelledAt} when ${status} in ('delivered','returned','returned_refunded') then (select max(${commerceOrderShipments.lastEventAt}) from ${commerceOrderShipments} where ${commerceOrderShipments.organizationId} = ${organizationId} and ${commerceOrderShipments.orderId} = ${orderId} and ${commerceOrderShipments.status} in ('DELIVERED', 'RETURNED', 'RTM')) end, ${commerceOrders.updatedAt})`,
         reason: sql<
           string | null
-        >`(select ${commerceOrderShipments.reason} from ${commerceOrderShipments} where ${commerceOrderShipments.organizationId} = ${organizationId} and ${commerceOrderShipments.orderId} = ${orderId} and ${commerceOrderShipments.status} = 'RETURNED' order by ${commerceOrderShipments.lastEventAt} desc, ${commerceOrderShipments.checkedAt} desc limit 1)`,
+        >`(select ${commerceOrderShipments.reason} from ${commerceOrderShipments} where ${commerceOrderShipments.organizationId} = ${organizationId} and ${commerceOrderShipments.orderId} = ${orderId} and ${commerceOrderShipments.status} in ('RETURNED','RTM') order by ${commerceOrderShipments.lastEventAt} desc, ${commerceOrderShipments.checkedAt} desc limit 1)`,
         inventoryRestored: sql<number>`case when exists (select 1 from ${commerceStockMovements} where ${commerceStockMovements.organizationId} = ${organizationId} and ${commerceStockMovements.referenceId} = ${orderId} and ${commerceStockMovements.referenceType} in ('order_return', 'order_cancel') and ${commerceStockMovements.quantityDelta} > 0) then 1 else 0 end`,
       })
       .from(commerceOrders)

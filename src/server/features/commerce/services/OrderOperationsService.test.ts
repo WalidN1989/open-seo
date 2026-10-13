@@ -6,6 +6,8 @@ vi.mock(
 );
 const state = vi.hoisted(() => ({
   eligible: true,
+  invalidateDuringClaim: true,
+  effectStatus: "queued",
   kind: "confirmation",
   send: vi.fn(),
   citypak: vi.fn(),
@@ -55,19 +57,24 @@ vi.mock(
   "@/server/features/commerce/repositories/OrderOperationsRepository",
   () => ({
     OrderOperationsRepository: {
-      due: async () => [
-        {
-          id: "effect",
-          organizationId: "org",
-          orderId: "order",
-          kind: state.kind,
-        },
-      ],
+      due: async () =>
+        state.effectStatus === "queued"
+          ? [
+              {
+                id: "effect",
+                organizationId: "org",
+                orderId: "order",
+                kind: state.kind,
+              },
+            ]
+          : [],
       configuration: async () => fixtures.config,
       sender: async () => fixtures.sender,
       template: async () => fixtures.template,
       claim: async () => {
-        state.eligible = false;
+        if (state.effectStatus !== "queued") return null;
+        state.effectStatus = "sending";
+        if (state.invalidateDuringClaim) state.eligible = false;
         return { id: "effect" };
       },
       canDispatch: async () => state.eligible,
@@ -132,6 +139,15 @@ vi.mock(
 beforeEach(() => {
   vi.clearAllMocks();
   state.eligible = true;
+  state.invalidateDuringClaim = true;
+  state.effectStatus = "queued";
+  state.kind = "confirmation";
+  state.send.mockReset();
+  state.finish.mockImplementation(
+    (_org: string, _id: string, values: { status: string }) => {
+      state.effectStatus = values.status;
+    },
+  );
 });
 it.each(["confirmation", "citypak", "invoice"])(
   "does not dispatch %s when eligibility changes during claiming",
@@ -154,3 +170,23 @@ it.each(["confirmation", "citypak", "invoice"])(
       });
   },
 );
+
+it("records uncertain provider outcomes in the inbox without an automatic resend", async () => {
+  state.invalidateDuringClaim = false;
+  state.send.mockRejectedValue(
+    new Error("Connection interrupted after submitting the message"),
+  );
+  const { OrderOperationsService } = await import("./OrderOperationsService");
+  await OrderOperationsService.runDue();
+  expect(state.completeMessage).toHaveBeenCalledWith("org", "message", {
+    status: "unknown",
+  });
+  expect(state.finish).toHaveBeenCalledWith(
+    "org",
+    "effect",
+    expect.objectContaining({ status: "unknown" }),
+  );
+  await OrderOperationsService.runDue();
+  expect(state.send).toHaveBeenCalledTimes(1);
+  expect(state.effectStatus).toBe("unknown");
+});

@@ -1746,3 +1746,23 @@ loyalty/waybill outcomes; assign pending-order ownership; monetary refund/credit
 and courier-expense accounting, merchant fees/shipping rules and historical-date/draft
 form parity; inventory authority for imported Shopify orders. Native WhatsApp order
 confirmations remain unqueued. Do not call the entire legacy app replaced or disconnected.
+
+### 2026-10-14 — native workflow review and validation
+
+Owner-approved native workflow code/tests are implemented locally. Independent
+review fixes cover: legacy RTM return classification; invoice email completion
+preserving a concurrently paid/void invoice; terminal unknown inbox state on
+ambiguous sends with no automatic resend; Shopify fulfillment versus Citypak
+order identifiers (including older mirrored rows); current inventory-mode checks
+before native returns/cancellations; and delivery confirmation remaining unfulfilled
+until fulfillment evidence. POS/pickup behavior remains unchanged.
+
+Combined regression suite passes 2,807 tests in 303 files; selfhost build and
+ci:check pass. Twenty focused tests pass after final test-only lint corrections.
+Actual styled Orders fixture shows all five tabs and native creation controls.
+Proof: /private/tmp/du-orders-layout-preview.png (synthetic data). Source/runtime
+observations are in docs/BOOXWORM_ORDER_MODULE_AUDIT.md. No new live message,
+shipment, stock mutation, legacy disconnection or operational deployment occurred.
+Existing atomic-write/dual-dialect rules plus focused regressions cover the review
+findings; no review-control changes were made. Org-enforced Greptile dashboard
+baseline was not verified or changed. Full-retirement gaps above remain open.

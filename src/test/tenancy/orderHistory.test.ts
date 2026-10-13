@@ -107,18 +107,16 @@ beforeAll(async () => {
       reason: "Private reason",
     },
   ]);
-  await fixture.db
-    .insert(schema.commerceStockMovements)
-    .values({
-      id: "history_stock_restored",
-      organizationId: ORG_A,
-      branchId: `default:${ORG_A}`,
-      productId: PRODUCT_A,
-      movementType: "return",
-      quantityDelta: 1,
-      referenceId: "history_returned",
-      referenceType: "order_return",
-    });
+  await fixture.db.insert(schema.commerceStockMovements).values({
+    id: "history_stock_restored",
+    organizationId: ORG_A,
+    branchId: `default:${ORG_A}`,
+    productId: PRODUCT_A,
+    movementType: "return",
+    quantityDelta: 1,
+    referenceId: "history_returned",
+    referenceType: "order_return",
+  });
 });
 afterAll(() => fixture.client.close());
 describe("Returns and Refunds history", () => {
@@ -246,15 +244,13 @@ describe("Missing/Canceled local gap annotations", () => {
     await expect(
       gaps.annotate(ORG_A, USER_OWNER_A, "SHOP-100", true),
     ).rejects.toThrow("visible gap");
-    await fixture.db
-      .insert(schema.commerceOrders)
-      .values({
-        id: "history_gap_resolved",
-        organizationId: ORG_A,
-        branchId: `default:${ORG_A}`,
-        orderNumber: "SHOP-101",
-        externalSource: "shopify",
-      });
+    await fixture.db.insert(schema.commerceOrders).values({
+      id: "history_gap_resolved",
+      organizationId: ORG_A,
+      branchId: `default:${ORG_A}`,
+      orderNumber: "SHOP-101",
+      externalSource: "shopify",
+    });
     await expect(
       gaps.annotate(ORG_A, USER_OWNER_A, "SHOP-101", true),
     ).rejects.toThrow("visible gap");
@@ -264,5 +260,51 @@ describe("Missing/Canceled local gap annotations", () => {
         .from(schema.commerceOrderGapAnnotations)
         .where(eq(schema.commerceOrderGapAnnotations.organizationId, ORG_A)),
     ).toEqual([]);
+  });
+});
+
+describe("legacy Citypak return vocabulary", () => {
+  it("includes RTM-only shipments with their return date and reason", async () => {
+    for (const refunded of [false, true]) {
+      const id = refunded ? "history_rtm_refunded" : "history_rtm";
+      await fixture.db.insert(schema.commerceOrders).values({
+        id,
+        organizationId: ORG_A,
+        branchId: `default:${ORG_A}`,
+        orderNumber: `ORD-${id}`,
+        status: "confirmed",
+        externalSource: "legacy_zoho",
+        paymentStatus: refunded ? "refunded" : "unpaid",
+        createdAt: "2026-10-12T10:00:00.000Z",
+      });
+      await fixture.db.insert(schema.commerceOrderShipments).values({
+        id: `${id}:tracking`,
+        organizationId: ORG_A,
+        orderId: id,
+        provider: "Citypak",
+        trackingNumber: `D-${id}`,
+        status: "RTM",
+        lastEventAt: "2026-10-14T09:30:00.000Z",
+        reason: "Returned to merchant",
+      });
+    }
+    const data = await returns.history(ORG_A, USER_OWNER_A, {
+      month: "2026-10",
+      category: "returned",
+      limit: 50,
+      offset: 0,
+    });
+    expect(data.rows.find((row) => row.id === "history_rtm")).toMatchObject({
+      status: "returned",
+      date: "2026-10-14T09:30:00.000Z",
+      reason: "Returned to merchant",
+    });
+    expect(
+      data.rows.find((row) => row.id === "history_rtm_refunded"),
+    ).toMatchObject({
+      status: "returned_refunded",
+      date: "2026-10-14T09:30:00.000Z",
+      reason: "Returned to merchant",
+    });
   });
 });
