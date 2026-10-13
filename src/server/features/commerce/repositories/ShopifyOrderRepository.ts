@@ -274,7 +274,7 @@ async function ingest(
             description: line.description,
             sku: line.sku,
             externalVariantId: line.externalVariantId,
-            productId: sql`case when ${commerceOrderLines.externalVariantId} = ${line.externalVariantId} or (${commerceOrderLines.externalVariantId} is null and ${line.externalVariantId} is null) then ${commerceOrderLines.productId} else ${line.productId} end`,
+            productId: sql`case when ${commerceOrderLines.externalVariantId} = ${line.externalVariantId} or (${commerceOrderLines.externalVariantId} is null and cast(${line.externalVariantId} as text) is null) then ${commerceOrderLines.productId} else ${line.productId} end`,
             quantity: line.quantity,
             unitPriceMinor: line.unitPriceMinor,
             lineTotalMinor: line.lineTotalMinor,

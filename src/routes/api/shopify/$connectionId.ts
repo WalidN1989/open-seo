@@ -17,7 +17,18 @@ export const Route = createFileRoute("/api/shopify/$connectionId")({
             body,
           );
           return new Response(null, { status });
-        } catch {
+        } catch (error) {
+          const cause = error instanceof Error ? error.cause : null;
+          const code =
+            cause && typeof cause === "object" && "code" in cause
+              ? cause.code
+              : null;
+          console.error("Shopify order ingestion failed", {
+            code:
+              typeof code === "string" && /^[0-9A-Z]{5}$/.test(code)
+                ? code
+                : "unknown",
+          });
           // Never return provider payloads or credential-bearing errors publicly.
           return new Response(null, { status: 503 });
         }
