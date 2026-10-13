@@ -59,6 +59,17 @@ export const createContactSchema = z.object({
   whatsappPhone: z.string().trim().max(40).optional(),
   companyId: z.string().min(1).optional(),
 });
+export const updateContactSchema = createContactSchema
+  .omit({ companyId: true })
+  .partial()
+  .extend({ id: z.string().min(1) })
+  .refine(
+    (value) =>
+      Object.entries(value).some(
+        ([key, field]) => key !== "id" && field !== undefined,
+      ),
+    "Provide contact details to update.",
+  );
 export const createCompanySchema = z.object({
   name: z.string().trim().min(1).max(200),
   website: z.string().trim().max(500).optional(),
@@ -140,6 +151,7 @@ export const importHunterDomainSchema = z.object({
 
 export type CreateLeadInput = z.infer<typeof createLeadSchema>;
 export type UpdateLeadInput = z.infer<typeof updateLeadSchema>;
+export type UpdateContactInput = z.infer<typeof updateContactSchema>;
 export type CreateContactInput = z.infer<typeof createContactSchema>;
 export type CreateCompanyInput = z.infer<typeof createCompanySchema>;
 export type CreateActivityInput = z.infer<typeof createActivitySchema>;

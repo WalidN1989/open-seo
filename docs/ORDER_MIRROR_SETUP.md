@@ -25,8 +25,8 @@ workflow. The bill is a printable order summary, not a second issued invoice.
 ## Configure after release approval
 
 1. Apply the additive migrations through the normal deployment migration runner.
-   SQLite: `0097_order_mirror` and `0098_order_basket_revision`.
-   Postgres: `0076_order_mirror` and `0077_order_basket_revision`.
+   SQLite: `0098_bitter_iron_fist`.
+   Postgres: `0077_violet_echo`.
 2. Open CRM → Orders → Shopify order connection. Select the existing connected
    Shopify integration and enable **Mirror orders**. New connections start with
    mirroring disabled.

@@ -1,3 +1,4 @@
+import { StockImportService } from "@/server/features/commerce/services/StockImportService";
 import { BranchService } from "@/server/features/commerce/services/BranchService";
 import {
   branchSelectionSchema,
@@ -364,4 +365,22 @@ export const transferBranchStock = createServerFn({ method: "POST" })
   .validator(transferStockSchema)
   .handler(({ context, data }) =>
     BranchService.transfer(context.organizationId, context.userId, data),
+  );
+
+export const importInventoryCounts = createServerFn({ method: "POST" })
+  .middleware(requireAuthenticatedContext)
+  .validator(
+    z.object({
+      csv: z.string().min(1).max(2_000_000),
+      branchId: z.string().min(1),
+      createMissingProducts: z.boolean(),
+      fileName: z.string().trim().max(200),
+    }),
+  )
+  .handler(({ context, data }) =>
+    StockImportService.importCounts(
+      context.organizationId,
+      context.userId,
+      data,
+    ),
   );

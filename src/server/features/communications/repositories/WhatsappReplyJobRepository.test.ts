@@ -47,6 +47,29 @@ beforeEach(async () => {
 });
 
 describe("WhatsApp delayed reply jobs", () => {
+  it("recovers pending deadlines and leased jobs without claiming them early", async () => {
+    await Jobs.schedule("org", "first-chat", "first", 30);
+    await Jobs.schedule("other-org", "second-chat", "second", 60);
+    expect(await Jobs.pendingWakeups("first-chat")).toEqual([
+      { conversationId: "first-chat", dueAt: "2026-10-04T10:00:30.000Z" },
+    ]);
+    const claimed = await Jobs.claimDue(
+      new Date("2026-10-04T10:01:01.000Z"),
+      "first-chat",
+    );
+    expect(claimed.map((row) => row.conversationId)).toEqual(["first-chat"]);
+    expect(await Jobs.pendingWakeups("first-chat")).toEqual([
+      { conversationId: "first-chat", dueAt: "2026-10-04T10:06:01.000Z" },
+    ]);
+    expect(
+      (await Jobs.claimDue(new Date("2026-10-04T10:01:02.000Z"))).map(
+        (row) => row.conversationId,
+      ),
+    ).toEqual(["second-chat"]);
+    await Jobs.finish("first-chat", "first");
+    expect(await Jobs.pendingWakeups("first-chat")).toEqual([]);
+  });
+
   it("answers only after the latest message has been quiet for 30 seconds", async () => {
     await Jobs.schedule("org", "chat", "first", 30);
     vi.setSystemTime(new Date("2026-10-04T10:00:20.000Z"));

@@ -1,1 +1,0 @@
-ALTER TABLE `commerce_orders` ADD `external_basket_key` text;

@@ -12,7 +12,7 @@ async function handleHealthRequest(): Promise<Response> {
   }
 
   const { getSelfHostSetupStatus } = await import("@/server/lib/setup-status");
-  const setup = await getSelfHostSetupStatus();
+  const setup = await getSelfHostSetupStatus({ skipDatabaseCheck: true });
   const hasError = Object.values(setup.checks).some(
     (check) => check.status === "error",
   );

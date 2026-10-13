@@ -59,9 +59,10 @@ function publicInvoice(row: InvoiceRow) {
 
 async function workspace(organizationId: string, userId: string) {
   await BusinessModuleService.requireAccess(organizationId, userId, MODULE);
-  const [settingsRow, invoiceRows] = await Promise.all([
+  const [settingsRow, invoiceRows, customers] = await Promise.all([
     Repo.getSettings(organizationId),
     Repo.listInvoices(organizationId),
+    Repo.listCustomers(organizationId),
   ]);
   return {
     settings: {
@@ -69,6 +70,7 @@ async function workspace(organizationId: string, userId: string) {
       ...quoteSettingsOrDefaults(settingsRow),
     },
     invoices: invoiceRows.map(publicInvoice),
+    customers,
   };
 }
 

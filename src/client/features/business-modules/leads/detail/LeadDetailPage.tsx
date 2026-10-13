@@ -3,7 +3,6 @@ import { Link } from "@tanstack/react-router";
 import { ArrowLeft, Building2, FileSignature } from "lucide-react";
 import { getStandardErrorMessage } from "@/client/lib/error-messages";
 import { useWorkspaceCurrency } from "@/client/hooks/useWorkspaceCurrency";
-import { TEMPERATURES } from "@/shared/lead-journal";
 import { ActivityJournal } from "./ActivityJournal";
 import { FollowUpCard } from "./FollowUpCard";
 import { buildJournal } from "./journalEntries";
@@ -38,7 +37,6 @@ export function LeadDetailPage({ leadId }: { leadId: string }) {
     <div className="space-y-4">
       <LeadHeader
         detail={detail}
-        onStatus={(status) => update.mutate({ status })}
         onStage={(stageId) => update.mutate({ stageId })}
       />
 
@@ -77,11 +75,9 @@ export function LeadDetailPage({ leadId }: { leadId: string }) {
 
 function LeadHeader({
   detail,
-  onStatus,
   onStage,
 }: {
   detail: LeadDetail;
-  onStatus: (status: string) => void;
   onStage: (stageId: string) => void;
 }) {
   const name = detail.company?.name ?? detail.lead.title;
@@ -95,25 +91,6 @@ function LeadHeader({
         <ArrowLeft className="size-4" />
         Leads /<span className="font-medium text-base-content">{name}</span>
       </Link>
-      <div className="flex rounded-md border border-base-300 bg-base-100 p-0.5">
-        {TEMPERATURES.map((temperature) => {
-          const active = detail.lead.status === temperature.key;
-          return (
-            <button
-              key={temperature.key}
-              type="button"
-              onClick={() => onStatus(active ? "new" : temperature.key)}
-              className={`rounded px-2 py-1 text-[10px] font-bold uppercase tracking-wider ${
-                active
-                  ? temperature.active
-                  : "text-base-content/50 hover:bg-base-200"
-              }`}
-            >
-              {temperature.label}
-            </button>
-          );
-        })}
-      </div>
       <Link
         to="/modules/quotes/$quoteId"
         params={{ quoteId: "new" }}

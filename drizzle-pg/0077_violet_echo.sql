@@ -24,6 +24,7 @@ ALTER TABLE "commerce_order_lines" ADD COLUMN "price_reviewed_at" text;--> state
 ALTER TABLE "commerce_orders" ADD COLUMN "integration_connection_id" text;--> statement-breakpoint
 ALTER TABLE "commerce_orders" ADD COLUMN "approval_status" text;--> statement-breakpoint
 ALTER TABLE "commerce_orders" ADD COLUMN "external_updated_at" text;--> statement-breakpoint
+ALTER TABLE "commerce_orders" ADD COLUMN "external_basket_key" text;--> statement-breakpoint
 ALTER TABLE "commerce_orders" ADD COLUMN "currency" text;--> statement-breakpoint
 ALTER TABLE "commerce_orders" ADD COLUMN "customer_name" text;--> statement-breakpoint
 ALTER TABLE "commerce_orders" ADD COLUMN "customer_phone" text;--> statement-breakpoint

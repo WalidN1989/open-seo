@@ -1,18 +1,6 @@
-/**
- * Drives background jobs on platforms that have no cron.
- *
- * Railway runs this app as a container, where Cloudflare's `triggers.crons`
- * never fire — so nothing scheduled ran at all, including rank checks and the
- * stale-audit watchdog. This process sits beside the server in that container
- * and POSTs the internal cron endpoint on each tier's cadence. The jobs still
- * execute inside the Worker runtime; only the clock lives out here.
- *
- * On Cloudflare, leave it unstarted and the platform's own crons apply.
- */
+/** Run one background-job tier on an explicit operator request. No recurring timer. */
 import {
-  ACTIVE_INTERNAL_CRON_TIERS,
-  cronIntervalEnvVar,
-  cronTierIntervalMs,
+  isCronTier,
   INTERNAL_CRON_PATH,
   type CronTier,
 } from "../src/shared/internal-cron";
@@ -68,10 +56,11 @@ async function tick(tier: CronTier) {
   }
 }
 
-for (const tier of ACTIVE_INTERNAL_CRON_TIERS) {
-  const interval = cronTierIntervalMs(tier, process.env);
-  setInterval(() => void tick(tier), interval);
-  console.log(
-    `[ticker] ${tier} tier every ${interval / 1000}s (${cronIntervalEnvVar(tier)} to change)`,
+// Explicit operator action only; containers never start a recurring ticker.
+const requestedTier = process.argv[2];
+if (!requestedTier || !isCronTier(requestedTier)) {
+  throw new Error(
+    "Usage: node --import tsx scripts/internal-ticker.ts <fast|standard|slow>",
   );
 }
+await tick(requestedTier);

@@ -202,3 +202,10 @@
 .business-access-icon[data-module="inventory"] {
   --module-color: #d97706;
 }
+
+.module-picker .business-access-card {
+  aspect-ratio: auto;
+}
+.module-picker .business-access-launcher {
+  min-height: 120px;
+}

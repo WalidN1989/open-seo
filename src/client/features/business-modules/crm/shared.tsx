@@ -12,6 +12,8 @@ import {
 } from "@/serverFunctions/crm";
 import { getStandardErrorMessage } from "@/client/lib/error-messages";
 
+import { ContactEditButton } from "./ContactEditButton";
+
 const WORKSPACE_KEY = ["crm", "workspace"];
 
 type CrmFormMode = "contact" | "company" | "inquiry" | "meeting" | null;
@@ -155,7 +157,7 @@ export function ContactRows({ workspace }: { workspace: Workspace }) {
           <span className="rounded-full bg-base-200 p-2">
             <UserRound className="size-4" />
           </span>
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <p className="truncate font-medium">
               {contact.firstName} {contact.lastName}
             </p>
@@ -166,6 +168,7 @@ export function ContactRows({ workspace }: { workspace: Workspace }) {
                 "No contact details"}
             </p>
           </div>
+          <ContactEditButton contact={contact} />
         </div>
       ))}
     </>

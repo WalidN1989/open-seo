@@ -12,6 +12,7 @@ import {
   createActivitySchema,
   createCompanySchema,
   createContactSchema,
+  updateContactSchema,
   createInquirySchema,
   createLeadSchema,
   createMeetingSchema,
@@ -57,6 +58,13 @@ export const createCrmContact = createServerFn({ method: "POST" })
   .validator(createContactSchema)
   .handler(({ context, data }) =>
     CrmService.createContact(context.organizationId, context.userId, data),
+  );
+
+export const updateCrmContact = createServerFn({ method: "POST" })
+  .middleware(requireAuthenticatedContext)
+  .validator(updateContactSchema)
+  .handler(({ context, data }) =>
+    CrmService.updateContact(context.organizationId, context.userId, data),
   );
 
 export const createCrmCompany = createServerFn({ method: "POST" })

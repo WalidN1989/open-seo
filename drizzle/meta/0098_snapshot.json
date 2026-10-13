@@ -1,8 +1,8 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "d3b44de1-ab9d-46f1-8e98-e5f513ce9efe",
-  "prevId": "b91bb033-ec57-4fba-bb2e-8f1a4a335789",
+  "id": "195af840-43a8-4cb6-841c-2b1aa1cd6066",
+  "prevId": "374e8168-c8e4-445a-bac2-8f834c67f83b",
   "tables": {
     "backlink_snapshots": {
       "name": "backlink_snapshots",
@@ -13254,6 +13254,14 @@
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
+        },
+        "reply_mode": {
+          "name": "reply_mode",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'auto'"
         },
         "last_message_at": {
           "name": "last_message_at",

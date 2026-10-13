@@ -589,6 +589,9 @@ export const whatsappConversations = sqliteTable(
     status: text("status").notNull().default("open"),
     /** Set when the customer replied STOP; nothing is sent to them after. */
     optedOutAt: text("opted_out_at"),
+    replyMode: text("reply_mode", { enum: ["auto", "manual"] })
+      .notNull()
+      .default("auto"),
     lastMessageAt: text("last_message_at"),
     createdAt: createdAt(),
   },

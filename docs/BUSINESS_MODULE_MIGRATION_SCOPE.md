@@ -1438,3 +1438,171 @@ for mirrored orders. Those effects and automatic Citypak polling/callbacks are
 cutover work, deferred until the owner is comfortable with parallel results.
 Migrations are additive on both database schemas; no live configuration, webhook
 subscription or deployment was changed by this build.
+
+### October 7, 2026 — retire Azure Sinhala voice (pending release)
+
+The owner requested removal of the failed Azure Sinhala experiment and an
+ElevenLabs-only business Voice Agent screen. The `codex/elevenlabs-only-voice`
+branch removes the business browser test controls, Azure recorder/converter,
+Azure Speech STT/TTS, transcript translation and Azure integration catalogue
+entry/health check. Old Azure agent records cannot start or process audio;
+new Azure agents/connections are rejected. Existing call and test records are
+preserved in storage. ElevenLabs phone webhooks, caller initiation, credentials,
+CRM links and telephone routing are unchanged. The separate internal workspace
+analyst's Deepgram code is retained; it is not offered in the business Voice
+Agent screen.
+
+No schema migration, destructive database cleanup or Azure cloud-resource
+removal is required. Azure Communication Services for the separate 306 SIP
+project is not removed. No deployment has occurred. Railway CLI verified the actual Open SEO service
+(`14a612e0-57e2-4c19-8928-081886d8fd3d`) currently runs main revision
+`df15ccff6255d79fe3b64e4b9500167de73cabd5`, deployed successfully on October 4
+as `d4c79cea-abd9-4d01-b238-58f76d98647b`. That matches this branch's base and
+supersedes the older October 3 production-source warning. The Railway connector
+is signed into a different workspace; use the locally linked owner CLI for this
+service. Release requires the owner's approval after checks and review. Rollback
+is the previous application revision; no database restore is needed.
+
+### 2026-10-08 — Remove idle database polling for cost containment
+
+Owner explicitly requested removing polling completely while there are no paying
+customers; any future hourly Grok routine will be set up separately by the owner.
+Production baseline f1c27e27 contains a fast WhatsApp queue job every five seconds,
+which explains approximately 6 CU-hours/day at Neon's 0.25 CU minimum.
+
+Replaced the container ticker with a loopback-only, secret-authenticated reply
+runner. Incoming messages queue the existing durable reply row and notify a
+one-time timer. Message bursts supersede the timer, and startup reads pending
+rows once, including processing lease deadlines. Processing claims only the
+notified conversation. Three unsuccessful attempts leave the durable row for
+manual retry; an empty queue creates no timer or repeated database request.
+Cloudflare's platform scheduling is separate; the runner URL is advertised only
+by the container entrypoint and included in runtime bindings.
+
+Railway no longer automatically runs any cron tier. Catalogue sync, Microsoft
+mail sync, quote follow-ups, lifecycle nudges, webhook retries, rank checks,
+stale-audit reconciliation and voice-learning sweeps now require explicit
+operator requests through the existing secret-protected cron route. The ticker
+script is a one-time tier command, not a daemon. Incoming webhooks and existing
+IMAP IDLE event delivery continue. Mailbox configuration loads once at startup
+and on explicit reload rather than on a thirty-minute timer. Routine health
+checks validate setup without opening a database connection; telemetry remains
+opted out, with its existing deployment flag now explicitly allowlisted.
+Removed persistent inbox, phone-call, integration and reminder refresh timers;
+views refresh on navigation/focus/actions or browser reload. User-triggered audit,
+rank-check and checkout progress observation remains separate from idle polling.
+
+No schema migration, provider credentials, telephone routing, or Grok automation
+was added. Work is isolated in codex/neon-no-polling, leaving the older dirty
+primary checkout untouched. Deployment and final validation recorded below.
+
+Owner approved proceeding with OpenSEO cost reduction on October 8. Local full
+`ci:check` and GitHub `ci`/`docker-build` passed on f57402d4; the targeted
+reply runner, authorization, repository, webhook tenancy and cron tests passed
+(31 tests). CLI deployment 7967b195-46ec-44c4-b0de-45971e77b001 succeeded.
+Live health returned ok in selfhosted authenticated mode, and startup logged
+“Event-driven replies enabled; no recurring queue checks”. The fork's recovery
+guide requires a GitHub main release, so the approved PR is being merged to
+keep future autodeploys aligned with this release rather than relying on the
+CLI upload. Previous known-good main: f1c27e2733967b32061263a924a493b6dd69a311.
+
+Read-only process measurements before release totalled approximately 1.5 GB
+RSS, including 966 MB in workerd. Immediately after release total RSS was
+approximately 1.0 GB. Restart changes runtime age, so this does not establish
+a sustained memory saving or diagnose a leak. Direct Node entrypoints avoid
+resident CLI wrapper overhead, while removing recurring background requests
+reduces idle work. No arbitrary memory cap was applied, Serverless remains off
+for email-listener compatibility, and no other Railway application was stopped.
+The upstream README recommends Cloudflare for internet-facing installations;
+this fork's existing Docker/Railway hosting and business modules are customized.
+No hosting migration or upstream reset was performed.
+
+### October 12, 2026 — Excel product and count imports (pending release)
+
+The `codex/excel-product-stock-import` branch adds browser-side XLSX reading
+(first worksheet) alongside CSV/TSV for Products and Inventory. Legacy XLS and
+Numbers files must be saved as XLSX or CSV first. Reports with Item Code,
+Item Name, Location and Current Stock are recognised. The original workbook
+and its contents are not copied into the repository.
+
+Products can export their full filtered catalogue across pages and download a
+blank CSV template. Stock templates remain downloadable with an empty catalogue.
+Stock upload presents the file location, selected destination branch, distinct
+counts and identical duplicate count before confirmation. Users may explicitly
+create missing products from SKU and name; existing product metadata and prices
+are preserved. Newly imported products support named branches and start at price
+zero, which the UI asks the user to set in Products. Stock counts create a draft
+audit; only the existing privileged publish workflow changes balances. Multiple
+locations, conflicting duplicates, ambiguous identifiers and invalid counts are
+rejected. Blank counts remain uncounted, while explicit zero is retained.
+
+Catalogue imports no longer overwrite prices absent from a file. SKU matching
+is case-insensitive and organization-scoped; writes are bounded for D1 and use
+the shared atomic batch helper for D1/Postgres. Count rows and their draft audit
+are written atomically. Product creation may remain after a later import failure;
+retry matches those products without duplicating them. No schema migration,
+provider change, scheduler change or production data import is included. Release
+requires owner approval; rollback is the prior application revision and any
+created products/drafts remain compatible with it.
+
+### October 12, 2026 — reuse a customer's last invoice
+
+New Invoice now offers a Customer selector populated from saved invoices in the
+current organization. Each billing name uses its latest non-void invoice; credit
+notes and proformas are excluded. The customer query is separate from the
+200-invoice workspace limit so older customers remain available. Selecting one
+copies billing details, registration, currency, descriptions, quantities, unit
+prices, notes and service period into a new editable draft. The issue date stays
+current; the due date uses the previous invoice's payment terms. Invoice number,
+paid/sent state and issuer snapshot are not copied. The service period is copied
+exactly, with a visible reminder to review it for the new month.
+
+Customer loading disables the form and a failed load cannot save stale customer
+details. New customer resets copied fields. Existing draft editing remains
+available. Billing information remains stored as invoice snapshots; no schema
+migration, external provider call, automatic issuing or customer message is
+introduced. Rollback is the prior application revision; existing invoices are
+not rewritten. Browser fixture checks covered copied fields/prices, fresh dates
+and save identity, fractional quantities, errors, reset, draft editing and mobile.
+
+### 2026-10-13 — South Side Fencing MCP quotes and voice call reads
+
+Diagnosed quotes FORBIDDEN for sales@digitalurgency.com.au: the account is an
+existing workspace owner, but South Side Fencing's invoicing entitlement was
+absent. Quotes use invoicing view access, not a separate OAuth scope. Automatic
+approval review initially rejected enabling the whole module; the owner then
+explicitly approved "Enable invoicing with existing owner access". Enabled only
+organization f4c8bbd2bc174de2a62538563e2e7a1f and recorded module.enabled in its
+audit trail. No role, member permission or token scope changed. Production
+list_quotes succeeds with an empty list; get_quote and get_quote_document reach
+NOT_FOUND for a nonexistent ID instead of FORBIDDEN. There are no real quotes
+in this workspace to verify a document against.
+
+Added read-only list_calls/get_call with existing membership and voice-view
+checks. Calls use stored transcripts/summaries, start-time filtering and bounded
+lists; related CRM joins and provider connections are organization-scoped.
+Recording links require a signed-in session and repeat voice authorization;
+provider keys remain server-side. South Side Fencing's ElevenLabs connection
+has no API_KEY, so recordings return null with credentials_missing; stored
+transcripts remain available. Owner must enter that workspace's provider API
+key in Integrations to enable recording retrieval. Do not copy another tenant's
+key or change the phone routing/webhook/send tools.
+
+list_projects now includes organizationId and organizationName alongside the
+project domain, including project 16b1e2f1-5969-4a3f-beb3-3b9f08b51437. No schema
+migration or sending behavior changed. Local protocol happy/empty/error/foreign
+workspace checks and an independent read-only consumer probe passed; ci:check,
+2,656 regression tests and selfhost build passed. Release deployment and real
+MCP-token call verification are pending the feature PR's checks and merge.
+
+### 2026-10-13 — WhatsApp Auto/Manual replies release preparation
+
+Owner explicitly requested deployment. Isolated the reply controls on current
+production main, preserving newer WhatsApp image handling, access-code redaction,
+durable delayed replies and stale-message checks. Added per-chat persisted Auto /
+Manual mode, applied before automatic replies and again before send/queue. Manual
+stops verification, instant answers, model responses and fallback templates;
+operator Send remains available. Personal money solicitation silently selects
+Manual through explicit patterns or the model's ignore_conversation tool. Normal
+business payments, invoices, pricing and refunds remain eligible. Existing/new
+chats default to Auto. No customer message is sent for release verification.

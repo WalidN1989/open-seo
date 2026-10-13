@@ -1,6 +1,6 @@
 {
-  "id": "ce95fe6b-0ed6-461c-8bd6-e2f9011336aa",
-  "prevId": "06a5184d-065d-4bfc-838f-05c582c5aade",
+  "id": "a8e65ca1-9c79-4d55-a67e-f96c3710a0d0",
+  "prevId": "1a2699f3-ca43-41f4-b0a1-f84e73031aab",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -14425,6 +14425,13 @@
           "type": "text",
           "primaryKey": false,
           "notNull": false
+        },
+        "reply_mode": {
+          "name": "reply_mode",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'auto'"
         },
         "last_message_at": {
           "name": "last_message_at",

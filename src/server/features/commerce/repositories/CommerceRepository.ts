@@ -1,3 +1,4 @@
+import { runBatch } from "@/db/runBatch";
 import {
   and,
   asc,
@@ -64,7 +65,39 @@ async function listProducts(organizationId: string, input: ListProductsInput) {
       .offset(input.offset),
     db.select({ value: count() }).from(commerceProducts).where(where),
   ]);
-  return { products: rows, total: totals[0]?.value ?? 0 };
+  const quantities = new Map<string, number>();
+  // Bound each query for D1's parameter limit; one grouped read per chunk,
+  // rather than a separate inventory lookup for every product.
+  for (let i = 0; i < rows.length; i += 80) {
+    const balances = await db
+      .select({
+        productId: commerceInventoryBalances.productId,
+        quantity:
+          sql<number>`sum(${commerceInventoryBalances.quantityOnHand})`.mapWith(
+            Number,
+          ),
+      })
+      .from(commerceInventoryBalances)
+      .where(
+        and(
+          eq(commerceInventoryBalances.organizationId, organizationId),
+          inArray(
+            commerceInventoryBalances.productId,
+            rows.slice(i, i + 80).map((row) => row.id),
+          ),
+        ),
+      )
+      .groupBy(commerceInventoryBalances.productId);
+    for (const balance of balances)
+      quantities.set(balance.productId, balance.quantity);
+  }
+  return {
+    products: rows.map((row) => ({
+      ...row,
+      quantityOnHand: quantities.get(row.id) ?? 0,
+    })),
+    total: totals[0]?.value ?? 0,
+  };
 }
 
 async function getProduct(organizationId: string, productId: string) {
@@ -104,16 +137,30 @@ async function findProductBySku(organizationId: string, sku: string) {
  */
 async function findProductIdsBySkus(organizationId: string, skus: string[]) {
   if (skus.length === 0) return new Map<string, string>();
-  const rows = await db
-    .select({ id: commerceProducts.id, sku: commerceProducts.sku })
-    .from(commerceProducts)
-    .where(
-      and(
-        eq(commerceProducts.organizationId, organizationId),
-        inArray(commerceProducts.sku, skus),
-      ),
-    );
-  return new Map(rows.map((row) => [row.sku, row.id]));
+  const found = new Map<string, string>();
+  for (let i = 0; i < skus.length; i += 80) {
+    const rows = await db
+      .select({ id: commerceProducts.id, sku: commerceProducts.sku })
+      .from(commerceProducts)
+      .where(
+        and(
+          eq(commerceProducts.organizationId, organizationId),
+          inArray(
+            sql`upper(${commerceProducts.sku})`,
+            skus.slice(i, i + 80).map((sku) => sku.toUpperCase()),
+          ),
+        ),
+      );
+    for (const row of rows) {
+      const key = row.sku.toUpperCase();
+      if (found.has(key) && found.get(key) !== row.id)
+        throw new Error(
+          `SKU ${row.sku} matches multiple products. Resolve the duplicate first.`,
+        );
+      found.set(key, row.id);
+    }
+  }
+  return found;
 }
 
 /** Insert many at once; the caller decides how big a batch the driver takes. */
@@ -122,19 +169,27 @@ async function createProducts(
   inputs: CreateProductInput[],
 ) {
   if (inputs.length === 0) return 0;
-  await db.insert(commerceProducts).values(
-    inputs.map((input) => ({
-      id: crypto.randomUUID(),
-      organizationId,
-      ...input,
-      barcode: input.barcode || null,
-      isbn: input.isbn || null,
-      description: input.description || null,
-      category: input.category || null,
-      parentProductId: input.parentProductId ?? null,
-      costPriceMinor: input.costPriceMinor ?? null,
-    })),
-  );
+  await runBatch((tx) => {
+    const inserts = [];
+    for (let i = 0; i < inputs.length; i += 4) {
+      inserts.push(
+        tx.insert(commerceProducts).values(
+          inputs.slice(i, i + 4).map((input) => ({
+            id: crypto.randomUUID(),
+            organizationId,
+            ...input,
+            barcode: input.barcode || null,
+            isbn: input.isbn || null,
+            description: input.description || null,
+            category: input.category || null,
+            parentProductId: input.parentProductId ?? null,
+            costPriceMinor: input.costPriceMinor ?? null,
+          })),
+        ),
+      );
+    }
+    return inserts;
+  });
   return inputs.length;
 }
 

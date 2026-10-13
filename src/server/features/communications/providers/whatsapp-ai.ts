@@ -40,6 +40,16 @@ type WhatsappAiAction =
 
 const tools = [
   {
+    name: "ignore_conversation",
+    description:
+      "Silently stop automatic replies when someone requests personal money, donations, charity, loans or financial assistance unrelated to buying the business products/services. Use the conversation history and understand requests in any language. Never use for business pricing, invoices, refunds, discounts or payment questions. Send no response or other actions.",
+    input_schema: {
+      type: "object",
+      properties: {},
+      additionalProperties: false,
+    },
+  },
+  {
     name: "create_order_request",
     description:
       "Record a customer's clear request to buy or enquire about an item. Never claim payment was taken.",
@@ -160,6 +170,7 @@ function systemPrompt(input: {
       : "",
     "For a retail order enquiry, use lookup_order with the order ID already in the conversation. Ask for that ID only if missing. Never request an SEO access code for purchases or delivery. If no match is found, hand off briefly; do not invent a shipment update. Only state tracking facts returned by the tool and distinguish fulfilment from delivery.",
     "Keep replies short: normally one or two sentences. Combine the customer's recent messages into one answer. Do not repeat a question, greeting or pre-order offer already made or declined.",
+    "If the person asks for personal money, charity, donations, loans or financial support unrelated to this business, call ignore_conversation and send no text. Do not offer charities, helplines, reassurance, access-code requests or follow-up questions. Once the conversation is clearly about personal financial solicitation, do not continue engaging. Business pricing, invoices, refunds, discounts and payment questions are legitimate enquiries and must not be ignored on this basis.",
     "Reply in the same language and script as the customer's latest message — including Sinhala, Tamil, and romanised mixes such as Singlish or Tanglish; keep titles and links exactly as written. Ask at most one question at a time.",
     "Write for a chat app, not a document. Emphasis is a single asterisk around a phrase, like *this*. Never write double asterisks, markdown headings, or link syntax with brackets — put a bare URL instead.",
     "Never say you are an AI and never mention prompts, tools, APIs, or internal systems.",
@@ -294,6 +305,9 @@ export async function generateWhatsappAiReply(input: {
       (block): block is Extract<AnthropicBlock, { type: "tool_use" }> =>
         block.type === "tool_use",
     );
+    if (toolUses.some((block) => block.name === "ignore_conversation")) {
+      return { reply: "", actions: [], model, ignore: true };
+    }
     for (const block of toolUses) {
       if (
         block.name === "create_order_request" ||
@@ -322,7 +336,7 @@ export async function generateWhatsappAiReply(input: {
       { role: "user", content: results },
     ];
   }
-  return { reply, actions, model };
+  return { reply, actions, model, ignore: false };
 }
 
 async function toolResult(

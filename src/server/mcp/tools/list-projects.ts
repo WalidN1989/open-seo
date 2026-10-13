@@ -11,13 +11,15 @@ export const listProjectsTool = {
   config: {
     title: "List projects",
     description:
-      "Lists all projects in the user's organization. Uses no credits — does not call DataForSEO. Use this whenever you need a `projectId` for another Digital Urgency tool. Returns an array of {id, name, domain, locationCode, languageCode}; pass the `id` value as `projectId`. locationCode/languageCode are the project's default market — tools fall back to them when a call omits location/language args.",
+      "Lists projects across all workspaces the account belongs to, including organizationId and organizationName for workspace mapping. Uses no credits — does not call DataForSEO. Use this whenever you need a `projectId` for another Digital Urgency tool. Returns an array of {id, name, domain, locationCode, languageCode}; pass the `id` value as `projectId`. locationCode/languageCode are the project's default market — tools fall back to them when a call omits location/language args.",
     inputSchema: {} as Record<string, never>,
     outputSchema: {
       projects: z.array(
         z
           .object({
             id: z.string(),
+            organizationId: z.string(),
+            organizationName: z.string(),
             name: z.string(),
             domain: z.string().nullable().optional(),
             locationCode: z.number(),
@@ -39,12 +41,16 @@ export const listProjectsTool = {
     // Every workspace the caller belongs to, not just the one the token
     // defaulted to: an invited member would otherwise be unable to see — and
     // therefore unable to name — the projects they were invited to work on.
-    const organizationIds = await AuthRepository.listOrganizationIdsForUser(
+    const organizations = await AuthRepository.listOrganizationsForUser(
       auth.userId,
     );
     const projectsByOrganization = await Promise.all(
-      organizationIds.map((organizationId) =>
-        ProjectService.listProjects(organizationId),
+      organizations.map(async (organization) =>
+        (await ProjectService.listProjects(organization.id)).map((project) => ({
+          ...project,
+          organizationId: organization.id,
+          organizationName: organization.name,
+        })),
       ),
     );
     const projects = projectsByOrganization.flat();
@@ -53,7 +59,7 @@ export const listProjectsTool = {
         ? ["No projects yet. Create one in the dashboard."]
         : projects.map(
             (p) =>
-              `- ${p.id}  ${p.name}${p.domain ? ` (${p.domain})` : ""}  market:${p.locationCode}/${p.languageCode}`,
+              `- ${p.id}  ${p.name}${p.domain ? ` (${p.domain})` : ""}  workspace:${p.organizationName} (${p.organizationId})  market:${p.locationCode}/${p.languageCode}`,
           );
     return mcpResponse({
       text: `Projects (${projects.length}):\n${lines.join("\n")}`,
@@ -63,6 +69,8 @@ export const listProjectsTool = {
       structuredContent: {
         projects: projects.map((p) => ({
           id: p.id,
+          organizationId: p.organizationId,
+          organizationName: p.organizationName,
           name: p.name,
           domain: p.domain,
           locationCode: p.locationCode,

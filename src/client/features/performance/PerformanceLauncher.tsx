@@ -32,7 +32,25 @@ function QuickQuestion() {
         target instanceof HTMLTextAreaElement ||
         target instanceof HTMLSelectElement ||
         (target instanceof HTMLElement && target.isContentEditable);
-      if (event.code === "Space" && !isTyping && !open) {
+      if (
+        event.code === "Space" &&
+        event.shiftKey &&
+        !event.ctrlKey &&
+        !event.metaKey &&
+        !event.altKey &&
+        !event.repeat &&
+        !event.isComposing &&
+        !document.querySelector('dialog[open], [aria-modal="true"]') &&
+        !event.defaultPrevented &&
+        !isTyping &&
+        !open &&
+        !(
+          target instanceof HTMLElement &&
+          target.closest(
+            'button, a, [role="button"], [role="dialog"], dialog, [role="menu"], [role="listbox"]',
+          )
+        )
+      ) {
         event.preventDefault();
         setOpen(true);
       }

@@ -14,15 +14,13 @@ export type Reminder = Awaited<ReturnType<typeof listReminders>>[number];
 const REMINDERS_KEY = ["crm", "reminders"] as const;
 
 /**
- * One poll shared by the bell and the popup. Thirty seconds is close enough
- * for a follow-up reminder and cheap enough to leave running on every page.
+ * One query shared by the bell and popup, refreshed on focus and mutations.
  */
 export function useReminders() {
   const queryClient = useQueryClient();
   const query = useQuery({
     queryKey: REMINDERS_KEY,
     queryFn: () => listReminders(),
-    refetchInterval: 30_000,
     refetchOnWindowFocus: true,
     retry: false,
   });

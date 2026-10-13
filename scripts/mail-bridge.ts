@@ -54,7 +54,6 @@ const serverUrl =
 const listenPort = Number(
   process.env.MAIL_BRIDGE_PORT ?? MAIL_BRIDGE_DEFAULT_PORT,
 );
-const RELOAD_EVERY_MS = 30 * 60 * 1000;
 
 function log(message: string, ...rest: unknown[]) {
   console.log(`[mail-bridge] ${message}`, ...rest);
@@ -628,8 +627,8 @@ server.listen(listenPort, "127.0.0.1", () => {
   log(`listening on 127.0.0.1:${listenPort}`);
 });
 
-// Wait for the server to answer before the first reload, then keep the list
-// fresh on a slow timer; connects and disconnects poke /reload immediately.
+// Load once at startup. Connects and disconnects poke /reload immediately;
+// no periodic database checks while mailboxes are quiet.
 async function waitForServer() {
   for (let attempt = 0; attempt < 120; attempt += 1) {
     try {
@@ -646,5 +645,4 @@ async function waitForServer() {
 
 void waitForServer().then(async () => {
   await reload();
-  setInterval(() => void reload(), RELOAD_EVERY_MS);
 });

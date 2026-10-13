@@ -1,0 +1,1 @@
+ALTER TABLE `whatsapp_conversations` ADD `reply_mode` text DEFAULT 'auto' NOT NULL;
