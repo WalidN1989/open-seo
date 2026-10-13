@@ -1,7 +1,8 @@
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, like, or, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { runBatch } from "@/db/runBatch";
 import {
+  commerceOrderShipments,
   commerceOrderLines,
   commerceOrders,
   whatsappOrderRequests,
@@ -24,13 +25,50 @@ type OrderTotals = {
   totalMinor: number;
 };
 
-async function listOrders(organizationId: string, limit: number) {
+async function listOrders(
+  organizationId: string,
+  limit: number,
+  input: {
+    search?: string;
+    tab?: "all" | "pending" | "adjustments";
+    offset?: number;
+  } = {},
+) {
   return db
     .select()
     .from(commerceOrders)
-    .where(eq(commerceOrders.organizationId, organizationId))
+    .where(
+      and(
+        eq(commerceOrders.organizationId, organizationId),
+        input.tab === "pending"
+          ? eq(commerceOrders.approvalStatus, "pending")
+          : input.tab === "adjustments"
+            ? or(
+                eq(commerceOrders.status, "cancelled"),
+                eq(commerceOrders.status, "returned"),
+                eq(commerceOrders.paymentStatus, "refunded"),
+              )
+            : or(
+                sql`${commerceOrders.approvalStatus} is null`,
+                sql`${commerceOrders.approvalStatus} <> 'pending'`,
+              ),
+        input.search
+          ? or(
+              like(
+                sql`lower(${commerceOrders.orderNumber})`,
+                `%${input.search.toLowerCase()}%`,
+              ),
+              like(
+                sql`lower(${commerceOrders.customerName})`,
+                `%${input.search.toLowerCase()}%`,
+              ),
+            )
+          : undefined,
+      ),
+    )
     .orderBy(desc(commerceOrders.createdAt))
-    .limit(limit);
+    .limit(limit)
+    .offset(input.offset ?? 0);
 }
 
 async function getOrder(organizationId: string, orderId: string) {
@@ -172,7 +210,126 @@ async function linkOrderRequest(
     );
 }
 
+async function shipments(organizationId: string, orderId: string) {
+  return db
+    .select()
+    .from(commerceOrderShipments)
+    .where(
+      and(
+        eq(commerceOrderShipments.organizationId, organizationId),
+        eq(commerceOrderShipments.orderId, orderId),
+      ),
+    );
+}
+async function approveImport(
+  organizationId: string,
+  orderId: string,
+  revision: string,
+  lines: { id: string; productId: string }[],
+) {
+  const guard = and(
+    eq(commerceOrders.organizationId, organizationId),
+    eq(commerceOrders.id, orderId),
+    eq(commerceOrders.approvalStatus, "pending"),
+    eq(
+      sql`coalesce(${commerceOrders.externalUpdatedAt}, ${commerceOrders.updatedAt})`,
+      revision,
+    ),
+  );
+  const current = sql`exists (select 1 from ${commerceOrders} where ${guard})`;
+  await runBatch((tx) => [
+    ...lines.map((line) =>
+      tx
+        .update(commerceOrderLines)
+        .set({
+          productId: line.productId,
+          priceReviewedAt: new Date().toISOString(),
+        })
+        .where(
+          and(
+            eq(commerceOrderLines.organizationId, organizationId),
+            eq(commerceOrderLines.orderId, orderId),
+            eq(commerceOrderLines.id, line.id),
+            current,
+          ),
+        ),
+    ),
+    tx
+      .update(commerceOrders)
+      .set({
+        approvalStatus: "approved",
+        status: "confirmed",
+        updatedAt: new Date().toISOString(),
+      })
+      .where(and(guard, eq(commerceOrders.status, "draft"))),
+  ]);
+  return getOrder(organizationId, orderId);
+}
+async function rejectImport(
+  organizationId: string,
+  orderId: string,
+  revision: string,
+) {
+  const [row] = await db
+    .update(commerceOrders)
+    .set({ approvalStatus: "rejected", updatedAt: new Date().toISOString() })
+    .where(
+      and(
+        eq(commerceOrders.organizationId, organizationId),
+        eq(commerceOrders.id, orderId),
+        eq(commerceOrders.approvalStatus, "pending"),
+        eq(commerceOrders.status, "draft"),
+        eq(
+          sql`coalesce(${commerceOrders.externalUpdatedAt}, ${commerceOrders.updatedAt})`,
+          revision,
+        ),
+      ),
+    )
+    .returning();
+  return row ?? null;
+}
+async function customerOrder(
+  organizationId: string,
+  orderNumber: string,
+  phone: string,
+) {
+  const orders = await db
+    .select()
+    .from(commerceOrders)
+    .where(
+      and(
+        eq(commerceOrders.organizationId, organizationId),
+        eq(commerceOrders.orderNumber, orderNumber),
+        eq(commerceOrders.customerPhone, phone),
+      ),
+    )
+    .limit(2);
+  return orders.length === 1 ? orders[0] : null;
+}
+
+async function sequence(organizationId: string) {
+  return db
+    .select({
+      number: commerceOrders.orderNumber,
+      status: commerceOrders.status,
+    })
+    .from(commerceOrders)
+    .where(
+      and(
+        eq(commerceOrders.organizationId, organizationId),
+        eq(commerceOrders.externalSource, "shopify"),
+      ),
+    )
+    .orderBy(commerceOrders.orderNumber)
+    .limit(25_000);
+}
+
 export const OrderRepository = {
+  sequence,
+  shipments,
+  approveImport,
+  rejectImport,
+  customerOrder,
   listOrders,
   getOrder,
   listLines,

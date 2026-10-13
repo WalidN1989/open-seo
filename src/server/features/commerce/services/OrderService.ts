@@ -1,3 +1,4 @@
+import { RetailOrderService } from "./RetailOrderService";
 import { BranchRepository } from "../repositories/BranchRepository";
 import { BusinessModuleService } from "@/server/features/business-modules/services/BusinessModuleService";
 import { AppError } from "@/server/lib/errors";
@@ -77,7 +78,7 @@ async function listOrders(
   input: ListOrdersInput,
 ) {
   await BusinessModuleService.requireAccess(organizationId, userId, "crm");
-  return OrderRepository.listOrders(organizationId, input.limit);
+  return OrderRepository.listOrders(organizationId, input.limit, input);
 }
 
 async function getOrder(
@@ -89,7 +90,16 @@ async function getOrder(
   const order = await OrderRepository.getOrder(organizationId, orderId);
   if (!order) throw new AppError("NOT_FOUND");
   const lines = await OrderRepository.listLines(organizationId, orderId);
-  return { order, lines };
+  const shipments = await OrderRepository.shipments(organizationId, orderId);
+  const review = await Promise.all(
+    lines.map(async (line) => ({
+      ...line,
+      product: line.productId
+        ? await CommerceRepository.getProduct(organizationId, line.productId)
+        : null,
+    })),
+  );
+  return { order, lines: review, shipments };
 }
 
 async function createOrder(
@@ -203,6 +213,14 @@ async function cancelOrder(
   const order = await OrderRepository.getOrder(organizationId, orderId);
   if (!order) throw new AppError("NOT_FOUND");
 
+  if (
+    order.integrationConnectionId ||
+    ["shopify", "legacy_zoho"].includes(order.externalSource ?? "")
+  )
+    throw new AppError(
+      "CONFLICT",
+      "Change or cancel this order in Shopify or Zoho; DigitalUrgency will mirror the update.",
+    );
   // A draft never took stock, so cancelling it moves nothing.
   if (order.status === "draft") {
     await BusinessModuleService.requireAccess(
@@ -273,6 +291,14 @@ async function transition(
     throw new AppError("VALIDATION_ERROR", spec.invalidMessage);
   }
 
+  if (
+    order.integrationConnectionId ||
+    ["shopify", "legacy_zoho"].includes(order.externalSource ?? "")
+  )
+    throw new AppError(
+      "CONFLICT",
+      "Shopify orders are mirrored while Zoho handles stock and courier operations. Use pending approval review.",
+    );
   const lines = await OrderRepository.listLines(organizationId, orderId);
   const movements: StockMovementDraft[] = [];
   const quantities = new Map<string, number>();
@@ -376,6 +402,7 @@ async function convertOrderRequest(
 }
 
 export const OrderService = {
+  ...RetailOrderService,
   listOrders,
   getOrder,
   createOrder,

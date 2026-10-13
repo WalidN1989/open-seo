@@ -18,9 +18,26 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock(
+  "@/server/features/business-modules/repositories/BusinessModuleRepository",
+  () => ({
+    BusinessModuleRepository: {
+      listEntitlements: vi
+        .fn()
+        .mockResolvedValue([{ moduleKey: "crm", status: "enabled" }]),
+    },
+  }),
+);
+
+vi.mock(
   "@/server/features/business-modules/services/BusinessModuleService",
   () => ({
     BusinessModuleService: { requireAccess: mocks.requireAccess },
+  }),
+);
+vi.mock(
+  "@/server/features/business-modules/services/BusinessSettingsService",
+  () => ({
+    BusinessSettingsService: { getSettings: async () => ({ currency: "LKR" }) },
   }),
 );
 vi.mock("@/server/features/crm/repositories/CrmRepository", () => ({

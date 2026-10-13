@@ -337,3 +337,32 @@ export async function shopDomainFor(connection: IntegrationRecord) {
     await resolveConnectionCredential(connection, "SHOP_DOMAIN"),
   );
 }
+
+/** Cursor is data, never a caller-controlled URL or credential destination. */
+export async function fetchOrderPage(
+  connection: IntegrationRecord,
+  cursor: string | null,
+  fetcher: typeof fetch = fetch,
+) {
+  const params = new URLSearchParams({ limit: "25" });
+  if (cursor) params.set("page_info", cursor);
+  else params.set("status", "any");
+  const response = await request(connection, "/orders.json", params, fetcher);
+  const payload: unknown = await response.json();
+  const link = response.headers
+    .get("link")
+    ?.split(",")
+    .find((part) => part.includes('rel="next"'));
+  let nextCursor: string | null = null;
+  const next = link?.match(/<([^>]+)>/)?.[1];
+  if (next) {
+    const url = new URL(next);
+    if (
+      url.protocol !== "https:" ||
+      url.hostname !== (await shopDomainFor(connection))
+    )
+      throw new Error("Invalid Shopify pagination response.");
+    nextCursor = url.searchParams.get("page_info");
+  }
+  return { payload, nextCursor };
+}
