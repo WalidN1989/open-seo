@@ -1,4 +1,21 @@
 import { z } from "zod";
+export const orderLoyaltyAdjustmentSchema = z
+  .object({
+    orderId: z.string().min(1),
+    requestId: z.string().uuid(),
+    kind: z.enum(["redeemed", "reversed"]),
+    points: z
+      .number()
+      .int()
+      .min(-1_000_000)
+      .max(1_000_000)
+      .refine((value) => value !== 0),
+    note: z.string().trim().min(1).max(500),
+  })
+  .refine(
+    (value) => value.kind !== "redeemed" || value.points < 0,
+    "Redemption must debit points",
+  );
 export const orderReviewSchema = z.object({
   orderId: z.string().min(1),
   acknowledgeAdjustments: z.boolean().default(false),
@@ -72,4 +89,18 @@ export const orderOperationsSchema = z.object({
   senderAddress3: z.string().trim().max(200).nullable(),
   senderCity: z.string().trim().max(100).nullable(),
   parcelWeightGrams: z.number().int().min(1).max(50_000),
+});
+
+export const citypakDashboardSchema = z.object({
+  search: z.string().trim().max(200).default(""),
+  status: z.string().max(120).default(""),
+  payment: z.enum(["", "paid", "partial", "unpaid", "refunded"]).default(""),
+  paymentMethod: z.string().trim().max(120).default(""),
+  offset: z.number().int().min(0).default(0),
+  limit: z.number().int().min(1).max(100).default(50),
+});
+export const citypakTrackingSettingsSchema = z.object({
+  connectionId: z.string().min(1),
+  trackingEnabled: z.boolean(),
+  webhookSecret: z.string().trim().min(16).max(1000).optional(),
 });

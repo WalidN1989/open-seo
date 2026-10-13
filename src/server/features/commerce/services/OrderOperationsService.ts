@@ -1,3 +1,8 @@
+import {
+  dispatchCurrent,
+  skipChanged,
+  notificationFor,
+} from "./OrderDispatchService";
 import { OrderLoyaltyRepository } from "../repositories/OrderLoyaltyRepository";
 import { IntegrationSyncRepository } from "../repositories/IntegrationSyncRepository";
 import { BusinessModuleRepository } from "@/server/features/business-modules/repositories/BusinessModuleRepository";
@@ -38,11 +43,10 @@ async function enqueueForWebhook(
 }
 async function enqueueApproved(organizationId: string, orderId: string) {
   const order = await OrderRepository.getOrder(organizationId, orderId);
-  if (!order?.integrationConnectionId) return;
-  const config = await Repo.configuration(
-    organizationId,
-    order.integrationConnectionId,
-  );
+  const connectionId =
+    order?.operationsConnectionId || order?.integrationConnectionId;
+  if (!order || !connectionId) return;
+  const config = await Repo.configuration(organizationId, connectionId);
   if (
     !config?.enabled ||
     !config.operationsStartedAt ||
@@ -55,7 +59,7 @@ async function enqueueApproved(organizationId: string, orderId: string) {
     await BusinessModuleRepository.listEntitlements(organizationId);
   const connection = await IntegrationSyncRepository.getConnection(
     organizationId,
-    order.integrationConnectionId,
+    connectionId,
   );
   if (
     connection?.status !== "connected" ||
@@ -74,7 +78,7 @@ async function enqueueApproved(organizationId: string, orderId: string) {
     config.loyaltyMinorPerPoint,
   );
 }
-type ActionContext = {
+export type ActionContext = {
   effect: Awaited<ReturnType<typeof Repo.due>>[number];
   claim: NonNullable<Awaited<ReturnType<typeof Repo.claim>>>;
   order: NonNullable<Awaited<ReturnType<typeof OrderRepository.getOrder>>>;
@@ -114,6 +118,15 @@ async function sendNotification(context: ActionContext) {
       status: "skipped",
       error: "Recipient opted out.",
     });
+    return;
+  }
+  if (!(await dispatchCurrent(context))) {
+    await CommunicationsRepository.completeWhatsappMessage(
+      effect.organizationId,
+      messageId,
+      { status: "failed" },
+    );
+    await skipChanged(context);
     return;
   }
   const result = await sendWhatsappTemplate(sender, order.customerPhone, {
@@ -160,11 +173,15 @@ async function createShipment(context: ActionContext) {
     order.id,
   );
   const address = (order.shippingAddress || "")
-    .split(",")
+    .split(/[,\n]+/)
     .map((s) => s.trim())
     .filter(Boolean);
   if (!order.customerPhone || !order.shippingAddress || !order.shippingCity)
     throw new Error("Missing receiver details");
+  if (!(await dispatchCurrent(context))) {
+    await skipChanged(context);
+    return;
+  }
   const result = await createCitypakOrder(credentials.API_KEY, {
     reference: order.orderNumber,
     from_name: config.senderName || "",
@@ -217,6 +234,10 @@ async function issueOrderInvoice(context: ActionContext) {
     effect.organizationId,
     order.id,
   );
+  if (!(await dispatchCurrent(context))) {
+    await skipChanged(context);
+    return;
+  }
   const invoiceId = await InvoiceRepository.issueInvoice(
     order,
     lines.map((line, position) => ({
@@ -241,6 +262,10 @@ async function issueOrderInvoice(context: ActionContext) {
       await getRequiredEnvValue("BETTER_AUTH_SECRET"),
     );
     const url = `${(await getRequiredEnvValue("BETTER_AUTH_URL")).replace(/\/$/, "")}${documentPath(invoiceId, token)}`;
+    if (!(await dispatchCurrent(context))) {
+      await skipChanged(context);
+      return;
+    }
     const sent = await EmailSendService.sendFromConnectedMailbox(
       effect.organizationId,
       {
@@ -261,31 +286,6 @@ async function issueOrderInvoice(context: ActionContext) {
     invoiceId,
   });
 }
-async function notificationFor(
-  effect: ActionContext["effect"],
-  order: ActionContext["order"],
-  config: ActionContext["config"],
-) {
-  const sender = await Repo.sender(
-    effect.organizationId,
-    config.confirmationSenderId || "",
-  );
-  const templateId =
-    effect.kind === "cancellation"
-      ? config.cancellationTemplateId
-      : order.pickup
-        ? config.pickupTemplateId || config.confirmationTemplateId
-        : config.confirmationTemplateId;
-  const template = await Repo.template(effect.organizationId, templateId || "");
-  if (
-    !sender ||
-    sender.status !== "connected" ||
-    !template ||
-    template.connectionId !== sender.id
-  )
-    return null;
-  return { sender, template };
-}
 function staleAction(
   effect: ActionContext["effect"],
   order: ActionContext["order"],
@@ -300,15 +300,14 @@ async function process(effect: Awaited<ReturnType<typeof Repo.due>>[number]) {
     effect.organizationId,
     effect.orderId,
   );
-  if (!order?.integrationConnectionId) return;
-  const config = await Repo.configuration(
-    effect.organizationId,
-    order.integrationConnectionId,
-  );
+  const connectionId =
+    order?.operationsConnectionId || order?.integrationConnectionId;
+  if (!order || !connectionId) return;
+  const config = await Repo.configuration(effect.organizationId, connectionId);
   if (!config?.enabled) return;
   const connection = await IntegrationSyncRepository.getConnection(
     effect.organizationId,
-    order.integrationConnectionId,
+    connectionId,
   );
   if (connection?.status !== "connected") return;
   const entitlements = await BusinessModuleRepository.listEntitlements(
@@ -346,6 +345,7 @@ async function process(effect: Awaited<ReturnType<typeof Repo.due>>[number]) {
     effect.organizationId,
     effect.orderId,
     effect.kind,
+    order.updatedAt,
   );
   if (!claim) return;
   if (stale || (!messaging && order.currency !== "LKR")) {

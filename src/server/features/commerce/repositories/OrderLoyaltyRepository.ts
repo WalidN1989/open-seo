@@ -1,9 +1,11 @@
 import { and, eq, or, sql } from "drizzle-orm";
 import { db } from "@/db";
+import { runBatch } from "@/db/runBatch";
 import {
   commerceLoyaltyEntries,
   commerceOrders,
   crmContacts,
+  businessAuditEvents,
 } from "@/db/schema";
 async function loyalty(organizationId: string, contactId: string) {
   const [row] = await db
@@ -86,17 +88,143 @@ async function award(
 ) {
   const contactId = await ensureContact(organizationId, order);
   if (!contactId || minorPerPoint <= 0) return;
-  await db
-    .insert(commerceLoyaltyEntries)
-    .values({
-      id: crypto.randomUUID(),
-      organizationId,
-      orderId: order.id,
-      contactId,
-      sourceId: order.id,
-      kind: "earned",
-      points: Math.floor(order.totalMinor / minorPerPoint),
-    })
-    .onConflictDoNothing();
+  const current = and(
+    eq(commerceOrders.organizationId, organizationId),
+    eq(commerceOrders.id, order.id),
+    eq(commerceOrders.status, "confirmed"),
+    eq(commerceOrders.approvalStatus, "approved"),
+    sql`${commerceOrders.paymentStatus} <> 'refunded'`,
+  );
+  await runBatch((tx) => [
+    tx
+      .update(commerceOrders)
+      .set({ updatedAt: sql`${commerceOrders.updatedAt}` })
+      .where(current),
+    tx
+      .insert(commerceLoyaltyEntries)
+      .select(
+        tx
+          .select({
+            id: sql<string>`${crypto.randomUUID()}`.as("id"),
+            organizationId: commerceOrders.organizationId,
+            contactId: sql<string>`${contactId}`.as("contactId"),
+            orderId: commerceOrders.id,
+            sourceId: commerceOrders.id,
+            kind: sql<"earned">`'earned'`.as("kind"),
+            points:
+              sql<number>`cast(${commerceOrders.totalMinor} / ${minorPerPoint} as integer)`.as(
+                "points",
+              ),
+            note: sql<string | null>`null`.as("note"),
+            createdAt: sql<string>`${new Date().toISOString()}`.as("createdAt"),
+          })
+          .from(commerceOrders)
+          .where(current),
+      )
+      .onConflictDoNothing(),
+  ]);
 }
-export const OrderLoyaltyRepository = { loyalty, award };
+async function entries(organizationId: string, contactId: string) {
+  return db
+    .select()
+    .from(commerceLoyaltyEntries)
+    .where(
+      and(
+        eq(commerceLoyaltyEntries.organizationId, organizationId),
+        eq(commerceLoyaltyEntries.contactId, contactId),
+      ),
+    )
+    .orderBy(commerceLoyaltyEntries.createdAt)
+    .limit(200);
+}
+async function adjustment(
+  organizationId: string,
+  userId: string,
+  input: {
+    contactId: string;
+    requestId: string;
+    points: number;
+    kind: "redeemed" | "reversed";
+    note: string;
+  },
+) {
+  const id = `loyalty:${organizationId}:${input.requestId}`;
+  const contact = and(
+    eq(crmContacts.organizationId, organizationId),
+    eq(crmContacts.id, input.contactId),
+  );
+  const balance = sql`(select coalesce(sum(points),0) from ${commerceLoyaltyEntries} where ${commerceLoyaltyEntries.organizationId} = ${organizationId} and ${commerceLoyaltyEntries.contactId} = ${input.contactId})`;
+  await runBatch((tx) => [
+    // Serialize debits on the contact row on Postgres; D1 batches serialize writes.
+    tx
+      .update(crmContacts)
+      .set({ updatedAt: sql`${crmContacts.updatedAt}` })
+      .where(contact),
+    tx
+      .insert(commerceLoyaltyEntries)
+      .select(
+        tx
+          .select({
+            id: sql<string>`${id}`.as("id"),
+            organizationId: crmContacts.organizationId,
+            contactId: crmContacts.id,
+            orderId: sql<string | null>`null`.as("orderId"),
+            sourceId: sql<string>`${input.requestId}`.as("sourceId"),
+            kind: sql<"redeemed" | "reversed">`${input.kind}`.as("kind"),
+            points: sql<number>`${input.points}`.as("points"),
+            note: sql<string>`${input.note}`.as("note"),
+            createdAt: sql<string>`${new Date().toISOString()}`.as("createdAt"),
+          })
+          .from(crmContacts)
+          .where(
+            and(
+              contact,
+              sql`${input.points} >= 0 or ${balance} >= ${-input.points}`,
+            ),
+          ),
+      )
+      .onConflictDoNothing(),
+    tx
+      .insert(businessAuditEvents)
+      .select(
+        tx
+          .select({
+            id: sql<string>`${id}`.as("id"),
+            organizationId: commerceLoyaltyEntries.organizationId,
+            actorUserId: sql<string>`${userId}`.as("actorUserId"),
+            action: sql<string>`'loyalty.adjusted'`.as("action"),
+            targetType: sql<string>`'contact'`.as("targetType"),
+            targetId: commerceLoyaltyEntries.contactId,
+            metadataJson:
+              sql<string>`${JSON.stringify({ points: input.points, kind: input.kind, requestId: input.requestId })}`.as(
+                "metadataJson",
+              ),
+            createdAt: sql<string>`${new Date().toISOString()}`.as("createdAt"),
+          })
+          .from(commerceLoyaltyEntries)
+          .where(
+            and(
+              eq(commerceLoyaltyEntries.organizationId, organizationId),
+              eq(commerceLoyaltyEntries.id, id),
+              eq(commerceLoyaltyEntries.contactId, input.contactId),
+              eq(commerceLoyaltyEntries.points, input.points),
+              eq(commerceLoyaltyEntries.kind, input.kind),
+              eq(commerceLoyaltyEntries.note, input.note),
+            ),
+          ),
+      )
+      .onConflictDoNothing(),
+  ]);
+  const [row] = await db
+    .select()
+    .from(commerceLoyaltyEntries)
+    .where(
+      and(
+        eq(commerceLoyaltyEntries.organizationId, organizationId),
+        eq(commerceLoyaltyEntries.id, id),
+      ),
+    )
+    .limit(1);
+  return row ?? null;
+}
+export const OrderLoyaltyRepository = { loyalty, award, entries, adjustment };

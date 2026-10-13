@@ -6,7 +6,6 @@ CREATE TABLE `commerce_order_shipments` (
 	`tracking_number` text NOT NULL,
 	`status` text DEFAULT 'UNKNOWN' NOT NULL,
 	`checked_at` text,
-	`created_at` text DEFAULT (current_timestamp) NOT NULL,
 	FOREIGN KEY (`organization_id`) REFERENCES `organization`(`id`) ON UPDATE no action ON DELETE cascade,
 	FOREIGN KEY (`order_id`) REFERENCES `commerce_orders`(`id`) ON UPDATE no action ON DELETE cascade
 );

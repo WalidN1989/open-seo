@@ -5,6 +5,7 @@ import { OrderOperationsService } from "./OrderOperationsService";
 import { BusinessSettingsService } from "@/server/features/business-modules/services/BusinessSettingsService";
 import type { z } from "zod";
 import type { orderReviewSchema } from "@/types/schemas/orderReview";
+import type { orderLoyaltyAdjustmentSchema } from "@/types/schemas/orderReview";
 import { orderPhone } from "../providers/shopifyOrders";
 import { BusinessModuleService } from "@/server/features/business-modules/services/BusinessModuleService";
 import { AppError } from "@/server/lib/errors";
@@ -123,14 +124,15 @@ async function lookupCustomerOrder(
     sender.startsWith("whatsapp:") ? sender.slice(9) : sender,
   );
   const match = /^(?:#?SHOP-)?(\d{1,15})$/i.exec(query.trim());
-  if (!phone || !match)
+  const native = /^ORD-(?:[A-F0-9]{32}|\d{1,15})$/i.test(query.trim());
+  if (!phone || (!match && !native))
     return JSON.stringify({
       found: false,
       next: "Ask for the order ID once, or hand off if already provided.",
     });
   const order = await OrderRepository.customerOrder(
     organizationId,
-    `SHOP-${match[1]}`,
+    native ? query.trim().toUpperCase() : `SHOP-${match?.[1]}`,
     phone,
   );
   if (!order)
@@ -143,7 +145,10 @@ async function lookupCustomerOrder(
     found: true,
     orderId: order.orderNumber,
     status: order.status,
-    paymentStatus: order.externalUpdatedAt ? order.paymentStatus : "unknown",
+    paymentStatus:
+      order.externalUpdatedAt || !order.integrationConnectionId
+        ? order.paymentStatus
+        : "unknown",
     fulfilmentStatus: order.fulfilmentStatus,
     shipments: shipments.map((item) => ({
       provider: item.provider,
@@ -151,7 +156,7 @@ async function lookupCustomerOrder(
       status: item.status,
       checkedAt: item.checkedAt,
     })),
-    updatedAt: order.externalUpdatedAt,
+    updatedAt: order.externalUpdatedAt || order.updatedAt,
     note: "Approval in DigitalUrgency is a review status, not shipment progress. Quote only recorded tracking; missing tracking is unknown, not proof the order has not shipped.",
   });
 }
@@ -193,12 +198,56 @@ async function overview(
   if (!order) throw new AppError("NOT_FOUND");
   return {
     effects: await OrderOperationsRepository.effects(organizationId, orderId),
+    contactId: order.contactId,
+    loyaltyEntries: order.contactId
+      ? await OrderLoyaltyRepository.entries(organizationId, order.contactId)
+      : [],
     loyaltyBalance: order.contactId
       ? await OrderLoyaltyRepository.loyalty(organizationId, order.contactId)
       : 0,
   };
 }
+async function adjustLoyalty(
+  organizationId: string,
+  userId: string,
+  input: z.infer<typeof orderLoyaltyAdjustmentSchema>,
+) {
+  await BusinessModuleService.requireAccess(
+    organizationId,
+    userId,
+    "crm",
+    "manage",
+  );
+  const order = await OrderRepository.getOrder(organizationId, input.orderId);
+  if (!order?.contactId)
+    throw new AppError(
+      "NOT_FOUND",
+      "Link this order to its customer before changing loyalty points.",
+    );
+  const result = await OrderLoyaltyRepository.adjustment(
+    organizationId,
+    userId,
+    { ...input, contactId: order.contactId },
+  );
+  if (!result)
+    throw new AppError(
+      "CONFLICT",
+      "Insufficient points or customer unavailable. Refresh the balance.",
+    );
+  if (
+    result.contactId !== order.contactId ||
+    result.points !== input.points ||
+    result.kind !== input.kind ||
+    result.note !== input.note
+  )
+    throw new AppError(
+      "CONFLICT",
+      "This loyalty request was already used for a different adjustment.",
+    );
+  return result;
+}
 export const RetailOrderService = {
+  adjustLoyalty,
   overview,
   approveImportedOrder,
   rejectImportedOrder,

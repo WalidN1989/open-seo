@@ -130,6 +130,22 @@ export const orderLineSchema = z.object({
 });
 
 export const createOrderSchema = z.object({
+  creationRequestId: z.uuid().optional(),
+  operationsConnectionId: z.string().min(1).optional(),
+  paymentMethod: z
+    .enum([
+      "koko",
+      "mint_pay",
+      "payhere",
+      "cash",
+      "combank",
+      "daraz",
+      "kapruka",
+    ])
+    .optional(),
+  shippingAddress: z.string().trim().max(2000).optional(),
+  shippingCity: z.string().trim().max(120).optional(),
+  pickup: z.boolean().optional(),
   branchId: z.string().min(1).optional(),
   contactId: z.string().min(1).optional(),
   note: z.string().trim().max(2000).optional(),

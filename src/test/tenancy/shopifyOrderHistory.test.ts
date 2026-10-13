@@ -293,15 +293,30 @@ describe("Shopify history, webhook and courier boundaries", () => {
       .shipments[0];
     expect(updated.status).toBe("NOT DELIVERED");
     expect(updated.checkedAt).toBeTruthy();
-    vi.stubGlobal("fetch", async () =>
+    // A fresh result is cached; exercise provider failure only after expiry.
+    await OrderShipmentService.refresh(ORG_A, USER_OWNER_A, id, shipment.id);
+    expect(fetcher).toHaveBeenCalledTimes(1);
+    await fixture.db
+      .update(schema.commerceOrderShipments)
+      .set({
+        checkedAt: new Date(
+          Date.now() - 2 * 60 * 60 * 1000 - 1000,
+        ).toISOString(),
+      })
+      .where(eq(schema.commerceOrderShipments.id, shipment.id));
+    const expired = (await Orders.getOrder(ORG_A, USER_OWNER_A, id))
+      .shipments[0];
+    const failure = vi.fn(async () =>
       Response.json({ success: false }, { status: 503 }),
     );
+    vi.stubGlobal("fetch", failure);
     await expect(
       OrderShipmentService.refresh(ORG_A, USER_OWNER_A, id, shipment.id),
     ).rejects.toThrow("previous status is retained");
     expect(
       (await Orders.getOrder(ORG_A, USER_OWNER_A, id)).shipments[0],
-    ).toEqual(updated);
+    ).toEqual(expired);
+    expect(failure).toHaveBeenCalledTimes(1);
     vi.unstubAllGlobals();
     vi.unstubAllEnvs();
   });

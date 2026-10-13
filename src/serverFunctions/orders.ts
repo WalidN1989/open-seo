@@ -1,4 +1,6 @@
+import { citypakTrackingSettingsSchema } from "@/types/schemas/orderReview";
 import { OrderOperationsConfigService } from "@/server/features/commerce/services/OrderOperationsConfigService";
+import { citypakDashboardSchema } from "@/types/schemas/orderReview";
 import { orderOperationsSchema } from "@/types/schemas/orderReview";
 import { orderDecisionSchema } from "@/types/schemas/orderReview";
 import { orderWebhookSecretSchema } from "@/types/schemas/orderReview";
@@ -19,6 +21,12 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireAuthenticatedContext } from "./middleware";
 import { OrderService } from "@/server/features/commerce/services/OrderService";
+export const adjustOrderLoyalty = createServerFn({ method: "POST" })
+  .middleware(requireAuthenticatedContext)
+  .validator(orderLoyaltyAdjustmentSchema)
+  .handler(({ context, data }) =>
+    OrderService.adjustLoyalty(context.organizationId, context.userId, data),
+  );
 export const getOrderSyncSettings = createServerFn({ method: "GET" })
   .middleware(requireAuthenticatedContext)
   .handler(({ context }) =>
@@ -153,6 +161,33 @@ export const getOrderOperationsSettings = createServerFn({ method: "GET" })
   );
 export const getCitypakDashboard = createServerFn({ method: "GET" })
   .middleware(requireAuthenticatedContext)
-  .handler(({ context }) =>
-    OrderShipmentService.dashboard(context.organizationId, context.userId),
+  .validator(citypakDashboardSchema)
+  .handler(({ context, data }) =>
+    OrderShipmentService.dashboard(
+      context.organizationId,
+      context.userId,
+      data,
+    ),
   );
+
+export const getCitypakTrackingSettings = createServerFn({ method: "GET" })
+  .middleware(requireAuthenticatedContext)
+  .validator(z.object({ connectionId: z.string().min(1) }))
+  .handler(({ context, data }) =>
+    OrderShipmentService.trackingSettings(
+      context.organizationId,
+      context.userId,
+      data.connectionId,
+    ),
+  );
+export const configureCitypakTracking = createServerFn({ method: "POST" })
+  .middleware(requireAuthenticatedContext)
+  .validator(citypakTrackingSettingsSchema)
+  .handler(({ context, data }) =>
+    OrderShipmentService.configureTracking(
+      context.organizationId,
+      context.userId,
+      data,
+    ),
+  );
+import { orderLoyaltyAdjustmentSchema } from "@/types/schemas/orderReview";

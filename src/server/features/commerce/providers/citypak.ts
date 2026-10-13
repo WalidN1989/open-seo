@@ -8,6 +8,7 @@ export function citypakStatus(raw: string) {
   if (value.includes("OUT FOR DELIVERY")) return "OUT FOR DELIVERY";
   if (value.includes("FIRST MILE") || value.includes("RECEIVE SCAN"))
     return "FIRST MILE RECEIVE SCAN";
+  if (value.includes("RECEIVED IN FACILITY")) return "IN TRANSIT";
   return value || "UNKNOWN";
 }
 export function citypakEventTime(date?: string, time?: string) {
@@ -22,35 +23,50 @@ export async function createCitypakOrder(
   payload: Record<string, string | number>,
   fetcher: typeof fetch = fetch,
 ) {
+  // Falcon rejects non-ASCII address/contact fields, as well as descriptions.
+  const sanitized = Object.fromEntries(
+    Object.entries(payload).map(([key, value]) => [
+      key,
+      typeof value === "string"
+        ? value
+            .replace(/[^\x20-\x7E]+/g, "")
+            .trim()
+            .slice(0, key === "description" ? 128 : 250)
+        : value,
+    ]),
+  );
   const response = await fetcher(`${base}orders`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ ...payload, token: apiKey }),
+    body: JSON.stringify({ ...sanitized, token: apiKey }),
     redirect: "manual",
     signal: AbortSignal.timeout(20_000),
+  });
+  const item = z.object({
+    order_id: z.union([z.string(), z.number()]).nullish(),
+    tracking_number: z.string().min(1).optional(),
+    items: z.array(z.object({ tracking_number: z.string().min(1) })).optional(),
   });
   const parsed = z
     .object({
       success: z.literal(true),
-      data: z
-        .array(
-          z.object({
-            order_id: z.union([z.string(), z.number()]).optional(),
-            items: z
-              .array(z.object({ tracking_number: z.string().min(1) }))
-              .min(1),
-          }),
-        )
-        .min(1),
+      data: z.union([item, z.array(item).min(1)]),
     })
     .safeParse(await response.json());
-  if (!response.ok || !parsed.success)
+  const first = parsed.success
+    ? Array.isArray(parsed.data.data)
+      ? parsed.data.data[0]
+      : parsed.data.data
+    : null;
+  const trackingNumber =
+    first?.items?.[0]?.tracking_number || first?.tracking_number;
+  if (!response.ok || !trackingNumber)
     throw new Error(
       "Citypak did not confirm waybill creation. Check its order reference before retrying.",
     );
   return {
-    trackingNumber: parsed.data.data[0].items[0].tracking_number,
-    externalId: parsed.data.data[0].order_id?.toString() ?? null,
+    trackingNumber,
+    externalId: first?.order_id?.toString() ?? null,
   };
 }
 export async function trackCitypakOrder(
@@ -108,9 +124,14 @@ export async function citypakLabel(
   trackingNumber: string,
   size: "A4" | "4X6",
   fetcher: typeof fetch = fetch,
+  externalId?: string | null,
 ) {
-  const url = new URL(`${base}waybills`);
-  url.searchParams.set("tracking_numbers[]", trackingNumber);
+  const url = new URL(
+    externalId
+      ? `${base}orders/${encodeURIComponent(externalId)}/waybills`
+      : `${base}waybills`,
+  );
+  if (!externalId) url.searchParams.set("tracking_numbers[]", trackingNumber);
   url.searchParams.set("page_size", size);
   url.searchParams.set("per_page_waybill_count", size === "4X6" ? "1" : "4");
   const response = await fetcher(url.href, {
@@ -121,4 +142,51 @@ export async function citypakLabel(
   if (!response.ok || !response.headers.get("content-type")?.includes("pdf"))
     throw new Error("Citypak label is unavailable.");
   return response;
+}
+
+const callbackEventSchema = z.object({
+  tracking_number: z.string().trim().min(1).max(80),
+  status: z.string().max(120).optional(),
+  status_type: z.string().max(120).optional(),
+  reason: z.string().max(1000).nullish(),
+  delivered_datetime: z.string().max(100).optional(),
+  action_datetime: z.string().max(100).optional(),
+});
+const callbackEnvelope = z.union([
+  z.array(callbackEventSchema).min(1).max(100),
+  z.object({ events: z.array(callbackEventSchema).min(1).max(100) }),
+  callbackEventSchema,
+]);
+const deliveryStates = new Set([
+  "PENDING",
+  "FIRST MILE RECEIVE SCAN",
+  "DISPATCHED",
+  "IN TRANSIT",
+  "OUT FOR DELIVERY",
+  "DELIVERED",
+  "NOT DELIVERED",
+  "RETURNED",
+]);
+export function parseCitypakCallback(payload: unknown) {
+  const envelope = callbackEnvelope.parse(payload);
+  const events = Array.isArray(envelope)
+    ? envelope
+    : "events" in envelope
+      ? envelope.events
+      : [envelope];
+  return events.map((event) => {
+    const status = citypakStatus(event.status || event.status_type || "");
+    if (!deliveryStates.has(status))
+      throw new Error("Unsupported Citypak status");
+    const timestamp = event.delivered_datetime || event.action_datetime;
+    const parts = timestamp?.trim().split(/\s+/);
+    const eventAt = parts ? citypakEventTime(parts[0], parts[1]) : null;
+    if (!eventAt) throw new Error("Invalid Citypak timestamp");
+    return {
+      trackingNumber: event.tracking_number,
+      status,
+      reason: event.reason || null,
+      eventAt,
+    };
+  });
 }

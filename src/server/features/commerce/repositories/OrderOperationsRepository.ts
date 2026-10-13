@@ -1,3 +1,4 @@
+import { orderDispatchGuard, canDispatch } from "./OrderDispatchRepository";
 import { and, asc, desc, eq, or, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { runBatch } from "@/db/runBatch";
@@ -48,7 +49,12 @@ async function enqueue(organizationId: string, orderId: string, kind: Kind) {
     .values({ id: crypto.randomUUID(), organizationId, orderId, kind })
     .onConflictDoNothing();
 }
-async function claim(organizationId: string, orderId: string, kind: Kind) {
+async function claim(
+  organizationId: string,
+  orderId: string,
+  kind: Kind,
+  revision?: string,
+) {
   const [row] = await db
     .update(commerceOrderEffects)
     .set({ status: "sending", claimedAt: new Date().toISOString() })
@@ -58,6 +64,7 @@ async function claim(organizationId: string, orderId: string, kind: Kind) {
         eq(commerceOrderEffects.orderId, orderId),
         eq(commerceOrderEffects.kind, kind),
         eq(commerceOrderEffects.status, "queued"),
+        orderDispatchGuard(organizationId, orderId, kind, revision),
       ),
     )
     .returning();
@@ -290,6 +297,7 @@ async function shipments(organizationId: string) {
     .limit(1000);
 }
 export const OrderOperationsRepository = {
+  canDispatch,
   configuration,
   configure,
   enqueue,

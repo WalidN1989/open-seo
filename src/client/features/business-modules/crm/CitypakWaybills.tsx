@@ -12,10 +12,25 @@ export function CitypakWaybills() {
   const client = useQueryClient();
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
-  const [payment, setPayment] = useState("");
+  const [payment, setPayment] = useState<
+    "" | "paid" | "partial" | "unpaid" | "refunded"
+  >("");
+  const [paymentMethod, setPaymentMethod] = useState("");
+  const [offset, setOffset] = useState(0);
   const query = useQuery({
-    queryKey: ["commerce", "citypak"],
-    queryFn: () => getCitypakDashboard(),
+    queryKey: [
+      "commerce",
+      "citypak",
+      search,
+      status,
+      payment,
+      paymentMethod,
+      offset,
+    ],
+    queryFn: () =>
+      getCitypakDashboard({
+        data: { search, status, payment, paymentMethod, offset, limit: 50 },
+      }),
   });
   const refresh = useMutation({
     mutationFn: (data: { orderId: string; shipmentId: string }) =>
@@ -26,31 +41,15 @@ export function CitypakWaybills() {
   if (query.isLoading) return <Loading />;
   if (query.isError) return <ErrorState error={query.error} />;
   const rows = query.data?.rows || [];
-  const filtered = rows.filter(
-    ({ shipment, order }) =>
-      (!status || shipment.status === status) &&
-      (!payment || order.paymentStatus === payment) &&
-      `${order.orderNumber} ${shipment.trackingNumber} ${order.customerName} ${order.customerPhone}`
-        .toLowerCase()
-        .includes(search.toLowerCase()),
-  );
   return (
     <div className="space-y-4">
       <h1 className="text-2xl font-bold">Citypak Waybills</h1>
       <div className="flex flex-wrap gap-3">
         {[
-          ["Total", rows.length],
-          ["Paid", rows.filter((r) => r.order.paymentStatus === "paid").length],
-          [
-            "COD / unpaid",
-            rows.filter((r) => r.order.paymentStatus !== "paid").length,
-          ],
-          [
-            "In transit",
-            rows.filter(
-              (r) => !["DELIVERED", "RETURNED"].includes(r.shipment.status),
-            ).length,
-          ],
+          ["Total", query.data?.total || 0],
+          ["Paid", query.data?.paid || 0],
+          ["COD / unpaid", (query.data?.total || 0) - (query.data?.paid || 0)],
+          ["In transit", query.data?.inTransit || 0],
         ].map(([label, count]) => (
           <div className="rounded-lg border border-base-300 p-3" key={label}>
             <p className="text-xs">{label}</p>
@@ -63,12 +62,26 @@ export function CitypakWaybills() {
           className="input input-bordered input-sm flex-1"
           placeholder="Search order, tracking, customer or phone"
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) => {
+            setSearch(e.target.value);
+            setOffset(0);
+          }}
         />
         <select
           className="select select-bordered select-sm"
           value={payment}
-          onChange={(e) => setPayment(e.target.value)}
+          onChange={(e) => {
+            const value = e.target.value;
+            if (
+              value === "" ||
+              value === "paid" ||
+              value === "partial" ||
+              value === "unpaid" ||
+              value === "refunded"
+            )
+              setPayment(value);
+            setOffset(0);
+          }}
         >
           <option value="">All payment states</option>
           {["paid", "partial", "unpaid", "refunded"].map((v) => (
@@ -77,11 +90,41 @@ export function CitypakWaybills() {
         </select>
         <select
           className="select select-bordered select-sm"
+          value={paymentMethod}
+          onChange={(event) => {
+            setPaymentMethod(event.target.value);
+            setOffset(0);
+          }}
+        >
+          <option value="">All payment methods</option>
+          <option value="__unset__">None / unmapped</option>
+          {query.data?.paymentMethods.map((method) => (
+            <option key={method} value={method}>
+              {method}
+            </option>
+          ))}
+        </select>
+        <select
+          className="select select-bordered select-sm"
           value={status}
-          onChange={(e) => setStatus(e.target.value)}
+          onChange={(e) => {
+            setStatus(e.target.value);
+            setOffset(0);
+          }}
         >
           <option value="">All delivery states</option>
-          {Array.from(new Set(rows.map((r) => r.shipment.status))).map((v) => (
+          {[
+            "PENDING",
+            "FIRST MILE RECEIVE SCAN",
+            "DISPATCHED",
+            "IN TRANSIT",
+            "OUT FOR DELIVERY",
+            "DELIVERED",
+            "NOT DELIVERED",
+            "RETURNED",
+            "RTM",
+            "UNKNOWN",
+          ].map((v) => (
             <option key={v}>{v}</option>
           ))}
         </select>
@@ -107,7 +150,7 @@ export function CitypakWaybills() {
             </tr>
           </thead>
           <tbody>
-            {filtered.map(({ shipment, order }) => (
+            {rows.map(({ shipment, order }) => (
               <tr key={shipment.id}>
                 <td>{order.orderNumber}</td>
                 <td>
@@ -115,7 +158,12 @@ export function CitypakWaybills() {
                   <p className="text-xs">{order.customerPhone}</p>
                 </td>
                 <td>{shipment.trackingNumber}</td>
-                <td>{order.paymentStatus}</td>
+                <td>
+                  {order.paymentStatus}
+                  <p className="text-xs">
+                    {order.paymentMethod || "None / unmapped"}
+                  </p>
+                </td>
                 <td>
                   {formatMoney(order.totalMinor, order.currency || "LKR")}
                 </td>
@@ -163,11 +211,30 @@ export function CitypakWaybills() {
           </tbody>
         </table>
       </div>
-      {rows.length === 1000 ? (
-        <p className="text-xs">
-          Showing the newest 1,000 waybills. Filters search only these records.
-        </p>
+      {rows.length === 0 ? (
+        <p className="text-sm">No waybills match the filters.</p>
       ) : null}
+      <div className="flex items-center gap-2">
+        <button
+          className="btn btn-outline btn-sm"
+          disabled={offset === 0}
+          onClick={() => setOffset(Math.max(0, offset - 50))}
+        >
+          Previous
+        </button>
+        <span className="text-sm">
+          {query.data?.total
+            ? `${offset + 1}–${offset + rows.length} of ${query.data.total}`
+            : "0 waybills"}
+        </span>
+        <button
+          className="btn btn-outline btn-sm"
+          disabled={offset + rows.length >= (query.data?.total || 0)}
+          onClick={() => setOffset(offset + 50)}
+        >
+          Next
+        </button>
+      </div>
     </div>
   );
 }

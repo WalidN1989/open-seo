@@ -43,6 +43,7 @@ import { Route as ApiVoiceTurnRouteImport } from './routes/api/voice/turn'
 import { Route as ApiSocialMetaRouteImport } from './routes/api/social/meta'
 import { Route as ApiShopifyConnectionIdRouteImport } from './routes/api/shopify/$connectionId'
 import { Route as ApiEmailAccountIdRouteImport } from './routes/api/email/$accountId'
+import { Route as ApiCitypakConnectionIdRouteImport } from './routes/api/citypak/$connectionId'
 import { Route as ApiAutumnSplatRouteImport } from './routes/api/autumn/$'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as AuthenticatedOnboardingChatRouteImport } from './routes/_authenticated.onboarding.chat'
@@ -274,6 +275,11 @@ const ApiShopifyConnectionIdRoute = ApiShopifyConnectionIdRouteImport.update({
 const ApiEmailAccountIdRoute = ApiEmailAccountIdRouteImport.update({
   id: '/api/email/$accountId',
   path: '/api/email/$accountId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiCitypakConnectionIdRoute = ApiCitypakConnectionIdRouteImport.update({
+  id: '/api/citypak/$connectionId',
+  path: '/api/citypak/$connectionId',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiAutumnSplatRoute = ApiAutumnSplatRouteImport.update({
@@ -649,6 +655,7 @@ export interface FileRoutesByFullPath {
   '/onboarding/chat': typeof AuthenticatedOnboardingChatRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/autumn/$': typeof ApiAutumnSplatRoute
+  '/api/citypak/$connectionId': typeof ApiCitypakConnectionIdRoute
   '/api/email/$accountId': typeof ApiEmailAccountIdRoute
   '/api/shopify/$connectionId': typeof ApiShopifyConnectionIdRoute
   '/api/social/meta': typeof ApiSocialMetaRoute
@@ -739,6 +746,7 @@ export interface FileRoutesByTo {
   '/onboarding/chat': typeof AuthenticatedOnboardingChatRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/autumn/$': typeof ApiAutumnSplatRoute
+  '/api/citypak/$connectionId': typeof ApiCitypakConnectionIdRoute
   '/api/email/$accountId': typeof ApiEmailAccountIdRoute
   '/api/shopify/$connectionId': typeof ApiShopifyConnectionIdRoute
   '/api/social/meta': typeof ApiSocialMetaRoute
@@ -834,6 +842,7 @@ export interface FileRoutesById {
   '/_authenticated/onboarding/chat': typeof AuthenticatedOnboardingChatRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/autumn/$': typeof ApiAutumnSplatRoute
+  '/api/citypak/$connectionId': typeof ApiCitypakConnectionIdRoute
   '/api/email/$accountId': typeof ApiEmailAccountIdRoute
   '/api/shopify/$connectionId': typeof ApiShopifyConnectionIdRoute
   '/api/social/meta': typeof ApiSocialMetaRoute
@@ -930,6 +939,7 @@ export interface FileRouteTypes {
     | '/onboarding/chat'
     | '/api/auth/$'
     | '/api/autumn/$'
+    | '/api/citypak/$connectionId'
     | '/api/email/$accountId'
     | '/api/shopify/$connectionId'
     | '/api/social/meta'
@@ -1020,6 +1030,7 @@ export interface FileRouteTypes {
     | '/onboarding/chat'
     | '/api/auth/$'
     | '/api/autumn/$'
+    | '/api/citypak/$connectionId'
     | '/api/email/$accountId'
     | '/api/shopify/$connectionId'
     | '/api/social/meta'
@@ -1114,6 +1125,7 @@ export interface FileRouteTypes {
     | '/_authenticated/onboarding/chat'
     | '/api/auth/$'
     | '/api/autumn/$'
+    | '/api/citypak/$connectionId'
     | '/api/email/$accountId'
     | '/api/shopify/$connectionId'
     | '/api/social/meta'
@@ -1193,6 +1205,7 @@ export interface RootRouteChildren {
   ReportsReportIdRoute: typeof ReportsReportIdRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiAutumnSplatRoute: typeof ApiAutumnSplatRoute
+  ApiCitypakConnectionIdRoute: typeof ApiCitypakConnectionIdRoute
   ApiEmailAccountIdRoute: typeof ApiEmailAccountIdRoute
   ApiShopifyConnectionIdRoute: typeof ApiShopifyConnectionIdRoute
   ApiSocialMetaRoute: typeof ApiSocialMetaRoute
@@ -1450,6 +1463,13 @@ declare module '@tanstack/react-router' {
       path: '/api/email/$accountId'
       fullPath: '/api/email/$accountId'
       preLoaderRoute: typeof ApiEmailAccountIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/citypak/$connectionId': {
+      id: '/api/citypak/$connectionId'
+      path: '/api/citypak/$connectionId'
+      fullPath: '/api/citypak/$connectionId'
+      preLoaderRoute: typeof ApiCitypakConnectionIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/autumn/$': {
@@ -2173,6 +2193,7 @@ const rootRouteChildren: RootRouteChildren = {
   ReportsReportIdRoute: ReportsReportIdRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiAutumnSplatRoute: ApiAutumnSplatRoute,
+  ApiCitypakConnectionIdRoute: ApiCitypakConnectionIdRoute,
   ApiEmailAccountIdRoute: ApiEmailAccountIdRoute,
   ApiShopifyConnectionIdRoute: ApiShopifyConnectionIdRoute,
   ApiSocialMetaRoute: ApiSocialMetaRoute,

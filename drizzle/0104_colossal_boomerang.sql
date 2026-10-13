@@ -1,0 +1,1 @@
+ALTER TABLE `commerce_orders` ADD `operations_connection_id` text REFERENCES integration_connections(id) ON DELETE SET NULL;

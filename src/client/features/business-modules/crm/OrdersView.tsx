@@ -1,271 +1,150 @@
-import { formatMoney } from "@/shared/currencies";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { Clock, FileText, Hash, RotateCcw, ShoppingCart } from "lucide-react";
+import { getOrderWorkspace } from "@/serverFunctions/orderWorkspace";
+import { useWorkspaceCurrency } from "@/client/hooks/useWorkspaceCurrency";
+import { OrderReturnsView } from "./OrderReturnsView";
 import { OrderSequence } from "./OrderSequence";
 import { OrderSyncPanel } from "./OrderSyncPanel";
-import { OrderDetail } from "./OrderDetail";
-import { BranchPicker, useBranchSelection } from "./BranchPicker";
-import { useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
-import { Plus, ShoppingCart } from "lucide-react";
-import {
-  createCommerceOrder,
-  listCommerceOrders,
-} from "@/serverFunctions/commerce";
-import { getStandardErrorMessage } from "@/client/lib/error-messages";
-import { useWorkspaceCurrency } from "@/client/hooks/useWorkspaceCurrency";
+import { OrdersTable } from "./OrdersTable";
+import { OrderExportButton } from "./OrderExportButton";
+import { OrderCreateForm } from "./OrderCreateForm";
 import { ErrorState, Loading } from "./inventoryShared";
-
-const ORDERS_KEY = ["commerce", "orders"];
-
+const tabs = [
+  { key: "all", label: "All Orders", icon: FileText },
+  { key: "create", label: "Create Order", icon: ShoppingCart },
+  { key: "pending", label: "Pending Approval", icon: Clock },
+  { key: "adjustments", label: "Returns & Refunds", icon: RotateCcw },
+  { key: "sequence", label: "Missing Sequence", icon: Hash },
+] as const;
+type Tab = (typeof tabs)[number]["key"];
 export function CrmOrdersView() {
   const money = useWorkspaceCurrency();
-  const queryClient = useQueryClient();
-  const selection = useBranchSelection();
-  const [tab, setTab] = useState<"all" | "pending" | "adjustments">("all");
+  const [tab, setTab] = useState<Tab>("all");
   const [search, setSearch] = useState("");
   const [offset, setOffset] = useState(0);
-  const [showSequence, setSequence] = useState(false);
-  const [creating, setCreating] = useState(false);
   const [openOrderId, setOpenOrderId] = useState<string | null>(null);
-
+  const listTab = tab === "pending" || tab === "adjustments" ? tab : "all";
   const orders = useQuery({
-    queryKey: [...ORDERS_KEY, tab, search, offset],
+    queryKey: ["commerce", "orders", listTab, search, offset],
     queryFn: () =>
-      listCommerceOrders({ data: { limit: 50, tab, search, offset } }),
+      getOrderWorkspace({ data: { limit: 50, tab: listTab, search, offset } }),
   });
-
-  const create = useMutation({
-    mutationFn: (input: {
-      description: string;
-      quantity: number;
-      unitPriceMinor: number;
-    }) =>
-      createCommerceOrder({
-        data: {
-          branchId: selection.branchId,
-          discountMinor: 0,
-          deliveryMinor: 0,
-          taxMinor: 0,
-          lines: [input],
-        },
-      }),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ORDERS_KEY });
-      setCreating(false);
-      toast.success("Draft order created");
-    },
-    onError: (error) => toast.error(getStandardErrorMessage(error)),
-  });
-
-  if (orders.isLoading) return <Loading />;
-  if (orders.isError) return <ErrorState error={orders.error} />;
-
-  const rows = orders.data ?? [];
-
+  const rows = orders.data?.rows ?? [];
+  const total = orders.data?.total ?? 0;
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold">Orders</h1>
-          <p className="text-sm text-base-content/60">
-            Review Shopify orders here while Zoho continues handling
-            fulfillment.
-          </p>
-        </div>
-        <button
-          className="btn btn-primary btn-sm"
-          onClick={() => setCreating((open) => !open)}
-        >
-          <Plus className="size-4" /> Order
-        </button>
-      </div>
-
+    <div className="space-y-4">
+      <h1 className="text-2xl font-bold">Orders</h1>
       <OrderSyncPanel />
-      <div className="flex flex-wrap items-center gap-2">
-        {(["all", "pending", "adjustments"] as const).map((value) => (
-          <button
-            key={value}
-            className={`btn btn-sm ${tab === value ? "btn-primary" : "btn-ghost"}`}
-            onClick={() => {
-              setSequence(false);
-              setTab(value);
-              setOffset(0);
-              setOpenOrderId(null);
-            }}
+      <section className="rounded-xl border border-base-300 bg-base-100 p-3 sm:p-5">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-base-300 pb-2">
+          <div
+            className="flex flex-wrap gap-1"
+            role="tablist"
+            aria-label="Order sections"
           >
-            {value === "all"
-              ? "All Orders"
-              : value === "pending"
-                ? "Pending Approval"
-                : "Returns & Refunds"}
-          </button>
-        ))}
-        <button
-          className="btn btn-ghost btn-sm"
-          onClick={() => setSequence(!showSequence)}
-        >
-          Missing Sequence
-        </button>
-        <input
-          className="input input-bordered input-sm flex-1"
-          placeholder="Search order ID or customer"
-          value={search}
-          onChange={(event) => {
-            setSearch(event.target.value);
-            setOffset(0);
-          }}
-        />
-      </div>
-      {showSequence ? <OrderSequence /> : null}
-      {creating ? (
-        <form
-          className="flex flex-wrap items-end gap-2 rounded-xl border border-base-300 p-4"
-          onSubmit={(event) => {
-            event.preventDefault();
-            const form = new FormData(event.currentTarget);
-            const read = (name: string) => {
-              const value = form.get(name);
-              return typeof value === "string" ? value.trim() : "";
-            };
-            const price = Number(read("price"));
-            const quantity = Number(read("quantity"));
-            if (!Number.isFinite(price) || price < 0) {
-              toast.error("Enter a price as a positive amount.");
-              return;
-            }
-            if (!Number.isInteger(quantity) || quantity < 1) {
-              toast.error("Enter a whole quantity of at least one.");
-              return;
-            }
-            create.mutate({
-              description: read("description"),
-              quantity,
-              unitPriceMinor: Math.round(price * 100),
-            });
-          }}
-        >
-          <BranchPicker selection={selection} />
-          <input
-            name="description"
-            placeholder="what was ordered"
-            required
-            className="input input-bordered input-sm flex-1"
-          />
-          <input
-            name="quantity"
-            type="number"
-            min="1"
-            step="1"
-            defaultValue="1"
-            className="input input-bordered input-sm w-24"
-          />
-          <input
-            name="price"
-            type="number"
-            min="0"
-            step="0.01"
-            placeholder="unit price"
-            className="input input-bordered input-sm w-32"
-          />
-          <button
-            className="btn btn-primary btn-sm"
-            disabled={create.isPending || !selection.branchId}
-          >
-            Save draft
-          </button>
-        </form>
-      ) : null}
-
-      <section className="rounded-xl border border-base-300">
-        <div className="border-b border-base-300 p-4">
-          <h2 className="flex items-center gap-2 font-semibold">
-            <ShoppingCart className="size-4" /> Orders
-            <span className="badge badge-sm ml-1">{rows.length}</span>
-          </h2>
-        </div>
-        {rows.length === 0 ? (
-          <p className="p-8 text-center text-sm text-base-content/50">
-            No orders yet
-          </p>
-        ) : (
-          <div className="divide-y divide-base-300">
-            {rows.map((order) => (
-              <div key={order.id} className="p-4">
-                <button
-                  type="button"
-                  className="flex w-full items-center justify-between gap-3 text-left"
-                  onClick={() =>
-                    setOpenOrderId((open) =>
-                      open === order.id ? null : order.id,
-                    )
-                  }
-                >
-                  <div className="min-w-0">
-                    <p className="truncate font-medium">{order.orderNumber}</p>
-                    <p className="text-xs text-base-content/50">
-                      {new Date(order.createdAt).toLocaleString()} ·{" "}
-                      {order.customerName || order.fulfilmentStatus}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span className="font-medium">
-                      {formatMoney(
-                        order.totalMinor,
-                        order.currency || money.currency,
-                      )}
-                    </span>
-                    <OrderStatus
-                      status={
-                        order.status === "draft" &&
-                        order.approvalStatus === "rejected"
-                          ? "review_rejected"
-                          : order.status
-                      }
-                    />
-                  </div>
-                </button>
-                {openOrderId === order.id ? (
-                  <OrderDetail orderId={order.id} status={order.status} />
+            {tabs.map(({ key, label, icon: Icon }) => (
+              <button
+                key={key}
+                role="tab"
+                aria-selected={tab === key}
+                aria-controls="order-tab-panel"
+                className={`btn btn-sm ${tab === key ? "btn-primary" : "btn-ghost"}`}
+                onClick={() => {
+                  setTab(key);
+                  setOffset(0);
+                  setOpenOrderId(null);
+                }}
+              >
+                <Icon className="size-3.5" />
+                {label}
+                {key === "pending" && orders.data ? (
+                  <span className="badge badge-warning badge-sm">
+                    {orders.data.pendingCount}
+                  </span>
                 ) : null}
-              </div>
+              </button>
             ))}
           </div>
-        )}
+          <div className="flex flex-wrap gap-2">
+            <OrderExportButton search={search} tab={listTab} />
+            <OrderExportButton search={search} tab={listTab} lineItems />
+          </div>
+        </div>
+        <div id="order-tab-panel" role="tabpanel" className="pt-4">
+          {tab === "create" ? (
+            <OrderCreateForm
+              onCreated={(orderId) => {
+                setTab("all");
+                setOffset(0);
+                setSearch("");
+                setOpenOrderId(orderId);
+              }}
+            />
+          ) : tab === "sequence" ? (
+            <OrderSequence />
+          ) : tab === "adjustments" ? (
+            <OrderReturnsView />
+          ) : (
+            <>
+              <input
+                aria-label="Search orders"
+                className="input input-bordered input-sm mb-4 w-full sm:max-w-md"
+                placeholder="Search order #, tracking #, customer, SKU or book…"
+                value={search}
+                onChange={(event) => {
+                  setSearch(event.target.value);
+                  setOffset(0);
+                  setOpenOrderId(null);
+                }}
+              />
+              {tab === "pending" && orders.data ? (
+                <p className="mb-3 text-xs text-warning">{total} pending</p>
+              ) : null}
+              {orders.isLoading ? (
+                <Loading />
+              ) : orders.isError ? (
+                <ErrorState error={orders.error} />
+              ) : (
+                <OrdersTable
+                  rows={rows}
+                  organizationId={orders.data?.organizationId || ""}
+                  currency={money.currency}
+                  openOrderId={openOrderId}
+                  setOpenOrderId={setOpenOrderId}
+                />
+              )}
+              <div className="mt-4 flex items-center justify-end gap-3">
+                <span className="text-xs text-base-content/60">
+                  {total
+                    ? `${offset + 1}–${Math.min(offset + rows.length, total)} of ${total}`
+                    : "0 orders"}
+                </span>
+                <button
+                  className="btn btn-ghost btn-sm"
+                  disabled={offset === 0 || orders.isFetching}
+                  onClick={() => {
+                    setOffset(Math.max(0, offset - 50));
+                    setOpenOrderId(null);
+                  }}
+                >
+                  Previous
+                </button>
+                <button
+                  className="btn btn-ghost btn-sm"
+                  disabled={offset + rows.length >= total || orders.isFetching}
+                  onClick={() => {
+                    setOffset(offset + 50);
+                    setOpenOrderId(null);
+                  }}
+                >
+                  Next
+                </button>
+              </div>
+            </>
+          )}
+        </div>
       </section>
-      <div className="flex items-center justify-end gap-3">
-        <button
-          className="btn btn-ghost btn-sm"
-          disabled={offset === 0}
-          onClick={() => setOffset(Math.max(0, offset - 50))}
-        >
-          Previous
-        </button>
-        <span className="text-xs">Page {offset / 50 + 1}</span>
-        <button
-          className="btn btn-ghost btn-sm"
-          disabled={rows.length < 50}
-          onClick={() => setOffset(offset + 50)}
-        >
-          Next
-        </button>
-      </div>
     </div>
   );
-}
-
-function OrderStatus({ status }: { status: string }) {
-  if (status === "review_rejected")
-    return (
-      <span className="badge badge-warning badge-sm">Review rejected</span>
-    );
-  if (status === "confirmed") {
-    return <span className="badge badge-success badge-sm">Confirmed</span>;
-  }
-  if (status === "cancelled") {
-    return <span className="badge badge-ghost badge-sm">Cancelled</span>;
-  }
-  if (status === "returned") {
-    return <span className="badge badge-warning badge-sm">Returned</span>;
-  }
-  return <span className="badge badge-outline badge-sm">Draft</span>;
 }

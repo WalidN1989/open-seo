@@ -1,3 +1,30 @@
+-- Rebuild the released shipment table: SQLite cannot ALTER ADD a nonconstant
+-- CURRENT_TIMESTAMP default when existing shipments are present. No table
+-- references shipments until commerce_shipment_events is created below.
+CREATE TABLE `__new_commerce_order_shipments` (
+  `id` text PRIMARY KEY NOT NULL,
+  `organization_id` text NOT NULL,
+  `order_id` text NOT NULL,
+  `provider` text NOT NULL,
+  `tracking_number` text NOT NULL,
+  `status` text DEFAULT 'UNKNOWN' NOT NULL,
+  `checked_at` text,
+  `created_at` text DEFAULT (current_timestamp) NOT NULL,
+  FOREIGN KEY (`organization_id`) REFERENCES `organization`(`id`) ON UPDATE no action ON DELETE cascade,
+  FOREIGN KEY (`order_id`) REFERENCES `commerce_orders`(`id`) ON UPDATE no action ON DELETE cascade
+);
+--> statement-breakpoint
+INSERT INTO `__new_commerce_order_shipments` (`id`, `organization_id`, `order_id`, `provider`, `tracking_number`, `status`, `checked_at`, `created_at`)
+SELECT `id`, `organization_id`, `order_id`, `provider`, `tracking_number`, `status`, `checked_at`, COALESCE(`checked_at`, CURRENT_TIMESTAMP) FROM `commerce_order_shipments`;
+--> statement-breakpoint
+DROP TABLE `commerce_order_shipments`;
+--> statement-breakpoint
+ALTER TABLE `__new_commerce_order_shipments` RENAME TO `commerce_order_shipments`;
+--> statement-breakpoint
+CREATE UNIQUE INDEX `commerce_order_shipments_identity_idx` ON `commerce_order_shipments` (`organization_id`,`order_id`,`provider`,`tracking_number`);
+--> statement-breakpoint
+CREATE INDEX `commerce_order_shipments_order_idx` ON `commerce_order_shipments` (`order_id`);
+--> statement-breakpoint
 CREATE TABLE `commerce_loyalty_entries` (
 	`id` text PRIMARY KEY NOT NULL,
 	`organization_id` text NOT NULL,

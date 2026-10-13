@@ -5,6 +5,7 @@ import {
   createCitypakOrder,
   trackCitypakOrder,
   citypakLabel,
+  parseCitypakCallback,
 } from "./citypak";
 describe("Citypak order boundaries", () => {
   it("keeps failed delivery distinct and reads Sri Lanka timestamps", () => {
@@ -78,5 +79,74 @@ describe("Citypak order boundaries", () => {
       status: "NOT DELIVERED",
       eventAt: "2026-10-13T04:49:00.000Z",
     });
+  });
+});
+
+describe("Citypak legacy response and callback parity", () => {
+  it("sanitizes contacts and accepts a direct provider tracking identity", async () => {
+    const fetcher = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            success: true,
+            data: { order_id: 42, tracking_number: "D42" },
+          }),
+        ),
+      );
+    expect(
+      await createCitypakOrder(
+        "test-key",
+        {
+          reference: "SHOP-42",
+          to_name: "Nimal සිං",
+          from_address_line_1: "Colombo සිං",
+          cash_on_delivery_amount: 25,
+        },
+        fetcher,
+      ),
+    ).toEqual({ trackingNumber: "D42", externalId: "42" });
+    expect(JSON.parse(String(fetcher.mock.calls[0][1]?.body))).toMatchObject({
+      token: "test-key",
+      to_name: "Nimal",
+      from_address_line_1: "Colombo",
+      cash_on_delivery_amount: 25,
+    });
+  });
+  it("prefers the stored Citypak order ID when printing", async () => {
+    const fetcher = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(
+        new Response("pdf", { headers: { "content-type": "application/pdf" } }),
+      );
+    await citypakLabel("test-key", "D42", "A4", fetcher, "42");
+    const url = new URL(String(fetcher.mock.calls[0][0]));
+    expect(url.pathname).toBe("/customer_api/v1/orders/42/waybills");
+    expect(url.searchParams.get("per_page_waybill_count")).toBe("4");
+  });
+  it("accepts supported envelopes with stable Sri Lanka timestamps", () => {
+    const event = {
+      tracking_number: "D42",
+      status_type: "RECEIVED IN FACILITY",
+      action_datetime: "14-10-2026 10:00:00",
+    };
+    for (const payload of [event, [event], { events: [event] }])
+      expect(parseCitypakCallback(payload)).toEqual([
+        {
+          trackingNumber: "D42",
+          status: "IN TRANSIT",
+          reason: null,
+          eventAt: "2026-10-14T04:30:00.000Z",
+        },
+      ]);
+    expect(() =>
+      parseCitypakCallback({ ...event, status_type: "invented" }),
+    ).toThrow();
+    expect(() =>
+      parseCitypakCallback({ ...event, action_datetime: undefined }),
+    ).toThrow();
+    expect(() =>
+      parseCitypakCallback(Array.from({ length: 101 }, () => event)),
+    ).toThrow();
   });
 });

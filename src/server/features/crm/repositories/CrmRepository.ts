@@ -158,6 +158,11 @@ async function leadBelongsToOrganization(
  * whichever module happens to reference one. Commerce calls this before
  * attaching a contact to an order.
  */
+async function getContact(organizationId: string, contactId: string) {
+  const [contact] = await db.select().from(crmContacts).where(and(eq(crmContacts.id, contactId), eq(crmContacts.organizationId, organizationId))).limit(1);
+  return contact ?? null;
+}
+
 async function contactBelongsToOrganization(
   organizationId: string,
   contactId: string,
@@ -466,6 +471,7 @@ export const CrmRepository = {
   createStages,
   listActivities,
   contactBelongsToOrganization,
+  getContact,
   findContactByEmail,
   leadExistsForContactSource,
   listCompanies,

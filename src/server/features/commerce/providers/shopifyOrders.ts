@@ -40,6 +40,7 @@ export const shopifyOrderSchema = z.object({
   email: z.string().nullish(),
   phone: z.string().nullish(),
   financial_status: z.string(),
+  payment_gateway_names: z.array(z.string().max(120)).max(20).default([]),
   fulfillment_status: z.string().nullish(),
   cancelled_at: z.string().nullish(),
   total_price: money,
@@ -132,6 +133,7 @@ export function shopifyOrderValues(order: ShopifyOrder) {
     externalUpdatedAt: new Date(order.updated_at).toISOString(),
     createdAt: new Date(order.created_at).toISOString(),
     currency: order.currency,
+    paymentMethod: order.payment_gateway_names[0] || null,
     customerName,
     customerPhone: orderPhone(
       order.phone ||

@@ -1678,3 +1678,71 @@ and webhook secret. Do not enable loyalty earning until reversal parity exists.
 Do not disconnect legacy Shopify/Citypak/invoice/loyalty processing until verified
 DU parity and an explicit cutover checkpoint. Keep unrelated FitSMS/mydemoview
 Shopify subscriptions and the separate Point of Sale Twilio connector untouched.
+
+### 2026-10-14 — receiver hotfix and customer reconciliation snapshot
+
+Full synthetic PostgreSQL EXPLAIN reproduced42P18: a nullable Shopify variant
+parameter used in IS NULL lacked an SQL type. PR #39 adds an explicit text cast,
+SQLSTATE-only diagnostics, PostgreSQL compilation coverage and SQLite mapping
+regression. Fifteen focused tests, ci:check, TypeScript, selfhost build and GitHub
+CI/Docker passed. Merged963f10661d189cef9f14de41c5452aa4ad6d92eb; Railway
+b4998399-ca75-4c99-a939-c365cf2d979e is building. Replay/subscription activation
+still pending. No migration or automatic-effect change in this hotfix.
+
+Read-only order-export preflight:2,282 orders,1,708 Shopify IDs,0 SHOP-prefixed
+rows missing a Shopify ID,904 tracking references,0 orphan lines. Order address
+columns are empty; delivery details are linked customers. Exported only customers
+referenced by this tenant's orders through Lovable Cloud SQL:1,675 records,
+1,648 with addresses,1,560 with mobile numbers. Private validated snapshot:
+/private/tmp/booxworm-customers-2026-10-14.csv (0600). No DOB, notes or credential
+fields exported; no DU/legacy data mutation. This snapshot has not been imported.
+
+Owner explicitly approved native workflow code/tests after automatic approval
+review requested a specific confirmation: retry-safe create, explicit fulfillment
+config, atomic stock transitions, once-only loyalty reversal, gated invoice and
+Citypak queue. This approval does not activate live providers or deploy full parity.
+
+### 2026-10-14 — Shopify order webhooks connected and replay verified
+
+Receiver hotfix deployment b4998399-ca75-4c99-a939-c365cf2d979e is SUCCESS
+(commit963f10661d189cef9f14de41c5452aa4ad6d92eb). Two signed replays of existing
+SHOP-6731 both returned200; Neon query confirms exactly one pending row. Live
+DU Pending Approval shows that one order. Proof /private/tmp/du-shopify-live-pending.png.
+Six app-owned subscriptions now point to
+https://seo.digitalurgency.com.au/api/shopify/45876de3-bdbe-42cd-9e60-4498e4db72d8:
+orders/create2071785177309; orders/updated2071785210077;
+orders/cancelled2071785242845; orders/paid2071785275613;
+orders/fulfilled2071785341149; orders/partially_fulfilled2071785373917.
+Final Shopify inventory verified one subscription per topic at this destination.
+Legacy and unrelated subscriptions unchanged. This is mirror ingestion only;
+no automatic confirmations, invoices, loyalty, stock or courier actions deployed.
+No test customer message, shipment or new Shopify order was created.
+
+Local reconciliation: all1,675 linked exported customer balances exactly match
+the scoped1,143 order_earn loyalty ledger entries (zero mismatches). Keep the
+snapshots private. Full history/customer/loyalty import is not yet performed.
+
+### 2026-10-14 — Orders/Citypak local implementation checkpoint
+
+The codex/booxworm-order-cutover branch adds all five Orders tabs, customer/basket
+creation, server search/pagination and safe CSV exports, monthly return history,
+local gap annotations, Citypak dashboard/labels/callback/tracking, native retry-safe
+creation and atomic stock transitions, invoice payment reconciliation and loyalty
+adjustments/reversal. Queued provider actions claim current order/config eligibility
+and recheck immediately before dispatch; ambiguous outcomes never auto-retry.
+Native order effects use an explicit operations profile separate from source identity.
+
+SQLite0098 matches the released file exactly. Unreleased0099 rebuilds shipments
+without losing rows to add created_at; upgrade regression verifies indexes/FKs and
+row preservation. Added0102–0104 / PG0081–0083 for payment method, local gap annotations
+and native operations configuration. No production migration/provider activation.
+Isolated browser checks cover five tabs, create failure recovery, returns/gap controls
+and mobile layout. Synthetic PostgreSQL execution covers financial/loyalty, dispatch
+guards and Returns/gap queries. Full suite/checkpoint review remains in progress.
+
+Still required before full Lovable retirement: verified Citypak credential entry and
+vendor callback/header compatibility; reconcile/import legacy customer/order/invoice/
+loyalty/waybill outcomes; assign pending-order ownership; monetary refund/credit-note
+and courier-expense accounting, merchant fees/shipping rules and historical-date/draft
+form parity; inventory authority for imported Shopify orders. Native WhatsApp order
+confirmations remain unqueued. Do not call the entire legacy app replaced or disconnected.

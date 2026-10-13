@@ -1,3 +1,4 @@
+import { OrderShipmentService } from "@/server/features/commerce/services/OrderShipmentService";
 import { OrderOperationsService } from "@/server/features/commerce/services/OrderOperationsService";
 import { withPgClient } from "@/db";
 import { registerCronJob } from "./registry";
@@ -27,6 +28,13 @@ let registered = false;
 export function registerBusinessCronJobs() {
   if (registered) return;
   registered = true;
+  registerCronJob({
+    name: "commerce.citypakTracking",
+    tier: "standard",
+    run: async () => {
+      await withPgClient(() => OrderShipmentService.runDueTracking());
+    },
+  });
   registerCronJob({
     name: "commerce.orderOperations",
     tier: "fast",

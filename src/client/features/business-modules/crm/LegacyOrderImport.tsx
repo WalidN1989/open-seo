@@ -1,3 +1,4 @@
+import { CitypakConnectionSettings } from "./CitypakConnectionSettings";
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -133,6 +134,7 @@ export function LegacyOrderImport({ connectionId }: { connectionId: string }) {
         >
           Save tracking connection
         </button>
+        <CitypakConnectionSettings connectionId={connectionId} />
       </div>
     </details>
   );

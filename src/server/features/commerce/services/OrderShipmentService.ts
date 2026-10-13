@@ -1,5 +1,13 @@
+import { BusinessModuleRepository } from "@/server/features/business-modules/repositories/BusinessModuleRepository";
+import { CitypakRepository } from "../repositories/CitypakRepository";
+import type { citypakTrackingSettingsSchema } from "@/types/schemas/orderReview";
+import type { citypakDashboardSchema } from "@/types/schemas/orderReview";
 import { OrderOperationsRepository } from "../repositories/OrderOperationsRepository";
-import { trackCitypakOrder, citypakLabel } from "../providers/citypak";
+import {
+  trackCitypakOrder,
+  citypakLabel,
+  parseCitypakCallback,
+} from "../providers/citypak";
 import type { z } from "zod";
 import { OrderShipmentRepository as Repo } from "../repositories/OrderShipmentRepository";
 import { BusinessModuleService } from "@/server/features/business-modules/services/BusinessModuleService";
@@ -24,7 +32,11 @@ async function link(
     "manage",
   );
   const order = await OrderRepository.getOrder(organizationId, input.orderId);
-  if (!order || !order.integrationConnectionId) throw new AppError("NOT_FOUND");
+  if (
+    !order ||
+    !(order.operationsConnectionId || order.integrationConnectionId)
+  )
+    throw new AppError("NOT_FOUND");
   await Repo.link(organizationId, order.id, input.trackingNumber);
 }
 async function configure(
@@ -68,11 +80,14 @@ async function refresh(
   const shipment = (
     await OrderRepository.shipments(organizationId, orderId)
   ).find((row) => row.id === shipmentId && row.provider === "Citypak");
-  if (!order?.integrationConnectionId || !shipment)
+  if (
+    !(order?.operationsConnectionId || order?.integrationConnectionId) ||
+    !shipment
+  )
     throw new AppError("NOT_FOUND");
   const config = await Repo.configuration(
     organizationId,
-    order.integrationConnectionId,
+    order.operationsConnectionId || order.integrationConnectionId || "",
   );
   const credentials = await decryptCredentials(config?.courierCredentials);
   if (!credentials.API_KEY)
@@ -80,10 +95,22 @@ async function refresh(
       "INTEGRATION_CHECK_FAILED",
       "Enter the Citypak API key in this order's connection settings first.",
     );
-  const tracking = await trackCitypakOrder(
-    credentials.API_KEY,
-    shipment.trackingNumber,
-  );
+  return refreshShipment(organizationId, shipment, credentials.API_KEY);
+}
+async function refreshShipment(
+  organizationId: string,
+  shipment: NonNullable<
+    Awaited<ReturnType<typeof CitypakRepository.trackingShipment>>
+  >,
+  apiKey: string,
+) {
+  if (["DELIVERED", "RETURNED", "RTM"].includes(shipment.status)) return;
+  if (
+    shipment.checkedAt &&
+    Date.now() - Date.parse(shipment.checkedAt) < 2 * 60 * 60 * 1000
+  )
+    return;
+  const tracking = await trackCitypakOrder(apiKey, shipment.trackingNumber);
   for (const event of tracking.events) {
     if (event.eventAt)
       await OrderOperationsRepository.shipmentEvent(
@@ -92,12 +119,8 @@ async function refresh(
         { ...event, eventAt: event.eventAt, source: "pull" },
       );
   }
-  if (
-    tracking.events.length &&
-    !tracking.events.some((event) => event.eventAt) &&
-    !["DELIVERED", "RETURNED"].includes(shipment.status)
-  ) {
-    const latest = tracking.events.at(-1)!;
+  const latest = tracking.events.at(-1);
+  if (latest && !latest.eventAt) {
     await OrderOperationsRepository.shipmentEvent(organizationId, shipment.id, {
       ...latest,
       eventAt: new Date().toISOString(),
@@ -117,13 +140,175 @@ async function refresh(
       source: "pull",
     });
   }
+  // A successful pull remains fresh even when it contains no newer events.
+  await CitypakRepository.touch(organizationId, shipment.id);
 }
-async function dashboard(organizationId: string, userId: string) {
+async function dashboard(
+  organizationId: string,
+  userId: string,
+  filters: z.infer<typeof citypakDashboardSchema>,
+) {
   await BusinessModuleService.requireAccess(organizationId, userId, "crm");
   return {
     organizationId,
-    rows: await OrderOperationsRepository.shipments(organizationId),
+    ...(await CitypakRepository.dashboard(organizationId, filters)),
   };
+}
+async function trackingAccess(organizationId: string) {
+  const entitlements =
+    await BusinessModuleRepository.listEntitlements(organizationId);
+  return ["crm", "integrations"].every((key) =>
+    entitlements.some(
+      (row) => row.moduleKey === key && row.status === "enabled",
+    ),
+  );
+}
+async function runDueTracking() {
+  let processed = 0;
+  for (const config of await CitypakRepository.trackingConnections()) {
+    const credentials = await decryptCredentials(config.courierCredentials);
+    if (
+      credentials.TRACKING_ENABLED !== "true" ||
+      !credentials.API_KEY ||
+      !(await trackingAccess(config.organizationId))
+    )
+      continue;
+    for (const candidate of await CitypakRepository.dueTracking(
+      config.connectionId,
+    )) {
+      if (processed >= 20) return;
+      processed++;
+      try {
+        await refreshShipment(
+          config.organizationId,
+          candidate.shipment,
+          credentials.API_KEY,
+        );
+      } catch {
+        // Retain the last status; bound failed pulls to the same two-hour cadence.
+        await CitypakRepository.touch(
+          config.organizationId,
+          candidate.shipment.id,
+        );
+      }
+    }
+  }
+}
+
+async function trackingSettings(
+  organizationId: string,
+  userId: string,
+  connectionId: string,
+) {
+  await BusinessModuleService.requireAccess(
+    organizationId,
+    userId,
+    "crm",
+    "manage",
+  );
+  await BusinessModuleService.requireAccess(
+    organizationId,
+    userId,
+    "integrations",
+    "manage",
+  );
+  const config = await Repo.configuration(organizationId, connectionId);
+  if (!config) throw new AppError("NOT_FOUND");
+  const credentials = await decryptCredentials(config.courierCredentials);
+  return {
+    trackingEnabled: credentials.TRACKING_ENABLED === "true",
+    webhookConfigured: Boolean(credentials.WEBHOOK_SECRET),
+  };
+}
+async function configureTracking(
+  organizationId: string,
+  userId: string,
+  input: z.infer<typeof citypakTrackingSettingsSchema>,
+) {
+  await BusinessModuleService.requireAccess(
+    organizationId,
+    userId,
+    "crm",
+    "manage",
+  );
+  await BusinessModuleService.requireAccess(
+    organizationId,
+    userId,
+    "integrations",
+    "manage",
+  );
+  const config = await Repo.configuration(organizationId, input.connectionId);
+  if (!config) throw new AppError("NOT_FOUND");
+  const credentials = await decryptCredentials(config.courierCredentials);
+  if (input.trackingEnabled && !credentials.API_KEY)
+    throw new AppError(
+      "VALIDATION_ERROR",
+      "Connect the Citypak API key before enabling tracking.",
+    );
+  await Repo.saveCredentials(
+    organizationId,
+    input.connectionId,
+    await mergeCredentials(config.courierCredentials, {
+      TRACKING_ENABLED: input.trackingEnabled ? "true" : "false",
+      ...(input.webhookSecret ? { WEBHOOK_SECRET: input.webhookSecret } : {}),
+    }),
+  );
+}
+async function callback(
+  connectionId: string,
+  providedSecret: string | null,
+  payload: unknown,
+) {
+  const row = await CitypakRepository.connection(connectionId);
+  if (!row || !(await trackingAccess(row.config.organizationId))) return 404;
+  const credentials = await decryptCredentials(row.config.courierCredentials);
+  if (
+    !credentials.WEBHOOK_SECRET ||
+    !providedSecret ||
+    providedSecret.length > 1000
+  )
+    return 401;
+  const [expected, provided] = await Promise.all(
+    [credentials.WEBHOOK_SECRET, providedSecret].map((value) =>
+      crypto.subtle.digest("SHA-256", new TextEncoder().encode(value)),
+    ),
+  );
+  const bytes = new Uint8Array(provided);
+  let difference = 0;
+  new Uint8Array(expected).forEach((byte, index) => {
+    difference |= byte ^ bytes[index];
+  });
+  if (difference !== 0) return 401;
+  let events;
+  try {
+    events = parseCitypakCallback(payload);
+  } catch {
+    return 422;
+  }
+  for (const event of events) {
+    const shipment = await CitypakRepository.trackingShipment(
+      row.config.organizationId,
+      connectionId,
+      event.trackingNumber,
+    );
+    if (
+      !shipment ||
+      (["DELIVERED", "RETURNED", "RTM"].includes(shipment.status) &&
+        !["DELIVERED", "RETURNED"].includes(event.status))
+    )
+      continue;
+    await OrderOperationsRepository.shipmentEvent(
+      row.config.organizationId,
+      shipment.id,
+      {
+        status: event.status,
+        reason: event.reason,
+        eventAt: event.eventAt,
+        source: "webhook",
+      },
+    );
+  }
+  return 200;
 }
 async function label(
   organizationId: string,
@@ -137,16 +322,25 @@ async function label(
   const shipment = (
     await OrderRepository.shipments(organizationId, orderId)
   ).find((row) => row.id === shipmentId && row.provider === "Citypak");
-  if (!order?.integrationConnectionId || !shipment)
+  if (
+    !(order?.operationsConnectionId || order?.integrationConnectionId) ||
+    !shipment
+  )
     throw new AppError("NOT_FOUND");
   const config = await Repo.configuration(
     organizationId,
-    order.integrationConnectionId,
+    order.operationsConnectionId || order.integrationConnectionId || "",
   );
   const credentials = await decryptCredentials(config?.courierCredentials);
   if (!credentials.API_KEY)
     throw new AppError("INTEGRATION_CHECK_FAILED", "Connect Citypak first.");
-  return citypakLabel(credentials.API_KEY, shipment.trackingNumber, size);
+  return citypakLabel(
+    credentials.API_KEY,
+    shipment.trackingNumber,
+    size,
+    fetch,
+    shipment.externalId,
+  );
 }
 export const OrderShipmentService = {
   link,
@@ -154,4 +348,8 @@ export const OrderShipmentService = {
   refresh,
   dashboard,
   label,
+  runDueTracking,
+  trackingSettings,
+  configureTracking,
+  callback,
 };

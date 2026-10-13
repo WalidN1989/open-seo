@@ -1,3 +1,4 @@
+import { mirroredFinancialStatements } from "./OrderFinancialRepository";
 import { and, eq, gt, inArray, isNull, or, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { runBatch } from "@/db/runBatch";
@@ -221,6 +222,18 @@ async function ingest(
           ),
         ),
       }),
+    ...mirroredFinancialStatements(
+      tx,
+      organizationId,
+      orderId,
+      {
+        ...values,
+        hasRefund: ["refunded", "partially_refunded"].includes(
+          payload.financial_status,
+        ),
+      },
+      applied,
+    ),
     // Retain lines that are still present. Preserve manually reviewed mapping
     // on repeated snapshots; changed price/qty always needs a fresh review.
     tx.delete(commerceOrderLines).where(
@@ -274,7 +287,7 @@ async function ingest(
             description: line.description,
             sku: line.sku,
             externalVariantId: line.externalVariantId,
-            productId: sql`case when ${commerceOrderLines.externalVariantId} = ${line.externalVariantId} or (${commerceOrderLines.externalVariantId} is null and ${line.externalVariantId} is null) then ${commerceOrderLines.productId} else ${line.productId} end`,
+            productId: sql`case when ${commerceOrderLines.externalVariantId} = ${line.externalVariantId} or (${commerceOrderLines.externalVariantId} is null and cast(${line.externalVariantId} as text) is null) then ${commerceOrderLines.productId} else ${line.productId} end`,
             quantity: line.quantity,
             unitPriceMinor: line.unitPriceMinor,
             lineTotalMinor: line.lineTotalMinor,

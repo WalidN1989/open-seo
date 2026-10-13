@@ -1451,6 +1451,10 @@ export const commerceOrders = pgTable(
       () => integrationConnections.id,
       { onDelete: "set null" },
     ),
+    operationsConnectionId: text("operations_connection_id").references(
+      () => integrationConnections.id,
+      { onDelete: "set null" },
+    ),
     approvalStatus: text("approval_status", {
       enum: ["pending", "approved", "rejected"],
     }),
@@ -1462,6 +1466,7 @@ export const commerceOrders = pgTable(
     customerEmail: text("customer_email"),
     shippingAddress: text("shipping_address"),
     shippingCity: text("shipping_city"),
+    paymentMethod: text("payment_method"),
     paidMinor: integer("paid_minor").notNull().default(0),
     pickup: boolean("pickup").notNull().default(false),
     orderNumber: text("order_number").notNull(),
@@ -2405,6 +2410,26 @@ export const commerceShipmentEvents = pgTable(
       t.shipmentId,
       t.status,
       t.eventAt,
+    ),
+  ],
+);
+
+/** Operator annotations for gaps; these never cancel a source order. */
+export const commerceOrderGapAnnotations = pgTable(
+  "commerce_order_gap_annotations",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    orderNumber: text("order_number").notNull(),
+    markedByUserId: text("marked_by_user_id").notNull(),
+    createdAt: createdAt(),
+  },
+  (table) => [
+    uniqueIndex("commerce_order_gap_annotations_org_number_idx").on(
+      table.organizationId,
+      table.orderNumber,
     ),
   ],
 );

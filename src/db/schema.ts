@@ -186,6 +186,7 @@ export const {
   commerceInventoryAudits,
   commerceInventoryAuditItems,
   commerceOrderSync,
+  commerceOrderGapAnnotations,
   commerceOrderEffects,
   commerceLoyaltyEntries,
   commerceShipmentEvents,

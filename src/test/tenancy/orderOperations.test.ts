@@ -1,4 +1,5 @@
 import type * as LoyaltyModule from "@/server/features/commerce/repositories/OrderLoyaltyRepository";
+import { eq } from "drizzle-orm";
 import { beforeAll, afterAll, describe, it, expect, vi } from "vitest";
 import {
   createTenancyFixture,
@@ -6,6 +7,8 @@ import {
   ORG_B,
   ORDER_A,
   CONTACT_A,
+  USER_OWNER_A,
+  WHATSAPP_A,
 } from "./fixture";
 import type * as Module from "@/server/features/commerce/repositories/OrderOperationsRepository";
 vi.mock("cloudflare:workers", () => ({ env: { DATABASE_PROVIDER: "d1" } }));
@@ -14,6 +17,25 @@ let repo: typeof Module.OrderOperationsRepository;
 let loyalty: typeof LoyaltyModule.OrderLoyaltyRepository;
 beforeAll(async () => {
   fixture = await createTenancyFixture();
+  const schema = await import("@/db/schema");
+  await fixture.db.insert(schema.integrationConnections).values({
+    id: "operations-fixture",
+    organizationId: ORG_A,
+    providerKey: "shopify",
+    displayName: "Operations fixture",
+    status: "connected",
+  });
+  await fixture.db.insert(schema.commerceOrderSync).values({
+    connectionId: "operations-fixture",
+    organizationId: ORG_A,
+    enabled: true,
+    confirmationStartedAt: "2026-01-01T00:00:00Z",
+    operationsStartedAt: "2026-01-01T00:00:00Z",
+  });
+  await fixture.db
+    .update(schema.commerceOrders)
+    .set({ operationsConnectionId: "operations-fixture" })
+    .where(eq(schema.commerceOrders.id, ORDER_A));
   vi.doMock("@/db", () => ({ db: fixture.db }));
   vi.doMock("@/db/d1/client", () => ({ d1Db: fixture.db }));
   vi.doMock("@/db/pg/client", () => ({ pgDb: null }));
@@ -24,6 +46,123 @@ beforeAll(async () => {
 });
 afterAll(() => fixture.client.close());
 describe("durable order actions", () => {
+  it("rejects cancellation committed before claim or immediately before dispatch", async () => {
+    const schema = await import("@/db/schema");
+    const [original] = await fixture.db
+      .select()
+      .from(schema.commerceOrders)
+      .where(eq(schema.commerceOrders.id, ORDER_A));
+    const id = "order-cancellation-race";
+    const revision = "2026-10-14T00:00:00Z";
+    await fixture.db.insert(schema.commerceOrders).values({
+      ...original,
+      id,
+      orderNumber: "RACE-1",
+      status: "draft",
+      updatedAt: revision,
+    });
+    await repo.enqueue(ORG_A, id, "confirmation");
+    await fixture.db
+      .update(schema.commerceOrders)
+      .set({ status: "cancelled" })
+      .where(eq(schema.commerceOrders.id, id));
+    expect(await repo.claim(ORG_A, id, "confirmation", revision)).toBeNull();
+    await fixture.db
+      .update(schema.commerceOrders)
+      .set({ status: "draft" })
+      .where(eq(schema.commerceOrders.id, id));
+    const claim = await repo.claim(ORG_A, id, "confirmation", revision);
+    expect(claim).not.toBeNull();
+    expect(
+      await repo.canDispatch(ORG_A, claim!.id, id, {
+        kind: "confirmation",
+        revision,
+      }),
+    ).toBe(true);
+    await fixture.db
+      .update(schema.commerceOrders)
+      .set({ status: "cancelled" })
+      .where(eq(schema.commerceOrders.id, id));
+    expect(
+      await repo.canDispatch(ORG_A, claim!.id, id, {
+        kind: "confirmation",
+        revision,
+      }),
+    ).toBe(false);
+  });
+  it("rejects disabling automation after preparation and revisions changed after claiming", async () => {
+    const schema = await import("@/db/schema");
+    const [original] = await fixture.db
+      .select()
+      .from(schema.commerceOrders)
+      .where(eq(schema.commerceOrders.id, ORDER_A));
+    const id = "order-config-race";
+    const revision = "2026-10-14T00:00:00Z";
+    await fixture.db.insert(schema.commerceOrders).values({
+      ...original,
+      id,
+      orderNumber: "RACE-2",
+      status: "draft",
+      updatedAt: revision,
+    });
+    await repo.enqueue(ORG_A, id, "confirmation");
+    await repo.configure(ORG_A, "operations-fixture", { enabled: false });
+    expect(await repo.claim(ORG_A, id, "confirmation", revision)).toBeNull();
+    await repo.configure(ORG_A, "operations-fixture", { enabled: true });
+    const claim = await repo.claim(ORG_A, id, "confirmation", revision);
+    expect(claim).not.toBeNull();
+    await fixture.db
+      .update(schema.commerceOrders)
+      .set({ updatedAt: "2026-10-14T00:00:01Z" })
+      .where(eq(schema.commerceOrders.id, id));
+    expect(
+      await repo.canDispatch(ORG_A, claim!.id, id, {
+        kind: "confirmation",
+        revision,
+      }),
+    ).toBe(false);
+  });
+  it("honors an opt-out committed after claiming", async () => {
+    const schema = await import("@/db/schema");
+    const [original] = await fixture.db
+      .select()
+      .from(schema.commerceOrders)
+      .where(eq(schema.commerceOrders.id, ORDER_A));
+    const id = "order-opt-out-race";
+    const revision = "2026-10-14T00:00:00Z";
+    const phone = "+94770000001";
+    await fixture.db
+      .insert(schema.commerceOrders)
+      .values({
+        ...original,
+        id,
+        orderNumber: "RACE-3",
+        status: "draft",
+        customerPhone: phone,
+        updatedAt: revision,
+      });
+    await repo.configure(ORG_A, "operations-fixture", {
+      confirmationSenderId: WHATSAPP_A,
+    });
+    await repo.enqueue(ORG_A, id, "confirmation");
+    const claim = await repo.claim(ORG_A, id, "confirmation", revision);
+    expect(claim).not.toBeNull();
+    await fixture.db
+      .insert(schema.whatsappConversations)
+      .values({
+        id: "opt-out-chat",
+        organizationId: ORG_A,
+        connectionId: WHATSAPP_A,
+        externalConversationId: phone,
+        optedOutAt: "2026-10-14T00:00:01Z",
+      });
+    expect(
+      await repo.canDispatch(ORG_A, claim!.id, id, {
+        kind: "confirmation",
+        revision,
+      }),
+    ).toBe(false);
+  });
   it("claims a repeated or concurrent confirmation only once", async () => {
     await Promise.all([
       repo.enqueue(ORG_A, ORDER_A, "confirmation"),
@@ -87,6 +226,10 @@ describe("durable order actions", () => {
   });
   it("awards loyalty once using the existing contact", async () => {
     const schema = await import("@/db/schema");
+    await fixture.db
+      .update(schema.commerceOrders)
+      .set({ totalMinor: 10000, approvalStatus: "approved" })
+      .where(eq(schema.commerceOrders.id, ORDER_A));
     const order = await fixture.db
       .select()
       .from(schema.commerceOrders)
@@ -103,6 +246,42 @@ describe("durable order actions", () => {
     );
     expect(await loyalty.loyalty(ORG_A, CONTACT_A)).toBe(10);
     expect(await loyalty.loyalty(ORG_B, CONTACT_A)).toBe(0);
+  });
+  it("caps concurrent customer debits, deduplicates replay and audits once", async () => {
+    const input = {
+      contactId: CONTACT_A,
+      requestId: crypto.randomUUID(),
+      points: -8,
+      kind: "redeemed" as const,
+      note: "Customer redemption",
+    };
+    const results = await Promise.all([
+      loyalty.adjustment(ORG_A, USER_OWNER_A, input),
+      loyalty.adjustment(ORG_A, USER_OWNER_A, {
+        ...input,
+        requestId: crypto.randomUUID(),
+      }),
+    ]);
+    expect(results.filter(Boolean)).toHaveLength(1);
+    expect(await loyalty.loyalty(ORG_A, CONTACT_A)).toBe(2);
+    const accepted = results.find(Boolean)!;
+    await loyalty.adjustment(ORG_A, USER_OWNER_A, {
+      ...input,
+      requestId: accepted.sourceId,
+    });
+    expect(await loyalty.loyalty(ORG_A, CONTACT_A)).toBe(2);
+    expect(
+      await loyalty.adjustment(ORG_B, USER_OWNER_A, {
+        ...input,
+        requestId: crypto.randomUUID(),
+      }),
+    ).toBeNull();
+    const schema = await import("@/db/schema");
+    const audits = await fixture.db
+      .select()
+      .from(schema.businessAuditEvents)
+      .where(eq(schema.businessAuditEvents.action, "loyalty.adjusted"));
+    expect(audits).toHaveLength(1);
   });
   it("defers a blocked queued action so it does not occupy the next batch", async () => {
     await repo.enqueue(ORG_A, ORDER_A, "cancellation");

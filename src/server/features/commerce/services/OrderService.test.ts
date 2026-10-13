@@ -1,94 +1,11 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
-
-const mocks = vi.hoisted(() => ({
-  requireAccess: vi.fn(),
-  getProduct: vi.fn(),
-  findMovementByReference: vi.fn(),
-  applyMovements: vi.fn(),
-  listOrders: vi.fn(),
-  getOrder: vi.fn(),
-  listLines: vi.fn(),
-  findByExternalId: vi.fn(),
-  countOrders: vi.fn(),
-  createOrderWithLines: vi.fn(),
-  setOrderState: vi.fn(),
-  getOrderRequest: vi.fn(),
-  linkOrderRequest: vi.fn(),
-  contactBelongsToOrganization: vi.fn(),
-}));
-
-vi.mock(
-  "@/server/features/business-modules/services/BusinessModuleService",
-  () => ({
-    BusinessModuleService: { requireAccess: mocks.requireAccess },
-  }),
-);
-vi.mock(
-  "@/server/features/business-modules/services/BusinessSettingsService",
-  () => ({
-    BusinessSettingsService: { getSettings: async () => ({ currency: "LKR" }) },
-  }),
-);
-vi.mock("@/server/features/crm/repositories/CrmRepository", () => ({
-  CrmRepository: {
-    contactBelongsToOrganization: mocks.contactBelongsToOrganization,
-  },
-}));
-vi.mock("../repositories/CommerceRepository", () => ({
-  CommerceRepository: { getProduct: mocks.getProduct },
-}));
-vi.mock("../repositories/InventoryRepository", () => ({
-  InventoryRepository: {
-    findMovementByReference: mocks.findMovementByReference,
-    applyMovements: mocks.applyMovements,
-  },
-}));
-vi.mock("../repositories/OrderRepository", () => ({
-  OrderRepository: {
-    listOrders: mocks.listOrders,
-    getOrder: mocks.getOrder,
-    listLines: mocks.listLines,
-    findByExternalId: mocks.findByExternalId,
-    countOrders: mocks.countOrders,
-    createOrderWithLines: mocks.createOrderWithLines,
-    setOrderState: mocks.setOrderState,
-    getOrderRequest: mocks.getOrderRequest,
-    linkOrderRequest: mocks.linkOrderRequest,
-  },
-}));
-
-vi.mock("../repositories/BranchRepository", () => ({
-  BranchRepository: {
-    resolve: async (organizationId: string, branchId?: string) => ({
-      id: branchId ?? `default:${organizationId}`,
-    }),
-  },
-}));
-
-const { OrderService, calculateTotals } = await import("./OrderService");
-
-const ORG = "org_1";
-const USER = "user_1";
-
-beforeEach(() => {
-  for (const mock of Object.values(mocks)) mock.mockReset();
-  mocks.requireAccess.mockResolvedValue(undefined);
-  mocks.getProduct.mockResolvedValue({ id: "p1", sku: "SKU-1" });
-  mocks.contactBelongsToOrganization.mockResolvedValue(true);
-  mocks.findMovementByReference.mockResolvedValue(null);
-  mocks.applyMovements.mockResolvedValue(undefined);
-  mocks.countOrders.mockResolvedValue(0);
-  mocks.createOrderWithLines.mockResolvedValue(undefined);
-  // createOrder re-reads the row it wrote; tests that care override this.
-  mocks.getOrder.mockResolvedValue({ id: "new_order", status: "draft" });
-  mocks.setOrderState.mockImplementation(
-    (_org: string, id: string, values: Record<string, unknown>) => ({
-      id,
-      ...values,
-    }),
-  );
-});
-
+import { describe, it, expect } from "vitest";
+import {
+  mocks,
+  OrderService,
+  calculateTotals,
+  ORG,
+  USER,
+} from "./OrderService.testSetup";
 describe("order money", () => {
   it("derives the subtotal from quantity times unit price", () => {
     const { totals } = calculateTotals(
@@ -153,6 +70,43 @@ describe("order money", () => {
   });
 });
 
+describe("order customer snapshots", () => {
+  it("copies owned contact details and delivery choices into the order", async () => {
+    mocks.getContact.mockResolvedValue({
+      firstName: "Test",
+      lastName: "Reader",
+      phone: null,
+      whatsappPhone: "+94770000000",
+      email: "reader@example.test",
+    });
+    await OrderService.createOrder(ORG, USER, {
+      contactId: "contact_1",
+      shippingAddress: "1 Test Road",
+      shippingCity: "Colombo",
+      pickup: false,
+      paymentMethod: "cash",
+      lines: [{ description: "Book", quantity: 1, unitPriceMinor: 100 }],
+      discountMinor: 0,
+      deliveryMinor: 0,
+      taxMinor: 0,
+    });
+    expect(mocks.createOrderWithLines).toHaveBeenCalledWith(
+      ORG,
+      expect.objectContaining({
+        customerName: "Test Reader",
+        customerPhone: "+94770000000",
+        customerEmail: "reader@example.test",
+        shippingAddress: "1 Test Road",
+        shippingCity: "Colombo",
+        pickup: false,
+        paymentMethod: "cash",
+      }),
+      expect.anything(),
+      expect.anything(),
+    );
+  });
+});
+
 describe("order line snapshots", () => {
   it("snapshots the SKU so a later rename cannot rewrite history", async () => {
     mocks.getProduct.mockResolvedValue({ id: "p1", sku: "SKU-ORIGINAL" });
@@ -202,6 +156,8 @@ describe("order lifecycle and stock", () => {
   const confirmed = {
     id: "o1",
     orderNumber: "ORD-00001",
+    updatedAt: "revision",
+    branchId: `default:${ORG}`,
     status: "confirmed",
   };
 
@@ -209,15 +165,22 @@ describe("order lifecycle and stock", () => {
     mocks.getOrder.mockResolvedValue({ ...confirmed, status: "draft" });
     mocks.listLines.mockResolvedValue([{ productId: "p1", quantity: 3 }]);
     const result = await OrderService.confirmOrder(ORG, USER, "o1");
-    expect(mocks.applyMovements).toHaveBeenCalledWith(ORG, [
+    expect(mocks.transitionNative).toHaveBeenCalledWith(
+      ORG,
+      "o1",
       expect.objectContaining({
-        productId: "p1",
-        movementType: "sale",
-        quantityDelta: -3,
-        referenceType: "order_confirm",
-        referenceId: "o1",
+        revision: "revision",
+        movements: [
+          expect.objectContaining({
+            productId: "p1",
+            movementType: "sale",
+            quantityDelta: -3,
+            referenceType: "order_confirm",
+            referenceId: "o1",
+          }),
+        ],
       }),
-    ]);
+    );
     expect(result.movementCount).toBe(1);
   });
 
@@ -227,16 +190,27 @@ describe("order lifecycle and stock", () => {
     mocks.findMovementByReference.mockResolvedValue({ id: "m1" });
     const result = await OrderService.confirmOrder(ORG, USER, "o1");
     expect(result.movementCount).toBe(0);
-    expect(mocks.applyMovements).toHaveBeenCalledWith(ORG, []);
+    expect(mocks.transitionNative).toHaveBeenCalledWith(
+      ORG,
+      "o1",
+      expect.objectContaining({ revision: "revision", movements: [] }),
+    );
   });
 
   it("returns stock when a confirmed order is cancelled", async () => {
     mocks.getOrder.mockResolvedValue(confirmed);
     mocks.listLines.mockResolvedValue([{ productId: "p1", quantity: 2 }]);
     await OrderService.cancelOrder(ORG, USER, "o1");
-    expect(mocks.applyMovements).toHaveBeenCalledWith(ORG, [
-      expect.objectContaining({ quantityDelta: 2, movementType: "return" }),
-    ]);
+    expect(mocks.transitionNative).toHaveBeenCalledWith(
+      ORG,
+      "o1",
+      expect.objectContaining({
+        revision: "revision",
+        movements: [
+          expect.objectContaining({ quantityDelta: 2, movementType: "return" }),
+        ],
+      }),
+    );
   });
 
   it("moves no stock when a draft is cancelled", async () => {
@@ -244,16 +218,30 @@ describe("order lifecycle and stock", () => {
     const result = await OrderService.cancelOrder(ORG, USER, "o1");
     // A draft never took the stock, so there is nothing to give back.
     expect(result.movementCount).toBe(0);
-    expect(mocks.applyMovements).not.toHaveBeenCalled();
+    expect(result.order?.status).toBe("cancelled");
+    expect(mocks.transitionNative).toHaveBeenCalledWith(
+      ORG,
+      "o1",
+      expect.objectContaining({
+        revision: "revision",
+        fromStatus: "draft",
+        movements: [],
+      }),
+    );
   });
 
   it("returns stock on a return", async () => {
     mocks.getOrder.mockResolvedValue(confirmed);
     mocks.listLines.mockResolvedValue([{ productId: "p1", quantity: 4 }]);
     await OrderService.returnOrder(ORG, USER, "o1");
-    expect(mocks.applyMovements).toHaveBeenCalledWith(ORG, [
-      expect.objectContaining({ quantityDelta: 4 }),
-    ]);
+    expect(mocks.transitionNative).toHaveBeenCalledWith(
+      ORG,
+      "o1",
+      expect.objectContaining({
+        revision: "revision",
+        movements: [expect.objectContaining({ quantityDelta: 4 })],
+      }),
+    );
   });
 
   it("refuses to confirm an order twice", async () => {
@@ -313,12 +301,7 @@ describe("provider and enquiry idempotency", () => {
 
     // Draft, so nothing is deducted until a person confirms it.
     expect(order).toMatchObject({ status: "draft" });
-    expect(mocks.applyMovements).not.toHaveBeenCalled();
-    expect(mocks.linkOrderRequest).toHaveBeenCalledWith(
-      ORG,
-      "req_1",
-      "new_order",
-    );
+    expect(mocks.transitionNative).not.toHaveBeenCalled();
   });
 
   it("returns the same order when an enquiry is converted twice", async () => {
@@ -377,7 +360,7 @@ describe("a contact on an order must belong to the organization", () => {
   it("refuses a contact the organization does not own", async () => {
     // Otherwise a caller creates an order correctly scoped to its own
     // organization that points at another tenant's contact.
-    mocks.contactBelongsToOrganization.mockResolvedValue(false);
+    mocks.getContact.mockResolvedValue(null);
     await expect(
       OrderService.createOrder(ORG, USER, {
         contactId: "contact_from_another_org",
@@ -391,7 +374,7 @@ describe("a contact on an order must belong to the organization", () => {
   });
 
   it("does not disclose whether the contact exists elsewhere", async () => {
-    mocks.contactBelongsToOrganization.mockResolvedValue(false);
+    mocks.getContact.mockResolvedValue(null);
     await expect(
       OrderService.createOrder(ORG, USER, {
         contactId: "contact_from_another_org",
@@ -411,10 +394,7 @@ describe("a contact on an order must belong to the organization", () => {
       deliveryMinor: 0,
       taxMinor: 0,
     });
-    expect(mocks.contactBelongsToOrganization).toHaveBeenCalledWith(
-      ORG,
-      "contact_1",
-    );
+    expect(mocks.getContact).toHaveBeenCalledWith(ORG, "contact_1");
   });
 
   it("accepts an order with no contact at all", async () => {
@@ -425,7 +405,7 @@ describe("a contact on an order must belong to the organization", () => {
       deliveryMinor: 0,
       taxMinor: 0,
     });
-    expect(mocks.contactBelongsToOrganization).not.toHaveBeenCalled();
+    expect(mocks.getContact).not.toHaveBeenCalled();
     expect(mocks.createOrderWithLines).toHaveBeenCalled();
   });
 });
