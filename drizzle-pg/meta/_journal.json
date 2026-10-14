@@ -547,6 +547,55 @@
       "when": 1791919799794,
       "tag": "0077_violet_echo",
       "breakpoints": true
+    },
+    {
+      "idx": 78,
+      "version": "7",
+      "when": 1791920758251,
+      "tag": "0078_daily_the_captain",
+      "breakpoints": true
+    },
+    {
+      "idx": 79,
+      "version": "7",
+      "when": 1791920821146,
+      "tag": "0079_panoramic_cardiac",
+      "breakpoints": true
+    },
+    {
+      "idx": 80,
+      "version": "7",
+      "when": 1791921516212,
+      "tag": "0080_medical_mesmero",
+      "breakpoints": true
+    },
+    {
+      "idx": 81,
+      "version": "7",
+      "when": 1791924005240,
+      "tag": "0081_tired_bedlam",
+      "breakpoints": true
+    },
+    {
+      "idx": 82,
+      "version": "7",
+      "when": 1791924799551,
+      "tag": "0082_secret_clint_barton",
+      "breakpoints": true
+    },
+    {
+      "idx": 83,
+      "version": "7",
+      "when": 1791924892575,
+      "tag": "0083_marvelous_marten_broadcloak",
+      "breakpoints": true
+    },
+    {
+      "idx": 84,
+      "version": "7",
+      "when": 1791953149596,
+      "tag": "0084_pretty_nuke",
+      "breakpoints": true
     }
   ]
 }

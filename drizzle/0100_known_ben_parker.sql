@@ -1,0 +1,1 @@
+ALTER TABLE `commerce_orders` ADD `shipping_city` text;

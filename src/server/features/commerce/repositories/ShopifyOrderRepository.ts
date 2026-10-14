@@ -1,3 +1,4 @@
+import { mirroredFinancialStatements } from "./OrderFinancialRepository";
 import { and, eq, gt, inArray, isNull, or, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { runBatch } from "@/db/runBatch";
@@ -221,6 +222,18 @@ async function ingest(
           ),
         ),
       }),
+    ...mirroredFinancialStatements(
+      tx,
+      organizationId,
+      orderId,
+      {
+        ...values,
+        hasRefund: ["refunded", "partially_refunded"].includes(
+          payload.financial_status,
+        ),
+      },
+      applied,
+    ),
     // Retain lines that are still present. Preserve manually reviewed mapping
     // on repeated snapshots; changed price/qty always needs a fresh review.
     tx.delete(commerceOrderLines).where(
@@ -308,6 +321,12 @@ async function ingest(
                 checkedAt: sql<string>`${values.externalUpdatedAt}`.as(
                   "checkedAt",
                 ),
+                // Shopify's fulfillment ID is already in this row's ID; it is
+                // not the courier's order ID used by provider label requests.
+                externalId: sql<string | null>`null`.as("externalId"),
+                lastEventAt: sql<string | null>`null`.as("lastEventAt"),
+                reason: sql<string | null>`null`.as("reason"),
+                createdAt: sql<string>`${values.createdAt}`.as("createdAt"),
               })
               .from(commerceOrders)
               .where(revision),
@@ -323,7 +342,10 @@ async function ingest(
               status: sql`case when ${commerceOrderShipments.provider} = 'Citypak' then ${commerceOrderShipments.status} else ${fulfillment.status} end`,
               checkedAt: sql`case when ${commerceOrderShipments.provider} = 'Citypak' then ${commerceOrderShipments.checkedAt} else ${values.externalUpdatedAt} end`,
             },
-            setWhere: applied,
+            setWhere: and(
+              applied,
+              sql`${commerceOrderShipments.lastEventAt} is null`,
+            ),
           }),
       ),
     ),

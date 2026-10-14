@@ -37,6 +37,7 @@ it.each([undefined, "123"])(
         updated_at: "2026-10-14T00:00:00Z",
         currency: "LKR",
         financial_status: "paid",
+        payment_gateway_names: [],
         total_price: 1000,
         total_discounts: 0,
         total_tax: 0,

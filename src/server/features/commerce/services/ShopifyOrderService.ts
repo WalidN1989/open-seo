@@ -1,4 +1,5 @@
 import { BusinessModuleRepository } from "@/server/features/business-modules/repositories/BusinessModuleRepository";
+import { OrderOperationsService } from "./OrderOperationsService";
 import { z } from "zod";
 import { BusinessModuleService } from "@/server/features/business-modules/services/BusinessModuleService";
 import {
@@ -198,6 +199,12 @@ async function webhook(connectionId: string, headers: Headers, body: string) {
     connection.id,
     branch.id,
     parsed.data,
+  );
+  await OrderOperationsService.enqueueForWebhook(
+    connection.organizationId,
+    connectionId,
+    `shopify:${connectionId}:${parsed.data.id}`,
+    topic,
   );
   return 200;
 }

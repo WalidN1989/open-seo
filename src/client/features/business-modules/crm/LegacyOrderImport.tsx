@@ -1,3 +1,4 @@
+import { CitypakConnectionSettings } from "./CitypakConnectionSettings";
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -44,7 +45,7 @@ export function LegacyOrderImport({ connectionId }: { connectionId: string }) {
       }
       await client.invalidateQueries({ queryKey: ["commerce"] });
       toast.success(
-        "Zoho history mirrored. Existing operations remain in Zoho.",
+        "Order, line and tracking snapshots imported. Invoice and loyalty history remain separate.",
       );
     } catch (error) {
       toast.error(getStandardErrorMessage(error));
@@ -72,8 +73,11 @@ export function LegacyOrderImport({ connectionId }: { connectionId: string }) {
       <div className="mt-3 space-y-3 text-sm">
         <p>
           Download both “Export CSV” and “Export Line Items” from Zoho Orders,
-          then choose them here. Imports preserve history and tracking without
-          sending invoices, taking stock or creating waybills.
+          then choose them here. This imports order, line and tracking snapshots
+          only. Invoice and loyalty history need separate reconciliation.
+          Correct missing items, invalid amounts and unresolved source IDs
+          before import. No customer messages, invoices, stock movements or
+          waybills are created.
         </p>
         <label className="block">
           Orders CSV
@@ -113,7 +117,8 @@ export function LegacyOrderImport({ connectionId }: { connectionId: string }) {
         <p>{progress}</p>
         <p>
           To refresh existing Citypak tracking, enter its API key. This enables
-          tracking reads only.
+          tracking reads; shipment creation requires separately enabling order
+          automation.
         </p>
         <input
           type="password"
@@ -132,6 +137,7 @@ export function LegacyOrderImport({ connectionId }: { connectionId: string }) {
         >
           Save tracking connection
         </button>
+        <CitypakConnectionSettings connectionId={connectionId} />
       </div>
     </details>
   );

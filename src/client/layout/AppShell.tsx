@@ -1,3 +1,4 @@
+import { CitypakShortcut } from "@/client/features/business-modules/crm/CitypakShortcut";
 import { ModulePicker } from "@/client/features/business-modules/ModulePicker";
 import { ReminderPopup } from "@/client/features/reminders/ReminderPopup";
 import { PerformanceLauncher } from "@/client/features/performance/PerformanceLauncher";
@@ -155,6 +156,8 @@ export function AuthenticatedAppLayout({
           </div>
         </div>
       </div>
+
+      <CitypakShortcut />
 
       <MobileSidebarDrawer
         open={drawerOpen}

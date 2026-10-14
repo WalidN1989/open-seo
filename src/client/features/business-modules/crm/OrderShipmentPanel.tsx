@@ -51,13 +51,26 @@ export function OrderShipmentPanel({
               : "Not checked"}
           </span>
           {shipment.provider === "Citypak" ? (
-            <button
-              className="btn btn-ghost btn-xs"
-              disabled={refresh.isPending}
-              onClick={() => refresh.mutate(shipment.id)}
-            >
-              Refresh status
-            </button>
+            <>
+              <button
+                className="btn btn-ghost btn-xs"
+                disabled={refresh.isPending}
+                onClick={() => refresh.mutate(shipment.id)}
+              >
+                Refresh status
+              </button>
+              {["A4", "4X6"].map((size) => (
+                <a
+                  key={size}
+                  className="btn btn-ghost btn-xs"
+                  target="_blank"
+                  rel="noreferrer"
+                  href={`/api/orders/${encodeURIComponent(detail.order.id)}/label?organizationId=${encodeURIComponent(detail.order.organizationId)}&shipmentId=${encodeURIComponent(shipment.id)}&size=${size}`}
+                >
+                  {size === "A4" ? "A4 label" : "4×6 label"}
+                </a>
+              ))}
+            </>
           ) : null}
         </div>
       ))}

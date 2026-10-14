@@ -7,6 +7,7 @@ import {
   USER_OWNER_A,
   USER_OWNER_B,
   PRODUCT_A,
+  CONTACT_A,
 } from "./fixture";
 import { shopifyOrderSchema } from "@/server/features/commerce/providers/shopifyOrders";
 import type * as RepositoryModule from "@/server/features/commerce/repositories/ShopifyOrderRepository";
@@ -86,6 +87,101 @@ describe("Shopify mirror database invariants", () => {
     expect(
       (await Orders.getOrder(ORG_A, USER_OWNER_A, id)).lines[0].productId,
     ).toBe(PRODUCT_A);
+  });
+  it("reverses a fully refunded award without changing an issued invoice into debt", async () => {
+    const data = payload(902);
+    const id = await Repo.ingest(ORG_A, connection, `default:${ORG_A}`, data);
+    await fixture.db
+      .update(schema.commerceOrders)
+      .set({
+        approvalStatus: "approved",
+        status: "confirmed",
+        contactId: CONTACT_A,
+      })
+      .where(eq(schema.commerceOrders.id, id));
+    const order = (await Orders.getOrder(ORG_A, USER_OWNER_A, id)).order;
+    const { InvoiceRepository } =
+      await import("@/server/features/invoicing/repositories/InvoiceRepository");
+    const { OrderLoyaltyRepository } =
+      await import("@/server/features/commerce/repositories/OrderLoyaltyRepository");
+    await OrderLoyaltyRepository.award(ORG_A, order, 100);
+    const invoiceId = await InvoiceRepository.issueInvoice(order, [], "{}");
+    const partial = {
+      ...data,
+      updated_at: "2026-10-05T10:00:00Z",
+      financial_status: "partially_refunded",
+      total_outstanding: 1000,
+    };
+    await Repo.ingest(ORG_A, connection, `default:${ORG_A}`, partial);
+    expect(await InvoiceRepository.getInvoice(ORG_A, invoiceId)).toMatchObject({
+      status: "paid",
+      paidMinor: 1000,
+    });
+    const refunded = {
+      ...partial,
+      updated_at: "2026-10-06T10:00:00Z",
+      financial_status: "refunded",
+    };
+    await Repo.ingest(ORG_A, connection, `default:${ORG_A}`, refunded);
+    await Repo.ingest(ORG_A, connection, `default:${ORG_A}`, refunded);
+    await OrderLoyaltyRepository.award(ORG_A, order, 100);
+    expect(await OrderLoyaltyRepository.loyalty(ORG_A, CONTACT_A)).toBe(0);
+    expect(await InvoiceRepository.getInvoice(ORG_A, invoiceId)).toMatchObject({
+      status: "paid",
+      paidMinor: 1000,
+    });
+  });
+  it("syncs invoice payments atomically and reverses earnings once after cancellation", async () => {
+    const data = {
+      ...payload(901),
+      financial_status: "pending",
+      total_outstanding: 1000,
+    };
+    const id = await Repo.ingest(ORG_A, connection, `default:${ORG_A}`, data);
+    const { InvoiceRepository } =
+      await import("@/server/features/invoicing/repositories/InvoiceRepository");
+    const { OrderLoyaltyRepository } =
+      await import("@/server/features/commerce/repositories/OrderLoyaltyRepository");
+    await fixture.db
+      .update(schema.commerceOrders)
+      .set({
+        approvalStatus: "approved",
+        status: "confirmed",
+        contactId: CONTACT_A,
+      })
+      .where(eq(schema.commerceOrders.id, id));
+    const order = (await Orders.getOrder(ORG_A, USER_OWNER_A, id)).order;
+    const invoiceId = await InvoiceRepository.issueInvoice(order, [], "{}");
+    await OrderLoyaltyRepository.award(ORG_A, order, 100);
+    const paid = {
+      ...data,
+      updated_at: "2026-10-05T10:00:00Z",
+      financial_status: "paid",
+      total_outstanding: 0,
+    };
+    await Repo.ingest(ORG_A, connection, `default:${ORG_A}`, paid);
+    expect(await InvoiceRepository.getInvoice(ORG_A, invoiceId)).toMatchObject({
+      status: "paid",
+      paidMinor: 1000,
+    });
+    // Stale payments cannot overwrite the accepted newer paid snapshot.
+    await Repo.ingest(ORG_A, connection, `default:${ORG_A}`, data);
+    expect(
+      (await InvoiceRepository.getInvoice(ORG_A, invoiceId))?.paidMinor,
+    ).toBe(1000);
+    const cancelled = {
+      ...paid,
+      updated_at: "2026-10-06T10:00:00Z",
+      cancelled_at: "2026-10-06T10:00:00Z",
+    };
+    await Promise.all([
+      Repo.ingest(ORG_A, connection, `default:${ORG_A}`, cancelled),
+      Repo.ingest(ORG_A, connection, `default:${ORG_A}`, cancelled),
+    ]);
+    expect(await OrderLoyaltyRepository.loyalty(ORG_A, CONTACT_A)).toBe(0);
+    await OrderLoyaltyRepository.award(ORG_A, order, 100);
+    expect(await OrderLoyaltyRepository.loyalty(ORG_A, CONTACT_A)).toBe(0);
+    expect(await InvoiceRepository.getInvoice(ORG_B, invoiceId)).toBeNull();
   });
   it("starts disabled, imports one normalized order and never moves stock", async () => {
     expect(await Repo.enabledConnection(connection)).toBeNull();

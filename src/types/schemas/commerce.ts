@@ -130,6 +130,22 @@ export const orderLineSchema = z.object({
 });
 
 export const createOrderSchema = z.object({
+  creationRequestId: z.uuid().optional(),
+  operationsConnectionId: z.string().min(1).optional(),
+  paymentMethod: z
+    .enum([
+      "koko",
+      "mint_pay",
+      "payhere",
+      "cash",
+      "combank",
+      "daraz",
+      "kapruka",
+    ])
+    .optional(),
+  shippingAddress: z.string().trim().max(2000).optional(),
+  shippingCity: z.string().trim().max(120).optional(),
+  pickup: z.boolean().optional(),
   branchId: z.string().min(1).optional(),
   contactId: z.string().min(1).optional(),
   note: z.string().trim().max(2000).optional(),
@@ -139,6 +155,13 @@ export const createOrderSchema = z.object({
   // Totals are never accepted from the caller; they are derived from these.
   lines: z.array(orderLineSchema).min(1).max(200),
 });
+export const editOrderSchema = createOrderSchema
+  .omit({ creationRequestId: true })
+  .extend({
+    orderId: z.string().min(1),
+    revision: z.string().min(1),
+  })
+  .strict();
 
 export const orderIdSchema = z.object({ orderId: z.string().min(1) });
 
@@ -155,6 +178,7 @@ export const convertOrderRequestSchema = z.object({
 
 export type OrderLineInput = z.infer<typeof orderLineSchema>;
 export type CreateOrderInput = z.infer<typeof createOrderSchema>;
+export type EditOrderInput = z.infer<typeof editOrderSchema>;
 export type ListOrdersInput = z.infer<typeof listOrdersSchema>;
 export type ConvertOrderRequestInput = z.infer<
   typeof convertOrderRequestSchema

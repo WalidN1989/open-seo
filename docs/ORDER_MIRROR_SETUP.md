@@ -6,27 +6,33 @@ enquiries. This release runs alongside the existing fulfilment application.
 
 ## Ownership while validating
 
-Shopify remains authoritative for the basket, payment and fulfilment snapshots.
-The existing application continues issuing invoices, moving stock, creating
-Citypak shipments, handling returns/refunds with legacy WhatsApp disconnected. DU automatic confirmations are not enabled.
-DigitalUrgency approval/rejection records a local review decision only. It does
-not approve, reject or cancel the upstream order, change catalogue prices, send
-an invoice or create a courier shipment. Imported orders cannot use the native
-CRM stock-confirm/cancel/return actions.
+Shopify remains authoritative for imported basket, payment and fulfillment
+snapshots. Legacy WhatsApp is disconnected. DU automatic confirmations and
+operational effects remain off until their per-connection activation dates and
+settings are explicitly configured after reconciliation.
 
-Do not disconnect the existing application during validation. Financial refunds,
-return processing, shipment creation, delivery-status webhooks, automatic courier
-polling, stock ownership and missing-sequence cancellation markers require a
-separate cutover after the owner approves the observed results. The Returns &
-Refunds tab currently displays upstream cancelled/refunded/returned records; it
-is not a financial refund editor. Create Order retains the existing native CRM
-workflow. The bill is a printable order summary, not a second issued invoice.
+With those gates off, imported approval is a local review decision. It never
+approves or cancels an upstream Shopify order or changes catalog prices. When
+operational gates are enabled, approval can enqueue invoice and Citypak work and
+award loyalty. Native orders choose an explicit operations profile and use atomic
+stock transitions; imported orders cannot use native stock actions.
+
+Keep the existing application until the separate cutover is verified. The Returns
+& Refunds view reports recorded history; unavailable refund/courier amounts are
+not zero, and this is not a financial refund editor. Missing Sequence annotations
+are local reconciliation markers, not upstream cancellation. Bill preview prints
+an order summary without issuing or sending another invoice. Provider outcomes
+that may already have succeeded are never automatically retried.
+
+Before enabling operations, reconcile legacy order/customer, invoice-send, loyalty
+and waybill history; establish pending-order ownership; enter and verify Citypak
+credentials and callback support. The migration ledger records the live state.
 
 ## Configure after release approval
 
 1. Apply the additive migrations through the normal deployment migration runner.
-   SQLite: `0098_melted_red_shift`.
-   Postgres: `0077_violet_echo`.
+   The order mirror starts at SQLite `0098` / Postgres `0077`; the
+   operational workspace adds SQLite `0099`–`0105` / Postgres `0078`–`0084`.
 2. Open CRM → Orders → Shopify order connection. Select the existing connected
    Shopify integration and enable **Mirror orders**. New connections start with
    mirroring disabled.
@@ -48,9 +54,26 @@ workflow. The bill is a printable order summary, not a second issued invoice.
    references. Shopify history rows must contain a stable Shopify order ID;
    display order numbers are not substituted for API IDs. This importer accepts
    the audited export format in LKR, with up to 25,000 rows and 5 MB per file.
-   Existing live Shopify snapshots are preserved. Legacy payment status remains
-   unverified until Shopify refreshes it. Tracking from CSV has no freshness
-   timestamp.
+   This imports order, line and tracking snapshots only. It preserves the
+   exported payment method and explicit returned/refunded states, without
+   inferring paid amounts or refund amounts. Existing live Shopify snapshots
+   are preserved. Invoice-send outcomes, loyalty balances/entries and customer
+   identity mappings require separate reconciliation. Tracking from CSV has no
+   freshness timestamp.
+
+   The audited snapshot contains 2,282 orders, 3,260 lines and 904 waybills;
+   separate exports contain 1,675 customers, 1,142 invoice-send records and 1,143
+   loyalty entries. These are export-time counts, not a current database check.
+   Twenty-six orders have no lines, and one source amount needs format review.
+   Raw lines also need product enrichment where their saved title is absent.
+   Correct these exceptions before using the flat CSV importer; do not fabricate
+   items or silently omit orders. The raw aggregate export is not this import
+   format and exceeds the per-file size limit. The standard export has no
+   separate shipping-city field, and its billing address may need customer
+   enrichment. Actual `payment_terms` and `payment_mode` are stored separately;
+   legacy fee/return/refund dates are not imported.
+   Keep the original exports privately for the later normalized history migration.
+
 6. Review each pending order. Select missing products/editions and acknowledge
    every catalogue-price difference. Shopify selling prices are kept; the
    catalogue price does not change. A changed basket invalidates approval and
@@ -58,8 +81,11 @@ workflow. The bill is a printable order summary, not a second issued invoice.
 7. Enter the Citypak API key in connection settings to enable **Refresh status**.
    Existing tracking references can also be linked manually. Tracking uses the
    fixed Citypak endpoint, performs a read-only GET, and preserves cached status
-   when the provider fails. No shipment is created. There is no automatic
-   Citypak refresh or new courier callback in this release.
+   when the provider fails. Tracking reads do not create shipments. Automatic
+   polling is separately enabled in Citypak connection settings. A courier callback
+   is available at `/api/citypak/{connectionId}` and requires the configured shared
+   secret. Keep both tracking gates off until the provider contract is verified.
+   Waybill creation requires the separate order-automation activation gate.
 8. WhatsApp's order tool matches the recorded order ID **and** an exact E.164
    sender phone within the business. It returns recorded order/tracking facts,
    without customer addresses or email. An ambiguous national phone or mismatch
@@ -95,5 +121,6 @@ changes, tenant isolation, exact sender matching, price acknowledgement, local
 review rejection, legacy import replay and replacement, and zero stock movement.
 The local UI uses fixture data to exercise all order tabs, mapping/price gates,
 selected-product persistence, bill totals and connection forms. SQLite migrations
-run in the database fixtures; dual-schema parity is checked. Actual Postgres
-migration execution and live Shopify/Citypak tests remain release checks.
+run in the database fixtures; dual-schema parity is checked. The seven new Postgres migrations were applied to an isolated production-schema
+clone, preserving the mirror flag with operations disabled by default. Live Citypak
+verification and historical reconciliation remain activation checks.

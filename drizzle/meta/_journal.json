@@ -694,6 +694,55 @@
       "when": 1791919798990,
       "tag": "0098_melted_red_shift",
       "breakpoints": true
+    },
+    {
+      "idx": 99,
+      "version": "6",
+      "when": 1791920757476,
+      "tag": "0099_friendly_blue_shield",
+      "breakpoints": true
+    },
+    {
+      "idx": 100,
+      "version": "6",
+      "when": 1791920820358,
+      "tag": "0100_known_ben_parker",
+      "breakpoints": true
+    },
+    {
+      "idx": 101,
+      "version": "6",
+      "when": 1791921515101,
+      "tag": "0101_amusing_viper",
+      "breakpoints": true
+    },
+    {
+      "idx": 102,
+      "version": "6",
+      "when": 1791924004329,
+      "tag": "0102_brown_ulik",
+      "breakpoints": true
+    },
+    {
+      "idx": 103,
+      "version": "6",
+      "when": 1791924798769,
+      "tag": "0103_minor_havok",
+      "breakpoints": true
+    },
+    {
+      "idx": 104,
+      "version": "6",
+      "when": 1791924891690,
+      "tag": "0104_colossal_boomerang",
+      "breakpoints": true
+    },
+    {
+      "idx": 105,
+      "version": "6",
+      "when": 1791953148662,
+      "tag": "0105_fluffy_synch",
+      "breakpoints": true
     }
   ]
 }

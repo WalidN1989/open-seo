@@ -4,10 +4,12 @@ import type { getCommerceOrder } from "@/serverFunctions/commerce";
 import { useWorkspaceCurrency } from "@/client/hooks/useWorkspaceCurrency";
 export function OrderBill({
   detail,
+  initiallyVisible = false,
 }: {
+  initiallyVisible?: boolean;
   detail: NonNullable<Awaited<ReturnType<typeof getCommerceOrder>>>;
 }) {
-  const [visible, setVisible] = useState(false);
+  const [visible, setVisible] = useState(initiallyVisible);
   const workspace = useWorkspaceCurrency();
   const currency = detail.order.currency || workspace.currency;
   const format = (minor: number) => formatMoney(minor, currency);
@@ -17,7 +19,7 @@ export function OrderBill({
         className="btn btn-outline btn-sm"
         onClick={() => setVisible(!visible)}
       >
-        View bill
+        {visible ? "Close bill" : "View bill"}
       </button>
       {visible ? (
         <div className="mt-3 rounded-lg border border-base-300 p-6">

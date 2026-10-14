@@ -1,0 +1,1 @@
+ALTER TABLE `commerce_orders` ADD `payment_method` text;

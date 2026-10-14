@@ -3,8 +3,8 @@ import { useQuery } from "@tanstack/react-query";
 import { listCommerceBranches } from "@/serverFunctions/commerce";
 import { getStandardErrorMessage } from "@/client/lib/error-messages";
 
-export function useBranchSelection() {
-  const [selected, setSelected] = useState("");
+export function useBranchSelection(initialBranchId = "") {
+  const [selected, setSelected] = useState(initialBranchId);
   const query = useQuery({
     queryKey: ["commerce", "branches"],
     queryFn: () => listCommerceBranches(),

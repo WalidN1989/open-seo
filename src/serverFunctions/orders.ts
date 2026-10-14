@@ -1,3 +1,7 @@
+import { citypakTrackingSettingsSchema } from "@/types/schemas/orderReview";
+import { OrderOperationsConfigService } from "@/server/features/commerce/services/OrderOperationsConfigService";
+import { citypakDashboardSchema } from "@/types/schemas/orderReview";
+import { orderOperationsSchema } from "@/types/schemas/orderReview";
 import { orderDecisionSchema } from "@/types/schemas/orderReview";
 import { orderWebhookSecretSchema } from "@/types/schemas/orderReview";
 import { LegacyOrderService } from "@/server/features/commerce/services/LegacyOrderService";
@@ -17,6 +21,12 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireAuthenticatedContext } from "./middleware";
 import { OrderService } from "@/server/features/commerce/services/OrderService";
+export const adjustOrderLoyalty = createServerFn({ method: "POST" })
+  .middleware(requireAuthenticatedContext)
+  .validator(orderLoyaltyAdjustmentSchema)
+  .handler(({ context, data }) =>
+    OrderService.adjustLoyalty(context.organizationId, context.userId, data),
+  );
 export const getOrderSyncSettings = createServerFn({ method: "GET" })
   .middleware(requireAuthenticatedContext)
   .handler(({ context }) =>
@@ -93,12 +103,6 @@ export const importLegacyOrders = createServerFn({ method: "POST" })
     LegacyOrderService.importPage(context.organizationId, context.userId, data),
   );
 
-export const getOrderSequence = createServerFn({ method: "GET" })
-  .middleware(requireAuthenticatedContext)
-  .handler(({ context }) =>
-    OrderService.missingSequence(context.organizationId, context.userId),
-  );
-
 export const configureOrderWebhook = createServerFn({ method: "POST" })
   .middleware(requireAuthenticatedContext)
   .validator(orderWebhookSecretSchema)
@@ -122,3 +126,62 @@ export const rejectImportedOrder = createServerFn({ method: "POST" })
       data.revision,
     ),
   );
+
+export const configureOrderOperations = createServerFn({ method: "POST" })
+  .middleware(requireAuthenticatedContext)
+  .validator(orderOperationsSchema)
+  .handler(({ context, data }) =>
+    OrderOperationsConfigService.configure(
+      context.organizationId,
+      context.userId,
+      data,
+    ),
+  );
+export const getOrderOperations = createServerFn({ method: "GET" })
+  .middleware(requireAuthenticatedContext)
+  .validator(z.object({ orderId: z.string().min(1) }))
+  .handler(({ context, data }) =>
+    OrderService.overview(context.organizationId, context.userId, data.orderId),
+  );
+export const getOrderOperationsSettings = createServerFn({ method: "GET" })
+  .middleware(requireAuthenticatedContext)
+  .validator(z.object({ connectionId: z.string().min(1) }))
+  .handler(({ context, data }) =>
+    OrderOperationsConfigService.settings(
+      context.organizationId,
+      context.userId,
+      data.connectionId,
+    ),
+  );
+export const getCitypakDashboard = createServerFn({ method: "GET" })
+  .middleware(requireAuthenticatedContext)
+  .validator(citypakDashboardSchema)
+  .handler(({ context, data }) =>
+    OrderShipmentService.dashboard(
+      context.organizationId,
+      context.userId,
+      data,
+    ),
+  );
+
+export const getCitypakTrackingSettings = createServerFn({ method: "GET" })
+  .middleware(requireAuthenticatedContext)
+  .validator(z.object({ connectionId: z.string().min(1) }))
+  .handler(({ context, data }) =>
+    OrderShipmentService.trackingSettings(
+      context.organizationId,
+      context.userId,
+      data.connectionId,
+    ),
+  );
+export const configureCitypakTracking = createServerFn({ method: "POST" })
+  .middleware(requireAuthenticatedContext)
+  .validator(citypakTrackingSettingsSchema)
+  .handler(({ context, data }) =>
+    OrderShipmentService.configureTracking(
+      context.organizationId,
+      context.userId,
+      data,
+    ),
+  );
+import { orderLoyaltyAdjustmentSchema } from "@/types/schemas/orderReview";

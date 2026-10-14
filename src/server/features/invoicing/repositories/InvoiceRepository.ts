@@ -1,5 +1,7 @@
 import { and, asc, desc, eq, ne, sql } from "drizzle-orm";
 import { db } from "@/db";
+import { runBatch } from "@/db/runBatch";
+import type { commerceOrders } from "@/db/schema";
 import { invoiceLineItems, invoiceSettings, invoices } from "@/db/schema";
 
 export type InvoiceSettingsRow = typeof invoiceSettings.$inferSelect;
@@ -148,7 +150,97 @@ async function deleteInvoice(organizationId: string, id: string) {
     );
 }
 
+/** Email completion cannot overwrite a payment or void recorded during send. */
+async function recordInvoiceSent(organizationId: string, invoiceId: string) {
+  await db
+    .update(invoices)
+    .set({
+      status: sql`case when ${invoices.status} in ('paid','void') then ${invoices.status} else 'sent' end`,
+      sentAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    })
+    .where(
+      and(
+        eq(invoices.organizationId, organizationId),
+        eq(invoices.id, invoiceId),
+      ),
+    );
+}
+
+async function issueInvoice(
+  order: typeof commerceOrders.$inferSelect,
+  lines: (typeof invoiceLineItems.$inferInsert)[],
+  snapshot: string,
+) {
+  const id = `retail:${order.id}`;
+  const adjustments = [
+    ["delivery", "Delivery", order.deliveryMinor],
+    ["discount", "Order discount", -order.discountMinor],
+    [
+      "adjustment",
+      "Order adjustment",
+      order.totalMinor -
+        order.taxMinor -
+        lines.reduce((sum, line) => sum + (line.amountMinor ?? 0), 0) -
+        order.deliveryMinor +
+        order.discountMinor,
+    ],
+  ] as const;
+  for (const [key, description, amountMinor] of adjustments) {
+    if (!amountMinor) continue;
+    lines.push({
+      id: `${id}:${key}`,
+      organizationId: order.organizationId,
+      invoiceId: id,
+      position: lines.length,
+      description,
+      quantityMilli: 1000,
+      unitPriceMinor: amountMinor,
+      amountMinor,
+    });
+  }
+  await runBatch((tx) => [
+    tx
+      .insert(invoices)
+      .values({
+        id,
+        organizationId: order.organizationId,
+        number: order.orderNumber,
+        status: order.paymentStatus === "paid" ? "paid" : "draft",
+        paidMinor: Math.min(order.totalMinor, Math.max(0, order.paidMinor)),
+        paidAt:
+          order.paymentStatus === "paid" ? new Date().toISOString() : null,
+        documentType: "invoice",
+        clientName: order.customerName || "Customer",
+        clientAddressLines: order.shippingAddress,
+        clientEmail: order.customerEmail,
+        currency: order.currency || "LKR",
+        issueDate: new Date().toISOString().slice(0, 10),
+        dueDate: new Date().toISOString().slice(0, 10),
+        taxRatePercent: 0,
+        subtotalMinor: order.totalMinor - order.taxMinor,
+        taxMinor: order.taxMinor,
+        totalMinor: order.totalMinor,
+        issuerSnapshotJson: snapshot,
+        notes: `Order ${order.orderNumber}`,
+      })
+      .onConflictDoNothing(),
+    ...lines.map((line) =>
+      tx
+        .insert(invoiceLineItems)
+        .values({
+          ...line,
+          invoiceId: id,
+          organizationId: order.organizationId,
+        })
+        .onConflictDoNothing(),
+    ),
+  ]);
+  return id;
+}
 export const InvoiceRepository = {
+  recordInvoiceSent,
+  issueInvoice,
   getSettings,
   upsertSettings,
   listInvoices,

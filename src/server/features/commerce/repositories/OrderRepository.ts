@@ -1,3 +1,8 @@
+import {
+  inventoryMovementStatements,
+  type StockMovementDraft,
+} from "./InventoryRepository";
+import { reverseEarnedPointsStatement } from "./OrderFinancialRepository";
 import { and, desc, eq, like, or, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { runBatch } from "@/db/runBatch";
@@ -116,14 +121,6 @@ async function findByExternalId(
   return row ?? null;
 }
 
-async function countOrders(organizationId: string) {
-  const rows = await db
-    .select({ id: commerceOrders.id })
-    .from(commerceOrders)
-    .where(eq(commerceOrders.organizationId, organizationId));
-  return rows.length;
-}
-
 /**
  * The order and its lines are written together: an order with no lines has a
  * total that describes nothing, and a partial write would leave one.
@@ -134,6 +131,17 @@ async function createOrderWithLines(
     id: string;
     branchId: string;
     contactId: string | null;
+    customerName: string | null;
+    customerPhone: string | null;
+    customerEmail: string | null;
+    shippingAddress: string | null;
+    shippingCity: string | null;
+    pickup: boolean;
+    paymentMethod: string | null;
+    currency?: string;
+    operationsConnectionId?: string | null;
+    approvalStatus?: "pending";
+    externalBasketKey?: string;
     orderNumber: string;
     note: string | null;
     externalSource: string | null;
@@ -178,6 +186,62 @@ async function setOrderState(
     )
     .returning();
   return row ?? null;
+}
+
+export type NativeOrderTransition = {
+  revision: string;
+  fromStatus: "draft" | "confirmed";
+  values: {
+    status: "confirmed" | "cancelled" | "returned";
+    fulfilmentStatus: "unfulfilled" | "fulfilled" | "returned";
+    confirmedAt?: string;
+    cancelledAt?: string;
+  };
+  movements: StockMovementDraft[];
+};
+async function transitionNative(
+  organizationId: string,
+  orderId: string,
+  input: NativeOrderTransition,
+) {
+  const { revision, fromStatus, values, movements } = input;
+  const now = new Date().toISOString();
+  const guard = and(
+    eq(commerceOrders.organizationId, organizationId),
+    eq(commerceOrders.id, orderId),
+    eq(commerceOrders.updatedAt, revision),
+    eq(commerceOrders.status, fromStatus),
+  );
+  const eligible = sql`exists (select 1 from ${commerceOrders} where ${guard})`;
+  await runBatch((tx) => [
+    // Lock the order before reading eligibility for its stock writes. On
+    // Postgres, a concurrent transition waits here then rechecks this guard.
+    tx
+      .update(commerceOrders)
+      .set({ updatedAt: sql`${commerceOrders.updatedAt}` })
+      .where(guard),
+    ...inventoryMovementStatements(tx, organizationId, movements, eligible),
+    ...(values.status === "cancelled" || values.status === "returned"
+      ? [
+          reverseEarnedPointsStatement(
+            tx,
+            organizationId,
+            orderId,
+            eligible,
+            now,
+          ),
+        ]
+      : []),
+    tx
+      .update(commerceOrders)
+      .set({
+        ...values,
+        approvalStatus: values.status === "confirmed" ? "approved" : "rejected",
+        updatedAt: now,
+      })
+      .where(guard),
+  ]);
+  return getOrder(organizationId, orderId);
 }
 
 async function getOrderRequest(organizationId: string, requestId: string) {
@@ -325,6 +389,7 @@ async function sequence(organizationId: string) {
 }
 
 export const OrderRepository = {
+  transitionNative,
   sequence,
   shipments,
   approveImport,
@@ -334,7 +399,6 @@ export const OrderRepository = {
   getOrder,
   listLines,
   findByExternalId,
-  countOrders,
   createOrderWithLines,
   setOrderState,
   getOrderRequest,

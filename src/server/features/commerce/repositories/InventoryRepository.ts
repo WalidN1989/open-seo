@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, lte, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, lte, sql, type SQL } from "drizzle-orm";
 import { db } from "@/db";
 import { runBatch } from "@/db/runBatch";
 import {
@@ -145,8 +145,6 @@ async function applyMovements(
   movements: StockMovementDraft[],
 ) {
   if (movements.length === 0) return;
-  const now = new Date().toISOString();
-
   await BranchRepository.resolve(organizationId);
   // Validate every branch at this shared boundary, including integration callers.
   for (const selectedBranchId of new Set(
@@ -154,9 +152,22 @@ async function applyMovements(
   )) {
     await BranchRepository.resolve(organizationId, selectedBranchId);
   }
-  await runBatch((tx) => [
-    ...movements.map((movement) =>
-      tx.insert(commerceStockMovements).values({
+  await runBatch((tx) =>
+    inventoryMovementStatements(tx, organizationId, movements),
+  );
+}
+
+/** Shared writes let an order's state transition guard its stock in one batch. */
+export function inventoryMovementStatements(
+  tx: Parameters<Parameters<typeof runBatch>[0]>[0],
+  organizationId: string,
+  movements: StockMovementDraft[],
+  eligible?: SQL,
+) {
+  const now = new Date().toISOString();
+  return [
+    ...movements.map((movement) => {
+      const values = {
         id: crypto.randomUUID(),
         organizationId,
         branchId:
@@ -168,25 +179,77 @@ async function applyMovements(
         referenceType: movement.referenceType ?? null,
         referenceId: movement.referenceId ?? null,
         actorUserId: movement.actorUserId ?? null,
-      }),
-    ),
+      };
+      return eligible
+        ? tx.insert(commerceStockMovements).select(
+            tx
+              .select({
+                id: sql<string>`${values.id}`.as("id"),
+                branchId: sql<string>`${values.branchId}`.as("branchId"),
+                organizationId: sql<string>`${organizationId}`.as(
+                  "organizationId",
+                ),
+                productId: sql<string>`${values.productId}`.as("productId"),
+                movementType: sql<string>`${values.movementType}`.as(
+                  "movementType",
+                ),
+                quantityDelta: sql<number>`${values.quantityDelta}`.as(
+                  "quantityDelta",
+                ),
+                reason: sql<string | null>`${values.reason}`.as("reason"),
+                referenceType: sql<string | null>`${values.referenceType}`.as(
+                  "referenceType",
+                ),
+                referenceId: sql<string | null>`${values.referenceId}`.as(
+                  "referenceId",
+                ),
+                actorUserId: sql<string | null>`${values.actorUserId}`.as(
+                  "actorUserId",
+                ),
+                createdAt: sql<string>`${now}`.as("createdAt"),
+              })
+              .from(sql`(select 1) as eligible_movement`)
+              .where(eligible),
+          )
+        : tx.insert(commerceStockMovements).values(values);
+    }),
     ...movements.flatMap((movement) => {
       const branchId =
         movement.branchId ?? BranchRepository.defaultId(organizationId);
+      const id = crypto.randomUUID();
       return [
-        tx
-          .insert(commerceInventoryBalances)
-          .values({
-            id: crypto.randomUUID(),
-            organizationId,
-            branchId,
-            productId: movement.productId,
-            quantityOnHand: 0,
-            updatedAt: now,
-          })
-          .onConflictDoNothing(),
-        // A negative result violates NOT NULL, rolling back the entire batch.
-        // This is checked inside the write, so concurrent transfers cannot oversell.
+        eligible
+          ? tx
+              .insert(commerceInventoryBalances)
+              .select(
+                tx
+                  .select({
+                    id: sql<string>`${id}`.as("id"),
+                    branchId: sql<string>`${branchId}`.as("branchId"),
+                    organizationId: sql<string>`${organizationId}`.as(
+                      "organizationId",
+                    ),
+                    productId: sql<string>`${movement.productId}`.as(
+                      "productId",
+                    ),
+                    quantityOnHand: sql<number>`0`.as("quantityOnHand"),
+                    updatedAt: sql<string>`${now}`.as("updatedAt"),
+                  })
+                  .from(sql`(select 1) as eligible_balance`)
+                  .where(eligible),
+              )
+              .onConflictDoNothing()
+          : tx
+              .insert(commerceInventoryBalances)
+              .values({
+                id,
+                organizationId,
+                branchId,
+                productId: movement.productId,
+                quantityOnHand: 0,
+                updatedAt: now,
+              })
+              .onConflictDoNothing(),
         tx
           .update(commerceInventoryBalances)
           .set({
@@ -198,11 +261,12 @@ async function applyMovements(
               eq(commerceInventoryBalances.organizationId, organizationId),
               eq(commerceInventoryBalances.branchId, branchId),
               eq(commerceInventoryBalances.productId, movement.productId),
+              eligible,
             ),
           ),
       ];
     }),
-  ]);
+  ];
 }
 
 /**

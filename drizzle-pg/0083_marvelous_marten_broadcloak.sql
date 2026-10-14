@@ -1,0 +1,2 @@
+ALTER TABLE "commerce_orders" ADD COLUMN "operations_connection_id" text;--> statement-breakpoint
+ALTER TABLE "commerce_orders" ADD CONSTRAINT "commerce_orders_operations_connection_id_integration_connections_id_fk" FOREIGN KEY ("operations_connection_id") REFERENCES "public"."integration_connections"("id") ON DELETE set null ON UPDATE no action;
