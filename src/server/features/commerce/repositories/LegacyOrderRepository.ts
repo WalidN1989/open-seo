@@ -76,14 +76,21 @@ async function importOrder(
               orderNumber: data.orderNumber,
               status: data.cancelled
                 ? "cancelled"
-                : data.pending
-                  ? "draft"
-                  : "confirmed",
-              approvalStatus: data.cancelled
-                ? "rejected"
-                : data.pending
-                  ? "pending"
-                  : "approved",
+                : data.returned
+                  ? "returned"
+                  : data.pending
+                    ? "draft"
+                    : "confirmed",
+              approvalStatus:
+                data.cancelled || data.returned || data.refunded
+                  ? "rejected"
+                  : data.pending
+                    ? "pending"
+                    : "approved",
+              paymentStatus: data.refunded ? "refunded" : "unpaid",
+              fulfilmentStatus: data.returned ? "returned" : "unfulfilled",
+              paymentMethod: data.paymentMethod,
+              paymentTerms: data.paymentTerms,
               currency: "LKR",
               customerName: data.customerName,
               customerPhone: data.customerPhone,
@@ -95,7 +102,7 @@ async function importOrder(
               totalMinor: data.totalMinor,
               deliveryMinor: data.deliveryMinor,
               discountMinor: data.discountMinor,
-              note: "Legacy Zoho history snapshot. Payment status needs Shopify verification.",
+              note: "Legacy order/line/tracking snapshot. Returned/refunded states are recorded; paid and refund amounts need separate reconciliation.",
             })
             .onConflictDoNothing(),
           ...lines.map((line) =>

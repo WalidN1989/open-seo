@@ -1,12 +1,18 @@
-import { Fragment, type Dispatch, type SetStateAction } from "react";
+import { Fragment, useState, type Dispatch, type SetStateAction } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Eye, RefreshCw, Printer } from "lucide-react";
+import {
+  FileText,
+  Pencil,
+  MoreHorizontal,
+  RefreshCw,
+  Printer,
+} from "lucide-react";
 import { refreshOrderShipment } from "@/serverFunctions/orders";
 import type { getOrderWorkspace } from "@/serverFunctions/orderWorkspace";
 import { formatMoney } from "@/shared/currencies";
 import { getStandardErrorMessage } from "@/client/lib/error-messages";
-import { OrderDetail } from "./OrderDetail";
+import { OrderRowPanel, type OrderPanelKind } from "./OrderRowPanel";
 export function OrdersTable({
   rows,
   organizationId,
@@ -20,6 +26,17 @@ export function OrdersTable({
   openOrderId: string | null;
   setOpenOrderId: Dispatch<SetStateAction<string | null>>;
 }) {
+  const [panel, setPanel] = useState<{
+    orderId: string;
+    kind: OrderPanelKind;
+  } | null>(null);
+  const showPanel = (orderId: string, kind: OrderPanelKind) => {
+    const currentKind = panel?.orderId === orderId ? panel.kind : "actions";
+    setPanel({ orderId, kind });
+    setOpenOrderId(
+      openOrderId === orderId && currentKind === kind ? null : orderId,
+    );
+  };
   const client = useQueryClient();
   const refresh = useMutation({
     mutationFn: (data: { orderId: string; shipmentId: string }) =>
@@ -33,19 +50,21 @@ export function OrdersTable({
         <thead>
           <tr>
             {[
-              "Order Number",
+              "Order number",
               "External ID",
               "Customer",
-              "Payment",
+              "Payment terms",
               "Tracking",
               "Products",
               "Date",
-              "Total Amount",
+              "Total amount",
+              "View invoice",
+              "Edit order",
               "Actions",
             ].map((label) => (
               <th
                 key={label}
-                className={label === "Total Amount" ? "text-right" : undefined}
+                className={label === "Total amount" ? "text-right" : undefined}
               >
                 {label}
               </th>
@@ -65,9 +84,7 @@ export function OrdersTable({
                 <td className="whitespace-nowrap">
                   <button
                     className="font-medium text-primary"
-                    onClick={() =>
-                      setOpenOrderId(openOrderId === order.id ? null : order.id)
-                    }
+                    onClick={() => showPanel(order.id, "actions")}
                   >
                     {order.orderNumber}
                   </button>
@@ -88,25 +105,14 @@ export function OrdersTable({
                   <span
                     className={`badge badge-sm ${order.paymentStatus === "paid" ? "badge-success" : order.paymentStatus === "refunded" ? "badge-warning" : "badge-ghost"}`}
                   >
-                    {order.paymentMethod
-                      ? (
-                          {
-                            koko: "KOKO",
-                            mint_pay: "Mint Pay",
-                            payhere: "Payhere",
-                            cash: "Cash",
-                            combank: "COMBANK",
-                            daraz: "Daraz",
-                            kapruka: "Kapruka",
-                          } as Record<string, string>
-                        )[order.paymentMethod] || order.paymentMethod
-                      : order.paymentStatus}
+                    {order.paymentTerms || "Not recorded"}
                   </span>
-                  {order.paymentMethod ? (
-                    <p className="mt-1 text-xs text-base-content/60">
-                      {order.paymentStatus}
-                    </p>
-                  ) : null}
+                  <p className="mt-1 text-xs text-base-content/60">
+                    {order.paymentMethod
+                      ? `${({ koko: "KOKO", mint_pay: "Mint Pay", payhere: "Payhere", cash: "Cash", combank: "COMBANK", daraz: "Daraz", kapruka: "Kapruka" } as Record<string, string>)[order.paymentMethod] || order.paymentMethod} · `
+                      : ""}
+                    {order.paymentStatus}
+                  </p>
                 </td>
                 <td className="min-w-48">
                   {order.pickup ? (
@@ -154,7 +160,7 @@ export function OrdersTable({
                   ) : (
                     <button
                       className="btn btn-outline btn-xs"
-                      onClick={() => setOpenOrderId(order.id)}
+                      onClick={() => showPanel(order.id, "actions")}
                     >
                       View fulfillment
                     </button>
@@ -181,20 +187,77 @@ export function OrdersTable({
                 <td>
                   <button
                     className="btn btn-ghost btn-xs"
-                    aria-label={`View ${order.orderNumber}`}
-                    aria-expanded={openOrderId === order.id}
-                    onClick={() =>
-                      setOpenOrderId(openOrderId === order.id ? null : order.id)
-                    }
+                    aria-label={`View invoice for ${order.orderNumber}`}
+                    title="Open order bill preview"
+                    onClick={() => showPanel(order.id, "invoice")}
                   >
-                    <Eye className="size-4" />
+                    <FileText className="size-4" />
+                  </button>
+                </td>
+                <td>
+                  <button
+                    className="btn btn-ghost btn-xs"
+                    aria-label={`Edit order ${order.orderNumber}`}
+                    title={
+                      order.status !== "draft"
+                        ? "Confirmed and completed orders cannot be edited"
+                        : order.integrationConnectionId ||
+                            ["shopify", "legacy_zoho"].includes(
+                              order.externalSource || "",
+                            )
+                          ? "Review imported product mapping; edit source details in Shopify"
+                          : order.paymentStatus !== "unpaid" ||
+                              shipments.length > 0
+                            ? "Only unpaid native drafts without shipments can be edited"
+                            : "Edit this unpaid native draft"
+                    }
+                    disabled={
+                      order.status !== "draft" ||
+                      (order.integrationConnectionId ||
+                      ["shopify", "legacy_zoho"].includes(
+                        order.externalSource || "",
+                      )
+                        ? order.approvalStatus !== "pending"
+                        : shipments.length > 0 ||
+                          order.paymentStatus !== "unpaid" ||
+                          Boolean(
+                            order.approvalStatus &&
+                            order.approvalStatus !== "pending",
+                          ))
+                    }
+                    onClick={() => showPanel(order.id, "edit")}
+                  >
+                    <Pencil className="size-4" />
+                  </button>
+                </td>
+                <td>
+                  <button
+                    className="btn btn-ghost btn-xs"
+                    aria-label={`Actions for ${order.orderNumber}`}
+                    aria-expanded={
+                      openOrderId === order.id &&
+                      (panel?.orderId !== order.id || panel.kind === "actions")
+                    }
+                    onClick={() => showPanel(order.id, "actions")}
+                  >
+                    <MoreHorizontal className="size-4" />
                   </button>
                 </td>
               </tr>
               {openOrderId === order.id ? (
                 <tr>
-                  <td colSpan={9}>
-                    <OrderDetail orderId={order.id} status={order.status} />
+                  <td colSpan={11}>
+                    <OrderRowPanel
+                      orderId={order.id}
+                      status={order.status}
+                      kind={
+                        panel?.orderId === order.id ? panel.kind : "actions"
+                      }
+                      onEdited={() => {
+                        setPanel({ orderId: order.id, kind: "actions" });
+                        setOpenOrderId(order.id);
+                      }}
+                    />
                   </td>
                 </tr>
               ) : null}
@@ -203,7 +266,7 @@ export function OrdersTable({
           {!rows.length ? (
             <tr>
               <td
-                colSpan={9}
+                colSpan={11}
                 className="py-10 text-center text-base-content/60"
               >
                 No orders match this view.

@@ -736,6 +736,13 @@
       "when": 1791924891690,
       "tag": "0104_colossal_boomerang",
       "breakpoints": true
+    },
+    {
+      "idx": 105,
+      "version": "6",
+      "when": 1791953148662,
+      "tag": "0105_fluffy_synch",
+      "breakpoints": true
     }
   ]
 }

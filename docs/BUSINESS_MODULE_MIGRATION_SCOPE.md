@@ -1766,3 +1766,21 @@ shipment, stock mutation, legacy disconnection or operational deployment occurre
 Existing atomic-write/dual-dialect rules plus focused regressions cover the review
 findings; no review-control changes were made. Org-enforced Greptile dashboard
 baseline was not verified or changed. Full-retirement gaps above remain open.
+
+### 2026-10-14 — PR40 release revision
+
+Owner approved merge/deploy with automatic order messages and Citypak creation off.
+The table now has all eleven requested columns, including separate invoice preview,
+Edit order and Actions. Native draft editing uses a revision-guarded transaction,
+preserves source/currency/creation identity, and performs no stock or provider action.
+Imported pending editing opens mapping review; confirmed/source-owned basket changes
+are not silently applied. Payment terms and gateway remain distinct; new nullable
+payment_terms migrations are SQLite0105 / PG0084. Legacy CSV import preserves returned/
+refunded states but does not invent refund amounts or financial records.
+
+Fresh backup /private/tmp/du-neon-before-pr40-2026-10-14.dump verified (0600).
+All seven new PG migrations pass against isolated production schema with an enabled
+synthetic mirror; confirmation/operation cutoffs remain NULL, invoice false, loyalty0.
+Updated full suite: 2,818 tests across306files pass; selfhost build passes.
+Historical export includes26orders without lines and other reconciliation gaps;
+no historical import or provider activation is included in this deployment.

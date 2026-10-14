@@ -1,9 +1,10 @@
-import { getOrderSyncSettings } from "@/serverFunctions/orders";
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
   createCommerceOrder,
+  editCommerceOrder,
+  type getCommerceOrder,
   confirmCommerceOrder,
   listCommerceProducts,
 } from "@/serverFunctions/commerce";
@@ -12,43 +13,74 @@ import {
   getOrderCustomerHistory,
 } from "@/serverFunctions/orderWorkspace";
 import { createOrderSchema } from "@/types/schemas/commerce";
-import { useWorkspaceCurrency } from "@/client/hooks/useWorkspaceCurrency";
 import { getStandardErrorMessage } from "@/client/lib/error-messages";
 import { useBranchSelection } from "./BranchPicker";
 import {
   OrderCustomerSection,
   OrderProductSection,
+  OrderFormFooter,
+  OrderAutomationProfile,
   emptyLine,
   type Line,
 } from "./OrderCreateSections";
 export function OrderCreateForm({
   onCreated,
+  draft,
 }: {
   onCreated: (orderId: string) => void;
+  draft?: NonNullable<Awaited<ReturnType<typeof getCommerceOrder>>>;
 }) {
-  const money = useWorkspaceCurrency();
-  const selection = useBranchSelection();
+  const selection = useBranchSelection(draft?.order.branchId);
   const client = useQueryClient();
   const [creationRequestId] = useState(() => crypto.randomUUID());
-  const [operationsConnectionId, setOperationsConnectionId] = useState("");
-  const profiles = useQuery({
-    queryKey: ["commerce", "orderSync"],
-    queryFn: () => getOrderSyncSettings(),
-  });
+  const [operationsConnectionId, setOperationsConnectionId] = useState(
+    draft?.order.operationsConnectionId || "",
+  );
+  const [revision] = useState(draft?.order.updatedAt);
   const [customerSearch, setCustomerSearch] = useState("");
   const [customer, setCustomer] = useState<
     Awaited<ReturnType<typeof getOrderCustomers>>[number] | null
-  >(null);
+  >(
+    draft?.order.contactId
+      ? {
+          id: draft.order.contactId,
+          firstName: draft.order.customerName || "Customer",
+          lastName: null,
+          phone: draft.order.customerPhone,
+          email: draft.order.customerEmail,
+        }
+      : null,
+  );
   const [productSearch, setProductSearch] = useState("");
-  const [lines, setLines] = useState<Line[]>([emptyLine()]);
-  const [discount, setDiscount] = useState("0");
-  const [shipping, setShipping] = useState("0");
-  const [tax, setTax] = useState("0");
-  const [note, setNote] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState("");
-  const [shippingAddress, setShippingAddress] = useState("");
-  const [shippingCity, setShippingCity] = useState("");
-  const [pickup, setPickup] = useState(false);
+  const [lines, setLines] = useState<Line[]>(
+    draft
+      ? draft.lines.map((line) => ({
+          id: line.id,
+          productId: line.productId || "",
+          description: line.description,
+          quantity: String(line.quantity),
+          price: String(line.unitPriceMinor / 100),
+        }))
+      : [emptyLine()],
+  );
+  const [discount, setDiscount] = useState(
+    String((draft?.order.discountMinor || 0) / 100),
+  );
+  const [shipping, setShipping] = useState(
+    String((draft?.order.deliveryMinor || 0) / 100),
+  );
+  const [tax, setTax] = useState(String((draft?.order.taxMinor || 0) / 100));
+  const [note, setNote] = useState(draft?.order.note || "");
+  const [paymentMethod, setPaymentMethod] = useState(
+    draft?.order.paymentMethod || "",
+  );
+  const [shippingAddress, setShippingAddress] = useState(
+    draft?.order.shippingAddress || "",
+  );
+  const [shippingCity, setShippingCity] = useState(
+    draft?.order.shippingCity || "",
+  );
+  const [pickup, setPickup] = useState(draft?.order.pickup || false);
   const customers = useQuery({
     queryKey: ["crm", "orderCustomers", customerSearch],
     queryFn: () => getOrderCustomers({ data: { search: customerSearch } }),
@@ -76,7 +108,9 @@ export function OrderCreateForm({
       sum + Math.round(Number(line.price) * 100) * Number(line.quantity),
     0,
   );
-  const discountMinor = Math.round((subtotal * Number(discount)) / 100);
+  const discountMinor = draft
+    ? Math.round(Number(discount) * 100)
+    : Math.round((subtotal * Number(discount)) / 100);
   const deliveryMinor = Math.round(Number(shipping) * 100);
   const taxMinor = Math.round(Number(tax) * 100);
   const total =
@@ -86,9 +120,13 @@ export function OrderCreateForm({
       if (
         !Number.isFinite(Number(discount)) ||
         Number(discount) < 0 ||
-        Number(discount) > 100
+        (!draft && Number(discount) > 100)
       )
-        throw new Error("Enter a discount from 0 to 100%.");
+        throw new Error(
+          draft
+            ? "Enter a non-negative discount amount."
+            : "Enter a discount from 0 to 100%.",
+        );
       const input = createOrderSchema.parse({
         creationRequestId,
         operationsConnectionId: operationsConnectionId || undefined,
@@ -109,6 +147,14 @@ export function OrderCreateForm({
           unitPriceMinor: Math.round(Number(line.price) * 100),
         })),
       });
+      if (draft) {
+        if (!revision) throw new Error("Reload this draft before editing it.");
+        const { creationRequestId: _requestId, ...editable } = input;
+        const order = await editCommerceOrder({
+          data: { ...editable, orderId: draft.order.id, revision },
+        });
+        return { order, confirmationError: null, confirmed: false };
+      }
       if (confirm && !paymentMethod)
         throw new Error("Select the payment method before creating the order.");
       const order = await createCommerceOrder({ data: input });
@@ -136,7 +182,9 @@ export function OrderCreateForm({
         toast.success(
           confirmed
             ? "Order created and confirmed. Stock updated."
-            : "Draft order saved.",
+            : draft
+              ? "Draft order updated."
+              : "Draft order saved.",
         );
       onCreated(order.id);
     },
@@ -154,29 +202,14 @@ export function OrderCreateForm({
         save.mutate(submitter?.getAttribute("value") === "create");
       }}
     >
-      <h2 className="text-xl font-semibold">Create Sales Order</h2>
+      <h2 className="text-xl font-semibold">
+        {draft ? `Edit order ${draft.order.orderNumber}` : "Create Sales Order"}
+      </h2>
+      <OrderAutomationProfile
+        connectionId={operationsConnectionId}
+        onChange={setOperationsConnectionId}
+      />
       <div className="grid gap-5 lg:grid-cols-[1fr_2fr]">
-        <label className="block text-sm">
-          Order automation profile
-          <select
-            className="select select-bordered select-sm w-full"
-            value={operationsConnectionId}
-            onChange={(event) => setOperationsConnectionId(event.target.value)}
-          >
-            <option value="">No automatic fulfillment</option>
-            {profiles.data
-              ?.filter((profile) => profile.enabled)
-              .map((profile) => (
-                <option key={profile.connectionId} value={profile.connectionId}>
-                  {profile.displayName}
-                </option>
-              ))}
-          </select>
-          <span className="text-xs text-base-content/60">
-            After confirmation, DU uses this profile's enabled invoice, loyalty
-            and Citypak settings.
-          </span>
-        </label>
         <OrderCustomerSection
           customer={customer}
           setCustomer={setCustomer}
@@ -197,7 +230,13 @@ export function OrderCreateForm({
       <div className="flex flex-wrap items-end gap-3">
         {[
           ["Shipping", shipping, setShipping, "0.01", undefined],
-          ["Disc %", discount, setDiscount, "0.01", "100"],
+          [
+            draft ? "Discount amount" : "Disc %",
+            discount,
+            setDiscount,
+            "0.01",
+            draft ? undefined : "100",
+          ],
           ["Tax amount", tax, setTax, "0.01", undefined],
         ].map(([label, value, setter, step, max]) => (
           <label key={String(label)} className="text-sm">
@@ -287,55 +326,18 @@ export function OrderCreateForm({
           onChange={(event) => setNote(event.target.value)}
         />
       </label>
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <dl className="text-sm">
-          <div>
-            Subtotal: {money.format(Number.isFinite(subtotal) ? subtotal : 0)}
-          </div>
-          <div>
-            Discount:{" "}
-            {money.format(Number.isFinite(discountMinor) ? discountMinor : 0)}
-          </div>
-          <div className="mt-1 font-semibold">
-            Total: {money.format(Number.isFinite(total) ? total : 0)}
-          </div>
-        </dl>
-        <div className="flex gap-2">
-          <button
-            type="submit"
-            name="action"
-            value="draft"
-            className="btn btn-outline btn-sm"
-            disabled={
-              save.isPending ||
-              !selection.branchId ||
-              customers.isError ||
-              products.isError
-            }
-          >
-            Save Draft
-          </button>
-          <button
-            type="submit"
-            name="action"
-            value="create"
-            className="btn btn-primary btn-sm"
-            disabled={
-              save.isPending ||
-              !selection.branchId ||
-              customers.isError ||
-              products.isError
-            }
-          >
-            {save.isPending ? "Saving…" : "Create Order"}
-          </button>
-        </div>
-      </div>
+      <OrderFormFooter
+        subtotal={subtotal}
+        discountMinor={discountMinor}
+        total={total}
+        editing={Boolean(draft)}
+        pending={save.isPending}
+        disabled={!selection.branchId || customers.isError || products.isError}
+      />
       <p className="text-xs text-base-content/60">
-        Create Order confirms the order and deducts stock. Invoice, courier and
-        loyalty processing require a separate configured workflow. Shipping and
-        tax are entered explicitly; no legacy fee or free-shipping rule is
-        applied automatically.
+        {draft
+          ? "Saving updates this draft. Confirmation remains a separate action."
+          : "Create Order confirms the order and deducts stock. Invoice, courier and loyalty processing require a separate configured workflow. Shipping and tax are entered explicitly; no legacy fee or free-shipping rule is applied automatically."}
       </p>
     </form>
   );

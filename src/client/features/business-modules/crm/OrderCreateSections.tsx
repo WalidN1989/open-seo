@@ -2,7 +2,8 @@ import { useWorkspaceCurrency } from "@/client/hooks/useWorkspaceCurrency";
 import { formatMoney } from "@/shared/currencies";
 import { Plus, Trash2 } from "lucide-react";
 import type { Dispatch, SetStateAction } from "react";
-import type { UseQueryResult } from "@tanstack/react-query";
+import { useQuery, type UseQueryResult } from "@tanstack/react-query";
+import { getOrderSyncSettings } from "@/serverFunctions/orders";
 import type { listCommerceProducts } from "@/serverFunctions/commerce";
 import type {
   getOrderCustomers,
@@ -257,5 +258,104 @@ export function OrderProductSection({
         Add product
       </button>
     </section>
+  );
+}
+
+export function OrderFormFooter({
+  subtotal,
+  discountMinor,
+  total,
+  editing,
+  pending,
+  disabled,
+}: {
+  subtotal: number;
+  discountMinor: number;
+  total: number;
+  editing: boolean;
+  pending: boolean;
+  disabled: boolean;
+}) {
+  const money = useWorkspaceCurrency();
+  return (
+    <div className="flex flex-wrap items-end justify-between gap-3">
+      <dl className="text-sm">
+        <div>
+          Subtotal: {money.format(Number.isFinite(subtotal) ? subtotal : 0)}
+        </div>
+        <div>
+          Discount:{" "}
+          {money.format(Number.isFinite(discountMinor) ? discountMinor : 0)}
+        </div>
+        <div className="mt-1 font-semibold">
+          Total: {money.format(Number.isFinite(total) ? total : 0)}
+        </div>
+      </dl>
+      <div className="flex gap-2">
+        <button
+          type="submit"
+          name="action"
+          value="draft"
+          className="btn btn-outline btn-sm"
+          disabled={pending || disabled}
+        >
+          {pending ? "Saving…" : editing ? "Save changes" : "Save Draft"}
+        </button>
+        {!editing ? (
+          <button
+            type="submit"
+            name="action"
+            value="create"
+            className="btn btn-primary btn-sm"
+            disabled={pending || disabled}
+          >
+            {pending ? "Saving…" : "Create Order"}
+          </button>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+export function OrderAutomationProfile({
+  connectionId,
+  onChange,
+}: {
+  connectionId: string;
+  onChange: (connectionId: string) => void;
+}) {
+  const profiles = useQuery({
+    queryKey: ["commerce", "orderSync"],
+    queryFn: () => getOrderSyncSettings(),
+  });
+  const active = profiles.data?.filter((profile) => profile.enabled) ?? [];
+  return (
+    <label className="block text-sm">
+      Order automation profile
+      <select
+        className="select select-bordered select-sm block w-full sm:max-w-md"
+        value={connectionId}
+        onChange={(event) => onChange(event.target.value)}
+        disabled={profiles.isLoading}
+      >
+        <option value="">No automatic fulfillment</option>
+        {connectionId &&
+        !active.some((profile) => profile.connectionId === connectionId) ? (
+          <option value={connectionId}>
+            Saved profile (currently unavailable)
+          </option>
+        ) : null}
+        {active.map((profile) => (
+          <option key={profile.connectionId} value={profile.connectionId}>
+            {profile.displayName}
+          </option>
+        ))}
+      </select>
+      {profiles.isError ? <ErrorState error={profiles.error} /> : null}
+      <span className="text-xs text-base-content/60">
+        After confirmation, DU uses this profile's enabled invoice, loyalty and
+        Citypak settings.
+      </span>
+    </label>
   );
 }

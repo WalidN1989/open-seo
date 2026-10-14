@@ -62,7 +62,7 @@ export function calculateTotals(
   };
 }
 
-async function requireOrderOperationsProfile(
+export async function requireOrderOperationsProfile(
   organizationId: string,
   userId: string,
   connectionId?: string,

@@ -10,6 +10,7 @@ import { z } from "zod";
 import { CommerceService } from "@/server/features/commerce/services/CommerceService";
 import { InventoryService } from "@/server/features/commerce/services/InventoryService";
 import { OrderService } from "@/server/features/commerce/services/OrderService";
+import { NativeOrderDraftService } from "@/server/features/commerce/services/NativeOrderDraftService";
 import { CatalogueSyncService } from "@/server/features/commerce/services/CatalogueSyncService";
 import { AnalyticsService } from "@/server/features/commerce/services/AnalyticsService";
 import { BusinessSettingsService } from "@/server/features/business-modules/services/BusinessSettingsService";
@@ -22,6 +23,7 @@ import {
   convertOrderRequestSchema,
   createAuditSchema,
   createOrderSchema,
+  editOrderSchema,
   createProductSchema,
   importProductsSchema,
   listMovementsSchema,
@@ -204,6 +206,13 @@ export const createCommerceOrder = createServerFn({ method: "POST" })
   .validator(createOrderSchema)
   .handler(({ context, data }) =>
     OrderService.createOrder(context.organizationId, context.userId, data),
+  );
+
+export const editCommerceOrder = createServerFn({ method: "POST" })
+  .middleware(requireAuthenticatedContext)
+  .validator(editOrderSchema)
+  .handler(({ context, data }) =>
+    NativeOrderDraftService.edit(context.organizationId, context.userId, data),
   );
 
 export const confirmCommerceOrder = createServerFn({ method: "POST" })

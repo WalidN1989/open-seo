@@ -27,6 +27,8 @@ const orderSchema = z.object({
   customer_email: z.string().max(320),
   customer_mobile: z.string().max(80),
   billing_address: z.string().max(2000),
+  payment_mode: z.string().trim().max(120).optional(),
+  payment_terms: z.string().trim().max(300).optional(),
   subtotal: amount,
   grand_total: amount,
   discount_amount: charge,
@@ -90,6 +92,14 @@ export function parseLegacyOrders(ordersCsv: string, linesCsv: string) {
       customerEmail: order.customer_email || null,
       customerPhone: orderPhone(order.customer_mobile),
       shippingAddress: order.billing_address,
+      paymentMethod: order.payment_mode || null,
+      paymentTerms: order.payment_terms || null,
+      returned: ["returned", "returned_refunded"].includes(
+        order.delivery_status,
+      ),
+      refunded: ["refunded", "returned_refunded"].includes(
+        order.delivery_status,
+      ),
       subtotalMinor: order.subtotal,
       totalMinor: order.grand_total,
       discountMinor: order.discount_amount,

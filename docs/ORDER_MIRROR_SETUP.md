@@ -32,7 +32,7 @@ credentials and callback support. The migration ledger records the live state.
 
 1. Apply the additive migrations through the normal deployment migration runner.
    The order mirror starts at SQLite `0098` / Postgres `0077`; the
-   operational workspace adds SQLite `0099`–`0104` / Postgres `0078`–`0083`.
+   operational workspace adds SQLite `0099`–`0105` / Postgres `0078`–`0084`.
 2. Open CRM → Orders → Shopify order connection. Select the existing connected
    Shopify integration and enable **Mirror orders**. New connections start with
    mirroring disabled.
@@ -54,9 +54,26 @@ credentials and callback support. The migration ledger records the live state.
    references. Shopify history rows must contain a stable Shopify order ID;
    display order numbers are not substituted for API IDs. This importer accepts
    the audited export format in LKR, with up to 25,000 rows and 5 MB per file.
-   Existing live Shopify snapshots are preserved. Legacy payment status remains
-   unverified until Shopify refreshes it. Tracking from CSV has no freshness
-   timestamp.
+   This imports order, line and tracking snapshots only. It preserves the
+   exported payment method and explicit returned/refunded states, without
+   inferring paid amounts or refund amounts. Existing live Shopify snapshots
+   are preserved. Invoice-send outcomes, loyalty balances/entries and customer
+   identity mappings require separate reconciliation. Tracking from CSV has no
+   freshness timestamp.
+
+   The audited snapshot contains 2,282 orders, 3,260 lines and 904 waybills;
+   separate exports contain 1,675 customers, 1,142 invoice-send records and 1,143
+   loyalty entries. These are export-time counts, not a current database check.
+   Twenty-six orders have no lines, and one source amount needs format review.
+   Raw lines also need product enrichment where their saved title is absent.
+   Correct these exceptions before using the flat CSV importer; do not fabricate
+   items or silently omit orders. The raw aggregate export is not this import
+   format and exceeds the per-file size limit. The standard export has no
+   separate shipping-city field, and its billing address may need customer
+   enrichment. Actual `payment_terms` and `payment_mode` are stored separately;
+   legacy fee/return/refund dates are not imported.
+   Keep the original exports privately for the later normalized history migration.
+
 6. Review each pending order. Select missing products/editions and acknowledge
    every catalogue-price difference. Shopify selling prices are kept; the
    catalogue price does not change. A changed basket invalidates approval and
@@ -104,5 +121,6 @@ changes, tenant isolation, exact sender matching, price acknowledgement, local
 review rejection, legacy import replay and replacement, and zero stock movement.
 The local UI uses fixture data to exercise all order tabs, mapping/price gates,
 selected-product persistence, bill totals and connection forms. SQLite migrations
-run in the database fixtures; dual-schema parity is checked. Actual Postgres
-migration execution and live Shopify/Citypak tests remain release checks.
+run in the database fixtures; dual-schema parity is checked. The seven new Postgres migrations were applied to an isolated production-schema
+clone, preserving the mirror flag with operations disabled by default. Live Citypak
+verification and historical reconciliation remain activation checks.

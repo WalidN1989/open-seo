@@ -1521,6 +1521,7 @@ export const commerceOrders = sqliteTable(
     shippingAddress: text("shipping_address"),
     shippingCity: text("shipping_city"),
     paymentMethod: text("payment_method"),
+    paymentTerms: text("payment_terms"),
     paidMinor: integer("paid_minor").notNull().default(0),
     pickup: integer("pickup", { mode: "boolean" }).notNull().default(false),
     orderNumber: text("order_number").notNull(),
