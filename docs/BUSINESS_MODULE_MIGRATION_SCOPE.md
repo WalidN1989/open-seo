@@ -1818,3 +1818,19 @@ messages to use VPS/Coolify. Retired provider procedures are marked historical;
 optional legacy monitoring remains compatible but is not a VPS dependency.
 No application logic, database schema, credentials, live image or upstream
 source is changed by preparing this workflow.
+
+### October 18, 2026 — phone calls use the business's country (pending release)
+
+National caller IDs were normalized as Australian before the called line was
+examined. The post-call parser now uses the called number's recognized country
+first; missing or unrecognized line metadata falls back to the connection's own
+workspace (LKR → Sri Lanka, otherwise the existing Australian default). Explicit
+international caller numbers retain their country. Callback numbers use the
+caller's recognized country, then the called line, then that workspace fallback.
+Returning-caller lookup uses the same workspace fallback for a national caller ID.
+The change is tenant scoped and adds no columns or provider configuration.
+Existing stored numbers are not rewritten automatically and no outreach is
+replayed. Rollback is the previous application revision. Synthetic signed webhook
+tests exercise call/contact persistence, callback recipients, returning-caller
+lookup, tenant separation, signature rejection and duplicate delivery handling;
+all outbound provider effects are mocked.

@@ -127,6 +127,9 @@ describe("normalisePhone for Sri Lanka", () => {
     // An unknown country falls back rather than guessing wrongly.
     expect(phoneRegionOf("+971501335775")).toBe("AU");
     expect(phoneRegionOf(null)).toBe("AU");
+    expect(phoneRegionOf(null, "LK")).toBe("LK");
+    expect(phoneRegionOf("+19410000000", "LK")).toBe("LK");
+    expect(phoneRegionOf("+61400000000", "LK")).toBe("AU");
   });
 
   it("reads a spoken Sri Lankan callback number", () => {
@@ -159,6 +162,50 @@ describe("callback details helpers", () => {
 });
 
 describe("readPostCall", () => {
+  it.each([
+    ["0761234567", "+94110000000", "AU", "+94761234567"],
+    ["761234567", "+94110000000", "AU", "+94761234567"],
+    ["0761234567", undefined, "LK", "+94761234567"],
+    ["0400123456", undefined, "AU", "+61400123456"],
+    ["+61400123456", "+94110000000", "LK", "+61400123456"],
+    ["0094761234567", "+61400000000", "AU", "+94761234567"],
+  ] as const)(
+    "reads caller %s on line %s with workspace %s as %s",
+    (caller, line, region, expected) => {
+      expect(
+        readPostCall(
+          {
+            type: "post_call_transcription",
+            data: {
+              conversation_id: "test-call",
+              metadata: {
+                phone_call: { external_number: caller, agent_number: line },
+              },
+            },
+          },
+          region,
+        )?.callerNumber,
+      ).toBe(expected);
+    },
+  );
+
+  it("uses the called line dynamic variable for a national caller id", () => {
+    expect(
+      readPostCall({
+        type: "post_call_transcription",
+        data: {
+          conversation_id: "dynamic-call",
+          conversation_initiation_client_data: {
+            dynamic_variables: {
+              system__caller_id: "0761234567",
+              system__called_number: "+94110000000",
+            },
+          },
+        },
+      })?.callerNumber,
+    ).toBe("+94761234567");
+  });
+
   it("reads caller, captured fields, summary and transcript", () => {
     const report = readPostCall({
       type: "post_call_transcription",

@@ -8,7 +8,9 @@ import {
   integrationConnections,
   voicePhoneCalls,
   whatsappConnections,
+  businessSettings,
 } from "@/db/schema";
+import type { PhoneRegion } from "../elevenlabsWebhook";
 
 /**
  * Storage for calls answered by a hosted voice agent, and the CRM writes a
@@ -18,6 +20,18 @@ import {
 
 function now() {
   return new Date().toISOString();
+}
+
+/** The workspace supplies a fallback when a call has no identifiable line. */
+async function defaultPhoneRegion(
+  organizationId: string,
+): Promise<PhoneRegion> {
+  const [settings] = await db
+    .select({ currency: businessSettings.currency })
+    .from(businessSettings)
+    .where(eq(businessSettings.organizationId, organizationId))
+    .limit(1);
+  return settings?.currency === "LKR" ? "LK" : "AU";
 }
 
 async function getIntegrationById(connectionId: string) {
@@ -321,6 +335,7 @@ async function connectedWhatsapp(organizationId: string) {
 }
 
 export const PhoneCallRepository = {
+  defaultPhoneRegion,
   getIntegrationById,
   findCall,
   insertCall,

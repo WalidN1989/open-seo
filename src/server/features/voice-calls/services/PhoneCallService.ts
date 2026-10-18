@@ -120,9 +120,14 @@ async function recordCall(source: CallSource, report: PhoneCallReport) {
   if (existing) return { callId: existing.id, duplicate: true };
 
   const { firstName, lastName } = splitName(report.captured.caller_name);
-  // A number said out loud has no country code, and which country it belongs
-  // to is only knowable from the line they rang on.
-  const region = source.region ?? phoneRegionOf(report.callerNumber);
+  // Prefer the caller's explicit country, then the line they called, then
+  // the workspace. Widget calls often have no telephone metadata at all.
+  const fallback =
+    source.region ?? (await Repo.defaultPhoneRegion(organizationId));
+  const region = phoneRegionOf(
+    report.callerNumber,
+    phoneRegionOf(report.calledNumber, fallback),
+  );
   // Caller ID first; a web-widget call has none, and then the number the
   // caller gave out loud is the one to use.
   const phone =
@@ -331,7 +336,8 @@ async function processElevenLabsWebhook(
   } catch {
     return { status: 400, body: "unreadable body" };
   }
-  const report = readPostCall(payload);
+  const region = await Repo.defaultPhoneRegion(connection.organizationId);
+  const report = readPostCall(payload, region);
   if (!report) return { status: 200, body: "ignored" };
 
   const result = await recordCall(
@@ -340,6 +346,7 @@ async function processElevenLabsWebhook(
       organizationId: connection.organizationId,
       integrationId: connection.id,
       welcomeTemplate: credentials.WELCOME_TEMPLATE,
+      region,
     },
     report,
   );

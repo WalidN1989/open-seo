@@ -36,7 +36,10 @@ async function lookupCaller(
 
   try {
     const parsed = initiationRequestSchema.safeParse(JSON.parse(rawBody));
-    const phone = parsed.success ? normalisePhone(parsed.data.caller_id) : null;
+    const region = await Repo.defaultPhoneRegion(connection.organizationId);
+    const phone = parsed.success
+      ? normalisePhone(parsed.data.caller_id, region)
+      : null;
     const contact = phone
       ? await Repo.findContactByPhone(connection.organizationId, phone)
       : null;
