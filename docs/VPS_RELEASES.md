@@ -37,6 +37,9 @@ Use **publish: false** to verify a build without publishing or deploying.
 For a production image, select `main`, set **publish: true**, and run it. The
 workflow checks that revision's latest GitHub Actions `ci` and `docker-build`
 results, then waits for the owner's production-environment approval.
+The job uses `environment.deployment: false`: image builds do not create a
+misleading GitHub deployment record. Required environment reviewers and branch
+rules still apply; no custom deployment-protection app is configured.
 
 The approved build uses `Dockerfile.selfhost`, Linux amd64, and the current
 public production build settings (`AUTH_MODE=selfhosted`, application host and
