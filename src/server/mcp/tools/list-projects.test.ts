@@ -45,4 +45,24 @@ describe("project workspace discovery", () => {
     expect(result.structuredContent?.projects).toEqual([]);
     expect(mocks.projects).not.toHaveBeenCalled();
   });
+  it("returns readable dashboard addresses while keeping stable tool IDs", async () => {
+    mocks.organizations.mockResolvedValue([{ id: "org-a", name: "BooXworm" }]);
+    mocks.projects.mockResolvedValue([
+      { id: "project-a", slug: "booxworm", name: "BooXworm" },
+      { id: "legacy-project", slug: null, name: "Legacy" },
+    ]);
+    const result = await listProjectsTool.handler({}, makeToolContext());
+    expect(result.structuredContent?.projects).toMatchObject([
+      {
+        id: "project-a",
+        slug: "booxworm",
+        url: "https://open-seo.test/p/booxworm",
+      },
+      {
+        id: "legacy-project",
+        slug: null,
+        url: "https://open-seo.test/p/legacy-project",
+      },
+    ]);
+  });
 });

@@ -1,3 +1,4 @@
+import { useProjectAddress } from "@/client/lib/use-project-address";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import {
@@ -24,8 +25,8 @@ import {
  * architecture changes. Entitlements decide which modules are visible.
  */
 const MODULE_ROUTES: Partial<Record<BusinessModuleKey, string>> = {
-  crm: "/modules/crm",
-  integrations: "/modules/integrations",
+  crm: "/p/$projectId/modules/crm",
+  integrations: "/p/$projectId/modules/integrations",
 };
 
 function hasIcon(key: string): key is keyof typeof MODULE_ICONS {
@@ -52,6 +53,8 @@ export function ModuleSwitcher({
   moduleKey: string;
   onNavigate?: () => void;
 }) {
+  const workspaceProjectAddress = useProjectAddress();
+
   const access = useQuery({
     queryKey: ["business-modules", "access"],
     queryFn: () => getBusinessModuleAccess(),
@@ -112,8 +115,11 @@ export function ModuleSwitcher({
             return (
               <Link
                 key={key}
-                to="/modules/$moduleKey"
-                params={{ moduleKey: "leads" }}
+                to="/p/$projectId/modules/$moduleKey"
+                params={{
+                  projectId: workspaceProjectAddress,
+                  moduleKey: "leads",
+                }}
                 onClick={onNavigate}
                 className={sharedClass}
               >
@@ -126,6 +132,7 @@ export function ModuleSwitcher({
             <Link
               key={key}
               to={route}
+              params={{ projectId: workspaceProjectAddress }}
               onClick={onNavigate}
               className={sharedClass}
             >
@@ -134,8 +141,8 @@ export function ModuleSwitcher({
           ) : (
             <Link
               key={key}
-              to="/modules/$moduleKey"
-              params={{ moduleKey: key }}
+              to="/p/$projectId/modules/$moduleKey"
+              params={{ projectId: workspaceProjectAddress, moduleKey: key }}
               onClick={onNavigate}
               className={sharedClass}
             >

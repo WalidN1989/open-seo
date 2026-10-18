@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { projectScopeHeaders } from "@/shared/project-navigation";
 
 /**
  * Sends what was just said and reads the reply back as it is spoken.
@@ -41,7 +42,12 @@ export async function* streamVoiceTurn(
 ): AsyncGenerator<VoiceTurnEvent> {
   const response = await fetch("/api/voice/turn", {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: {
+      "content-type": "application/json",
+      ...(typeof window === "undefined"
+        ? {}
+        : projectScopeHeaders(window.location.pathname)),
+    },
     body: JSON.stringify(body),
     signal,
   });

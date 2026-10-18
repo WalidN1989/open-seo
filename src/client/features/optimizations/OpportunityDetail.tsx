@@ -1,3 +1,4 @@
+import { useProjectAddress } from "@/client/lib/use-project-address";
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { ChevronLeft } from "lucide-react";
@@ -41,6 +42,8 @@ export function OpportunityDetail({
   opportunityId: string;
   onBack: () => void;
 }) {
+  const workspaceProjectAddress = useProjectAddress();
+
   const [tab, setTab] = useState<Tab>("Why");
   const [changeNote, setChangeNote] = useState("");
   const query = useOpportunity(projectId, opportunityId);
@@ -202,16 +205,22 @@ export function OpportunityDetail({
                 <p className="mt-2 text-sm text-base-content/70">
                   No website is connected for this project yet.{" "}
                   <Link
-                    to="/modules/integrations/$providerKey"
-                    params={{ providerKey: "lovable" }}
+                    to="/p/$projectId/modules/integrations/$providerKey"
+                    params={{
+                      projectId: workspaceProjectAddress,
+                      providerKey: "lovable",
+                    }}
                     className="link"
                   >
                     Connect a Lovable site
                   </Link>{" "}
                   or{" "}
                   <Link
-                    to="/modules/integrations/$providerKey"
-                    params={{ providerKey: "wordpress" }}
+                    to="/p/$projectId/modules/integrations/$providerKey"
+                    params={{
+                      projectId: workspaceProjectAddress,
+                      providerKey: "wordpress",
+                    }}
                     className="link"
                   >
                     WordPress

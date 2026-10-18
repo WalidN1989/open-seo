@@ -46,26 +46,15 @@ const ORGANIZATION_SCOPED_QUERY_ROOTS = [
  */
 export { ORGANIZATION_SCOPED_QUERY_ROOTS };
 
-/**
- * Discards the previous client's business-module data when the project
- * changes.
- *
- * Reset rather than clear: clearing removes queries that mounted components
- * are still observing, and an observer left without a query sits in its
- * loading state until something remounts it — which is how a blanket clear
- * left the dashboard showing skeletons until you navigated away and back.
- * Reset empties the data and refetches whatever is on screen.
- *
- * Reset rather than invalidate, too: invalidating leaves the old answer
- * visible until the refetch lands, and here the old answer belongs to a
- * different client.
- */
-export async function resetOrganizationScopedQueries(
+/** Called only after the previous workspace UI (including voice) unmounts. */
+export async function discardWorkspaceQueries(
   queryClient: QueryClient,
 ): Promise<void> {
-  await Promise.all(
-    ORGANIZATION_SCOPED_QUERY_ROOTS.map((root) =>
-      queryClient.resetQueries({ queryKey: [root] }),
-    ),
-  );
+  const roots = new Set<string>(ORGANIZATION_SCOPED_QUERY_ROOTS);
+  const filters = {
+    predicate: (query: { queryKey: readonly unknown[] }) =>
+      typeof query.queryKey[0] === "string" && roots.has(query.queryKey[0]),
+  };
+  await queryClient.cancelQueries(filters);
+  queryClient.removeQueries(filters);
 }

@@ -1,3 +1,4 @@
+import { useProjectAddress } from "@/client/lib/use-project-address";
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { MessageSquareText, Plus, Send } from "lucide-react";
@@ -9,6 +10,8 @@ import { smsTime, useSendSms, useSmsThread, useSmsWorkspace } from "./smsQuery";
  * the selected one on the right, and a composer that can start a new text.
  */
 export function SmsWorkspace() {
+  const workspaceProjectAddress = useProjectAddress();
+
   const workspace = useSmsWorkspace();
   const [selected, setSelected] = useState<string | null>(null);
   const [composingNew, setComposingNew] = useState(false);
@@ -56,8 +59,11 @@ export function SmsWorkspace() {
           </button>
         ) : (
           <Link
-            to="/modules/integrations/$providerKey"
-            params={{ providerKey: "twilio_sms" }}
+            to="/p/$projectId/modules/integrations/$providerKey"
+            params={{
+              projectId: workspaceProjectAddress,
+              providerKey: "twilio_sms",
+            }}
             className="btn btn-primary btn-sm"
           >
             Connect Twilio SMS

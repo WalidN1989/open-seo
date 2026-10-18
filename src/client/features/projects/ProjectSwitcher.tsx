@@ -11,7 +11,7 @@ import {
   Settings,
 } from "lucide-react";
 import { getProjects, setActiveProject } from "@/serverFunctions/projects";
-import { resetOrganizationScopedQueries } from "@/client/lib/organization-scoped-queries";
+import { switchedProjectPath } from "@/shared/project-navigation";
 import {
   isProjectAtAddress,
   isPreferredAgencyProject,
@@ -121,58 +121,20 @@ export function ProjectSwitcher({
     onCloseDrawer?.();
     if (isActiveProject(project)) return;
     setLastProjectId(project.id);
-    // Each project owns its own organization, and the business modules read
-    // the active organization rather than the project in the address. Moving
-    // the session first means CRM, Integrations and WhatsApp are showing the
-    // new client by the time the page they land on renders.
-    // Inside a business module there is no project in the address, so there
-    // is nothing to navigate to: the page already shows whatever the session's
-    // organization is. Move the session, drop the old client's answers, and
-    // let the page refetch — you stay in WhatsApp, now for the new company.
-    const inModule = router.state.location.pathname.startsWith("/modules");
-
-    void setActiveProject({ data: { projectId: project.id } })
-      .then(async () => {
-        // Every cached business-module answer belongs to the organization we
-        // just left, so it is discarded once the session has moved. The SEO
-        // queries carry the project id in their keys and are deliberately left
-        // alone — touching them is what stranded the dashboard on skeletons.
-        await resetOrganizationScopedQueries(queryClient);
-        // The list carries which project is active; it has just changed.
-        await queryClient.invalidateQueries({ queryKey: ["projects"] });
-        if (inModule) await router.invalidate();
+    // The URL and request header select the workspace independently of the
+    // shared session. The boundary discards the old module UI and query data.
+    void router
+      .navigate({
+        href: switchedProjectPath(
+          router.state.location.pathname,
+          projectAddress(project),
+        ),
       })
+      .then(() => setActiveProject({ data: { projectId: project.id } }))
+      .then(() => queryClient.invalidateQueries({ queryKey: ["projects"] }))
       .catch(() => {
-        // The next project-scoped request re-authorizes and switches anyway,
-        // so a failed switch costs a render, not correctness.
+        /* Project access is still enforced by every scoped request. */
       });
-    if (inModule) return;
-
-    // Stay on the current page in the new project: the deepest matched route
-    // whose path's only dynamic segment is the project id. Deeper routes (a
-    // rank tracker, an audit result) reference entities owned by the old
-    // project, so they fall back to their section. Filtering on the path
-    // template rather than match.params matters: the router gives every match
-    // the location's full param set, so params can't tell layers apart.
-    const stayable = router.state.matches.findLast(
-      (match) =>
-        match.fullPath.includes("$projectId") &&
-        match.fullPath
-          .split("/")
-          .every(
-            (segment) => !segment.startsWith("$") || segment === "$projectId",
-          ),
-    );
-    // Navigating by href keeps typed-route generics out of a dynamic target
-    // while still running search validation; search params are deliberately
-    // not carried over — filters and session ids belong to the old project.
-    const template = stayable?.fullPath ?? "/p/$projectId";
-    void router.navigate({
-      href: template
-        .split("$projectId")
-        .join(projectAddress(project))
-        .replace(/\/$/, ""),
-    });
   };
 
   const moveHighlight = (delta: number) => {

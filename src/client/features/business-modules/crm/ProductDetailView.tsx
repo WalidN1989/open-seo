@@ -1,3 +1,4 @@
+import { useProjectAddress } from "@/client/lib/use-project-address";
 import { BranchPicker, useBranchSelection } from "./BranchPicker";
 import { ProductBranchStock } from "./ProductBranchStock";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -14,11 +15,13 @@ import { getStandardErrorMessage } from "@/client/lib/error-messages";
 import { useWorkspaceCurrency } from "@/client/hooks/useWorkspaceCurrency";
 
 export function CrmProductDetailView() {
+  const workspaceProjectAddress = useProjectAddress();
+
   const selection = useBranchSelection();
   const { branchId } = selection;
   const money = useWorkspaceCurrency();
   const { productId } = useParams({
-    from: "/_app/modules/crm/products/$productId",
+    from: "/_project/p/$projectId/modules/crm/products/$productId",
   });
   const queryClient = useQueryClient();
 
@@ -63,7 +66,11 @@ export function CrmProductDetailView() {
 
   return (
     <div className="space-y-6">
-      <Link to="/modules/crm/products" className="btn btn-ghost btn-sm -ml-2">
+      <Link
+        to="/p/$projectId/modules/crm/products"
+        params={{ projectId: workspaceProjectAddress }}
+        className="btn btn-ghost btn-sm -ml-2"
+      >
         <ArrowLeft className="size-4" />
         Products
       </Link>
@@ -252,8 +259,11 @@ export function CrmProductDetailView() {
                 {query.data.variants.map((variant) => (
                   <Link
                     key={variant.id}
-                    to="/modules/crm/products/$productId"
-                    params={{ productId: variant.id }}
+                    to="/p/$projectId/modules/crm/products/$productId"
+                    params={{
+                      projectId: workspaceProjectAddress,
+                      productId: variant.id,
+                    }}
                     className="flex items-center gap-3 p-4 hover:bg-base-200"
                   >
                     <span className="rounded-lg bg-base-200 p-2">

@@ -4,6 +4,7 @@ import {
   HeadContent,
   Outlet,
   useMatches,
+  useParams,
   Scripts,
   createRootRoute,
 } from "@tanstack/react-router";
@@ -29,6 +30,7 @@ import { Toaster } from "sonner";
 import { VoiceAgentLauncher } from "@/client/features/voice/VoiceAgentLauncher";
 import { queryClient } from "@/client/tanstack-db";
 import { getActiveOrganizationId } from "@/lib/auth-session";
+import { discardWorkspaceQueries } from "@/client/lib/organization-scoped-queries";
 
 export const Route = createRootRoute({
   head: () => ({
@@ -91,11 +93,33 @@ export const Route = createRootRoute({
 });
 
 function AppLayout() {
+  const { projectId } = useParams({ strict: false });
   return (
-    <>
+    <WorkspaceBoundary key={projectId ?? "global"}>
       <Outlet />
       <PersistentVoiceAgent />
-    </>
+    </WorkspaceBoundary>
+  );
+}
+
+/** Unmount old workspace UI before discarding its data or mounting the next. */
+function WorkspaceBoundary({ children }: { children: React.ReactNode }) {
+  const [ready, setReady] = React.useState(false);
+  React.useEffect(() => {
+    let mounted = true;
+    void discardWorkspaceQueries(queryClient).then(() => {
+      if (mounted) setReady(true);
+    });
+    return () => {
+      mounted = false;
+    };
+  }, []);
+  return ready ? (
+    children
+  ) : (
+    <div role="status" className="grid h-dvh place-items-center">
+      Loading workspace…
+    </div>
   );
 }
 

@@ -1,3 +1,4 @@
+import { useProjectAddress } from "@/client/lib/use-project-address";
 import { ReminderBell } from "@/client/features/reminders/ReminderBell";
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import type { LinkOptions } from "@tanstack/react-router";
@@ -14,8 +15,8 @@ import {
 import { ModuleSwitcher } from "@/client/components/ModuleSwitcher";
 import { getModuleNavGroups } from "@/client/navigation/moduleItems";
 import {
-  connectNavGroup,
-  demoOverviewNavItem,
+  getConnectNavGroup,
+  getDemoOverviewNavItem,
   getProjectNavGroups,
 } from "@/client/navigation/items";
 import { ProjectSwitcher } from "@/client/features/projects/ProjectSwitcher";
@@ -81,6 +82,8 @@ function SidebarNavLink({
 }
 
 export function Sidebar({ projectId, onNavigate, onClose }: SidebarProps) {
+  const connectNavGroup = getConnectNavGroup(projectId ?? "");
+  const demoOverviewNavItem = getDemoOverviewNavItem(projectId ?? "");
   const navigate = useNavigate();
   const location = useLocation();
   const onSamRoute = location.pathname.includes("/sam");
@@ -89,9 +92,13 @@ export function Sidebar({ projectId, onNavigate, onClose }: SidebarProps) {
   // replace the SEO navigation, with one row back out. Stacking a module's
   // sections into a single page is what left it cramped beside empty width.
   // A quote page belongs to the CRM, so it keeps the CRM sidebar.
-  const pathModule = location.pathname.match(/^\/modules\/([^/]+)/)?.[1];
+  const pathModule = location.pathname.match(
+    /^\/p\/[^/]+\/modules\/([^/]+)/,
+  )?.[1];
   const moduleKey = pathModule === "quotes" ? "crm" : pathModule;
-  const moduleNavGroups = moduleKey ? getModuleNavGroups(moduleKey) : [];
+  const moduleNavGroups = moduleKey
+    ? getModuleNavGroups(moduleKey, projectId ?? "")
+    : [];
   const inModule = moduleNavGroups.length > 0;
 
   // A client sees their own business, not the wiring behind it: the MCP
@@ -102,7 +109,9 @@ export function Sidebar({ projectId, onNavigate, onClose }: SidebarProps) {
         ...connectNavGroup,
         items: [
           ...(access.demoData ? [demoOverviewNavItem] : []),
-          ...connectNavGroup.items.filter((item) => item.to !== "/ai"),
+          ...connectNavGroup.items.filter(
+            (item) => item.to !== "/p/$projectId/ai",
+          ),
         ],
       }
     : connectNavGroup;
@@ -268,6 +277,8 @@ function SidebarViewTab({
 }
 
 function SidebarFooter({ onNavigate }: { onNavigate?: () => void }) {
+  const workspaceProjectAddress = useProjectAddress();
+
   const { data: session } = useSession();
   // Billing is hosted-only: self-hosted deployments have no subscription.
   const isHostedMode = isHostedClientAuthMode();
@@ -302,7 +313,11 @@ function SidebarFooter({ onNavigate }: { onNavigate?: () => void }) {
             className="dropdown-content z-30 menu mb-1 w-56 rounded-box border border-base-300 bg-base-100 p-2 shadow-lg"
           >
             <li>
-              <Link to="/settings" onClick={closeMenu}>
+              <Link
+                to="/p/$projectId/workspace-settings"
+                params={{ projectId: workspaceProjectAddress }}
+                onClick={closeMenu}
+              >
                 <Settings className="h-4 w-4" />
                 Settings
               </Link>
@@ -341,7 +356,10 @@ function SidebarFooter({ onNavigate }: { onNavigate?: () => void }) {
           icon={Settings}
           label="Settings"
           onNavigate={onNavigate}
-          linkProps={{ to: "/settings" }}
+          linkProps={{
+            params: { projectId: workspaceProjectAddress },
+            to: "/p/$projectId/workspace-settings",
+          }}
         />
       )}
     </div>

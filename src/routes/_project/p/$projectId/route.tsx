@@ -6,7 +6,7 @@ import {
 } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect } from "react";
-import { setLastProjectId } from "@/client/lib/active-project";
+import { setLastProjectId, setTabProjectId } from "@/client/lib/active-project";
 import { useHostedAuthRouteGuard } from "@/client/features/auth/useHostedAuthRouteGuard";
 import { FreePlanBanner } from "@/client/features/billing/FreePlanBanner";
 import { useOnboardingRedirect } from "@/client/features/onboarding/useOnboardingRedirect";
@@ -61,6 +61,9 @@ function useProjectAccessRedirect(projectId: string) {
 
 function ProjectLayout() {
   const { projectId } = Route.useParams();
+  useEffect(() => {
+    setTabProjectId(projectId);
+  }, [projectId]);
   const authGate = useHostedAuthRouteGuard();
   useOnboardingRedirect();
   useProjectAccessRedirect(projectId);

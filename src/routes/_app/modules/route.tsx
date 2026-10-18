@@ -1,5 +1,5 @@
-import { Outlet, createFileRoute } from "@tanstack/react-router";
-
+import { createFileRoute } from "@tanstack/react-router";
+import { LegacyProjectRedirect } from "@/client/features/projects/LegacyProjectRedirect";
 export const Route = createFileRoute("/_app/modules")({
-  component: Outlet,
+  component: LegacyProjectRedirect,
 });

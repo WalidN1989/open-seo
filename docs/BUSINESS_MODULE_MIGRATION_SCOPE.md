@@ -1834,3 +1834,40 @@ replayed. Rollback is the previous application revision. Synthetic signed webhoo
 tests exercise call/contact persistence, callback recipients, returning-caller
 lookup, tenant separation, signature rejection and duplicate delivery handling;
 all outbound provider effects are mocked.
+
+### October 18, 2026 — project URLs and workspace shortcuts (pending review/release)
+
+Business modules now live under `/p/<existing-project-slug>/modules/...`, alongside
+the SEO pages. The owner chose existing stable project names first, without a new
+editable code or slug rewrite. UUID bookmarks still resolve. Workspace/account
+settings use `/p/<slug>/workspace-settings`; the existing SEO project settings
+remain under `/p/<slug>/settings`. Legacy module/settings/AI/performance bookmarks
+redirect through a validated membership list, preferring this tab's last project.
+
+Client server functions carry the URL project in `x-openseo-project`. Shared auth
+resolution authorizes that project by membership and derives its organization for
+this request without changing the shared session. A contradictory payload project
+is refused. Unscoped account/API clients retain their existing behavior. Raw voice
+streaming and email attachments also carry explicit, validated project scope.
+MCP discovery returns readable project URLs while retaining stable IDs for tools.
+
+Changing project unmounts the old workspace UI, cancels/removes its business query
+cache, and mounts the new workspace only afterward. Voice persists across pages
+within one project; changing project stops microphone/audio and aborts streaming,
+with late asynchronous starts/replies ignored. Entity IDs and conversation filters
+are dropped when switching to another project's corresponding section.
+
+The floating stack is WhatsApp, Orders, Citypak and Voice, at 65% opacity and full
+opacity on hover/keyboard focus. Module shortcuts respect existing entitlements.
+Browser verification uses only isolated local SQLite and two synthetic workspaces;
+no production credentials, real messages, calls, orders or shipments are used.
+
+No database migration, provider setting, scheduled job or production image changes
+are included. Owner release approval is still required. Rollback is the previous
+image; data is unchanged, but new scoped module bookmarks then require using their
+old `/modules/...` equivalents until the new release is restored.
+
+Validation: 2,868 tests across 310 files pass, along with ci:check, the selfhost
+build, and website type checks/build. The actual local app was checked at the
+normal desktop size and 390×844, including two separate project tabs, old bookmark
+redirects, project switching, both settings pages, and shortcut opacity/bounds.

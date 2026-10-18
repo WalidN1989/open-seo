@@ -1,3 +1,4 @@
+import { useProjectAddress } from "@/client/lib/use-project-address";
 import { Link } from "@tanstack/react-router";
 import type { ComponentType } from "react";
 import type { BusinessModuleKey } from "@/shared/business-modules";
@@ -18,20 +19,22 @@ export function ModuleLauncher({
   inventory?: boolean;
   onNavigate?: () => void;
 }) {
+  const workspaceProjectAddress = useProjectAddress();
+
   return (
     <div className="business-access-launcher">
       {accessible ? (
         <Link
           to={
             inventory
-              ? "/modules/crm/inventory"
+              ? "/p/$projectId/modules/crm/inventory"
               : moduleKey === "crm"
-                ? "/modules/crm"
+                ? "/p/$projectId/modules/crm"
                 : moduleKey === "integrations"
-                  ? "/modules/integrations"
-                  : "/modules/$moduleKey"
+                  ? "/p/$projectId/modules/integrations"
+                  : "/p/$projectId/modules/$moduleKey"
           }
-          params={{ moduleKey }}
+          params={{ projectId: workspaceProjectAddress, moduleKey }}
           onClick={onNavigate}
           className="business-access-launch-link z-10"
           aria-label={`Open ${label}`}

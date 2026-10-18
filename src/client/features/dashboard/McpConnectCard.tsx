@@ -1,3 +1,4 @@
+import { useProjectAddress } from "@/client/lib/use-project-address";
 import { Link } from "@tanstack/react-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { CopyButton } from "@/client/features/ai-mcp/SetupControls";
@@ -25,6 +26,8 @@ export function McpConnectCard({
   projectId: string;
   activation: DashboardActivation;
 }) {
+  const workspaceProjectAddress = useProjectAddress();
+
   const queryClient = useQueryClient();
   const dismissMutation = useMutation({
     mutationFn: () => dismissDashboardMcpCard({ data: { projectId } }),
@@ -112,7 +115,8 @@ export function McpConnectCard({
               </p>
             </div>
             <Link
-              to="/ai"
+              to="/p/$projectId/ai"
+              params={{ projectId: workspaceProjectAddress }}
               className="link link-primary text-sm font-medium"
               onClick={() => captureClientEvent("dashboard:mcp_setup_open")}
             >

@@ -1,3 +1,4 @@
+import { useProjectAddress } from "@/client/lib/use-project-address";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { Bell, BellRing, Check, Clock, Flame, Trash2 } from "lucide-react";
@@ -11,6 +12,8 @@ import {
 
 /** The bell: what's due now, what's coming, and the last few done. */
 export function ReminderBell({ onNavigate }: { onNavigate?: () => void }) {
+  const workspaceProjectAddress = useProjectAddress();
+
   const { reminders, snooze, done, remove } = useReminders();
   const now = useNow();
   const navigate = useNavigate();
@@ -41,8 +44,8 @@ export function ReminderBell({ onNavigate }: { onNavigate?: () => void }) {
     setOpen(false);
     onNavigate?.();
     void navigate({
-      to: "/modules/leads/$leadId",
-      params: { leadId: reminder.leadId },
+      to: "/p/$projectId/modules/leads/$leadId",
+      params: { projectId: workspaceProjectAddress, leadId: reminder.leadId },
     });
   };
 

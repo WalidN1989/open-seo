@@ -1,3 +1,4 @@
+import { useProjectAddress } from "@/client/lib/use-project-address";
 import { Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Users } from "lucide-react";
@@ -27,6 +28,8 @@ type ClientLogin = {
  * a toggle.
  */
 export function ClientLoginList() {
+  const workspaceProjectAddress = useProjectAddress();
+
   const queryClient = useQueryClient();
   const logins = useQuery({
     queryKey: ["team", "client-logins"],
@@ -52,7 +55,11 @@ export function ClientLoginList() {
         <h3 className="flex items-center gap-2 text-sm font-medium">
           <Users className="size-4" /> Client logins
         </h3>
-        <Link to="/modules/overview" className="link link-primary text-xs">
+        <Link
+          to="/p/$projectId/modules/overview"
+          params={{ projectId: workspaceProjectAddress }}
+          className="link link-primary text-xs"
+        >
           Preview the sample overview
         </Link>
       </div>
