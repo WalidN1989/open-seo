@@ -1887,3 +1887,31 @@ Validation: 2,868 tests across 310 files pass, along with ci:check, the selfhost
 build, and website type checks/build. The actual local app was checked at the
 normal desktop size and 390×844, including two separate project tabs, old bookmark
 redirects, project switching, both settings pages, and shortcut opacity/bounds.
+
+### October 18, 2026 — order review modal and catalogue price gate (pending review/release)
+
+Orders now open in a native modal above the table without animation. Order
+numbers, the information-icon View action, fulfillment and activity use the same
+modal; Returns & Refunds details also leave table rows in place. Dedicated invoice
+and edit columns are removed. Bill/print and eligible native draft editing remain
+inside the modal. Payment shows recorded payment status and gateway, with formal
+terms displayed only when present, rather than a misleading "Not recorded" badge.
+
+The owner explicitly selected catalogue correction before approval. Imported
+pending orders show red per-item differences and cannot approve until every
+mapped active product's catalogue unit price matches the received order unit
+price in the workspace currency. Staff use the existing CRM product update
+endpoint to save a clearly labelled catalogue-wide price correction. No order
+line price, delivery, tax, discount or source total is rewritten. The server
+ignores old price-acknowledgement flags and rechecks current catalogue prices
+in the approval write before enqueuing existing gated effects.
+
+Validation: full suite 2,871 tests, ci:check, selfhost build, isolated browser
+price correction/approval and table position checks. Three additional temporary
+PostgreSQL-engine tests execute the checked-in migrations and cover mismatch
+rejection, unchanged Shopify totals, a concurrent price change, foreign product
+mapping and currency rejection. No migration, production data change, provider
+activation or customer send is included. Citypak still awaits its API key and
+separate integration release; the pending Citypak branch must be reconciled
+with the new review components before merging. Production deployment requires
+separate owner approval. Localhost/production data syncing remains deferred.

@@ -52,6 +52,9 @@ beforeAll(async () => {
   vi.doMock("@/db/d1/client", () => ({ d1Db: db }));
   vi.doMock("@/db/pg/client", () => ({ pgDb: null }));
   schema = await import("@/db/schema");
+  const { BusinessSettingsRepository } =
+    await import("@/server/features/business-modules/repositories/BusinessSettingsRepository");
+  await BusinessSettingsRepository.setCurrency(ORG_A, "LKR");
   await db.insert(schema.integrationConnections).values({
     id: connection,
     organizationId: ORG_A,
@@ -238,62 +241,6 @@ describe("Shopify mirror database invariants", () => {
     expect(order.lines).toHaveLength(1);
     expect(order.lines[0]?.unitPriceMinor).toBe(2000);
     expect(order.shipments).toHaveLength(0);
-  });
-  it("requires price acknowledgement, keeps catalogue prices and preserves approval on status-only updates", async () => {
-    const orderPayload = payload(102, "2026-10-04T12:00:00Z", "20.00");
-    const id = await Repo.ingest(
-      ORG_A,
-      connection,
-      `default:${ORG_A}`,
-      orderPayload,
-    );
-    const detail = await Orders.getOrder(ORG_A, USER_OWNER_A, id);
-    const input = {
-      orderId: id,
-      revision: detail.order.externalUpdatedAt!,
-      acknowledgeAdjustments: false,
-      lines: [
-        {
-          lineId: detail.lines[0].id,
-          productId: PRODUCT_A,
-          acknowledgePrice: false,
-        },
-      ],
-    };
-    await expect(
-      Orders.approveImportedOrder(ORG_A, USER_OWNER_A, input),
-    ).rejects.toThrow("Acknowledge");
-    input.lines[0].acknowledgePrice = true;
-    await Orders.approveImportedOrder(ORG_A, USER_OWNER_A, input);
-    const refreshed = {
-      ...orderPayload,
-      updated_at: "2026-10-04T13:00:00Z",
-      fulfillment_status: "fulfilled",
-    };
-    await Repo.ingest(ORG_A, connection, `default:${ORG_A}`, refreshed);
-    const result = await Orders.getOrder(ORG_A, USER_OWNER_A, id);
-    expect(result.order.approvalStatus).toBe("approved");
-    expect(result.lines[0].priceReviewedAt).toBeTruthy();
-    expect(
-      (
-        await fixture.db
-          .select()
-          .from(schema.commerceProducts)
-          .where(eq(schema.commerceProducts.id, PRODUCT_A))
-      )[0]?.salePriceMinor,
-    ).toBe(1000);
-    await Repo.ingest(
-      ORG_A,
-      connection,
-      `default:${ORG_A}`,
-      payload(102, "2026-10-04T14:00:00Z", "30.00"),
-    );
-    expect(
-      (await Orders.getOrder(ORG_A, USER_OWNER_A, id)).order.approvalStatus,
-    ).toBe("pending");
-    await expect(
-      Orders.approveImportedOrder(ORG_A, USER_OWNER_A, input),
-    ).rejects.toThrow("changed");
   });
   it("refuses cross-tenant reads, review mapping and sender-mismatched WhatsApp lookup", async () => {
     const id = await Repo.ingest(

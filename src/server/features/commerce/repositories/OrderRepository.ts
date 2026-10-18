@@ -10,6 +10,7 @@ import {
   commerceOrderShipments,
   commerceOrderLines,
   commerceOrders,
+  commerceProducts,
   whatsappOrderRequests,
 } from "@/db/schema";
 
@@ -325,7 +326,23 @@ async function approveImport(
         status: "confirmed",
         updatedAt: new Date().toISOString(),
       })
-      .where(and(guard, eq(commerceOrders.status, "draft"))),
+      .where(
+        and(
+          guard,
+          eq(commerceOrders.status, "draft"),
+          // Recheck the current catalogue in the approval write, after applying
+          // product mappings. A price changed since service validation must not
+          // approve the order or enqueue any courier/financial action.
+          sql`not exists (
+            select 1 from ${commerceOrderLines}
+            left join ${commerceProducts} on ${commerceProducts.id} = ${commerceOrderLines.productId}
+              and ${commerceProducts.organizationId} = ${organizationId}
+            where ${commerceOrderLines.orderId} = ${orderId} and ${commerceOrderLines.organizationId} = ${organizationId}
+              and (${commerceProducts.id} is null or ${commerceProducts.status} <> 'active'
+                or ${commerceProducts.salePriceMinor} <> ${commerceOrderLines.unitPriceMinor})
+          )`,
+        ),
+      ),
   ]);
   return getOrder(organizationId, orderId);
 }

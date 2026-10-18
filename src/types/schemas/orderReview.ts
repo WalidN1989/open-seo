@@ -25,7 +25,8 @@ export const orderReviewSchema = z.object({
       z.object({
         lineId: z.string().min(1),
         productId: z.string().min(1),
-        acknowledgePrice: z.boolean(),
+        // Accepted for older clients; a flag never bypasses catalogue matching.
+        acknowledgePrice: z.boolean().optional(),
       }),
     )
     .min(1)
