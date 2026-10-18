@@ -1,38 +1,30 @@
-import { OrderOperationsPanel } from "./OrderOperationsPanel";
 import { formatMoney } from "@/shared/currencies";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
   cancelCommerceOrder,
   confirmCommerceOrder,
-  getCommerceOrder,
   returnCommerceOrder,
 } from "@/serverFunctions/commerce";
 import { getStandardErrorMessage } from "@/client/lib/error-messages";
 import { useWorkspaceCurrency } from "@/client/hooks/useWorkspaceCurrency";
 import { useBranchSelection } from "./BranchPicker";
-import { ErrorState, Loading } from "./inventoryShared";
 import { OrderReview } from "./OrderReview";
-import { OrderShipmentPanel } from "./OrderShipmentPanel";
-import { OrderBill } from "./OrderBill";
+import type { getCommerceOrder } from "@/serverFunctions/commerce";
 export function OrderDetail({
-  orderId,
-  status,
+  detail,
 }: {
-  orderId: string;
-  status: string;
+  detail: NonNullable<Awaited<ReturnType<typeof getCommerceOrder>>>;
 }) {
+  const orderId = detail.order.id;
+  const status = detail.order.status;
   const { branches } = useBranchSelection();
   const workspace = useWorkspaceCurrency();
   const money = {
     format: (minor: number) =>
-      formatMoney(minor, detail.data?.order.currency || workspace.currency),
+      formatMoney(minor, detail.order.currency || workspace.currency),
   };
   const queryClient = useQueryClient();
-  const detail = useQuery({
-    queryKey: ["commerce", "order", orderId],
-    queryFn: () => getCommerceOrder({ data: { orderId } }),
-  });
 
   const refresh = async () => {
     await queryClient.invalidateQueries({ queryKey: ["commerce"] });
@@ -59,101 +51,111 @@ export function OrderDetail({
     ...settled("Order returned, stock restored"),
   });
 
-  if (detail.isLoading) return <Loading />;
-  if (detail.isError) return <ErrorState error={detail.error} />;
-
-  const order = detail.data?.order;
-  const lines = detail.data?.lines ?? [];
+  const order = detail.order;
+  const lines = detail.lines;
   const mirrored = Boolean(
     order?.integrationConnectionId ||
     ["shopify", "legacy_zoho"].includes(order?.externalSource ?? ""),
   );
 
+  const pendingReview =
+    mirrored && order.approvalStatus === "pending" && order.status === "draft";
   return (
-    <div className="mt-4 space-y-3 rounded-lg border border-base-300 p-3">
-      <OrderOperationsPanel orderId={orderId} />
-      {order ? (
-        <div className="space-y-1 text-sm">
-          <p>{order.customerName}</p>
+    <div className="space-y-5">
+      <section className="grid gap-4 rounded-xl bg-base-200/50 p-4 text-sm sm:grid-cols-2">
+        <div className="space-y-1 break-words">
+          <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-base-content/50">
+            Customer & delivery
+          </h3>
+          <p className="font-medium">
+            {order.customerName || "Customer name unavailable"}
+          </p>
           <p>
             {order.customerPhone} {order.customerEmail}
           </p>
           <p>{order.shippingAddress}</p>
-          <p>
-            Payment: {order.paymentStatus} · Fulfillment:{" "}
+        </div>
+        <div className="space-y-1">
+          <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-base-content/50">
+            Payment & fulfillment
+          </h3>
+          <p className="capitalize">
+            {order.paymentStatus.replaceAll("_", " ")}
+            {order.paymentMethod ? ` · ${order.paymentMethod}` : ""}
+          </p>
+          {order.paymentTerms ? <p>{order.paymentTerms}</p> : null}
+          <p className="capitalize">
             {order.fulfilmentStatus}
             {order.pickup ? " · Pickup" : ""}
           </p>
+          <p className="text-xs text-base-content/60">
+            Stock branch:{" "}
+            {branches.find((branch) => branch.id === order.branchId)?.name ??
+              "Loading…"}
+          </p>
         </div>
-      ) : null}
-      <p className="text-sm">
-        Stock branch:{" "}
-        {branches.find((branch) => branch.id === order?.branchId)?.name ??
-          "Loading…"}
-      </p>
-      <div className="overflow-x-auto">
-        <table className="table table-sm">
-          <thead>
-            <tr>
-              <th>Item</th>
-              <th className="text-right">Qty</th>
-              <th className="text-right">Unit</th>
-              <th className="text-right">Line</th>
-            </tr>
-          </thead>
-          <tbody>
-            {lines.map((line) => (
-              <tr key={line.id}>
-                <td>
-                  {line.description}
-                  {line.sku ? (
-                    <span className="ml-2 text-xs text-base-content/50">
-                      {line.sku}
-                    </span>
-                  ) : null}
-                </td>
-                <td className="text-right">{line.quantity}</td>
-                <td className="text-right">
-                  {money.format(line.unitPriceMinor)}
-                </td>
-                <td className="text-right">
-                  {money.format(line.lineTotalMinor)}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      </section>
+      <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_16rem]">
+        <div className="min-w-0">
+          {pendingReview ? (
+            <OrderReview key={order.externalUpdatedAt} detail={detail} />
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="table table-sm">
+                <thead>
+                  <tr>
+                    <th>Item</th>
+                    <th className="text-right">Qty</th>
+                    <th className="text-right">Unit</th>
+                    <th className="text-right">Line</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {lines.map((line) => (
+                    <tr key={line.id}>
+                      <td>
+                        {line.description}
+                        {line.sku ? (
+                          <span className="ml-2 text-xs text-base-content/50">
+                            {line.sku}
+                          </span>
+                        ) : null}
+                      </td>
+                      <td className="text-right">{line.quantity}</td>
+                      <td className="text-right">
+                        {money.format(line.unitPriceMinor)}
+                      </td>
+                      <td className="text-right">
+                        {money.format(line.lineTotalMinor)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+        <aside className="space-y-3 rounded-xl border border-base-300 p-4">
+          <h3 className="text-sm font-semibold">Order total</h3>
+          <dl className="grid gap-2 text-sm">
+            <Row label="Subtotal" value={money.format(order.subtotalMinor)} />
+            {order.discountMinor > 0 ? (
+              <Row
+                label="Discount"
+                value={`-${money.format(order.discountMinor)}`}
+              />
+            ) : null}
+            {order.deliveryMinor > 0 ? (
+              <Row label="Delivery" value={money.format(order.deliveryMinor)} />
+            ) : null}
+            {order.taxMinor > 0 ? (
+              <Row label="Tax" value={money.format(order.taxMinor)} />
+            ) : null}
+            <Row label="Total" value={money.format(order.totalMinor)} strong />
+          </dl>
+        </aside>
       </div>
 
-      {order ? (
-        <dl className="grid gap-1 text-sm sm:max-w-xs sm:justify-self-end">
-          <Row label="Subtotal" value={money.format(order.subtotalMinor)} />
-          {order.discountMinor > 0 ? (
-            <Row
-              label="Discount"
-              value={`-${money.format(order.discountMinor)}`}
-            />
-          ) : null}
-          {order.deliveryMinor > 0 ? (
-            <Row label="Delivery" value={money.format(order.deliveryMinor)} />
-          ) : null}
-          {order.taxMinor > 0 ? (
-            <Row label="Tax" value={money.format(order.taxMinor)} />
-          ) : null}
-          <Row label="Total" value={money.format(order.totalMinor)} strong />
-        </dl>
-      ) : null}
-
-      {detail.data &&
-      mirrored &&
-      order?.approvalStatus === "pending" &&
-      order.status === "draft" ? (
-        <OrderReview key={order.externalUpdatedAt} detail={detail.data} />
-      ) : null}
-      {detail.data && mirrored ? (
-        <OrderShipmentPanel detail={detail.data} />
-      ) : null}
-      {detail.data ? <OrderBill detail={detail.data} /> : null}
       <div className="flex justify-end gap-2">
         {!mirrored && status === "draft" ? (
           <button
