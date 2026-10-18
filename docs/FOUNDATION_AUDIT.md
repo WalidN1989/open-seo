@@ -1,5 +1,11 @@
 # Foundation audit, 2026-09-27
 
+**Historical audit:** production has since moved to the Hostinger VPS under
+Coolify. On 2026-10-18 the owner confirmed the Railway and Neon projects were
+deleted. Their observations below describe September's state, not available
+production services or recovery points. Use `VPS_RELEASES.md` and `RECOVERY.md`
+for current operations.
+
 This is an evidence record, not a promise that production is failure-proof.
 Recheck live settings before acting; a dated observation can become stale.
 

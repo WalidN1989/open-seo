@@ -8,6 +8,11 @@ into `main`, the traps already paid for, and what is deliberately not built yet.
 
 ## Development and releases
 
+Production runs on the Hostinger VPS under Coolify. The owner confirmed on
+2026-10-18 that the Railway and Neon projects were deleted and all apps and
+databases now live on the VPS. Use `docs/VPS_RELEASES.md` for current deployment
+instructions; older provider observations are historical, not recovery targets.
+
 Follow `docs/FOUNDATION.md` and `docs/RECOVERY.md`. Keep the primary clone clean
 on `main`; use an isolated worktree and a short `codex/<module>-<change>` branch
 from current `origin/main`. Preserve pending work in other checkouts.
@@ -24,7 +29,7 @@ the conversation is required; do not claim it is an independent GitHub review.
 ## Business modules and deployment
 
 `docs/BUSINESS_MODULE_MIGRATION_SCOPE.md` is the single ledger for the business
-module migration, background jobs and the Railway deployment. It is written
+module migration, background jobs and deployment history. It is written
 across sessions and across agents. Read it before touching the scheduler, the
 deployment, or the communications providers: it records what each session
 completed, how scheduled work runs on a platform with no cron, two deployment

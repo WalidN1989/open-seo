@@ -19,8 +19,8 @@ type KeywordMetricRow = {
  * Write a whole research run's metrics in one statement.
  *
  * One round trip rather than one per keyword. A 150-keyword search was 150
- * separate writes, which is slow enough that the request often finished first,
- * and Neon bills for the time it spends awake either way.
+ * separate writes, which is slow enough that the request often finished first.
+ * Batching also reduces database work and connection overhead on the VPS.
  */
 export async function upsertKeywordMetrics(rows: KeywordMetricRow[]) {
   if (!rows.length) return;

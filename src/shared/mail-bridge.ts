@@ -25,7 +25,7 @@ export type MailboxCredentials = {
 
 /**
  * How mail leaves. "smtp" is the mailbox's own server. "resend" is for hosts
- * that block outbound SMTP ports (Railway does): the message goes through
+ * that block outbound SMTP ports: the message goes through
  * Resend's HTTPS API from the same address, on a domain Resend has verified,
  * with a copy placed in the mailbox's Sent folder over IMAP.
  */

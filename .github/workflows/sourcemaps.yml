@@ -8,7 +8,9 @@ concurrency:
   cancel-in-progress: true
 jobs:
   upload:
-    if: github.repository != 'every-app/open-seo'
+    # Forks do not inherit a configured PostHog project or upload credentials.
+    # Enable explicitly only after the owner configures their own project.
+    if: github.repository != 'every-app/open-seo' && vars.ENABLE_POSTHOG_SOURCEMAPS == 'true'
     runs-on: ubuntu-latest
     env:
       POSTHOG_SOURCEMAPS: "true"

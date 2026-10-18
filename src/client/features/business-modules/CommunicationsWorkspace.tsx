@@ -255,7 +255,7 @@ export function WhatsappWorkspace({
   const query = useQuery({
     queryKey: ["whatsapp", "workspace"],
     queryFn: () => getWhatsappWorkspace(),
-    // Refresh on navigation, focus, and mutations; do not keep Neon awake on a timer.
+    // Refresh on navigation, focus, and mutations; avoid idle database polling.
   });
   const operations = useQuery({
     queryKey: ["whatsapp", "operations"],

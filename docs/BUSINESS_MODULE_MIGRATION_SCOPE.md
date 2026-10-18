@@ -1,5 +1,14 @@
 # OpenSEO business module migration scope
 
+## Current production — confirmed 2026-10-18
+
+All apps and databases run on the Hostinger VPS under Coolify. The owner has
+deleted the Railway and Neon projects; neither is a live dependency or an
+available rollback target. GitHub holds the source and CI. Use `VPS_RELEASES.md`
+for current owner-approved releases and `RECOVERY.md` for VPS database, files
+and configuration recovery. Provider-specific entries below are dated history
+unless explicitly carried forward by the current instructions.
+
 ### 2026-10-04: image catalogue lookup correction
 
 PR #20 deployed and the owner confirmed that the book cover is now recognized.
@@ -1784,3 +1793,28 @@ synthetic mirror; confirmation/operation cutoffs remain NULL, invoice false, loy
 Updated full suite: 2,818 tests across306files pass; selfhost build passes.
 Historical export includes26orders without lines and other reconciliation gaps;
 no historical import or provider activation is included in this deployment.
+
+### October 18, 2026 — owner-approved VPS releases (pending workflow merge)
+
+Re-enabled fork workflows in GitHub and verified real CI runs start. The
+repository's API permissions had reported enabled even while the fork UI
+required reactivation. Coolify's existing source is this fork's main branch;
+automatic Git deployment has been turned off and preview deployment remains
+off. The production GitHub environment now requires the owner's review and
+allows protected branches. Existing main protection and required check names
+remain unchanged.
+
+The fork-specific image workflow replaces inherited upstream-only publishing.
+It is manual, defaults to a build-only verification, and checks both latest
+required GitHub Actions results on the exact revision. Publishing requires main
+and owner environment approval. It creates a commit-tagged amd64 image with the
+existing public production build settings and records its digest; it never
+deploys or receives VPS credentials. No image is built inside a live runtime.
+The first registry-image cutover remains subject to approval and registry
+access setup. See `VPS_RELEASES.md` for the first switch and rollback procedure.
+The owner confirmed the former Railway and Neon projects were deleted. Updated
+the operating/recovery guides, agent instructions, Docker comments and setup
+messages to use VPS/Coolify. Retired provider procedures are marked historical;
+optional legacy monitoring remains compatible but is not a VPS dependency.
+No application logic, database schema, credentials, live image or upstream
+source is changed by preparing this workflow.

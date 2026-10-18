@@ -44,8 +44,8 @@ export function getPostgresConnectionString() {
     return hyperdriveUrl;
   }
 
-  // Node-based self-hosts (for example Railway's Docker runtime) do not have a
-  // Hyperdrive binding. Allow them to connect directly to managed Postgres.
+  // Container self-hosts (including the VPS) do not have a Hyperdrive binding.
+  // Allow them to connect directly to their configured Postgres server.
   const directUrl = Reflect.get(env, "POSTGRES_DATABASE_URL");
   if (typeof directUrl === "string" && directUrl.trim()) {
     return directUrl.trim();
