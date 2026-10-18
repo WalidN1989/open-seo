@@ -1937,3 +1937,10 @@ Release verification must compare Microsoft and CRM newest-message dates,
 confirm the selected mailbox advances without errors, preserve existing mail and
 ensure other background jobs remain paused. Disabling the account-ID setting
 stops periodic Microsoft syncing; existing mirrored messages remain available.
+
+Sent-folder preflight found existing app copies with temporary Microsoft send IDs.
+A follow-up reconciles a unique nearby sent copy only when recipient, subject and
+body match. Exact Outlook auto-link annotations are normalized only when their
+destinations match the visible email/phone. Existing message IDs and content are
+preserved; provider IDs are linked to the existing row. Ambiguous, cross-mailbox
+and cross-tenant matches cannot overwrite another message.
