@@ -1,5 +1,14 @@
 # OpenSEO business module migration scope
 
+## Current production — confirmed 2026-10-18
+
+All apps and databases run on the Hostinger VPS under Coolify. The owner has
+deleted the Railway and Neon projects; neither is a live dependency or an
+available rollback target. GitHub holds the source and CI. Use `VPS_RELEASES.md`
+for current owner-approved releases and `RECOVERY.md` for VPS database, files
+and configuration recovery. Provider-specific entries below are dated history
+unless explicitly carried forward by the current instructions.
+
 ### 2026-10-04: image catalogue lookup correction
 
 PR #20 deployed and the owner confirmed that the book cover is now recognized.
@@ -1803,5 +1812,9 @@ existing public production build settings and records its digest; it never
 deploys or receives VPS credentials. No image is built inside a live runtime.
 The first registry-image cutover remains subject to approval and registry
 access setup. See `VPS_RELEASES.md` for the first switch and rollback procedure.
-No application/database code, credentials, live image or upstream source is
-changed by preparing this workflow.
+The owner confirmed the former Railway and Neon projects were deleted. Updated
+the operating/recovery guides, agent instructions, Docker comments and setup
+messages to use VPS/Coolify. Retired provider procedures are marked historical;
+optional legacy monitoring remains compatible but is not a VPS dependency.
+No application logic, database schema, credentials, live image or upstream
+source is changed by preparing this workflow.

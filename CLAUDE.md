@@ -8,6 +8,11 @@ into `main`, the traps already paid for, and what is deliberately not built yet.
 
 ## Development and releases
 
+Production runs on the Hostinger VPS under Coolify. The owner confirmed on
+2026-10-18 that the Railway and Neon projects were deleted and all apps and
+databases now live on the VPS. Use `docs/VPS_RELEASES.md` for current deployment
+instructions; older provider observations are historical, not recovery targets.
+
 Follow `docs/FOUNDATION.md` and `docs/RECOVERY.md`. Keep the primary clone clean
 on `main`; use an isolated worktree and a short `codex/<module>-<change>` branch
 from current `origin/main`. Preserve pending work in other checkouts.

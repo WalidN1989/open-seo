@@ -5,6 +5,11 @@ Develop and test on the Mac in a feature branch. Open a pull request to
 the final revision. The owner reviews the result and explicitly approves a
 merge. GitHub Actions builds releases; the VPS runs approved images.
 
+The owner confirmed on 2026-10-18 that all apps and databases live on the
+Hostinger VPS and the Railway/Neon projects have been deleted. Those providers
+are not required for deployment or recovery. GitHub is the code/CI service;
+Coolify manages the VPS applications and databases.
+
 The original MIT licence and attribution remain. Forking does not require
 following upstream releases automatically. Import upstream changes through a
 separate reviewed branch, resolve conflicts, check licence/dependency changes,

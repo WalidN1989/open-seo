@@ -9,7 +9,8 @@ OpenSEO's copyright and license notices.
 `main` is the release branch. Every change starts from the latest `origin/main`
 in a separate worktree and a short branch, such as `codex/azure-voice` or
 `codex/crm-stock`. Tests and review come before merging a pull request. Merging
-can deploy to production, so the owner approves the release first.
+creates reviewed release code. Production deployment through Coolify requires
+the owner's separate approval.
 
 Use `~/Developer/open-seo` as the primary local checkout. Keep it clean on
 `main`. Do not develop in the old iCloud-synced Documents checkout. Do not copy
@@ -17,6 +18,7 @@ files from that checkout over current code.
 
 - [Foundation and development rules](./docs/FOUNDATION.md)
 - [Recovery and release guide](./docs/RECOVERY.md)
+- [Current VPS release workflow](./docs/VPS_RELEASES.md)
 - [Foundation audit and remaining work](./docs/FOUNDATION_AUDIT.md)
 
 Upstream OpenSEO updates are optional. They require their own reviewed pull
@@ -27,8 +29,9 @@ customer data, uploads and encryption keys need separate backups.
 
 The information below describes the upstream project. Its hosted service,
 prices and hosting recommendations are not DigitalUrgency's production setup.
-DigitalUrgency currently runs on Railway with a Neon Postgres database; consult
-our recovery guide and business-module ledger before changing hosting.
+DigitalUrgency's apps and databases run on our Hostinger VPS under Coolify.
+The owner confirmed the Railway and Neon projects were deleted on 2026-10-18.
+GitHub stores the code and runs CI; see our VPS release and recovery guides.
 
 > Open source alternative to Semrush and Ahrefs
 
@@ -116,7 +119,8 @@ npx skills add every-app/open-seo --skill simple-issue-description
 ## Community
 
 DigitalUrgency operators: see [Performance](docs/PERFORMANCE.md) for the business
-dashboard, Jev quick questions and Railway monitoring configuration.
+dashboard and Jev quick questions. Any provider-specific monitoring in that
+guide is optional legacy functionality, not the current VPS hosting setup.
 
 Join Discord to chat: [Discord](https://discord.gg/c9uGs3cFXr)
 

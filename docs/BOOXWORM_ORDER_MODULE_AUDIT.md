@@ -1,5 +1,10 @@
 # BooXworm order module: implementation audit
 
+**Historical observations:** this audit records October's migration research.
+Production apps and databases now run on the VPS under Coolify. The owner
+confirmed on 2026-10-18 that Railway and Neon projects were deleted. References
+to Neon below describe the former database, not a current dependency.
+
 Reviewed 4 October 2026. Research only: no legacy webhook, courier, invoice,
 stock, payment or customer-message workflow was changed.
 

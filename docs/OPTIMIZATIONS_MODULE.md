@@ -256,11 +256,11 @@ one whose domain does not resolve; keep the one connected to
   `schema-parity.test.ts`.
 - **Postgres `LIKE` is case-sensitive; SQLite's is not.** Filters that work in
   tests can fail in production — use `lower()` on both sides.
-- **The runtime is workerd**, even on Railway. `fetch` rejects
+- **The runtime is workerd**, including in the VPS container. `fetch` rejects
   `redirect: "error"` — use `redirect: "manual"` and refuse 3xx explicitly, or
   every adapter health check breaks in a way that looks like bad credentials.
 - **A DB socket cannot be reused across requests**, so every server function pays
-  one Neon connection. Batch queries with `Promise.all` rather than adding round
+  a Postgres connection. Batch queries with `Promise.all` rather than adding round
   trips.
 - **oxlint gates**: `max-lines` 400, `max-lines-per-function` 320, `max-params` 5.
 - **Never `git add -A`** — another agent works in the same tree. Name files.

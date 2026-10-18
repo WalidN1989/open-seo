@@ -1,5 +1,11 @@
 # Docker Self-Hosting
 
+DigitalUrgency production uses the Hostinger VPS, Coolify, authenticated
+`AUTH_MODE=selfhosted`, and VPS-hosted databases. Follow `VPS_RELEASES.md` for
+its approved release process. The generic upstream/local examples below use
+different images and authentication defaults; they are not production rollout
+instructions for DigitalUrgency or a way to preserve its custom modules.
+
 Run OpenSEO locally with Docker.
 
 In Docker mode, OpenSEO uses `AUTH_MODE=local_noauth` (no auth checks, local admin user `admin@localhost`). Only expose it behind your own auth-protected reverse proxy, tunnel, or private network.

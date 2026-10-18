@@ -27,10 +27,16 @@ The existing repositories expose narrow Performance projections to avoid loading
 message bodies, provider credentials or unbounded customer records. No database
 migration is required; the queries support SQLite and Postgres.
 
-## Railway activation
+## VPS activation
 
-Keep all secrets in Railway variables. There is no duplicate Integrations entry.
+Keep all secrets in the VPS application's Coolify runtime settings. There is no duplicate Integrations entry.
 These variables are included in the self-host runtime allowlist.
+
+Railway and Neon projects were deleted on 2026-10-18. The optional legacy
+`PERFORMANCE_RAILWAY_*` integration below does not monitor Coolify and is not
+required for this VPS deployment. Leave it unconfigured; a missing Railway
+signal is not evidence that the VPS is unhealthy. Coolify monitoring would need
+a separate implementation before this dashboard could report its deployments.
 
 | Variable                             | Purpose                                                                                                                                                              |
 | ------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -91,11 +97,11 @@ Provider references: [TypeSafe API](https://docs.typesafe.ai/api),
 ## Release and recovery
 
 Deploy only after the Performance PR passes checks and receives the owner's
-explicit release approval. The existing Railway `TYPESAFE_API_KEY` is sufficient
-for Jev; engineering monitoring needs the optional variables above. No production
+explicit release approval. Jev uses `TYPESAFE_API_KEY` from Coolify runtime settings;
+engineering monitoring needs the optional variables above. No production
 credential values were copied into the repository or local UI tests.
 
 Rollback is a normal revert of this feature commit through a reviewed PR. There
-is no schema or data migration to reverse. Optional Railway variables may be
+is no schema or data migration to reverse. Optional monitoring variables may be
 removed after rollback. Removing the TypeSafe variable disables Jev without
 disabling the factual dashboard.

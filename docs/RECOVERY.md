@@ -1,5 +1,13 @@
 # DigitalUrgency release and recovery guide
 
+## Current hosting
+
+All production apps and databases run on the Hostinger VPS under Coolify.
+The owner confirmed on 2026-10-18 that the Railway and Neon projects were
+deleted. Their former deployment history and database retention are not
+available recovery targets. Use `VPS_RELEASES.md` for the current release flow.
+Do not describe an old provider window as a current backup.
+
 ## What we must preserve
 
 Git stores application code. It does not store customer records, credentials,
@@ -7,16 +15,17 @@ uploaded files, DNS, GitHub settings or provider configuration. A complete
 recovery needs all of them. Backup contents belong in private storage, never
 this public repository, a PR attachment or an ordinary chat.
 
-| Asset                             | Recovery requirement                                                                               | Verification                                                          |
-| --------------------------------- | -------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
-| Code and history                  | GitHub plus a separate private mirror or full Git bundle; preserve tags and LFS objects if used    | Restore into an empty directory and check the intended commit         |
-| Uncommitted work                  | Private file snapshot and manifest, including new files; preserve ignored configuration separately | Compare file hashes and record omissions                              |
-| Postgres customer data            | Neon recovery window plus encrypted independent exports                                            | Restore to a separate database and validate records and relationships |
-| Persistent runtime files          | Back up Railway's `/app/.wrangler` volume and identify R2/KV/Durable Object state actually used    | Verify uploads and state in an isolated restore                       |
-| Secrets and connection encryption | Owner-controlled password manager or encrypted vault with recovery access                          | Recover configuration without printing secrets                        |
-| Deployment and DNS                | Builder, domains, variable names, health checks, scheduler settings and prior artifact             | Recreate a test service with outbound effects disabled                |
-| Provider accounts                 | Ownership/recovery access, webhook URLs, app settings, templates and provider IDs                  | Verify reconnect procedure in sandbox accounts                        |
-| GitHub administration             | Rules, collaborators, Actions configuration, PR/release records                                    | Export metadata privately and verify access from the owner account    |
+| Asset                             | Recovery requirement                                                                                        | Verification                                                          |
+| --------------------------------- | ----------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| Code and history                  | GitHub plus a separate private mirror or full Git bundle; preserve tags and LFS objects if used             | Restore into an empty directory and check the intended commit         |
+| Uncommitted work                  | Private file snapshot and manifest, including new files; preserve ignored configuration separately          | Compare file hashes and record omissions                              |
+| Postgres customer data            | Encrypted exports of each VPS-hosted database; WAL/PITR only if configured and verified                     | Restore to a separate database and validate records and relationships |
+| Persistent runtime files          | Inventory and back up application Docker volumes, bind mounts, uploads and local Worker state actually used | Verify uploads and state in an isolated restore                       |
+| Secrets and connection encryption | Owner-controlled password manager or encrypted vault with recovery access                                   | Recover configuration without printing secrets                        |
+| Coolify configuration             | Preserve its configuration database, encryption key, SSH keys and application settings privately            | Restore Coolify in an isolated environment and verify decryption      |
+| Deployment and DNS                | Builder, domains, variable names, health checks, scheduler settings and prior artifact                      | Recreate a test service with outbound effects disabled                |
+| Provider accounts                 | Ownership/recovery access, webhook URLs, app settings, templates and provider IDs                           | Verify reconnect procedure in sandbox accounts                        |
+| GitHub administration             | Rules, collaborators, Actions configuration, PR/release records                                             | Export metadata privately and verify access from the owner account    |
 
 `BETTER_AUTH_SECRET` also encrypts stored connection credentials in
 `src/server/lib/connection-secrets.ts`. Restoring only the database without the
@@ -29,8 +38,9 @@ Recommended starting targets, not claims about current protection:
 
 - Capture committed code after each approved release and daily while work is
   active. Push tested feature commits so a laptop failure cannot erase them.
-- Configure Neon recovery retention to cover at least seven days if the plan
-  supports it. Record the actual window rather than assuming a default.
+- Verify the actual VPS snapshot and database-backup schedules, retention and
+  restore procedure. Self-managed PostgreSQL has no managed history window
+  unless WAL archiving/PITR has been configured and tested.
 - Keep an encrypted independent database export daily and before schema
   changes. Retain 30 daily copies and 12 monthly copies initially, subject to
   customer privacy/retention requirements and storage cost.
@@ -39,9 +49,9 @@ Recommended starting targets, not claims about current protection:
 - Keep at least one backup outside the production provider and one protected
   from deletion using the normal production credentials. A second directory
   on the same laptop is useful recovery material, not disaster recovery.
-- Target at most 24 hours of data loss for a total-provider-loss event, with
-  finer recovery inside the verified Neon restore window. Aim for a four-hour
-  service recovery, then adjust based on measured drills and business needs.
+- Target at most 24 hours of data loss for a total-provider-loss event. Use a
+  finer recovery target only after verifying the relevant database/PITR setup.
+  Aim for a four-hour recovery, then adjust based on measured drills and needs.
 
 The owner must choose the private backup destination, budget and recovery
 access. Do not upload customer backups to an arbitrary service or create a
@@ -65,8 +75,8 @@ customers. Destroy test data only under the agreed retention policy.
    the data. Test migrations on both supported database engines. Do not rename
    or edit already-applied migrations to make history look tidy.
 4. Obtain the owner's release approval. Merge the reviewed revision. Verify
-   Railway selects our repository's `main` and the intended commit; don't use
-   an upload of an arbitrary working directory to release production.
+   Coolify selects the approved image digest/source revision from this fork;
+   do not upload an arbitrary working directory to release production.
 5. Confirm healthy startup, correct commit, login, a read in the expected
    organization and the changed workflow. Confirm scheduled jobs operate
    without duplicated customer messages. Observe errors before calling it done.
@@ -93,11 +103,11 @@ that **reverts the bad change**, preserving history. Run checks and get release
 approval. Do not reset or force-push `main`. GitHub's Revert action can create
 that PR, but it still needs review and tests.
 
-For an urgent incident, Railway may offer rollback to a retained successful
-deployment. Verify the target artifact and configuration, database compatibility
-and current plan retention first. Rollback can restore deployment variables
-too; assess credentials before using it. Correct Git through a revert PR as
-well so the next deployment does not reintroduce the fault.
+For an urgent incident, prepare Coolify to run a retained known-good Docker
+image digest. Verify the artifact exists, its settings and mounts, and database
+compatibility before requesting owner approval. A host snapshot restore
+overwrites newer database and file writes; assess that data loss separately.
+Correct Git through a revert PR as well so later builds retain the recovery.
 
 **A code rollback does not undo a database migration, restore deleted customer
 data or unsend an email.** For data loss, preserve the damaged database and
@@ -122,27 +132,18 @@ extracting `files.tar.gz` into an isolated recovery directory, never over a
 live checkout. The manifest records deleted files as absent. Verify checksums
 before recovery. The snapshot does not replace the production-data backup plan.
 
-## Storage recommendation, 2026-09-27
+## Independent backup storage
 
-Neon Console confirms a seven-day history window for OPEN SEO production.
-Keep that fast recovery path. A second Neon project shares account/provider
-risk and does not replace an independent backup. No second project is needed
-to schedule snapshots of the existing production branch.
+A backup on the production VPS shares the server's failure and access risks.
+Keep an encrypted copy in owner-approved storage outside that VPS, with recovery
+keys held separately. Laptop recovery archives are useful additional copies,
+not proof of a current off-site database-backup schedule. Verify the current
+inventory and perform an isolated restore drill before making recovery claims.
 
-For independent encrypted exports, consider an owner-controlled private
-Backblaze B2 bucket with Object Lock, separate recovery access and no public
-downloads. Encrypt before upload; the writer should not be able to delete
-retained backups. Keep recovery keys in the owner's password vault, separate
-from the backup writer. Choose the region, retention and access before setup.
-
-Published B2 pricing is $6.95/TB-month with the first 10 GB free. At 50 GB total
-retained storage, storage alone would be about $0.28/month after that allowance.
-This excludes backup-job compute, source-provider costs, taxes and download
-overages; measure actual export and volume sizes before budgeting. No account,
-bucket, upload or paid commitment has been created.
-
-Sources: [B2 pricing](https://www.backblaze.com/cloud-storage/pricing),
-[Object Lock](https://help.backblaze.com/hc/en-us/articles/360052973274-Object-Lock-FAQs).
+Choose the private destination, retention, budget and recovery access with the
+owner. No specific storage provider, paid plan or managed database history is
+required by the application. Never create a paid subscription or upload customer
+backups to a new destination without the owner's decision.
 
 ## Password recovery setup
 
@@ -150,7 +151,7 @@ The current application already supports password-reset mail through Resend.
 The live health check on 2026-09-27 reported no configured email provider.
 The next setup needs an owner-controlled Resend account, a verified sending
 domain and a chosen sender address. The owner enters `RESEND_API_KEY` and
-`RESEND_FROM_EMAIL` directly in Railway; never paste the key into chat or Git.
+`RESEND_FROM_EMAIL` directly in Coolify; never paste the key into chat or Git.
 Both variable names are already allowed in `scripts/write-runtime-dev-vars.ts`.
 
 Before applying configuration, inspect pending client welcome/nudge jobs:
@@ -163,5 +164,5 @@ test. Record the result without storing reset links, tokens or credentials.
 ## References
 
 - [GitHub repository backups and their scope](https://docs.github.com/en/repositories/archiving-a-github-repository/backing-up-a-repository)
-- [Neon backup strategies](https://neon.com/docs/manage/backups)
-- [Railway deployment actions and rollback](https://docs.railway.com/deployments/deployment-actions)
+- [PostgreSQL backup and restore](https://www.postgresql.org/docs/current/backup.html)
+- [Coolify image deployments](https://coolify.io/docs/applications/deployments/docker-image)

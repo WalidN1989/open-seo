@@ -13,8 +13,8 @@ RUN pnpm install --frozen-lockfile
 
 COPY . .
 
-# Vite inlines these public/build-mode values. Railway exposes service
-# variables to Docker builds only when the Dockerfile declares matching ARGs.
+# Vite inlines these public/build-mode values. The image builder supplies
+# them through the matching build arguments (GitHub Actions or Coolify).
 # Keep secrets out of this list: runtime secrets are materialized into the
 # worker bundle by write-runtime-dev-vars.ts when the container starts.
 ARG AUTH_MODE=local_noauth
@@ -37,9 +37,9 @@ ENV AUTH_MODE=$AUTH_MODE \
     ALLOWED_HOST=$ALLOWED_HOST \
     BETTER_AUTH_URL=$BETTER_AUTH_URL
 
-# Build once in Railway's image builder. Previously this ran after the paid
-# production container started, briefly pushing RAM above 20 GB on every
-# deployment while the old container remained live for zero-downtime handoff.
+# Build once in the image builder, before the production container starts.
+# Keep compilation off the live runtime so it does not compete with apps
+# and databases for VPS memory during a deployment.
 RUN pnpm run build
 
 EXPOSE 3001

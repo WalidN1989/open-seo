@@ -44,7 +44,7 @@ never "live". No new status was added.
 
 ## Setup (once per site)
 
-1. **Image model** — on the server (Railway), add ONE of:
+1. **Image model** — in the VPS application's Coolify runtime settings, add ONE of:
    - `OPENAI_API_KEY` → `gpt-image-1`, 1536×1024 WebP (about US$0.04 per image), or
    - `GEMINI_API_KEY` → `gemini-2.5-flash-image`, 16:9 PNG.
      `BLOG_IMAGE_MODEL` optionally overrides the model name.

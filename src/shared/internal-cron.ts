@@ -1,8 +1,8 @@
-// Railway runs this app as a plain container (`vite preview`), where
-// Cloudflare's `triggers.crons` never fire. Background work is therefore
-// driven by a ticker process inside the container calling this path, so the
-// jobs still execute inside the Worker runtime with the same bindings and
-// per-request Postgres scoping a real request gets.
+// The VPS runs this app in a container, where Cloudflare's `triggers.crons`
+// never fire. An explicitly enabled ticker can call this path so jobs execute
+// inside the Worker runtime with the same bindings and per-request Postgres
+// scoping as a real request. Registration does not enable a ticker; preserve
+// the deployment's manual/event-driven controls and disabled legacy pollers.
 export const INTERNAL_CRON_PATH = "/api/internal/cron";
 
 export const CRON_TIERS = ["fast", "standard", "slow"] as const;

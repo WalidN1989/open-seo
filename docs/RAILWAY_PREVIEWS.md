@@ -1,5 +1,10 @@
 # Railway preview workflow
 
+**Retired:** the owner deleted the Railway project on 2026-10-18. The preview
+and address below no longer exist. These instructions are retained as history;
+do not provision or reconnect Railway. Use `VPS_RELEASES.md` for current releases.
+Any future preview needs its own isolated database and disabled outbound actions.
+
 OpenSEO has one reusable Railway environment named `preview`. It lets the
 maintainer review a feature branch without merging it into `main` or changing
 production.
