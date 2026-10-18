@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { EmailAccountRow } from "../repositories/EmailRepository";
 
 const state = vi.hoisted(() => ({
+  newMail: false,
   account: null as EmailAccountRow | null,
   urls: [] as string[],
   inserted: [] as Array<{
@@ -34,34 +35,39 @@ vi.mock("../providers/microsoft", () => ({
     state.urls.push(url);
     const isHistory = url.includes("/mailFolders/");
     const isSent = url.includes("sentitems");
-    const message = isHistory
-      ? [
-          {
-            id: isSent ? "sent-1" : "inbox-1",
-            conversationId: isSent ? "sent-thread" : "inbox-thread",
-            subject: "Old message",
-            body: { contentType: "text", content: "Existing mail" },
-            from: {
-              emailAddress: {
-                address: isSent
-                  ? "info@southsidefencing.com.au"
-                  : "customer@example.com",
-              },
-            },
-            toRecipients: [
-              {
+    const message =
+      state.newMail || isHistory
+        ? [
+            {
+              id: `${isSent ? "sent" : "inbox"}-${state.newMail ? "new" : "1"}`,
+              conversationId: isSent ? "sent-thread" : "inbox-thread",
+              subject: "Old message",
+              body: { contentType: "text", content: "Existing mail" },
+              from: {
                 emailAddress: {
                   address: isSent
-                    ? "customer@example.com"
-                    : "info@southsidefencing.com.au",
+                    ? "info@southsidefencing.com.au"
+                    : "customer@example.com",
                 },
               },
-            ],
-            receivedDateTime: "2026-08-01T00:00:00Z",
-            sentDateTime: "2026-08-01T00:00:00Z",
-          },
-        ]
-      : [];
+              toRecipients: [
+                {
+                  emailAddress: {
+                    address: isSent
+                      ? "customer@example.com"
+                      : "info@southsidefencing.com.au",
+                  },
+                },
+              ],
+              receivedDateTime: state.newMail
+                ? "2026-10-18T00:00:00Z"
+                : "2026-08-01T00:00:00Z",
+              sentDateTime: state.newMail
+                ? "2026-10-18T00:00:00Z"
+                : "2026-08-01T00:00:00Z",
+            },
+          ]
+        : [];
     return new Response(
       JSON.stringify({
         value: message,
@@ -75,7 +81,8 @@ vi.mock("../providers/microsoft", () => ({
 vi.mock("../repositories/EmailRepository", () => ({
   EmailRepository: {
     getAccount: async () => state.account,
-    getAccountById: async () => state.account,
+    getAccountById: async (id: string) =>
+      state.account?.id === id ? state.account : null,
     updateAccount: async (_id: string, patch: Partial<EmailAccountRow>) => {
       state.account = { ...state.account!, ...patch };
       return state.account;
@@ -106,9 +113,13 @@ vi.mock("../repositories/EmailRepository", () => ({
   },
 }));
 
-import { importExistingMicrosoftMail } from "./MicrosoftMailSyncService";
+import {
+  importExistingMicrosoftMail,
+  syncMicrosoftMailbox,
+} from "./MicrosoftMailSyncService";
 
 beforeEach(() => {
+  state.newMail = false;
   state.urls.length = 0;
   state.inserted.length = 0;
   state.messages.clear();
@@ -157,6 +168,37 @@ describe("Microsoft historical mail import", () => {
   it("does not start an import for another organization", async () => {
     await expect(importExistingMicrosoftMail("other", "owner")).rejects.toThrow(
       "Forbidden",
+    );
+    expect(state.urls).toHaveLength(0);
+  });
+});
+
+describe("VPS Microsoft mailbox sync", () => {
+  it("catches up Inbox and Sent after history import completed without duplicates", async () => {
+    state.newMail = true;
+    state.account!.syncCursor = JSON.stringify({
+      url: "https://graph.microsoft.com/v1.0/new/done",
+      cutoff: "2026-09-25T00:00:00.000Z",
+      historyDone: true,
+    });
+    await syncMicrosoftMailbox("account-1");
+    expect(
+      state.inserted.map((m) => [m.externalMessageId, m.direction]),
+    ).toEqual([
+      ["inbox-new", "inbound"],
+      ["sent-new", "outbound"],
+    ]);
+    expect(JSON.parse(state.account!.syncCursor)).toHaveProperty("sentUrl");
+    await syncMicrosoftMailbox("account-1");
+    expect(state.inserted).toHaveLength(2);
+  });
+  it("rejects another or disconnected account before reading Microsoft", async () => {
+    await expect(syncMicrosoftMailbox("another-account")).rejects.toThrow(
+      "Connected Microsoft mailbox required",
+    );
+    state.account!.status = "disconnected";
+    await expect(syncMicrosoftMailbox("account-1")).rejects.toThrow(
+      "Connected Microsoft mailbox required",
     );
     expect(state.urls).toHaveLength(0);
   });

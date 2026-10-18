@@ -33,6 +33,7 @@ const pageSchema = z.object({
 const cursorSchema = z.object({
   url: z.url(),
   cutoff: z.iso.datetime(),
+  sentUrl: z.url().optional(),
   historyUrl: z.url().optional(),
   historyFolder: z.enum(["inbox", "sentitems"]).optional(),
   historyDone: z.boolean().optional(),
@@ -157,9 +158,8 @@ async function syncAccount(account: EmailAccountRow) {
     });
     if (batch["@odata.deltaLink"]) break;
   }
-  if (!cursor.historyUrl || !cursor.historyFolder)
-    return { historyComplete: true };
   for (let page = 0; page < 5; page += 1) {
+    if (!cursor.historyUrl || !cursor.historyFolder) break;
     const response = await graphRequest(account, cursor.historyUrl);
     const batch = pageSchema.parse(await response.json());
     for (const message of batch.value.toSorted((a, b) =>
@@ -194,6 +194,23 @@ async function syncAccount(account: EmailAccountRow) {
       lastError: null,
     });
     if (!cursor.historyUrl) break;
+  }
+  // Outlook replies must continue mirroring after the one-time history import.
+  cursor.sentUrl ??= historyUrl("sentitems");
+  for (let page = 0; page < 5; page += 1) {
+    const response = await graphRequest(account, cursor.sentUrl);
+    const batch = pageSchema.parse(await response.json());
+    for (const message of batch.value) {
+      await ingest(account, message, cursor.cutoff, "sentitems");
+    }
+    const next = batch["@odata.nextLink"] ?? batch["@odata.deltaLink"];
+    if (!next) throw new Error("Microsoft Graph did not return a sent cursor.");
+    cursor.sentUrl = next;
+    await Repo.updateAccount(account.id, {
+      syncCursor: JSON.stringify(cursor),
+      lastError: null,
+    });
+    if (batch["@odata.deltaLink"]) break;
   }
   return { historyComplete: !cursor.historyUrl };
 }
@@ -245,5 +262,28 @@ export async function syncMicrosoftMailboxes() {
         lastError: "Microsoft mail sync failed. Check the connection.",
       });
     }
+  }
+}
+
+/** Internal mailbox-only operation. Never dispatches a general cron tier. */
+export async function syncMicrosoftMailbox(accountId: string) {
+  const account = await Repo.getAccountById(accountId);
+  if (
+    !account ||
+    account.provider !== "microsoft" ||
+    account.status !== "connected"
+  ) {
+    throw new AppError(
+      "VALIDATION_ERROR",
+      "Connected Microsoft mailbox required.",
+    );
+  }
+  try {
+    return await syncAccount(account);
+  } catch (error) {
+    await Repo.updateAccount(account.id, {
+      lastError: "Microsoft mail sync failed. Check the connection.",
+    });
+    throw error;
   }
 }

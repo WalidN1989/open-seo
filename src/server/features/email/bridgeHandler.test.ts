@@ -1,5 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+const syncMailbox = vi.fn<(...args: unknown[]) => Promise<unknown>>();
+vi.mock("./services/MicrosoftMailSyncService", () => ({
+  syncMicrosoftMailbox: (...args: unknown[]) => syncMailbox(...args),
+}));
+
 const ingest = vi.fn<(...args: unknown[]) => Promise<unknown>>();
 const accountsForBridge = vi.fn<() => Promise<unknown>>();
 vi.mock("./services/MailboxIngestService", () => ({
@@ -29,6 +34,7 @@ function post(path: string, body: unknown, secret?: string) {
 
 describe("mail bridge handler", () => {
   beforeEach(() => {
+    syncMailbox.mockReset();
     ingest.mockReset();
     accountsForBridge.mockReset();
   });
@@ -93,5 +99,36 @@ describe("mail bridge handler", () => {
       // A bridge from before attachments were carried still validates.
       messages: [{ ...message, attachments: [] }],
     });
+  });
+});
+
+describe("Microsoft mailbox sync boundary", () => {
+  const path = "/api/internal/mailbox/microsoft-sync";
+  const accountId = "11111111-1111-4111-8111-111111111111";
+  it("requires internal authorization before syncing", async () => {
+    syncMailbox.mockClear();
+    expect(
+      (await handleMailBridgeRequest(post(path, { accountId }))).status,
+    ).toBe(401);
+    expect(syncMailbox).not.toHaveBeenCalled();
+  });
+  it("rejects a request that tries to select other background jobs", async () => {
+    syncMailbox.mockClear();
+    expect(
+      (
+        await handleMailBridgeRequest(
+          post(path, { accountId, tier: "standard" }, "s3cret"),
+        )
+      ).status,
+    ).toBe(400);
+    expect(syncMailbox).not.toHaveBeenCalled();
+  });
+  it("syncs only the specified mailbox", async () => {
+    syncMailbox.mockResolvedValue({ historyComplete: true });
+    const response = await handleMailBridgeRequest(
+      post(path, { accountId }, "s3cret"),
+    );
+    expect(response.status).toBe(200);
+    expect(syncMailbox).toHaveBeenCalledWith(accountId);
   });
 });

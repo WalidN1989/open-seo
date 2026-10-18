@@ -94,3 +94,15 @@ from GitHub code and registry images; follow `RECOVERY.md`.
 
 Sources: [Coolify image deployments](https://coolify.io/docs/applications/deployments/docker-image),
 [GitHub environment protection](https://docs.github.com/en/actions/reference/workflows-and-actions/deployments-and-environments).
+
+## Selected Microsoft mailbox sync
+
+`MICROSOFT_MAIL_SYNC_ACCOUNT_IDS` is a private Coolify runtime setting: a
+comma-separated list of existing connected Microsoft mailbox UUIDs. It is read
+by the Node mailbox bridge and does not require a Worker binding. An unset or
+empty setting keeps Microsoft periodic sync off. When enabled, the VPS bridge
+syncs only those accounts at startup and one minute after each completed pass.
+It does not start a cron tier, quote follow-ups, catalogue sync or other paused
+jobs. Missing mail is mirrored using saved delta cursors without outbound replies.
+Inbox and Sent are maintained separately. Remove this runtime setting to disable
+the loop; no Railway or Neon service is involved.

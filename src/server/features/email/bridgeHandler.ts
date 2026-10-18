@@ -5,6 +5,7 @@ import {
   MAIL_BRIDGE_INGEST_PATH,
   MAIL_BRIDGE_INTERNAL_PREFIX,
 } from "@/shared/mail-bridge";
+import { syncMicrosoftMailbox } from "./services/MicrosoftMailSyncService";
 import { MailboxIngestService } from "./services/MailboxIngestService";
 
 const inboundSchema = z.object({
@@ -61,6 +62,15 @@ export async function handleMailBridgeRequest(
     return new Response("Unauthorized", { status: 401 });
   }
   const pathname = new URL(request.url).pathname;
+  if (pathname === `${MAIL_BRIDGE_INTERNAL_PREFIX}microsoft-sync`) {
+    const parsed = z
+      .object({ accountId: z.uuid() })
+      .strict()
+      .safeParse(await request.json().catch(() => null));
+    if (!parsed.success)
+      return Response.json({ error: "Invalid mailbox" }, { status: 400 });
+    return Response.json(await syncMicrosoftMailbox(parsed.data.accountId));
+  }
   if (pathname === MAIL_BRIDGE_ACCOUNTS_PATH) {
     return Response.json({
       accounts: await MailboxIngestService.accountsForBridge(),
