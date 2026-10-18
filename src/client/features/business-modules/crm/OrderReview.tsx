@@ -1,4 +1,3 @@
-import { formatMoney } from "@/shared/currencies";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -11,11 +10,11 @@ import { listCommerceProducts } from "@/serverFunctions/commerce";
 import { getStandardErrorMessage } from "@/client/lib/error-messages";
 import { useWorkspaceCurrency } from "@/client/hooks/useWorkspaceCurrency";
 
+import { OrderReviewLine } from "./OrderReviewLine";
+
 type Detail = NonNullable<Awaited<ReturnType<typeof getCommerceOrder>>>;
 export function OrderReview({ detail }: { detail: Detail }) {
-  const [choices, setChoices] = useState<
-    Record<string, { productId: string; acknowledgePrice: boolean }>
-  >({});
+  const [choices, setChoices] = useState<Record<string, string>>({});
   const [selectedProducts, setSelectedProducts] = useState<
     Record<string, Detail["lines"][number]["product"]>
   >({});
@@ -33,11 +32,18 @@ export function OrderReview({ detail }: { detail: Detail }) {
         data: { search, status: "active", limit: 100, offset: 0 },
       }),
   });
-  const lines = detail.lines.map((line) => ({
+  const reviewLines = detail.lines.map((line) => {
+    const productId = choices[line.id] ?? line.productId ?? "";
+    const selected =
+      products.data?.products.find((product) => product.id === productId) ??
+      (line.product?.id === productId ? line.product : null) ??
+      selectedProducts[productId] ??
+      null;
+    return { line, productId, selected };
+  });
+  const lines = reviewLines.map(({ line, productId }) => ({
     lineId: line.id,
-    productId: choices[line.id]?.productId ?? line.productId ?? "",
-    acknowledgePrice:
-      choices[line.id]?.acknowledgePrice ?? Boolean(line.priceReviewedAt),
+    productId,
   }));
   const approve = useMutation({
     mutationFn: () =>
@@ -70,102 +76,57 @@ export function OrderReview({ detail }: { detail: Detail }) {
     onError: (error) => toast.error(getStandardErrorMessage(error)),
   });
   return (
-    <div className="space-y-3 border-t border-base-300 pt-3">
-      <p className="text-sm">
+    <div className="space-y-3">
+      <h3 className="text-sm font-semibold">Product & price review</h3>
+      <p className="text-xs text-base-content/60">
         Map each item to the correct product and edition. Keep the Shopify
-        selling price; acknowledge differences before approval.
+        selling price; correct catalogue prices before approval.
       </p>
+      {currencyMismatch ? (
+        <p role="alert" className="text-sm text-error">
+          Order currency differs from the workspace currency. Resolve the
+          currency before approval; catalogue amounts cannot be compared across
+          currencies.
+        </p>
+      ) : null}
       <input
+        aria-label="Find product for order review"
         className="input input-bordered input-sm w-full"
         placeholder="Find product by title, SKU or ISBN"
         value={search}
         onChange={(event) => setSearch(event.target.value)}
       />
-      {detail.lines.map((line) => {
-        const choice = lines.find((item) => item.lineId === line.id)!;
-        const selected =
-          products.data?.products.find(
-            (product) => product.id === choice.productId,
-          ) ??
-          selectedProducts[choice.productId] ??
-          (line.product?.id === choice.productId ? line.product : null);
-        const mismatch =
-          selected &&
-          (selected.salePriceMinor !== line.unitPriceMinor || currencyMismatch);
+      {reviewLines.map(({ line, productId, selected }) => {
         return (
-          <div
-            key={line.id}
-            className="space-y-2 rounded-lg border border-base-300 p-3"
-          >
-            <p className="text-sm font-medium">
-              {line.description} · {line.sku || "No SKU"}
-            </p>
-            <select
-              className="select select-bordered select-sm w-full"
-              value={choice.productId}
-              onChange={(event) => {
-                const product = products.data?.products.find(
-                  (item) => item.id === event.target.value,
-                );
-                if (product)
-                  setSelectedProducts((current) => ({
-                    ...current,
-                    [product.id]: product,
-                  }));
-                setChoices((current) => ({
+          <OrderReviewLine
+            key={`${line.id}:${productId}:${selected?.salePriceMinor}`}
+            line={line}
+            selected={selected ?? null}
+            products={products.data?.products ?? []}
+            productId={productId}
+            currency={detail.order.currency || money.currency}
+            catalogueCurrency={money.currency}
+            onProductUpdated={(product) =>
+              setSelectedProducts((current) => ({
+                ...current,
+                [product.id]: product,
+              }))
+            }
+            onProductChange={(nextProductId) => {
+              const product = products.data?.products.find(
+                (item) => item.id === nextProductId,
+              );
+              if (product)
+                setSelectedProducts((current) => ({
                   ...current,
-                  [line.id]: {
-                    productId: event.target.value,
-                    acknowledgePrice: false,
-                  },
+                  [product.id]: product,
                 }));
-              }}
-            >
-              <option value="">Select correct product / edition</option>
-              {selected &&
-              !products.data?.products.some(
-                (product) => product.id === selected.id,
-              ) ? (
-                <option value={selected.id}>
-                  {selected.name} · {selected.sku}
-                </option>
-              ) : null}
-              {products.data?.products.map((product) => (
-                <option key={product.id} value={product.id}>
-                  {product.name} · {product.sku}
-                </option>
-              ))}
-            </select>
-            {!choice.productId ? (
-              <p className="text-xs text-error">
-                Unmapped — select or create the product first.
-              </p>
-            ) : null}
-            {mismatch ? (
-              <label className="flex gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={choice.acknowledgePrice}
-                  onChange={(event) =>
-                    setChoices((current) => ({
-                      ...current,
-                      [line.id]: {
-                        productId: choice.productId,
-                        acknowledgePrice: event.target.checked,
-                      },
-                    }))
-                  }
-                />
-                Keep Shopify price{" "}
-                {formatMoney(
-                  line.unitPriceMinor,
-                  detail.order.currency || money.currency,
-                )}{" "}
-                (catalogue {money.format(selected.salePriceMinor)}). Catalogue
-                price remains unchanged.
-              </label>
-            ) : null}
-          </div>
+              setChoices((current) => ({
+                ...current,
+                [line.id]: nextProductId,
+              }));
+            }}
+          />
         );
       })}
       {detail.order.note ? (
@@ -183,36 +144,27 @@ export function OrderReview({ detail }: { detail: Detail }) {
         disabled={
           approve.isPending ||
           reject.isPending ||
-          lines.some((line) => {
-            const product =
-              products.data?.products.find(
-                (item) => item.id === line.productId,
-              ) ??
-              selectedProducts[line.productId] ??
-              detail.lines.find((item) => item.id === line.lineId)?.product;
-            const orderLine = detail.lines.find(
-              (item) => item.id === line.lineId,
-            );
-            return (
-              !line.productId ||
-              !product ||
-              ((product.salePriceMinor !== orderLine?.unitPriceMinor ||
-                currencyMismatch) &&
-                !line.acknowledgePrice)
-            );
-          }) ||
+          !reviewLines.length ||
+          reviewLines.some(
+            ({ productId, selected, line }) =>
+              !productId ||
+              !selected ||
+              selected.status !== "active" ||
+              selected.salePriceMinor !== line.unitPriceMinor ||
+              currencyMismatch,
+          ) ||
           Boolean(detail.order.note && !acknowledgeAdjustments)
         }
         onClick={() => approve.mutate()}
       >
-        Approve review
+        Approve order
       </button>
       <button
         className="btn btn-ghost btn-sm"
         disabled={reject.isPending || approve.isPending}
         onClick={() => reject.mutate()}
       >
-        Reject review
+        Reject order
       </button>
     </div>
   );

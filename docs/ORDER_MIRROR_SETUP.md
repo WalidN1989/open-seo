@@ -12,7 +12,8 @@ operational effects remain off until their per-connection activation dates and
 settings are explicitly configured after reconciliation.
 
 With those gates off, imported approval is a local review decision. It never
-approves or cancels an upstream Shopify order or changes catalog prices. When
+approves or cancels an upstream Shopify order. Catalogue price corrections are
+separate, explicit staff actions in the review modal. When
 operational gates are enabled, approval can enqueue invoice and Citypak work and
 award loyalty. Native orders choose an explicit operations profile and use atomic
 stock transitions; imported orders cannot use native stock actions.
@@ -74,9 +75,14 @@ credentials and callback support. The migration ledger records the live state.
    legacy fee/return/refund dates are not imported.
    Keep the original exports privately for the later normalized history migration.
 
-6. Review each pending order. Select missing products/editions and acknowledge
-   every catalogue-price difference. Shopify selling prices are kept; the
-   catalogue price does not change. A changed basket invalidates approval and
+6. Open **View** for each pending order and select the correct active CRM
+   product/edition for every line. A catalogue-price mismatch is shown in red
+   and blocks approval, including requests from older clients with a price
+   acknowledgement flag. Staff can explicitly update the CRM catalogue selling
+   price inside the modal; this affects future orders. Received Shopify line
+   prices, discounts, delivery, tax and totals remain unchanged. Prices must
+   match in the same currency before approval, and the approval write checks
+   the catalogue again. A changed basket invalidates approval and
    requires a new review. A stale open review cannot approve a newer basket.
 7. Enter the Citypak API key in connection settings to enable **Refresh status**.
    Existing tracking references can also be linked manually. Tracking uses the
@@ -117,7 +123,7 @@ Take a database backup before applying migrations through the release process.
 
 Validation covers raw-body HMAC verification, wrong stores and disabled
 connections, replay/concurrent duplicate delivery, stale snapshots, basket
-changes, tenant isolation, exact sender matching, price acknowledgement, local
+changes, tenant isolation, exact sender matching, catalogue correction and concurrent price changes, local
 review rejection, legacy import replay and replacement, and zero stock movement.
 The local UI uses fixture data to exercise all order tabs, mapping/price gates,
 selected-product persistence, bill totals and connection forms. SQLite migrations

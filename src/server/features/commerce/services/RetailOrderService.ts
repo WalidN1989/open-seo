@@ -50,13 +50,12 @@ async function approveImportedOrder(
     if (!product || product.status !== "active")
       throw new AppError("NOT_FOUND");
     if (
-      (product.salePriceMinor !== line.unitPriceMinor ||
-        Boolean(order.currency && order.currency !== settings.currency)) &&
-      !choice.acknowledgePrice
+      product.salePriceMinor !== line.unitPriceMinor ||
+      Boolean(order.currency && order.currency !== settings.currency)
     )
       throw new AppError(
         "CONFLICT",
-        "Acknowledge each price difference before approving.",
+        "Correct each catalogue price to match the order item price and currency before approving.",
       );
   }
   if (order.note && !input.acknowledgeAdjustments)
