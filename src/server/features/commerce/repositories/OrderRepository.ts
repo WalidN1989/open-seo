@@ -1,3 +1,4 @@
+import { CustomerOrderRepository } from "./CustomerOrderRepository";
 import {
   inventoryMovementStatements,
   type StockMovementDraft,
@@ -387,6 +388,7 @@ async function sequence(organizationId: string) {
 }
 
 export const OrderRepository = {
+  ...CustomerOrderRepository,
   transitionNative,
   sequence,
   shipments,

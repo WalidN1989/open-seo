@@ -10,7 +10,6 @@ import { orderPhone } from "../providers/shopifyOrders";
 import { BusinessModuleService } from "@/server/features/business-modules/services/BusinessModuleService";
 import { AppError } from "@/server/lib/errors";
 import { CommerceRepository } from "../repositories/CommerceRepository";
-import { CustomerOrderRepository } from "../repositories/CustomerOrderRepository";
 import { OrderRepository } from "../repositories/OrderRepository";
 async function approveImportedOrder(
   organizationId: string,
@@ -124,10 +123,7 @@ async function lookupCustomerOrder(
     sender.startsWith("whatsapp:") ? sender.slice(9) : sender,
   );
   if (phone && !query.trim()) {
-    const orders = await CustomerOrderRepository.customerOrders(
-      organizationId,
-      phone,
-    );
+    const orders = await OrderRepository.customerOrders(organizationId, phone);
     return JSON.stringify({
       found: orders.length > 0,
       orders: await Promise.all(
@@ -148,7 +144,7 @@ async function lookupCustomerOrder(
       found: false,
       next: "Ask for the order ID once, or hand off if already provided.",
     });
-  const order = await CustomerOrderRepository.customerOrder(
+  const order = await OrderRepository.customerOrder(
     organizationId,
     native ? query.trim().toUpperCase() : `SHOP-${match?.[1]}`,
     phone,
@@ -163,9 +159,7 @@ async function lookupCustomerOrder(
 
 async function customerOrderDetails(
   organizationId: string,
-  order: NonNullable<
-    Awaited<ReturnType<typeof CustomerOrderRepository.customerOrder>>
-  >,
+  order: NonNullable<Awaited<ReturnType<typeof OrderRepository.customerOrder>>>,
 ) {
   const [shipments, lines] = await Promise.all([
     OrderRepository.shipments(organizationId, order.id),
