@@ -1,3 +1,4 @@
+import { CustomerOrderRepository } from "./CustomerOrderRepository";
 import {
   inventoryMovementStatements,
   type StockMovementDraft,
@@ -369,25 +370,6 @@ async function rejectImport(
     .returning();
   return row ?? null;
 }
-async function customerOrder(
-  organizationId: string,
-  orderNumber: string,
-  phone: string,
-) {
-  const orders = await db
-    .select()
-    .from(commerceOrders)
-    .where(
-      and(
-        eq(commerceOrders.organizationId, organizationId),
-        eq(commerceOrders.orderNumber, orderNumber),
-        eq(commerceOrders.customerPhone, phone),
-      ),
-    )
-    .limit(2);
-  return orders.length === 1 ? orders[0] : null;
-}
-
 async function sequence(organizationId: string) {
   return db
     .select({
@@ -406,12 +388,12 @@ async function sequence(organizationId: string) {
 }
 
 export const OrderRepository = {
+  ...CustomerOrderRepository,
   transitionNative,
   sequence,
   shipments,
   approveImport,
   rejectImport,
-  customerOrder,
   listOrders,
   getOrder,
   listLines,

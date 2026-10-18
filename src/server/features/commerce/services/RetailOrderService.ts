@@ -106,7 +106,7 @@ async function rejectImportedOrder(
 async function lookupCustomerOrder(
   organizationId: string,
   sender: string,
-  query: string,
+  query = "",
 ) {
   const entitlements =
     await BusinessModuleRepository.listEntitlements(organizationId);
@@ -122,6 +122,21 @@ async function lookupCustomerOrder(
   const phone = orderPhone(
     sender.startsWith("whatsapp:") ? sender.slice(9) : sender,
   );
+  if (phone && !query.trim()) {
+    const orders = await OrderRepository.customerOrders(organizationId, phone);
+    return JSON.stringify({
+      found: orders.length > 0,
+      orders: await Promise.all(
+        orders
+          .slice(0, 5)
+          .map((order) => customerOrderDetails(organizationId, order)),
+      ),
+      hasMore: orders.length > 5,
+      next: orders.length
+        ? "Use these sender-matched orders. If several could match the question, ask which one using the order date or title; do not ask them to find an order number first."
+        : "No order matched this sending number. Ask once whether they used a different number, then hand off for verification; never look up a model-selected phone.",
+    });
+  }
   const match = /^(?:#?SHOP-)?(\d{1,15})$/i.exec(query.trim());
   const native = /^ORD-(?:[A-F0-9]{32}|\d{1,15})$/i.test(query.trim());
   if (!phone || (!match && !native))
@@ -139,8 +154,18 @@ async function lookupCustomerOrder(
       found: false,
       next: "Cannot match this order to this sender. Hand off without disclosing another customer's details.",
     });
-  const shipments = await OrderRepository.shipments(organizationId, order.id);
-  return JSON.stringify({
+  return JSON.stringify(await customerOrderDetails(organizationId, order));
+}
+
+async function customerOrderDetails(
+  organizationId: string,
+  order: NonNullable<Awaited<ReturnType<typeof OrderRepository.customerOrder>>>,
+) {
+  const [shipments, lines] = await Promise.all([
+    OrderRepository.shipments(organizationId, order.id),
+    OrderRepository.listLines(organizationId, order.id),
+  ]);
+  return {
     found: true,
     orderId: order.orderNumber,
     status: order.status,
@@ -149,15 +174,21 @@ async function lookupCustomerOrder(
         ? order.paymentStatus
         : "unknown",
     fulfilmentStatus: order.fulfilmentStatus,
+    placedAt: order.createdAt,
+    items: lines.map((line) => ({
+      title: line.description,
+      quantity: line.quantity,
+    })),
     shipments: shipments.map((item) => ({
       provider: item.provider,
       trackingNumber: item.trackingNumber,
       status: item.status,
       checkedAt: item.checkedAt,
+      lastEventAt: item.lastEventAt,
     })),
     updatedAt: order.externalUpdatedAt || order.updatedAt,
     note: "Approval in DigitalUrgency is a review status, not shipment progress. Quote only recorded tracking; missing tracking is unknown, not proof the order has not shipped.",
-  });
+  };
 }
 
 async function missingSequence(organizationId: string, userId: string) {

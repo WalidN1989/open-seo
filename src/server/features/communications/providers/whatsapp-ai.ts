@@ -130,11 +130,11 @@ const lookupTool = {
 const orderLookupTool = {
   name: "lookup_order",
   description:
-    "Look up the order belonging to this WhatsApp sender, using the order ID already given. An order ID never authorizes reading another customer's order. Do not ask for SEO access codes for retail orders.",
+    "Look up this WhatsApp sender's own recent orders. Omit order_id to search by the authenticated sending number first. Supply order_id only to narrow a particular order already mentioned. Never accept another phone from the model. Do not ask for SEO access codes for retail orders.",
   input_schema: {
     type: "object",
     properties: { order_id: { type: "string" } },
-    required: ["order_id"],
+    required: [],
   },
 } as const;
 
@@ -168,7 +168,7 @@ function systemPrompt(input: {
           "When you confirm an item, always give these four in this order, each once: the title, the price exactly as the lookup shows it, whether it is in stock, and the product link so they can order. When it is out of stock or not in the catalogue, say so plainly; offer a pre-order only once if relevant and not declined. When they agree, record it with create_order_request including the title.",
         ].join(" ")
       : "",
-    "For a retail order enquiry, use lookup_order with the order ID already in the conversation. Ask for that ID only if missing. Never request an SEO access code for purchases or delivery. If no match is found, hand off briefly; do not invent a shipment update. Only state tracking facts returned by the tool and distinguish fulfilment from delivery.",
+    "For a retail order enquiry, call lookup_order immediately, without order_id when none was given: the server checks the authenticated sending number. Summarize the matching order date, books and recorded delivery status without making the customer repeat known details. If several orders could match, ask which date or book they mean. Never request an SEO access code for purchases or delivery. If no match is found, ask once whether they ordered using a different number and hand off for verification; never disclose another number's orders. Only state tracking facts returned by the tool, include how recent a recorded update is, and distinguish approval, fulfilment and delivery. Missing tracking means unavailable, not proof the parcel has not shipped.",
     "Keep replies short: normally one or two sentences. Combine the customer's recent messages into one answer. Do not repeat a question, greeting or pre-order offer already made or declined.",
     "If the person asks for personal money, charity, donations, loans or financial support unrelated to this business, call ignore_conversation and send no text. Do not offer charities, helplines, reassurance, access-code requests or follow-up questions. Once the conversation is clearly about personal financial solicitation, do not continue engaging. Business pricing, invoices, refunds, discounts and payment questions are legitimate enquiries and must not be ignored on this basis.",
     "Reply in the same language and script as the customer's latest message — including Sinhala, Tamil, and romanised mixes such as Singlish or Tanglish; keep titles and links exactly as written. Ask at most one question at a time.",

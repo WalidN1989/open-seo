@@ -99,6 +99,7 @@ async function webhook(
   caller?: string,
   line?: string,
   callback?: string,
+  customerPhone?: string,
 ) {
   const raw = JSON.stringify({
     type: "post_call_transcription",
@@ -115,6 +116,7 @@ async function webhook(
         data_collection_results: {
           caller_name: { value: "Test Caller" },
           callback_details: { value: callback },
+          customer_phone_number: { value: customerPhone },
         },
       },
     },
@@ -148,6 +150,13 @@ async function savedPhone() {
 }
 
 describe("workspace-aware phone calls and CRM", () => {
+  it("saves a first-time website caller's explicitly captured customer phone", async () => {
+    await webhook("lk-line", undefined, undefined, undefined, "0761234567");
+    expect(await savedPhone()).toBe("+94761234567");
+    expect(
+      (await client.execute("select first_name,phone from crm_contacts")).rows,
+    ).toMatchObject([{ first_name: "Test", phone: "+94761234567" }]);
+  });
   it("stores a national caller on a Sri Lankan line as +94 in the call, contact and WhatsApp recipient", async () => {
     expect(await webhook("lk-line", "0761234567", "+94110000000")).toEqual({
       status: 200,

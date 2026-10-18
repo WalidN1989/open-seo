@@ -132,7 +132,8 @@ async function recordCall(source: CallSource, report: PhoneCallReport) {
   // caller gave out loud is the one to use.
   const phone =
     report.callerNumber ??
-    phoneFromText(report.captured.callback_details, region);
+    phoneFromText(report.captured.callback_details, region) ??
+    phoneFromText(report.captured.customer_phone_number, region);
   const email = emailFrom(report.captured.caller_email);
   const businessName = report.captured.business_name?.trim();
 
