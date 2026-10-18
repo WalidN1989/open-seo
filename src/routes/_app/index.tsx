@@ -35,10 +35,6 @@ function IndexRedirect() {
 
   useEffect(() => {
     if (accessLoading) return;
-    if (access?.demoData) {
-      void navigate({ to: "/modules/overview" });
-      return;
-    }
     if (!data || data.length === 0) return;
 
     // localStorage is untrusted — only honor the remembered project if it's
@@ -50,13 +46,12 @@ function IndexRedirect() {
       clearLastProjectId();
     }
 
+    const chosenProject = projectAddress(
+      data.find(isPreferredAgencyProject) ?? target ?? data[0],
+    );
     void navigate({
-      to: "/p/$projectId",
-      params: {
-        projectId: projectAddress(
-          data.find(isPreferredAgencyProject) ?? target ?? data[0],
-        ),
-      },
+      to: access?.demoData ? "/p/$projectId/modules/overview" : "/p/$projectId",
+      params: { projectId: chosenProject },
     });
   }, [access, accessLoading, data, navigate]);
 

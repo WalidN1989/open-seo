@@ -1,3 +1,4 @@
+import { useProjectAddress } from "@/client/lib/use-project-address";
 import { useEffect, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { AlarmClock, Building2, Check, Clock } from "lucide-react";
@@ -19,6 +20,8 @@ const SNOOZE_OPTIONS = [
  * never twice in a session. Clicking outside leaves it in the bell.
  */
 export function ReminderPopup() {
+  const workspaceProjectAddress = useProjectAddress();
+
   const { reminders, snooze, done } = useReminders();
   const now = useNow();
   const navigate = useNavigate();
@@ -73,8 +76,8 @@ export function ReminderPopup() {
   const open = () => {
     if (current.leadId) {
       void navigate({
-        to: "/modules/leads/$leadId",
-        params: { leadId: current.leadId },
+        to: "/p/$projectId/modules/leads/$leadId",
+        params: { projectId: workspaceProjectAddress, leadId: current.leadId },
       });
     }
     close();

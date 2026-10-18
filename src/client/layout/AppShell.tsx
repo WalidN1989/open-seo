@@ -1,4 +1,4 @@
-import { CitypakShortcut } from "@/client/features/business-modules/crm/CitypakShortcut";
+import { WorkspaceShortcuts } from "@/client/features/business-modules/WorkspaceShortcuts";
 import { ModulePicker } from "@/client/features/business-modules/ModulePicker";
 import { ReminderPopup } from "@/client/features/reminders/ReminderPopup";
 import { PerformanceLauncher } from "@/client/features/performance/PerformanceLauncher";
@@ -17,6 +17,7 @@ import { BILLING_ROUTE } from "@/shared/billing";
 import { getSeoApiKeyStatus } from "@/serverFunctions/config";
 import { getProjects } from "@/serverFunctions/projects";
 import { getLastProjectId, projectAddress } from "@/client/lib/active-project";
+import { ProjectNavigationContext } from "@/client/lib/use-project-address";
 
 const DATAFORSEO_HELP_PATH = "/help/dataforseo-api-key";
 
@@ -130,56 +131,58 @@ export function AuthenticatedAppLayout({
   }, [shouldShowMissingSeoApiKeyModal]);
 
   return (
-    <div className="flex h-[100dvh] bg-base-200">
-      <div className="hidden shrink-0 md:block">
-        <Sidebar projectId={sidebarProjectId} />
-      </div>
+    <ProjectNavigationContext.Provider value={sidebarProjectId}>
+      <div className="flex h-[100dvh] bg-base-200">
+        <div className="hidden shrink-0 md:block">
+          <Sidebar projectId={sidebarProjectId} />
+        </div>
 
-      <div className="flex min-w-0 flex-1 flex-col">
-        <MobileTopBar
-          drawerOpen={drawerOpen}
-          onOpenDrawer={() => setDrawerOpen(true)}
-        />
+        <div className="flex min-w-0 flex-1 flex-col">
+          <MobileTopBar
+            drawerOpen={drawerOpen}
+            onOpenDrawer={() => setDrawerOpen(true)}
+          />
 
-        {/* PostHog-style cutout: the main content sits on a raised panel with a
+          {/* PostHog-style cutout: the main content sits on a raised panel with a
             thin strip of the sidebar background above it and a hairline border. */}
-        <div className="flex min-h-0 flex-1 flex-col md:pt-2">
-          <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-base-100 md:rounded-tl-lg md:border-l md:border-t md:border-base-300">
-            <SeoApiStatusBanners
-              shouldShowSeoApiWarning={shouldShowSeoApiWarning}
-              seoApiKeyStatusError={seoApiKeyStatusError}
-            />
+          <div className="flex min-h-0 flex-1 flex-col md:pt-2">
+            <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-base-100 md:rounded-tl-lg md:border-l md:border-t md:border-base-300">
+              <SeoApiStatusBanners
+                shouldShowSeoApiWarning={shouldShowSeoApiWarning}
+                seoApiKeyStatusError={seoApiKeyStatusError}
+              />
 
-            {banner}
+              {banner}
 
-            <div className="min-h-0 flex-1 overflow-auto">{children}</div>
+              <div className="min-h-0 flex-1 overflow-auto">{children}</div>
+            </div>
           </div>
         </div>
+
+        <WorkspaceShortcuts />
+
+        <MobileSidebarDrawer
+          open={drawerOpen}
+          projectId={sidebarProjectId}
+          onClose={() => setDrawerOpen(false)}
+        />
+
+        <MissingSeoSetupModal
+          ref={setupModalRef}
+          isOpen={shouldShowMissingSeoApiKeyModal}
+          onClose={() => setShowMissingSeoApiKeyModal(false)}
+        />
+
+        <GscReEngagementModal
+          projectId={sidebarProjectId}
+          suppressed={shouldShowMissingSeoApiKeyModal}
+        />
+
+        <ReminderPopup />
+        <PerformanceLauncher />
+        <ModulePicker />
       </div>
-
-      <CitypakShortcut />
-
-      <MobileSidebarDrawer
-        open={drawerOpen}
-        projectId={sidebarProjectId}
-        onClose={() => setDrawerOpen(false)}
-      />
-
-      <MissingSeoSetupModal
-        ref={setupModalRef}
-        isOpen={shouldShowMissingSeoApiKeyModal}
-        onClose={() => setShowMissingSeoApiKeyModal(false)}
-      />
-
-      <GscReEngagementModal
-        projectId={sidebarProjectId}
-        suppressed={shouldShowMissingSeoApiKeyModal}
-      />
-
-      <ReminderPopup />
-      <PerformanceLauncher />
-      <ModulePicker />
-    </div>
+    </ProjectNavigationContext.Provider>
   );
 }
 

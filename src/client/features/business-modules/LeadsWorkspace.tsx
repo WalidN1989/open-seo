@@ -1,3 +1,4 @@
+import { useProjectAddress } from "@/client/lib/use-project-address";
 /* oxlint-disable max-lines, max-lines-per-function */
 import { useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -19,6 +20,8 @@ import "./leads/workspace.css";
 import { useWorkspaceCurrency } from "@/client/hooks/useWorkspaceCurrency";
 
 export function LeadsWorkspace() {
+  const workspaceProjectAddress = useProjectAddress();
+
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const money = useWorkspaceCurrency();
@@ -245,8 +248,8 @@ export function LeadsWorkspace() {
           members={data.members}
           onOpenLead={(leadId) =>
             void navigate({
-              to: "/modules/leads/$leadId",
-              params: { leadId },
+              to: "/p/$projectId/modules/leads/$leadId",
+              params: { projectId: workspaceProjectAddress, leadId },
             })
           }
         />

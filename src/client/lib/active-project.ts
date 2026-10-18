@@ -3,6 +3,25 @@
 // trusts it — landing and the route guard always re-validate the id against the
 // org's project list.
 const LAST_PROJECT_KEY = "openseo:lastProjectId";
+const TAB_PROJECT_KEY = "openseo:tabProjectId";
+
+export function getTabProjectId(): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    return window.sessionStorage.getItem(TAB_PROJECT_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export function setTabProjectId(projectId: string): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.sessionStorage.setItem(TAB_PROJECT_KEY, projectId);
+  } catch {
+    /* Storage can be disabled. */
+  }
+}
 
 /** Preferred agency project; only applied within the signed-in user's authorized list. */
 export function isPreferredAgencyProject(project: {

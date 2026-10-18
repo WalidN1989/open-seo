@@ -47,16 +47,11 @@ import { Route as ApiCitypakConnectionIdRouteImport } from './routes/api/citypak
 import { Route as ApiAutumnSplatRouteImport } from './routes/api/autumn/$'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as AuthenticatedOnboardingChatRouteImport } from './routes/_authenticated.onboarding.chat'
-import { Route as AppModulesOverviewRouteImport } from './routes/_app/modules/overview'
-import { Route as AppModulesIntegrationsRouteImport } from './routes/_app/modules/integrations'
-import { Route as AppModulesCrmRouteImport } from './routes/_app/modules/crm'
-import { Route as AppModulesModuleKeyRouteImport } from './routes/_app/modules/$moduleKey'
+import { Route as AppModulesSplatRouteImport } from './routes/_app/modules/$'
 import { Route as AppHelpOpenrouterApiKeyRouteImport } from './routes/_app/help/openrouter-api-key'
 import { Route as AppHelpDataforseoApiKeyRouteImport } from './routes/_app/help/dataforseo-api-key'
 import { Route as ProjectPProjectIdRouteRouteImport } from './routes/_project/p/$projectId/route'
 import { Route as ProjectPProjectIdIndexRouteImport } from './routes/_project/p/$projectId/index'
-import { Route as AppModulesIntegrationsIndexRouteImport } from './routes/_app/modules/integrations/index'
-import { Route as AppModulesCrmIndexRouteImport } from './routes/_app/modules/crm/index'
 import { Route as ApiVoiceElevenlabsConnectionIdRouteImport } from './routes/api/voice/elevenlabs/$connectionId'
 import { Route as ApiVoiceElevenlabsCallerConnectionIdRouteImport } from './routes/api/voice/elevenlabs-caller/$connectionId'
 import { Route as ApiVoiceDeepgramConnectionIdRouteImport } from './routes/api/voice/deepgram/$connectionId'
@@ -66,46 +61,57 @@ import { Route as ApiOrdersOrderIdLabelRouteImport } from './routes/api/orders/$
 import { Route as ApiGscOauthCallbackRouteImport } from './routes/api/gsc/oauth/callback'
 import { Route as ApiGa4OauthCallbackRouteImport } from './routes/api/ga4/oauth/callback'
 import { Route as ApiEmailMicrosoftCallbackRouteImport } from './routes/api/email/microsoft/callback'
+import { Route as ProjectPProjectIdWorkspaceSettingsRouteImport } from './routes/_project/p/$projectId/workspace-settings'
 import { Route as ProjectPProjectIdSettingsRouteImport } from './routes/_project/p/$projectId/settings'
 import { Route as ProjectPProjectIdSearchPerformanceRouteImport } from './routes/_project/p/$projectId/search-performance'
 import { Route as ProjectPProjectIdSavedRouteImport } from './routes/_project/p/$projectId/saved'
 import { Route as ProjectPProjectIdSamRouteImport } from './routes/_project/p/$projectId/sam'
 import { Route as ProjectPProjectIdRankTrackingRouteImport } from './routes/_project/p/$projectId/rank-tracking'
 import { Route as ProjectPProjectIdPromptExplorerRouteImport } from './routes/_project/p/$projectId/prompt-explorer'
+import { Route as ProjectPProjectIdPerformanceRouteImport } from './routes/_project/p/$projectId/performance'
 import { Route as ProjectPProjectIdKeywordsRouteImport } from './routes/_project/p/$projectId/keywords'
 import { Route as ProjectPProjectIdDomainRouteImport } from './routes/_project/p/$projectId/domain'
 import { Route as ProjectPProjectIdBrandLookupRouteImport } from './routes/_project/p/$projectId/brand-lookup'
 import { Route as ProjectPProjectIdBacklinksRouteImport } from './routes/_project/p/$projectId/backlinks'
 import { Route as ProjectPProjectIdAuditRouteImport } from './routes/_project/p/$projectId/audit'
-import { Route as AppModulesQuotesQuoteIdRouteImport } from './routes/_app/modules/quotes.$quoteId'
-import { Route as AppModulesLeadsLeadIdRouteImport } from './routes/_app/modules/leads.$leadId'
-import { Route as AppModulesIntegrationsConnectionsRouteImport } from './routes/_app/modules/integrations/connections'
-import { Route as AppModulesIntegrationsProviderKeyRouteImport } from './routes/_app/modules/integrations.$providerKey'
-import { Route as AppModulesCrmSourcesRouteImport } from './routes/_app/modules/crm/sources'
-import { Route as AppModulesCrmSmsRouteImport } from './routes/_app/modules/crm/sms'
-import { Route as AppModulesCrmQuotationsRouteImport } from './routes/_app/modules/crm/quotations'
-import { Route as AppModulesCrmProductsRouteImport } from './routes/_app/modules/crm/products'
-import { Route as AppModulesCrmOrdersRouteImport } from './routes/_app/modules/crm/orders'
-import { Route as AppModulesCrmMeetingsRouteImport } from './routes/_app/modules/crm/meetings'
-import { Route as AppModulesCrmInventoryRouteImport } from './routes/_app/modules/crm/inventory'
-import { Route as AppModulesCrmInquiriesRouteImport } from './routes/_app/modules/crm/inquiries'
-import { Route as AppModulesCrmContactsRouteImport } from './routes/_app/modules/crm/contacts'
-import { Route as AppModulesCrmCompaniesRouteImport } from './routes/_app/modules/crm/companies'
-import { Route as AppModulesCrmCitypakRouteImport } from './routes/_app/modules/crm/citypak'
-import { Route as AppModulesCrmAnalyticsRouteImport } from './routes/_app/modules/crm/analytics'
+import { Route as ProjectPProjectIdAiRouteImport } from './routes/_project/p/$projectId/ai'
+import { Route as ProjectPProjectIdModulesRouteRouteImport } from './routes/_project/p/$projectId/modules/route'
 import { Route as ProjectPProjectIdSettingsIndexRouteImport } from './routes/_project/p/$projectId/settings/index'
 import { Route as ProjectPProjectIdRankTrackingIndexRouteImport } from './routes/_project/p/$projectId/rank-tracking/index'
 import { Route as ProjectPProjectIdOptimizationsIndexRouteImport } from './routes/_project/p/$projectId/optimizations/index'
+import { Route as ProjectPProjectIdModulesIndexRouteImport } from './routes/_project/p/$projectId/modules/index'
 import { Route as ProjectPProjectIdCompetitorsIndexRouteImport } from './routes/_project/p/$projectId/competitors/index'
 import { Route as ProjectPProjectIdAuditIndexRouteImport } from './routes/_project/p/$projectId/audit/index'
-import { Route as AppModulesCrmProductsIndexRouteImport } from './routes/_app/modules/crm/products.index'
 import { Route as ApiVoiceCallsCallIdRecordingRouteImport } from './routes/api/voice/calls/$callId/recording'
 import { Route as ApiEmailAttachmentsMessageIdAttachmentIdRouteImport } from './routes/api/email/attachments/$messageId/$attachmentId'
 import { Route as ProjectPProjectIdSettingsIntegrationsRouteImport } from './routes/_project/p/$projectId/settings/integrations'
 import { Route as ProjectPProjectIdSettingsContextRouteImport } from './routes/_project/p/$projectId/settings/context'
 import { Route as ProjectPProjectIdRankTrackingConfigIdRouteImport } from './routes/_project/p/$projectId/rank-tracking/$configId'
-import { Route as AppModulesCrmProductsProductIdRouteImport } from './routes/_app/modules/crm/products.$productId'
+import { Route as ProjectPProjectIdModulesOverviewRouteImport } from './routes/_project/p/$projectId/modules/overview'
+import { Route as ProjectPProjectIdModulesIntegrationsRouteImport } from './routes/_project/p/$projectId/modules/integrations'
+import { Route as ProjectPProjectIdModulesCrmRouteImport } from './routes/_project/p/$projectId/modules/crm'
+import { Route as ProjectPProjectIdModulesModuleKeyRouteImport } from './routes/_project/p/$projectId/modules/$moduleKey'
+import { Route as ProjectPProjectIdModulesIntegrationsIndexRouteImport } from './routes/_project/p/$projectId/modules/integrations/index'
+import { Route as ProjectPProjectIdModulesCrmIndexRouteImport } from './routes/_project/p/$projectId/modules/crm/index'
+import { Route as ProjectPProjectIdModulesQuotesQuoteIdRouteImport } from './routes/_project/p/$projectId/modules/quotes.$quoteId'
+import { Route as ProjectPProjectIdModulesLeadsLeadIdRouteImport } from './routes/_project/p/$projectId/modules/leads.$leadId'
+import { Route as ProjectPProjectIdModulesIntegrationsConnectionsRouteImport } from './routes/_project/p/$projectId/modules/integrations/connections'
+import { Route as ProjectPProjectIdModulesIntegrationsProviderKeyRouteImport } from './routes/_project/p/$projectId/modules/integrations.$providerKey'
+import { Route as ProjectPProjectIdModulesCrmSourcesRouteImport } from './routes/_project/p/$projectId/modules/crm/sources'
+import { Route as ProjectPProjectIdModulesCrmSmsRouteImport } from './routes/_project/p/$projectId/modules/crm/sms'
+import { Route as ProjectPProjectIdModulesCrmQuotationsRouteImport } from './routes/_project/p/$projectId/modules/crm/quotations'
+import { Route as ProjectPProjectIdModulesCrmProductsRouteImport } from './routes/_project/p/$projectId/modules/crm/products'
+import { Route as ProjectPProjectIdModulesCrmOrdersRouteImport } from './routes/_project/p/$projectId/modules/crm/orders'
+import { Route as ProjectPProjectIdModulesCrmMeetingsRouteImport } from './routes/_project/p/$projectId/modules/crm/meetings'
+import { Route as ProjectPProjectIdModulesCrmInventoryRouteImport } from './routes/_project/p/$projectId/modules/crm/inventory'
+import { Route as ProjectPProjectIdModulesCrmInquiriesRouteImport } from './routes/_project/p/$projectId/modules/crm/inquiries'
+import { Route as ProjectPProjectIdModulesCrmContactsRouteImport } from './routes/_project/p/$projectId/modules/crm/contacts'
+import { Route as ProjectPProjectIdModulesCrmCompaniesRouteImport } from './routes/_project/p/$projectId/modules/crm/companies'
+import { Route as ProjectPProjectIdModulesCrmCitypakRouteImport } from './routes/_project/p/$projectId/modules/crm/citypak'
+import { Route as ProjectPProjectIdModulesCrmAnalyticsRouteImport } from './routes/_project/p/$projectId/modules/crm/analytics'
 import { Route as ProjectPProjectIdAuditIssuesResultIdRouteImport } from './routes/_project/p/$projectId/audit/issues/$resultId'
+import { Route as ProjectPProjectIdModulesCrmProductsIndexRouteImport } from './routes/_project/p/$projectId/modules/crm/products.index'
+import { Route as ProjectPProjectIdModulesCrmProductsProductIdRouteImport } from './routes/_project/p/$projectId/modules/crm/products.$productId'
 
 const VerifyEmailRoute = VerifyEmailRouteImport.update({
   id: '/verify-email',
@@ -298,24 +304,9 @@ const AuthenticatedOnboardingChatRoute =
     path: '/onboarding/chat',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
-const AppModulesOverviewRoute = AppModulesOverviewRouteImport.update({
-  id: '/overview',
-  path: '/overview',
-  getParentRoute: () => AppModulesRouteRoute,
-} as any)
-const AppModulesIntegrationsRoute = AppModulesIntegrationsRouteImport.update({
-  id: '/integrations',
-  path: '/integrations',
-  getParentRoute: () => AppModulesRouteRoute,
-} as any)
-const AppModulesCrmRoute = AppModulesCrmRouteImport.update({
-  id: '/crm',
-  path: '/crm',
-  getParentRoute: () => AppModulesRouteRoute,
-} as any)
-const AppModulesModuleKeyRoute = AppModulesModuleKeyRouteImport.update({
-  id: '/$moduleKey',
-  path: '/$moduleKey',
+const AppModulesSplatRoute = AppModulesSplatRouteImport.update({
+  id: '/$',
+  path: '/$',
   getParentRoute: () => AppModulesRouteRoute,
 } as any)
 const AppHelpOpenrouterApiKeyRoute = AppHelpOpenrouterApiKeyRouteImport.update({
@@ -337,17 +328,6 @@ const ProjectPProjectIdIndexRoute = ProjectPProjectIdIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => ProjectPProjectIdRouteRoute,
-} as any)
-const AppModulesIntegrationsIndexRoute =
-  AppModulesIntegrationsIndexRouteImport.update({
-    id: '/',
-    path: '/',
-    getParentRoute: () => AppModulesIntegrationsRoute,
-  } as any)
-const AppModulesCrmIndexRoute = AppModulesCrmIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => AppModulesCrmRoute,
 } as any)
 const ApiVoiceElevenlabsConnectionIdRoute =
   ApiVoiceElevenlabsConnectionIdRouteImport.update({
@@ -399,6 +379,12 @@ const ApiEmailMicrosoftCallbackRoute =
     path: '/api/email/microsoft/callback',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ProjectPProjectIdWorkspaceSettingsRoute =
+  ProjectPProjectIdWorkspaceSettingsRouteImport.update({
+    id: '/workspace-settings',
+    path: '/workspace-settings',
+    getParentRoute: () => ProjectPProjectIdRouteRoute,
+  } as any)
 const ProjectPProjectIdSettingsRoute =
   ProjectPProjectIdSettingsRouteImport.update({
     id: '/settings',
@@ -433,6 +419,12 @@ const ProjectPProjectIdPromptExplorerRoute =
     path: '/prompt-explorer',
     getParentRoute: () => ProjectPProjectIdRouteRoute,
   } as any)
+const ProjectPProjectIdPerformanceRoute =
+  ProjectPProjectIdPerformanceRouteImport.update({
+    id: '/performance',
+    path: '/performance',
+    getParentRoute: () => ProjectPProjectIdRouteRoute,
+  } as any)
 const ProjectPProjectIdKeywordsRoute =
   ProjectPProjectIdKeywordsRouteImport.update({
     id: '/keywords',
@@ -461,88 +453,17 @@ const ProjectPProjectIdAuditRoute = ProjectPProjectIdAuditRouteImport.update({
   path: '/audit',
   getParentRoute: () => ProjectPProjectIdRouteRoute,
 } as any)
-const AppModulesQuotesQuoteIdRoute = AppModulesQuotesQuoteIdRouteImport.update({
-  id: '/quotes/$quoteId',
-  path: '/quotes/$quoteId',
-  getParentRoute: () => AppModulesRouteRoute,
+const ProjectPProjectIdAiRoute = ProjectPProjectIdAiRouteImport.update({
+  id: '/ai',
+  path: '/ai',
+  getParentRoute: () => ProjectPProjectIdRouteRoute,
 } as any)
-const AppModulesLeadsLeadIdRoute = AppModulesLeadsLeadIdRouteImport.update({
-  id: '/leads/$leadId',
-  path: '/leads/$leadId',
-  getParentRoute: () => AppModulesRouteRoute,
-} as any)
-const AppModulesIntegrationsConnectionsRoute =
-  AppModulesIntegrationsConnectionsRouteImport.update({
-    id: '/connections',
-    path: '/connections',
-    getParentRoute: () => AppModulesIntegrationsRoute,
+const ProjectPProjectIdModulesRouteRoute =
+  ProjectPProjectIdModulesRouteRouteImport.update({
+    id: '/modules',
+    path: '/modules',
+    getParentRoute: () => ProjectPProjectIdRouteRoute,
   } as any)
-const AppModulesIntegrationsProviderKeyRoute =
-  AppModulesIntegrationsProviderKeyRouteImport.update({
-    id: '/$providerKey',
-    path: '/$providerKey',
-    getParentRoute: () => AppModulesIntegrationsRoute,
-  } as any)
-const AppModulesCrmSourcesRoute = AppModulesCrmSourcesRouteImport.update({
-  id: '/sources',
-  path: '/sources',
-  getParentRoute: () => AppModulesCrmRoute,
-} as any)
-const AppModulesCrmSmsRoute = AppModulesCrmSmsRouteImport.update({
-  id: '/sms',
-  path: '/sms',
-  getParentRoute: () => AppModulesCrmRoute,
-} as any)
-const AppModulesCrmQuotationsRoute = AppModulesCrmQuotationsRouteImport.update({
-  id: '/quotations',
-  path: '/quotations',
-  getParentRoute: () => AppModulesCrmRoute,
-} as any)
-const AppModulesCrmProductsRoute = AppModulesCrmProductsRouteImport.update({
-  id: '/products',
-  path: '/products',
-  getParentRoute: () => AppModulesCrmRoute,
-} as any)
-const AppModulesCrmOrdersRoute = AppModulesCrmOrdersRouteImport.update({
-  id: '/orders',
-  path: '/orders',
-  getParentRoute: () => AppModulesCrmRoute,
-} as any)
-const AppModulesCrmMeetingsRoute = AppModulesCrmMeetingsRouteImport.update({
-  id: '/meetings',
-  path: '/meetings',
-  getParentRoute: () => AppModulesCrmRoute,
-} as any)
-const AppModulesCrmInventoryRoute = AppModulesCrmInventoryRouteImport.update({
-  id: '/inventory',
-  path: '/inventory',
-  getParentRoute: () => AppModulesCrmRoute,
-} as any)
-const AppModulesCrmInquiriesRoute = AppModulesCrmInquiriesRouteImport.update({
-  id: '/inquiries',
-  path: '/inquiries',
-  getParentRoute: () => AppModulesCrmRoute,
-} as any)
-const AppModulesCrmContactsRoute = AppModulesCrmContactsRouteImport.update({
-  id: '/contacts',
-  path: '/contacts',
-  getParentRoute: () => AppModulesCrmRoute,
-} as any)
-const AppModulesCrmCompaniesRoute = AppModulesCrmCompaniesRouteImport.update({
-  id: '/companies',
-  path: '/companies',
-  getParentRoute: () => AppModulesCrmRoute,
-} as any)
-const AppModulesCrmCitypakRoute = AppModulesCrmCitypakRouteImport.update({
-  id: '/citypak',
-  path: '/citypak',
-  getParentRoute: () => AppModulesCrmRoute,
-} as any)
-const AppModulesCrmAnalyticsRoute = AppModulesCrmAnalyticsRouteImport.update({
-  id: '/analytics',
-  path: '/analytics',
-  getParentRoute: () => AppModulesCrmRoute,
-} as any)
 const ProjectPProjectIdSettingsIndexRoute =
   ProjectPProjectIdSettingsIndexRouteImport.update({
     id: '/',
@@ -561,6 +482,12 @@ const ProjectPProjectIdOptimizationsIndexRoute =
     path: '/optimizations/',
     getParentRoute: () => ProjectPProjectIdRouteRoute,
   } as any)
+const ProjectPProjectIdModulesIndexRoute =
+  ProjectPProjectIdModulesIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => ProjectPProjectIdModulesRouteRoute,
+  } as any)
 const ProjectPProjectIdCompetitorsIndexRoute =
   ProjectPProjectIdCompetitorsIndexRouteImport.update({
     id: '/competitors/',
@@ -572,12 +499,6 @@ const ProjectPProjectIdAuditIndexRoute =
     id: '/',
     path: '/',
     getParentRoute: () => ProjectPProjectIdAuditRoute,
-  } as any)
-const AppModulesCrmProductsIndexRoute =
-  AppModulesCrmProductsIndexRouteImport.update({
-    id: '/',
-    path: '/',
-    getParentRoute: () => AppModulesCrmProductsRoute,
   } as any)
 const ApiVoiceCallsCallIdRecordingRoute =
   ApiVoiceCallsCallIdRecordingRouteImport.update({
@@ -609,17 +530,155 @@ const ProjectPProjectIdRankTrackingConfigIdRoute =
     path: '/$configId',
     getParentRoute: () => ProjectPProjectIdRankTrackingRoute,
   } as any)
-const AppModulesCrmProductsProductIdRoute =
-  AppModulesCrmProductsProductIdRouteImport.update({
-    id: '/$productId',
-    path: '/$productId',
-    getParentRoute: () => AppModulesCrmProductsRoute,
+const ProjectPProjectIdModulesOverviewRoute =
+  ProjectPProjectIdModulesOverviewRouteImport.update({
+    id: '/overview',
+    path: '/overview',
+    getParentRoute: () => ProjectPProjectIdModulesRouteRoute,
+  } as any)
+const ProjectPProjectIdModulesIntegrationsRoute =
+  ProjectPProjectIdModulesIntegrationsRouteImport.update({
+    id: '/integrations',
+    path: '/integrations',
+    getParentRoute: () => ProjectPProjectIdModulesRouteRoute,
+  } as any)
+const ProjectPProjectIdModulesCrmRoute =
+  ProjectPProjectIdModulesCrmRouteImport.update({
+    id: '/crm',
+    path: '/crm',
+    getParentRoute: () => ProjectPProjectIdModulesRouteRoute,
+  } as any)
+const ProjectPProjectIdModulesModuleKeyRoute =
+  ProjectPProjectIdModulesModuleKeyRouteImport.update({
+    id: '/$moduleKey',
+    path: '/$moduleKey',
+    getParentRoute: () => ProjectPProjectIdModulesRouteRoute,
+  } as any)
+const ProjectPProjectIdModulesIntegrationsIndexRoute =
+  ProjectPProjectIdModulesIntegrationsIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => ProjectPProjectIdModulesIntegrationsRoute,
+  } as any)
+const ProjectPProjectIdModulesCrmIndexRoute =
+  ProjectPProjectIdModulesCrmIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => ProjectPProjectIdModulesCrmRoute,
+  } as any)
+const ProjectPProjectIdModulesQuotesQuoteIdRoute =
+  ProjectPProjectIdModulesQuotesQuoteIdRouteImport.update({
+    id: '/quotes/$quoteId',
+    path: '/quotes/$quoteId',
+    getParentRoute: () => ProjectPProjectIdModulesRouteRoute,
+  } as any)
+const ProjectPProjectIdModulesLeadsLeadIdRoute =
+  ProjectPProjectIdModulesLeadsLeadIdRouteImport.update({
+    id: '/leads/$leadId',
+    path: '/leads/$leadId',
+    getParentRoute: () => ProjectPProjectIdModulesRouteRoute,
+  } as any)
+const ProjectPProjectIdModulesIntegrationsConnectionsRoute =
+  ProjectPProjectIdModulesIntegrationsConnectionsRouteImport.update({
+    id: '/connections',
+    path: '/connections',
+    getParentRoute: () => ProjectPProjectIdModulesIntegrationsRoute,
+  } as any)
+const ProjectPProjectIdModulesIntegrationsProviderKeyRoute =
+  ProjectPProjectIdModulesIntegrationsProviderKeyRouteImport.update({
+    id: '/$providerKey',
+    path: '/$providerKey',
+    getParentRoute: () => ProjectPProjectIdModulesIntegrationsRoute,
+  } as any)
+const ProjectPProjectIdModulesCrmSourcesRoute =
+  ProjectPProjectIdModulesCrmSourcesRouteImport.update({
+    id: '/sources',
+    path: '/sources',
+    getParentRoute: () => ProjectPProjectIdModulesCrmRoute,
+  } as any)
+const ProjectPProjectIdModulesCrmSmsRoute =
+  ProjectPProjectIdModulesCrmSmsRouteImport.update({
+    id: '/sms',
+    path: '/sms',
+    getParentRoute: () => ProjectPProjectIdModulesCrmRoute,
+  } as any)
+const ProjectPProjectIdModulesCrmQuotationsRoute =
+  ProjectPProjectIdModulesCrmQuotationsRouteImport.update({
+    id: '/quotations',
+    path: '/quotations',
+    getParentRoute: () => ProjectPProjectIdModulesCrmRoute,
+  } as any)
+const ProjectPProjectIdModulesCrmProductsRoute =
+  ProjectPProjectIdModulesCrmProductsRouteImport.update({
+    id: '/products',
+    path: '/products',
+    getParentRoute: () => ProjectPProjectIdModulesCrmRoute,
+  } as any)
+const ProjectPProjectIdModulesCrmOrdersRoute =
+  ProjectPProjectIdModulesCrmOrdersRouteImport.update({
+    id: '/orders',
+    path: '/orders',
+    getParentRoute: () => ProjectPProjectIdModulesCrmRoute,
+  } as any)
+const ProjectPProjectIdModulesCrmMeetingsRoute =
+  ProjectPProjectIdModulesCrmMeetingsRouteImport.update({
+    id: '/meetings',
+    path: '/meetings',
+    getParentRoute: () => ProjectPProjectIdModulesCrmRoute,
+  } as any)
+const ProjectPProjectIdModulesCrmInventoryRoute =
+  ProjectPProjectIdModulesCrmInventoryRouteImport.update({
+    id: '/inventory',
+    path: '/inventory',
+    getParentRoute: () => ProjectPProjectIdModulesCrmRoute,
+  } as any)
+const ProjectPProjectIdModulesCrmInquiriesRoute =
+  ProjectPProjectIdModulesCrmInquiriesRouteImport.update({
+    id: '/inquiries',
+    path: '/inquiries',
+    getParentRoute: () => ProjectPProjectIdModulesCrmRoute,
+  } as any)
+const ProjectPProjectIdModulesCrmContactsRoute =
+  ProjectPProjectIdModulesCrmContactsRouteImport.update({
+    id: '/contacts',
+    path: '/contacts',
+    getParentRoute: () => ProjectPProjectIdModulesCrmRoute,
+  } as any)
+const ProjectPProjectIdModulesCrmCompaniesRoute =
+  ProjectPProjectIdModulesCrmCompaniesRouteImport.update({
+    id: '/companies',
+    path: '/companies',
+    getParentRoute: () => ProjectPProjectIdModulesCrmRoute,
+  } as any)
+const ProjectPProjectIdModulesCrmCitypakRoute =
+  ProjectPProjectIdModulesCrmCitypakRouteImport.update({
+    id: '/citypak',
+    path: '/citypak',
+    getParentRoute: () => ProjectPProjectIdModulesCrmRoute,
+  } as any)
+const ProjectPProjectIdModulesCrmAnalyticsRoute =
+  ProjectPProjectIdModulesCrmAnalyticsRouteImport.update({
+    id: '/analytics',
+    path: '/analytics',
+    getParentRoute: () => ProjectPProjectIdModulesCrmRoute,
   } as any)
 const ProjectPProjectIdAuditIssuesResultIdRoute =
   ProjectPProjectIdAuditIssuesResultIdRouteImport.update({
     id: '/issues/$resultId',
     path: '/issues/$resultId',
     getParentRoute: () => ProjectPProjectIdAuditRoute,
+  } as any)
+const ProjectPProjectIdModulesCrmProductsIndexRoute =
+  ProjectPProjectIdModulesCrmProductsIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => ProjectPProjectIdModulesCrmProductsRoute,
+  } as any)
+const ProjectPProjectIdModulesCrmProductsProductIdRoute =
+  ProjectPProjectIdModulesCrmProductsProductIdRouteImport.update({
+    id: '/$productId',
+    path: '/$productId',
+    getParentRoute: () => ProjectPProjectIdModulesCrmProductsRoute,
   } as any)
 
 export interface FileRoutesByFullPath {
@@ -648,10 +707,7 @@ export interface FileRoutesByFullPath {
   '/p/$projectId': typeof ProjectPProjectIdRouteRouteWithChildren
   '/help/dataforseo-api-key': typeof AppHelpDataforseoApiKeyRoute
   '/help/openrouter-api-key': typeof AppHelpOpenrouterApiKeyRoute
-  '/modules/$moduleKey': typeof AppModulesModuleKeyRoute
-  '/modules/crm': typeof AppModulesCrmRouteWithChildren
-  '/modules/integrations': typeof AppModulesIntegrationsRouteWithChildren
-  '/modules/overview': typeof AppModulesOverviewRoute
+  '/modules/$': typeof AppModulesSplatRoute
   '/onboarding/chat': typeof AuthenticatedOnboardingChatRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/autumn/$': typeof ApiAutumnSplatRoute
@@ -664,33 +720,21 @@ export interface FileRoutesByFullPath {
   '/api/whatsapp/meta': typeof ApiWhatsappMetaRoute
   '/modules/': typeof AppModulesIndexRoute
   '/onboarding/': typeof AuthenticatedOnboardingIndexRoute
-  '/modules/crm/analytics': typeof AppModulesCrmAnalyticsRoute
-  '/modules/crm/citypak': typeof AppModulesCrmCitypakRoute
-  '/modules/crm/companies': typeof AppModulesCrmCompaniesRoute
-  '/modules/crm/contacts': typeof AppModulesCrmContactsRoute
-  '/modules/crm/inquiries': typeof AppModulesCrmInquiriesRoute
-  '/modules/crm/inventory': typeof AppModulesCrmInventoryRoute
-  '/modules/crm/meetings': typeof AppModulesCrmMeetingsRoute
-  '/modules/crm/orders': typeof AppModulesCrmOrdersRoute
-  '/modules/crm/products': typeof AppModulesCrmProductsRouteWithChildren
-  '/modules/crm/quotations': typeof AppModulesCrmQuotationsRoute
-  '/modules/crm/sms': typeof AppModulesCrmSmsRoute
-  '/modules/crm/sources': typeof AppModulesCrmSourcesRoute
-  '/modules/integrations/$providerKey': typeof AppModulesIntegrationsProviderKeyRoute
-  '/modules/integrations/connections': typeof AppModulesIntegrationsConnectionsRoute
-  '/modules/leads/$leadId': typeof AppModulesLeadsLeadIdRoute
-  '/modules/quotes/$quoteId': typeof AppModulesQuotesQuoteIdRoute
+  '/p/$projectId/modules': typeof ProjectPProjectIdModulesRouteRouteWithChildren
+  '/p/$projectId/ai': typeof ProjectPProjectIdAiRoute
   '/p/$projectId/audit': typeof ProjectPProjectIdAuditRouteWithChildren
   '/p/$projectId/backlinks': typeof ProjectPProjectIdBacklinksRoute
   '/p/$projectId/brand-lookup': typeof ProjectPProjectIdBrandLookupRoute
   '/p/$projectId/domain': typeof ProjectPProjectIdDomainRoute
   '/p/$projectId/keywords': typeof ProjectPProjectIdKeywordsRoute
+  '/p/$projectId/performance': typeof ProjectPProjectIdPerformanceRoute
   '/p/$projectId/prompt-explorer': typeof ProjectPProjectIdPromptExplorerRoute
   '/p/$projectId/rank-tracking': typeof ProjectPProjectIdRankTrackingRouteWithChildren
   '/p/$projectId/sam': typeof ProjectPProjectIdSamRoute
   '/p/$projectId/saved': typeof ProjectPProjectIdSavedRoute
   '/p/$projectId/search-performance': typeof ProjectPProjectIdSearchPerformanceRoute
   '/p/$projectId/settings': typeof ProjectPProjectIdSettingsRouteWithChildren
+  '/p/$projectId/workspace-settings': typeof ProjectPProjectIdWorkspaceSettingsRoute
   '/api/email/microsoft/callback': typeof ApiEmailMicrosoftCallbackRoute
   '/api/ga4/oauth/callback': typeof ApiGa4OauthCallbackRoute
   '/api/gsc/oauth/callback': typeof ApiGscOauthCallbackRoute
@@ -700,22 +744,43 @@ export interface FileRoutesByFullPath {
   '/api/voice/deepgram/$connectionId': typeof ApiVoiceDeepgramConnectionIdRoute
   '/api/voice/elevenlabs-caller/$connectionId': typeof ApiVoiceElevenlabsCallerConnectionIdRoute
   '/api/voice/elevenlabs/$connectionId': typeof ApiVoiceElevenlabsConnectionIdRoute
-  '/modules/crm/': typeof AppModulesCrmIndexRoute
-  '/modules/integrations/': typeof AppModulesIntegrationsIndexRoute
   '/p/$projectId/': typeof ProjectPProjectIdIndexRoute
-  '/modules/crm/products/$productId': typeof AppModulesCrmProductsProductIdRoute
+  '/p/$projectId/modules/$moduleKey': typeof ProjectPProjectIdModulesModuleKeyRoute
+  '/p/$projectId/modules/crm': typeof ProjectPProjectIdModulesCrmRouteWithChildren
+  '/p/$projectId/modules/integrations': typeof ProjectPProjectIdModulesIntegrationsRouteWithChildren
+  '/p/$projectId/modules/overview': typeof ProjectPProjectIdModulesOverviewRoute
   '/p/$projectId/rank-tracking/$configId': typeof ProjectPProjectIdRankTrackingConfigIdRoute
   '/p/$projectId/settings/context': typeof ProjectPProjectIdSettingsContextRoute
   '/p/$projectId/settings/integrations': typeof ProjectPProjectIdSettingsIntegrationsRoute
   '/api/email/attachments/$messageId/$attachmentId': typeof ApiEmailAttachmentsMessageIdAttachmentIdRoute
   '/api/voice/calls/$callId/recording': typeof ApiVoiceCallsCallIdRecordingRoute
-  '/modules/crm/products/': typeof AppModulesCrmProductsIndexRoute
   '/p/$projectId/audit/': typeof ProjectPProjectIdAuditIndexRoute
   '/p/$projectId/competitors/': typeof ProjectPProjectIdCompetitorsIndexRoute
+  '/p/$projectId/modules/': typeof ProjectPProjectIdModulesIndexRoute
   '/p/$projectId/optimizations/': typeof ProjectPProjectIdOptimizationsIndexRoute
   '/p/$projectId/rank-tracking/': typeof ProjectPProjectIdRankTrackingIndexRoute
   '/p/$projectId/settings/': typeof ProjectPProjectIdSettingsIndexRoute
   '/p/$projectId/audit/issues/$resultId': typeof ProjectPProjectIdAuditIssuesResultIdRoute
+  '/p/$projectId/modules/crm/analytics': typeof ProjectPProjectIdModulesCrmAnalyticsRoute
+  '/p/$projectId/modules/crm/citypak': typeof ProjectPProjectIdModulesCrmCitypakRoute
+  '/p/$projectId/modules/crm/companies': typeof ProjectPProjectIdModulesCrmCompaniesRoute
+  '/p/$projectId/modules/crm/contacts': typeof ProjectPProjectIdModulesCrmContactsRoute
+  '/p/$projectId/modules/crm/inquiries': typeof ProjectPProjectIdModulesCrmInquiriesRoute
+  '/p/$projectId/modules/crm/inventory': typeof ProjectPProjectIdModulesCrmInventoryRoute
+  '/p/$projectId/modules/crm/meetings': typeof ProjectPProjectIdModulesCrmMeetingsRoute
+  '/p/$projectId/modules/crm/orders': typeof ProjectPProjectIdModulesCrmOrdersRoute
+  '/p/$projectId/modules/crm/products': typeof ProjectPProjectIdModulesCrmProductsRouteWithChildren
+  '/p/$projectId/modules/crm/quotations': typeof ProjectPProjectIdModulesCrmQuotationsRoute
+  '/p/$projectId/modules/crm/sms': typeof ProjectPProjectIdModulesCrmSmsRoute
+  '/p/$projectId/modules/crm/sources': typeof ProjectPProjectIdModulesCrmSourcesRoute
+  '/p/$projectId/modules/integrations/$providerKey': typeof ProjectPProjectIdModulesIntegrationsProviderKeyRoute
+  '/p/$projectId/modules/integrations/connections': typeof ProjectPProjectIdModulesIntegrationsConnectionsRoute
+  '/p/$projectId/modules/leads/$leadId': typeof ProjectPProjectIdModulesLeadsLeadIdRoute
+  '/p/$projectId/modules/quotes/$quoteId': typeof ProjectPProjectIdModulesQuotesQuoteIdRoute
+  '/p/$projectId/modules/crm/': typeof ProjectPProjectIdModulesCrmIndexRoute
+  '/p/$projectId/modules/integrations/': typeof ProjectPProjectIdModulesIntegrationsIndexRoute
+  '/p/$projectId/modules/crm/products/$productId': typeof ProjectPProjectIdModulesCrmProductsProductIdRoute
+  '/p/$projectId/modules/crm/products/': typeof ProjectPProjectIdModulesCrmProductsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof AppIndexRoute
@@ -741,8 +806,7 @@ export interface FileRoutesByTo {
   '/reports/$reportId': typeof ReportsReportIdRoute
   '/help/dataforseo-api-key': typeof AppHelpDataforseoApiKeyRoute
   '/help/openrouter-api-key': typeof AppHelpOpenrouterApiKeyRoute
-  '/modules/$moduleKey': typeof AppModulesModuleKeyRoute
-  '/modules/overview': typeof AppModulesOverviewRoute
+  '/modules/$': typeof AppModulesSplatRoute
   '/onboarding/chat': typeof AuthenticatedOnboardingChatRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/autumn/$': typeof ApiAutumnSplatRoute
@@ -755,29 +819,17 @@ export interface FileRoutesByTo {
   '/api/whatsapp/meta': typeof ApiWhatsappMetaRoute
   '/modules': typeof AppModulesIndexRoute
   '/onboarding': typeof AuthenticatedOnboardingIndexRoute
-  '/modules/crm/analytics': typeof AppModulesCrmAnalyticsRoute
-  '/modules/crm/citypak': typeof AppModulesCrmCitypakRoute
-  '/modules/crm/companies': typeof AppModulesCrmCompaniesRoute
-  '/modules/crm/contacts': typeof AppModulesCrmContactsRoute
-  '/modules/crm/inquiries': typeof AppModulesCrmInquiriesRoute
-  '/modules/crm/inventory': typeof AppModulesCrmInventoryRoute
-  '/modules/crm/meetings': typeof AppModulesCrmMeetingsRoute
-  '/modules/crm/orders': typeof AppModulesCrmOrdersRoute
-  '/modules/crm/quotations': typeof AppModulesCrmQuotationsRoute
-  '/modules/crm/sms': typeof AppModulesCrmSmsRoute
-  '/modules/crm/sources': typeof AppModulesCrmSourcesRoute
-  '/modules/integrations/$providerKey': typeof AppModulesIntegrationsProviderKeyRoute
-  '/modules/integrations/connections': typeof AppModulesIntegrationsConnectionsRoute
-  '/modules/leads/$leadId': typeof AppModulesLeadsLeadIdRoute
-  '/modules/quotes/$quoteId': typeof AppModulesQuotesQuoteIdRoute
+  '/p/$projectId/ai': typeof ProjectPProjectIdAiRoute
   '/p/$projectId/backlinks': typeof ProjectPProjectIdBacklinksRoute
   '/p/$projectId/brand-lookup': typeof ProjectPProjectIdBrandLookupRoute
   '/p/$projectId/domain': typeof ProjectPProjectIdDomainRoute
   '/p/$projectId/keywords': typeof ProjectPProjectIdKeywordsRoute
+  '/p/$projectId/performance': typeof ProjectPProjectIdPerformanceRoute
   '/p/$projectId/prompt-explorer': typeof ProjectPProjectIdPromptExplorerRoute
   '/p/$projectId/sam': typeof ProjectPProjectIdSamRoute
   '/p/$projectId/saved': typeof ProjectPProjectIdSavedRoute
   '/p/$projectId/search-performance': typeof ProjectPProjectIdSearchPerformanceRoute
+  '/p/$projectId/workspace-settings': typeof ProjectPProjectIdWorkspaceSettingsRoute
   '/api/email/microsoft/callback': typeof ApiEmailMicrosoftCallbackRoute
   '/api/ga4/oauth/callback': typeof ApiGa4OauthCallbackRoute
   '/api/gsc/oauth/callback': typeof ApiGscOauthCallbackRoute
@@ -787,22 +839,40 @@ export interface FileRoutesByTo {
   '/api/voice/deepgram/$connectionId': typeof ApiVoiceDeepgramConnectionIdRoute
   '/api/voice/elevenlabs-caller/$connectionId': typeof ApiVoiceElevenlabsCallerConnectionIdRoute
   '/api/voice/elevenlabs/$connectionId': typeof ApiVoiceElevenlabsConnectionIdRoute
-  '/modules/crm': typeof AppModulesCrmIndexRoute
-  '/modules/integrations': typeof AppModulesIntegrationsIndexRoute
   '/p/$projectId': typeof ProjectPProjectIdIndexRoute
-  '/modules/crm/products/$productId': typeof AppModulesCrmProductsProductIdRoute
+  '/p/$projectId/modules/$moduleKey': typeof ProjectPProjectIdModulesModuleKeyRoute
+  '/p/$projectId/modules/overview': typeof ProjectPProjectIdModulesOverviewRoute
   '/p/$projectId/rank-tracking/$configId': typeof ProjectPProjectIdRankTrackingConfigIdRoute
   '/p/$projectId/settings/context': typeof ProjectPProjectIdSettingsContextRoute
   '/p/$projectId/settings/integrations': typeof ProjectPProjectIdSettingsIntegrationsRoute
   '/api/email/attachments/$messageId/$attachmentId': typeof ApiEmailAttachmentsMessageIdAttachmentIdRoute
   '/api/voice/calls/$callId/recording': typeof ApiVoiceCallsCallIdRecordingRoute
-  '/modules/crm/products': typeof AppModulesCrmProductsIndexRoute
   '/p/$projectId/audit': typeof ProjectPProjectIdAuditIndexRoute
   '/p/$projectId/competitors': typeof ProjectPProjectIdCompetitorsIndexRoute
+  '/p/$projectId/modules': typeof ProjectPProjectIdModulesIndexRoute
   '/p/$projectId/optimizations': typeof ProjectPProjectIdOptimizationsIndexRoute
   '/p/$projectId/rank-tracking': typeof ProjectPProjectIdRankTrackingIndexRoute
   '/p/$projectId/settings': typeof ProjectPProjectIdSettingsIndexRoute
   '/p/$projectId/audit/issues/$resultId': typeof ProjectPProjectIdAuditIssuesResultIdRoute
+  '/p/$projectId/modules/crm/analytics': typeof ProjectPProjectIdModulesCrmAnalyticsRoute
+  '/p/$projectId/modules/crm/citypak': typeof ProjectPProjectIdModulesCrmCitypakRoute
+  '/p/$projectId/modules/crm/companies': typeof ProjectPProjectIdModulesCrmCompaniesRoute
+  '/p/$projectId/modules/crm/contacts': typeof ProjectPProjectIdModulesCrmContactsRoute
+  '/p/$projectId/modules/crm/inquiries': typeof ProjectPProjectIdModulesCrmInquiriesRoute
+  '/p/$projectId/modules/crm/inventory': typeof ProjectPProjectIdModulesCrmInventoryRoute
+  '/p/$projectId/modules/crm/meetings': typeof ProjectPProjectIdModulesCrmMeetingsRoute
+  '/p/$projectId/modules/crm/orders': typeof ProjectPProjectIdModulesCrmOrdersRoute
+  '/p/$projectId/modules/crm/quotations': typeof ProjectPProjectIdModulesCrmQuotationsRoute
+  '/p/$projectId/modules/crm/sms': typeof ProjectPProjectIdModulesCrmSmsRoute
+  '/p/$projectId/modules/crm/sources': typeof ProjectPProjectIdModulesCrmSourcesRoute
+  '/p/$projectId/modules/integrations/$providerKey': typeof ProjectPProjectIdModulesIntegrationsProviderKeyRoute
+  '/p/$projectId/modules/integrations/connections': typeof ProjectPProjectIdModulesIntegrationsConnectionsRoute
+  '/p/$projectId/modules/leads/$leadId': typeof ProjectPProjectIdModulesLeadsLeadIdRoute
+  '/p/$projectId/modules/quotes/$quoteId': typeof ProjectPProjectIdModulesQuotesQuoteIdRoute
+  '/p/$projectId/modules/crm': typeof ProjectPProjectIdModulesCrmIndexRoute
+  '/p/$projectId/modules/integrations': typeof ProjectPProjectIdModulesIntegrationsIndexRoute
+  '/p/$projectId/modules/crm/products/$productId': typeof ProjectPProjectIdModulesCrmProductsProductIdRoute
+  '/p/$projectId/modules/crm/products': typeof ProjectPProjectIdModulesCrmProductsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -835,10 +905,7 @@ export interface FileRoutesById {
   '/_project/p/$projectId': typeof ProjectPProjectIdRouteRouteWithChildren
   '/_app/help/dataforseo-api-key': typeof AppHelpDataforseoApiKeyRoute
   '/_app/help/openrouter-api-key': typeof AppHelpOpenrouterApiKeyRoute
-  '/_app/modules/$moduleKey': typeof AppModulesModuleKeyRoute
-  '/_app/modules/crm': typeof AppModulesCrmRouteWithChildren
-  '/_app/modules/integrations': typeof AppModulesIntegrationsRouteWithChildren
-  '/_app/modules/overview': typeof AppModulesOverviewRoute
+  '/_app/modules/$': typeof AppModulesSplatRoute
   '/_authenticated/onboarding/chat': typeof AuthenticatedOnboardingChatRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/autumn/$': typeof ApiAutumnSplatRoute
@@ -851,33 +918,21 @@ export interface FileRoutesById {
   '/api/whatsapp/meta': typeof ApiWhatsappMetaRoute
   '/_app/modules/': typeof AppModulesIndexRoute
   '/_authenticated/onboarding/': typeof AuthenticatedOnboardingIndexRoute
-  '/_app/modules/crm/analytics': typeof AppModulesCrmAnalyticsRoute
-  '/_app/modules/crm/citypak': typeof AppModulesCrmCitypakRoute
-  '/_app/modules/crm/companies': typeof AppModulesCrmCompaniesRoute
-  '/_app/modules/crm/contacts': typeof AppModulesCrmContactsRoute
-  '/_app/modules/crm/inquiries': typeof AppModulesCrmInquiriesRoute
-  '/_app/modules/crm/inventory': typeof AppModulesCrmInventoryRoute
-  '/_app/modules/crm/meetings': typeof AppModulesCrmMeetingsRoute
-  '/_app/modules/crm/orders': typeof AppModulesCrmOrdersRoute
-  '/_app/modules/crm/products': typeof AppModulesCrmProductsRouteWithChildren
-  '/_app/modules/crm/quotations': typeof AppModulesCrmQuotationsRoute
-  '/_app/modules/crm/sms': typeof AppModulesCrmSmsRoute
-  '/_app/modules/crm/sources': typeof AppModulesCrmSourcesRoute
-  '/_app/modules/integrations/$providerKey': typeof AppModulesIntegrationsProviderKeyRoute
-  '/_app/modules/integrations/connections': typeof AppModulesIntegrationsConnectionsRoute
-  '/_app/modules/leads/$leadId': typeof AppModulesLeadsLeadIdRoute
-  '/_app/modules/quotes/$quoteId': typeof AppModulesQuotesQuoteIdRoute
+  '/_project/p/$projectId/modules': typeof ProjectPProjectIdModulesRouteRouteWithChildren
+  '/_project/p/$projectId/ai': typeof ProjectPProjectIdAiRoute
   '/_project/p/$projectId/audit': typeof ProjectPProjectIdAuditRouteWithChildren
   '/_project/p/$projectId/backlinks': typeof ProjectPProjectIdBacklinksRoute
   '/_project/p/$projectId/brand-lookup': typeof ProjectPProjectIdBrandLookupRoute
   '/_project/p/$projectId/domain': typeof ProjectPProjectIdDomainRoute
   '/_project/p/$projectId/keywords': typeof ProjectPProjectIdKeywordsRoute
+  '/_project/p/$projectId/performance': typeof ProjectPProjectIdPerformanceRoute
   '/_project/p/$projectId/prompt-explorer': typeof ProjectPProjectIdPromptExplorerRoute
   '/_project/p/$projectId/rank-tracking': typeof ProjectPProjectIdRankTrackingRouteWithChildren
   '/_project/p/$projectId/sam': typeof ProjectPProjectIdSamRoute
   '/_project/p/$projectId/saved': typeof ProjectPProjectIdSavedRoute
   '/_project/p/$projectId/search-performance': typeof ProjectPProjectIdSearchPerformanceRoute
   '/_project/p/$projectId/settings': typeof ProjectPProjectIdSettingsRouteWithChildren
+  '/_project/p/$projectId/workspace-settings': typeof ProjectPProjectIdWorkspaceSettingsRoute
   '/api/email/microsoft/callback': typeof ApiEmailMicrosoftCallbackRoute
   '/api/ga4/oauth/callback': typeof ApiGa4OauthCallbackRoute
   '/api/gsc/oauth/callback': typeof ApiGscOauthCallbackRoute
@@ -887,22 +942,43 @@ export interface FileRoutesById {
   '/api/voice/deepgram/$connectionId': typeof ApiVoiceDeepgramConnectionIdRoute
   '/api/voice/elevenlabs-caller/$connectionId': typeof ApiVoiceElevenlabsCallerConnectionIdRoute
   '/api/voice/elevenlabs/$connectionId': typeof ApiVoiceElevenlabsConnectionIdRoute
-  '/_app/modules/crm/': typeof AppModulesCrmIndexRoute
-  '/_app/modules/integrations/': typeof AppModulesIntegrationsIndexRoute
   '/_project/p/$projectId/': typeof ProjectPProjectIdIndexRoute
-  '/_app/modules/crm/products/$productId': typeof AppModulesCrmProductsProductIdRoute
+  '/_project/p/$projectId/modules/$moduleKey': typeof ProjectPProjectIdModulesModuleKeyRoute
+  '/_project/p/$projectId/modules/crm': typeof ProjectPProjectIdModulesCrmRouteWithChildren
+  '/_project/p/$projectId/modules/integrations': typeof ProjectPProjectIdModulesIntegrationsRouteWithChildren
+  '/_project/p/$projectId/modules/overview': typeof ProjectPProjectIdModulesOverviewRoute
   '/_project/p/$projectId/rank-tracking/$configId': typeof ProjectPProjectIdRankTrackingConfigIdRoute
   '/_project/p/$projectId/settings/context': typeof ProjectPProjectIdSettingsContextRoute
   '/_project/p/$projectId/settings/integrations': typeof ProjectPProjectIdSettingsIntegrationsRoute
   '/api/email/attachments/$messageId/$attachmentId': typeof ApiEmailAttachmentsMessageIdAttachmentIdRoute
   '/api/voice/calls/$callId/recording': typeof ApiVoiceCallsCallIdRecordingRoute
-  '/_app/modules/crm/products/': typeof AppModulesCrmProductsIndexRoute
   '/_project/p/$projectId/audit/': typeof ProjectPProjectIdAuditIndexRoute
   '/_project/p/$projectId/competitors/': typeof ProjectPProjectIdCompetitorsIndexRoute
+  '/_project/p/$projectId/modules/': typeof ProjectPProjectIdModulesIndexRoute
   '/_project/p/$projectId/optimizations/': typeof ProjectPProjectIdOptimizationsIndexRoute
   '/_project/p/$projectId/rank-tracking/': typeof ProjectPProjectIdRankTrackingIndexRoute
   '/_project/p/$projectId/settings/': typeof ProjectPProjectIdSettingsIndexRoute
   '/_project/p/$projectId/audit/issues/$resultId': typeof ProjectPProjectIdAuditIssuesResultIdRoute
+  '/_project/p/$projectId/modules/crm/analytics': typeof ProjectPProjectIdModulesCrmAnalyticsRoute
+  '/_project/p/$projectId/modules/crm/citypak': typeof ProjectPProjectIdModulesCrmCitypakRoute
+  '/_project/p/$projectId/modules/crm/companies': typeof ProjectPProjectIdModulesCrmCompaniesRoute
+  '/_project/p/$projectId/modules/crm/contacts': typeof ProjectPProjectIdModulesCrmContactsRoute
+  '/_project/p/$projectId/modules/crm/inquiries': typeof ProjectPProjectIdModulesCrmInquiriesRoute
+  '/_project/p/$projectId/modules/crm/inventory': typeof ProjectPProjectIdModulesCrmInventoryRoute
+  '/_project/p/$projectId/modules/crm/meetings': typeof ProjectPProjectIdModulesCrmMeetingsRoute
+  '/_project/p/$projectId/modules/crm/orders': typeof ProjectPProjectIdModulesCrmOrdersRoute
+  '/_project/p/$projectId/modules/crm/products': typeof ProjectPProjectIdModulesCrmProductsRouteWithChildren
+  '/_project/p/$projectId/modules/crm/quotations': typeof ProjectPProjectIdModulesCrmQuotationsRoute
+  '/_project/p/$projectId/modules/crm/sms': typeof ProjectPProjectIdModulesCrmSmsRoute
+  '/_project/p/$projectId/modules/crm/sources': typeof ProjectPProjectIdModulesCrmSourcesRoute
+  '/_project/p/$projectId/modules/integrations/$providerKey': typeof ProjectPProjectIdModulesIntegrationsProviderKeyRoute
+  '/_project/p/$projectId/modules/integrations/connections': typeof ProjectPProjectIdModulesIntegrationsConnectionsRoute
+  '/_project/p/$projectId/modules/leads/$leadId': typeof ProjectPProjectIdModulesLeadsLeadIdRoute
+  '/_project/p/$projectId/modules/quotes/$quoteId': typeof ProjectPProjectIdModulesQuotesQuoteIdRoute
+  '/_project/p/$projectId/modules/crm/': typeof ProjectPProjectIdModulesCrmIndexRoute
+  '/_project/p/$projectId/modules/integrations/': typeof ProjectPProjectIdModulesIntegrationsIndexRoute
+  '/_project/p/$projectId/modules/crm/products/$productId': typeof ProjectPProjectIdModulesCrmProductsProductIdRoute
+  '/_project/p/$projectId/modules/crm/products/': typeof ProjectPProjectIdModulesCrmProductsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -932,10 +1008,7 @@ export interface FileRouteTypes {
     | '/p/$projectId'
     | '/help/dataforseo-api-key'
     | '/help/openrouter-api-key'
-    | '/modules/$moduleKey'
-    | '/modules/crm'
-    | '/modules/integrations'
-    | '/modules/overview'
+    | '/modules/$'
     | '/onboarding/chat'
     | '/api/auth/$'
     | '/api/autumn/$'
@@ -948,33 +1021,21 @@ export interface FileRouteTypes {
     | '/api/whatsapp/meta'
     | '/modules/'
     | '/onboarding/'
-    | '/modules/crm/analytics'
-    | '/modules/crm/citypak'
-    | '/modules/crm/companies'
-    | '/modules/crm/contacts'
-    | '/modules/crm/inquiries'
-    | '/modules/crm/inventory'
-    | '/modules/crm/meetings'
-    | '/modules/crm/orders'
-    | '/modules/crm/products'
-    | '/modules/crm/quotations'
-    | '/modules/crm/sms'
-    | '/modules/crm/sources'
-    | '/modules/integrations/$providerKey'
-    | '/modules/integrations/connections'
-    | '/modules/leads/$leadId'
-    | '/modules/quotes/$quoteId'
+    | '/p/$projectId/modules'
+    | '/p/$projectId/ai'
     | '/p/$projectId/audit'
     | '/p/$projectId/backlinks'
     | '/p/$projectId/brand-lookup'
     | '/p/$projectId/domain'
     | '/p/$projectId/keywords'
+    | '/p/$projectId/performance'
     | '/p/$projectId/prompt-explorer'
     | '/p/$projectId/rank-tracking'
     | '/p/$projectId/sam'
     | '/p/$projectId/saved'
     | '/p/$projectId/search-performance'
     | '/p/$projectId/settings'
+    | '/p/$projectId/workspace-settings'
     | '/api/email/microsoft/callback'
     | '/api/ga4/oauth/callback'
     | '/api/gsc/oauth/callback'
@@ -984,22 +1045,43 @@ export interface FileRouteTypes {
     | '/api/voice/deepgram/$connectionId'
     | '/api/voice/elevenlabs-caller/$connectionId'
     | '/api/voice/elevenlabs/$connectionId'
-    | '/modules/crm/'
-    | '/modules/integrations/'
     | '/p/$projectId/'
-    | '/modules/crm/products/$productId'
+    | '/p/$projectId/modules/$moduleKey'
+    | '/p/$projectId/modules/crm'
+    | '/p/$projectId/modules/integrations'
+    | '/p/$projectId/modules/overview'
     | '/p/$projectId/rank-tracking/$configId'
     | '/p/$projectId/settings/context'
     | '/p/$projectId/settings/integrations'
     | '/api/email/attachments/$messageId/$attachmentId'
     | '/api/voice/calls/$callId/recording'
-    | '/modules/crm/products/'
     | '/p/$projectId/audit/'
     | '/p/$projectId/competitors/'
+    | '/p/$projectId/modules/'
     | '/p/$projectId/optimizations/'
     | '/p/$projectId/rank-tracking/'
     | '/p/$projectId/settings/'
     | '/p/$projectId/audit/issues/$resultId'
+    | '/p/$projectId/modules/crm/analytics'
+    | '/p/$projectId/modules/crm/citypak'
+    | '/p/$projectId/modules/crm/companies'
+    | '/p/$projectId/modules/crm/contacts'
+    | '/p/$projectId/modules/crm/inquiries'
+    | '/p/$projectId/modules/crm/inventory'
+    | '/p/$projectId/modules/crm/meetings'
+    | '/p/$projectId/modules/crm/orders'
+    | '/p/$projectId/modules/crm/products'
+    | '/p/$projectId/modules/crm/quotations'
+    | '/p/$projectId/modules/crm/sms'
+    | '/p/$projectId/modules/crm/sources'
+    | '/p/$projectId/modules/integrations/$providerKey'
+    | '/p/$projectId/modules/integrations/connections'
+    | '/p/$projectId/modules/leads/$leadId'
+    | '/p/$projectId/modules/quotes/$quoteId'
+    | '/p/$projectId/modules/crm/'
+    | '/p/$projectId/modules/integrations/'
+    | '/p/$projectId/modules/crm/products/$productId'
+    | '/p/$projectId/modules/crm/products/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -1025,8 +1107,7 @@ export interface FileRouteTypes {
     | '/reports/$reportId'
     | '/help/dataforseo-api-key'
     | '/help/openrouter-api-key'
-    | '/modules/$moduleKey'
-    | '/modules/overview'
+    | '/modules/$'
     | '/onboarding/chat'
     | '/api/auth/$'
     | '/api/autumn/$'
@@ -1039,29 +1120,17 @@ export interface FileRouteTypes {
     | '/api/whatsapp/meta'
     | '/modules'
     | '/onboarding'
-    | '/modules/crm/analytics'
-    | '/modules/crm/citypak'
-    | '/modules/crm/companies'
-    | '/modules/crm/contacts'
-    | '/modules/crm/inquiries'
-    | '/modules/crm/inventory'
-    | '/modules/crm/meetings'
-    | '/modules/crm/orders'
-    | '/modules/crm/quotations'
-    | '/modules/crm/sms'
-    | '/modules/crm/sources'
-    | '/modules/integrations/$providerKey'
-    | '/modules/integrations/connections'
-    | '/modules/leads/$leadId'
-    | '/modules/quotes/$quoteId'
+    | '/p/$projectId/ai'
     | '/p/$projectId/backlinks'
     | '/p/$projectId/brand-lookup'
     | '/p/$projectId/domain'
     | '/p/$projectId/keywords'
+    | '/p/$projectId/performance'
     | '/p/$projectId/prompt-explorer'
     | '/p/$projectId/sam'
     | '/p/$projectId/saved'
     | '/p/$projectId/search-performance'
+    | '/p/$projectId/workspace-settings'
     | '/api/email/microsoft/callback'
     | '/api/ga4/oauth/callback'
     | '/api/gsc/oauth/callback'
@@ -1071,22 +1140,40 @@ export interface FileRouteTypes {
     | '/api/voice/deepgram/$connectionId'
     | '/api/voice/elevenlabs-caller/$connectionId'
     | '/api/voice/elevenlabs/$connectionId'
-    | '/modules/crm'
-    | '/modules/integrations'
     | '/p/$projectId'
-    | '/modules/crm/products/$productId'
+    | '/p/$projectId/modules/$moduleKey'
+    | '/p/$projectId/modules/overview'
     | '/p/$projectId/rank-tracking/$configId'
     | '/p/$projectId/settings/context'
     | '/p/$projectId/settings/integrations'
     | '/api/email/attachments/$messageId/$attachmentId'
     | '/api/voice/calls/$callId/recording'
-    | '/modules/crm/products'
     | '/p/$projectId/audit'
     | '/p/$projectId/competitors'
+    | '/p/$projectId/modules'
     | '/p/$projectId/optimizations'
     | '/p/$projectId/rank-tracking'
     | '/p/$projectId/settings'
     | '/p/$projectId/audit/issues/$resultId'
+    | '/p/$projectId/modules/crm/analytics'
+    | '/p/$projectId/modules/crm/citypak'
+    | '/p/$projectId/modules/crm/companies'
+    | '/p/$projectId/modules/crm/contacts'
+    | '/p/$projectId/modules/crm/inquiries'
+    | '/p/$projectId/modules/crm/inventory'
+    | '/p/$projectId/modules/crm/meetings'
+    | '/p/$projectId/modules/crm/orders'
+    | '/p/$projectId/modules/crm/quotations'
+    | '/p/$projectId/modules/crm/sms'
+    | '/p/$projectId/modules/crm/sources'
+    | '/p/$projectId/modules/integrations/$providerKey'
+    | '/p/$projectId/modules/integrations/connections'
+    | '/p/$projectId/modules/leads/$leadId'
+    | '/p/$projectId/modules/quotes/$quoteId'
+    | '/p/$projectId/modules/crm'
+    | '/p/$projectId/modules/integrations'
+    | '/p/$projectId/modules/crm/products/$productId'
+    | '/p/$projectId/modules/crm/products'
   id:
     | '__root__'
     | '/_app'
@@ -1118,10 +1205,7 @@ export interface FileRouteTypes {
     | '/_project/p/$projectId'
     | '/_app/help/dataforseo-api-key'
     | '/_app/help/openrouter-api-key'
-    | '/_app/modules/$moduleKey'
-    | '/_app/modules/crm'
-    | '/_app/modules/integrations'
-    | '/_app/modules/overview'
+    | '/_app/modules/$'
     | '/_authenticated/onboarding/chat'
     | '/api/auth/$'
     | '/api/autumn/$'
@@ -1134,33 +1218,21 @@ export interface FileRouteTypes {
     | '/api/whatsapp/meta'
     | '/_app/modules/'
     | '/_authenticated/onboarding/'
-    | '/_app/modules/crm/analytics'
-    | '/_app/modules/crm/citypak'
-    | '/_app/modules/crm/companies'
-    | '/_app/modules/crm/contacts'
-    | '/_app/modules/crm/inquiries'
-    | '/_app/modules/crm/inventory'
-    | '/_app/modules/crm/meetings'
-    | '/_app/modules/crm/orders'
-    | '/_app/modules/crm/products'
-    | '/_app/modules/crm/quotations'
-    | '/_app/modules/crm/sms'
-    | '/_app/modules/crm/sources'
-    | '/_app/modules/integrations/$providerKey'
-    | '/_app/modules/integrations/connections'
-    | '/_app/modules/leads/$leadId'
-    | '/_app/modules/quotes/$quoteId'
+    | '/_project/p/$projectId/modules'
+    | '/_project/p/$projectId/ai'
     | '/_project/p/$projectId/audit'
     | '/_project/p/$projectId/backlinks'
     | '/_project/p/$projectId/brand-lookup'
     | '/_project/p/$projectId/domain'
     | '/_project/p/$projectId/keywords'
+    | '/_project/p/$projectId/performance'
     | '/_project/p/$projectId/prompt-explorer'
     | '/_project/p/$projectId/rank-tracking'
     | '/_project/p/$projectId/sam'
     | '/_project/p/$projectId/saved'
     | '/_project/p/$projectId/search-performance'
     | '/_project/p/$projectId/settings'
+    | '/_project/p/$projectId/workspace-settings'
     | '/api/email/microsoft/callback'
     | '/api/ga4/oauth/callback'
     | '/api/gsc/oauth/callback'
@@ -1170,22 +1242,43 @@ export interface FileRouteTypes {
     | '/api/voice/deepgram/$connectionId'
     | '/api/voice/elevenlabs-caller/$connectionId'
     | '/api/voice/elevenlabs/$connectionId'
-    | '/_app/modules/crm/'
-    | '/_app/modules/integrations/'
     | '/_project/p/$projectId/'
-    | '/_app/modules/crm/products/$productId'
+    | '/_project/p/$projectId/modules/$moduleKey'
+    | '/_project/p/$projectId/modules/crm'
+    | '/_project/p/$projectId/modules/integrations'
+    | '/_project/p/$projectId/modules/overview'
     | '/_project/p/$projectId/rank-tracking/$configId'
     | '/_project/p/$projectId/settings/context'
     | '/_project/p/$projectId/settings/integrations'
     | '/api/email/attachments/$messageId/$attachmentId'
     | '/api/voice/calls/$callId/recording'
-    | '/_app/modules/crm/products/'
     | '/_project/p/$projectId/audit/'
     | '/_project/p/$projectId/competitors/'
+    | '/_project/p/$projectId/modules/'
     | '/_project/p/$projectId/optimizations/'
     | '/_project/p/$projectId/rank-tracking/'
     | '/_project/p/$projectId/settings/'
     | '/_project/p/$projectId/audit/issues/$resultId'
+    | '/_project/p/$projectId/modules/crm/analytics'
+    | '/_project/p/$projectId/modules/crm/citypak'
+    | '/_project/p/$projectId/modules/crm/companies'
+    | '/_project/p/$projectId/modules/crm/contacts'
+    | '/_project/p/$projectId/modules/crm/inquiries'
+    | '/_project/p/$projectId/modules/crm/inventory'
+    | '/_project/p/$projectId/modules/crm/meetings'
+    | '/_project/p/$projectId/modules/crm/orders'
+    | '/_project/p/$projectId/modules/crm/products'
+    | '/_project/p/$projectId/modules/crm/quotations'
+    | '/_project/p/$projectId/modules/crm/sms'
+    | '/_project/p/$projectId/modules/crm/sources'
+    | '/_project/p/$projectId/modules/integrations/$providerKey'
+    | '/_project/p/$projectId/modules/integrations/connections'
+    | '/_project/p/$projectId/modules/leads/$leadId'
+    | '/_project/p/$projectId/modules/quotes/$quoteId'
+    | '/_project/p/$projectId/modules/crm/'
+    | '/_project/p/$projectId/modules/integrations/'
+    | '/_project/p/$projectId/modules/crm/products/$productId'
+    | '/_project/p/$projectId/modules/crm/products/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -1493,32 +1586,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedOnboardingChatRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
-    '/_app/modules/overview': {
-      id: '/_app/modules/overview'
-      path: '/overview'
-      fullPath: '/modules/overview'
-      preLoaderRoute: typeof AppModulesOverviewRouteImport
-      parentRoute: typeof AppModulesRouteRoute
-    }
-    '/_app/modules/integrations': {
-      id: '/_app/modules/integrations'
-      path: '/integrations'
-      fullPath: '/modules/integrations'
-      preLoaderRoute: typeof AppModulesIntegrationsRouteImport
-      parentRoute: typeof AppModulesRouteRoute
-    }
-    '/_app/modules/crm': {
-      id: '/_app/modules/crm'
-      path: '/crm'
-      fullPath: '/modules/crm'
-      preLoaderRoute: typeof AppModulesCrmRouteImport
-      parentRoute: typeof AppModulesRouteRoute
-    }
-    '/_app/modules/$moduleKey': {
-      id: '/_app/modules/$moduleKey'
-      path: '/$moduleKey'
-      fullPath: '/modules/$moduleKey'
-      preLoaderRoute: typeof AppModulesModuleKeyRouteImport
+    '/_app/modules/$': {
+      id: '/_app/modules/$'
+      path: '/$'
+      fullPath: '/modules/$'
+      preLoaderRoute: typeof AppModulesSplatRouteImport
       parentRoute: typeof AppModulesRouteRoute
     }
     '/_app/help/openrouter-api-key': {
@@ -1548,20 +1620,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/p/$projectId/'
       preLoaderRoute: typeof ProjectPProjectIdIndexRouteImport
       parentRoute: typeof ProjectPProjectIdRouteRoute
-    }
-    '/_app/modules/integrations/': {
-      id: '/_app/modules/integrations/'
-      path: '/'
-      fullPath: '/modules/integrations/'
-      preLoaderRoute: typeof AppModulesIntegrationsIndexRouteImport
-      parentRoute: typeof AppModulesIntegrationsRoute
-    }
-    '/_app/modules/crm/': {
-      id: '/_app/modules/crm/'
-      path: '/'
-      fullPath: '/modules/crm/'
-      preLoaderRoute: typeof AppModulesCrmIndexRouteImport
-      parentRoute: typeof AppModulesCrmRoute
     }
     '/api/voice/elevenlabs/$connectionId': {
       id: '/api/voice/elevenlabs/$connectionId'
@@ -1626,6 +1684,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiEmailMicrosoftCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_project/p/$projectId/workspace-settings': {
+      id: '/_project/p/$projectId/workspace-settings'
+      path: '/workspace-settings'
+      fullPath: '/p/$projectId/workspace-settings'
+      preLoaderRoute: typeof ProjectPProjectIdWorkspaceSettingsRouteImport
+      parentRoute: typeof ProjectPProjectIdRouteRoute
+    }
     '/_project/p/$projectId/settings': {
       id: '/_project/p/$projectId/settings'
       path: '/settings'
@@ -1668,6 +1733,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProjectPProjectIdPromptExplorerRouteImport
       parentRoute: typeof ProjectPProjectIdRouteRoute
     }
+    '/_project/p/$projectId/performance': {
+      id: '/_project/p/$projectId/performance'
+      path: '/performance'
+      fullPath: '/p/$projectId/performance'
+      preLoaderRoute: typeof ProjectPProjectIdPerformanceRouteImport
+      parentRoute: typeof ProjectPProjectIdRouteRoute
+    }
     '/_project/p/$projectId/keywords': {
       id: '/_project/p/$projectId/keywords'
       path: '/keywords'
@@ -1703,117 +1775,19 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProjectPProjectIdAuditRouteImport
       parentRoute: typeof ProjectPProjectIdRouteRoute
     }
-    '/_app/modules/quotes/$quoteId': {
-      id: '/_app/modules/quotes/$quoteId'
-      path: '/quotes/$quoteId'
-      fullPath: '/modules/quotes/$quoteId'
-      preLoaderRoute: typeof AppModulesQuotesQuoteIdRouteImport
-      parentRoute: typeof AppModulesRouteRoute
+    '/_project/p/$projectId/ai': {
+      id: '/_project/p/$projectId/ai'
+      path: '/ai'
+      fullPath: '/p/$projectId/ai'
+      preLoaderRoute: typeof ProjectPProjectIdAiRouteImport
+      parentRoute: typeof ProjectPProjectIdRouteRoute
     }
-    '/_app/modules/leads/$leadId': {
-      id: '/_app/modules/leads/$leadId'
-      path: '/leads/$leadId'
-      fullPath: '/modules/leads/$leadId'
-      preLoaderRoute: typeof AppModulesLeadsLeadIdRouteImport
-      parentRoute: typeof AppModulesRouteRoute
-    }
-    '/_app/modules/integrations/connections': {
-      id: '/_app/modules/integrations/connections'
-      path: '/connections'
-      fullPath: '/modules/integrations/connections'
-      preLoaderRoute: typeof AppModulesIntegrationsConnectionsRouteImport
-      parentRoute: typeof AppModulesIntegrationsRoute
-    }
-    '/_app/modules/integrations/$providerKey': {
-      id: '/_app/modules/integrations/$providerKey'
-      path: '/$providerKey'
-      fullPath: '/modules/integrations/$providerKey'
-      preLoaderRoute: typeof AppModulesIntegrationsProviderKeyRouteImport
-      parentRoute: typeof AppModulesIntegrationsRoute
-    }
-    '/_app/modules/crm/sources': {
-      id: '/_app/modules/crm/sources'
-      path: '/sources'
-      fullPath: '/modules/crm/sources'
-      preLoaderRoute: typeof AppModulesCrmSourcesRouteImport
-      parentRoute: typeof AppModulesCrmRoute
-    }
-    '/_app/modules/crm/sms': {
-      id: '/_app/modules/crm/sms'
-      path: '/sms'
-      fullPath: '/modules/crm/sms'
-      preLoaderRoute: typeof AppModulesCrmSmsRouteImport
-      parentRoute: typeof AppModulesCrmRoute
-    }
-    '/_app/modules/crm/quotations': {
-      id: '/_app/modules/crm/quotations'
-      path: '/quotations'
-      fullPath: '/modules/crm/quotations'
-      preLoaderRoute: typeof AppModulesCrmQuotationsRouteImport
-      parentRoute: typeof AppModulesCrmRoute
-    }
-    '/_app/modules/crm/products': {
-      id: '/_app/modules/crm/products'
-      path: '/products'
-      fullPath: '/modules/crm/products'
-      preLoaderRoute: typeof AppModulesCrmProductsRouteImport
-      parentRoute: typeof AppModulesCrmRoute
-    }
-    '/_app/modules/crm/orders': {
-      id: '/_app/modules/crm/orders'
-      path: '/orders'
-      fullPath: '/modules/crm/orders'
-      preLoaderRoute: typeof AppModulesCrmOrdersRouteImport
-      parentRoute: typeof AppModulesCrmRoute
-    }
-    '/_app/modules/crm/meetings': {
-      id: '/_app/modules/crm/meetings'
-      path: '/meetings'
-      fullPath: '/modules/crm/meetings'
-      preLoaderRoute: typeof AppModulesCrmMeetingsRouteImport
-      parentRoute: typeof AppModulesCrmRoute
-    }
-    '/_app/modules/crm/inventory': {
-      id: '/_app/modules/crm/inventory'
-      path: '/inventory'
-      fullPath: '/modules/crm/inventory'
-      preLoaderRoute: typeof AppModulesCrmInventoryRouteImport
-      parentRoute: typeof AppModulesCrmRoute
-    }
-    '/_app/modules/crm/inquiries': {
-      id: '/_app/modules/crm/inquiries'
-      path: '/inquiries'
-      fullPath: '/modules/crm/inquiries'
-      preLoaderRoute: typeof AppModulesCrmInquiriesRouteImport
-      parentRoute: typeof AppModulesCrmRoute
-    }
-    '/_app/modules/crm/contacts': {
-      id: '/_app/modules/crm/contacts'
-      path: '/contacts'
-      fullPath: '/modules/crm/contacts'
-      preLoaderRoute: typeof AppModulesCrmContactsRouteImport
-      parentRoute: typeof AppModulesCrmRoute
-    }
-    '/_app/modules/crm/companies': {
-      id: '/_app/modules/crm/companies'
-      path: '/companies'
-      fullPath: '/modules/crm/companies'
-      preLoaderRoute: typeof AppModulesCrmCompaniesRouteImport
-      parentRoute: typeof AppModulesCrmRoute
-    }
-    '/_app/modules/crm/citypak': {
-      id: '/_app/modules/crm/citypak'
-      path: '/citypak'
-      fullPath: '/modules/crm/citypak'
-      preLoaderRoute: typeof AppModulesCrmCitypakRouteImport
-      parentRoute: typeof AppModulesCrmRoute
-    }
-    '/_app/modules/crm/analytics': {
-      id: '/_app/modules/crm/analytics'
-      path: '/analytics'
-      fullPath: '/modules/crm/analytics'
-      preLoaderRoute: typeof AppModulesCrmAnalyticsRouteImport
-      parentRoute: typeof AppModulesCrmRoute
+    '/_project/p/$projectId/modules': {
+      id: '/_project/p/$projectId/modules'
+      path: '/modules'
+      fullPath: '/p/$projectId/modules'
+      preLoaderRoute: typeof ProjectPProjectIdModulesRouteRouteImport
+      parentRoute: typeof ProjectPProjectIdRouteRoute
     }
     '/_project/p/$projectId/settings/': {
       id: '/_project/p/$projectId/settings/'
@@ -1836,6 +1810,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProjectPProjectIdOptimizationsIndexRouteImport
       parentRoute: typeof ProjectPProjectIdRouteRoute
     }
+    '/_project/p/$projectId/modules/': {
+      id: '/_project/p/$projectId/modules/'
+      path: '/'
+      fullPath: '/p/$projectId/modules/'
+      preLoaderRoute: typeof ProjectPProjectIdModulesIndexRouteImport
+      parentRoute: typeof ProjectPProjectIdModulesRouteRoute
+    }
     '/_project/p/$projectId/competitors/': {
       id: '/_project/p/$projectId/competitors/'
       path: '/competitors'
@@ -1849,13 +1830,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/p/$projectId/audit/'
       preLoaderRoute: typeof ProjectPProjectIdAuditIndexRouteImport
       parentRoute: typeof ProjectPProjectIdAuditRoute
-    }
-    '/_app/modules/crm/products/': {
-      id: '/_app/modules/crm/products/'
-      path: '/'
-      fullPath: '/modules/crm/products/'
-      preLoaderRoute: typeof AppModulesCrmProductsIndexRouteImport
-      parentRoute: typeof AppModulesCrmProductsRoute
     }
     '/api/voice/calls/$callId/recording': {
       id: '/api/voice/calls/$callId/recording'
@@ -1892,12 +1866,159 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProjectPProjectIdRankTrackingConfigIdRouteImport
       parentRoute: typeof ProjectPProjectIdRankTrackingRoute
     }
-    '/_app/modules/crm/products/$productId': {
-      id: '/_app/modules/crm/products/$productId'
-      path: '/$productId'
-      fullPath: '/modules/crm/products/$productId'
-      preLoaderRoute: typeof AppModulesCrmProductsProductIdRouteImport
-      parentRoute: typeof AppModulesCrmProductsRoute
+    '/_project/p/$projectId/modules/overview': {
+      id: '/_project/p/$projectId/modules/overview'
+      path: '/overview'
+      fullPath: '/p/$projectId/modules/overview'
+      preLoaderRoute: typeof ProjectPProjectIdModulesOverviewRouteImport
+      parentRoute: typeof ProjectPProjectIdModulesRouteRoute
+    }
+    '/_project/p/$projectId/modules/integrations': {
+      id: '/_project/p/$projectId/modules/integrations'
+      path: '/integrations'
+      fullPath: '/p/$projectId/modules/integrations'
+      preLoaderRoute: typeof ProjectPProjectIdModulesIntegrationsRouteImport
+      parentRoute: typeof ProjectPProjectIdModulesRouteRoute
+    }
+    '/_project/p/$projectId/modules/crm': {
+      id: '/_project/p/$projectId/modules/crm'
+      path: '/crm'
+      fullPath: '/p/$projectId/modules/crm'
+      preLoaderRoute: typeof ProjectPProjectIdModulesCrmRouteImport
+      parentRoute: typeof ProjectPProjectIdModulesRouteRoute
+    }
+    '/_project/p/$projectId/modules/$moduleKey': {
+      id: '/_project/p/$projectId/modules/$moduleKey'
+      path: '/$moduleKey'
+      fullPath: '/p/$projectId/modules/$moduleKey'
+      preLoaderRoute: typeof ProjectPProjectIdModulesModuleKeyRouteImport
+      parentRoute: typeof ProjectPProjectIdModulesRouteRoute
+    }
+    '/_project/p/$projectId/modules/integrations/': {
+      id: '/_project/p/$projectId/modules/integrations/'
+      path: '/'
+      fullPath: '/p/$projectId/modules/integrations/'
+      preLoaderRoute: typeof ProjectPProjectIdModulesIntegrationsIndexRouteImport
+      parentRoute: typeof ProjectPProjectIdModulesIntegrationsRoute
+    }
+    '/_project/p/$projectId/modules/crm/': {
+      id: '/_project/p/$projectId/modules/crm/'
+      path: '/'
+      fullPath: '/p/$projectId/modules/crm/'
+      preLoaderRoute: typeof ProjectPProjectIdModulesCrmIndexRouteImport
+      parentRoute: typeof ProjectPProjectIdModulesCrmRoute
+    }
+    '/_project/p/$projectId/modules/quotes/$quoteId': {
+      id: '/_project/p/$projectId/modules/quotes/$quoteId'
+      path: '/quotes/$quoteId'
+      fullPath: '/p/$projectId/modules/quotes/$quoteId'
+      preLoaderRoute: typeof ProjectPProjectIdModulesQuotesQuoteIdRouteImport
+      parentRoute: typeof ProjectPProjectIdModulesRouteRoute
+    }
+    '/_project/p/$projectId/modules/leads/$leadId': {
+      id: '/_project/p/$projectId/modules/leads/$leadId'
+      path: '/leads/$leadId'
+      fullPath: '/p/$projectId/modules/leads/$leadId'
+      preLoaderRoute: typeof ProjectPProjectIdModulesLeadsLeadIdRouteImport
+      parentRoute: typeof ProjectPProjectIdModulesRouteRoute
+    }
+    '/_project/p/$projectId/modules/integrations/connections': {
+      id: '/_project/p/$projectId/modules/integrations/connections'
+      path: '/connections'
+      fullPath: '/p/$projectId/modules/integrations/connections'
+      preLoaderRoute: typeof ProjectPProjectIdModulesIntegrationsConnectionsRouteImport
+      parentRoute: typeof ProjectPProjectIdModulesIntegrationsRoute
+    }
+    '/_project/p/$projectId/modules/integrations/$providerKey': {
+      id: '/_project/p/$projectId/modules/integrations/$providerKey'
+      path: '/$providerKey'
+      fullPath: '/p/$projectId/modules/integrations/$providerKey'
+      preLoaderRoute: typeof ProjectPProjectIdModulesIntegrationsProviderKeyRouteImport
+      parentRoute: typeof ProjectPProjectIdModulesIntegrationsRoute
+    }
+    '/_project/p/$projectId/modules/crm/sources': {
+      id: '/_project/p/$projectId/modules/crm/sources'
+      path: '/sources'
+      fullPath: '/p/$projectId/modules/crm/sources'
+      preLoaderRoute: typeof ProjectPProjectIdModulesCrmSourcesRouteImport
+      parentRoute: typeof ProjectPProjectIdModulesCrmRoute
+    }
+    '/_project/p/$projectId/modules/crm/sms': {
+      id: '/_project/p/$projectId/modules/crm/sms'
+      path: '/sms'
+      fullPath: '/p/$projectId/modules/crm/sms'
+      preLoaderRoute: typeof ProjectPProjectIdModulesCrmSmsRouteImport
+      parentRoute: typeof ProjectPProjectIdModulesCrmRoute
+    }
+    '/_project/p/$projectId/modules/crm/quotations': {
+      id: '/_project/p/$projectId/modules/crm/quotations'
+      path: '/quotations'
+      fullPath: '/p/$projectId/modules/crm/quotations'
+      preLoaderRoute: typeof ProjectPProjectIdModulesCrmQuotationsRouteImport
+      parentRoute: typeof ProjectPProjectIdModulesCrmRoute
+    }
+    '/_project/p/$projectId/modules/crm/products': {
+      id: '/_project/p/$projectId/modules/crm/products'
+      path: '/products'
+      fullPath: '/p/$projectId/modules/crm/products'
+      preLoaderRoute: typeof ProjectPProjectIdModulesCrmProductsRouteImport
+      parentRoute: typeof ProjectPProjectIdModulesCrmRoute
+    }
+    '/_project/p/$projectId/modules/crm/orders': {
+      id: '/_project/p/$projectId/modules/crm/orders'
+      path: '/orders'
+      fullPath: '/p/$projectId/modules/crm/orders'
+      preLoaderRoute: typeof ProjectPProjectIdModulesCrmOrdersRouteImport
+      parentRoute: typeof ProjectPProjectIdModulesCrmRoute
+    }
+    '/_project/p/$projectId/modules/crm/meetings': {
+      id: '/_project/p/$projectId/modules/crm/meetings'
+      path: '/meetings'
+      fullPath: '/p/$projectId/modules/crm/meetings'
+      preLoaderRoute: typeof ProjectPProjectIdModulesCrmMeetingsRouteImport
+      parentRoute: typeof ProjectPProjectIdModulesCrmRoute
+    }
+    '/_project/p/$projectId/modules/crm/inventory': {
+      id: '/_project/p/$projectId/modules/crm/inventory'
+      path: '/inventory'
+      fullPath: '/p/$projectId/modules/crm/inventory'
+      preLoaderRoute: typeof ProjectPProjectIdModulesCrmInventoryRouteImport
+      parentRoute: typeof ProjectPProjectIdModulesCrmRoute
+    }
+    '/_project/p/$projectId/modules/crm/inquiries': {
+      id: '/_project/p/$projectId/modules/crm/inquiries'
+      path: '/inquiries'
+      fullPath: '/p/$projectId/modules/crm/inquiries'
+      preLoaderRoute: typeof ProjectPProjectIdModulesCrmInquiriesRouteImport
+      parentRoute: typeof ProjectPProjectIdModulesCrmRoute
+    }
+    '/_project/p/$projectId/modules/crm/contacts': {
+      id: '/_project/p/$projectId/modules/crm/contacts'
+      path: '/contacts'
+      fullPath: '/p/$projectId/modules/crm/contacts'
+      preLoaderRoute: typeof ProjectPProjectIdModulesCrmContactsRouteImport
+      parentRoute: typeof ProjectPProjectIdModulesCrmRoute
+    }
+    '/_project/p/$projectId/modules/crm/companies': {
+      id: '/_project/p/$projectId/modules/crm/companies'
+      path: '/companies'
+      fullPath: '/p/$projectId/modules/crm/companies'
+      preLoaderRoute: typeof ProjectPProjectIdModulesCrmCompaniesRouteImport
+      parentRoute: typeof ProjectPProjectIdModulesCrmRoute
+    }
+    '/_project/p/$projectId/modules/crm/citypak': {
+      id: '/_project/p/$projectId/modules/crm/citypak'
+      path: '/citypak'
+      fullPath: '/p/$projectId/modules/crm/citypak'
+      preLoaderRoute: typeof ProjectPProjectIdModulesCrmCitypakRouteImport
+      parentRoute: typeof ProjectPProjectIdModulesCrmRoute
+    }
+    '/_project/p/$projectId/modules/crm/analytics': {
+      id: '/_project/p/$projectId/modules/crm/analytics'
+      path: '/analytics'
+      fullPath: '/p/$projectId/modules/crm/analytics'
+      preLoaderRoute: typeof ProjectPProjectIdModulesCrmAnalyticsRouteImport
+      parentRoute: typeof ProjectPProjectIdModulesCrmRoute
     }
     '/_project/p/$projectId/audit/issues/$resultId': {
       id: '/_project/p/$projectId/audit/issues/$resultId'
@@ -1906,98 +2027,31 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProjectPProjectIdAuditIssuesResultIdRouteImport
       parentRoute: typeof ProjectPProjectIdAuditRoute
     }
+    '/_project/p/$projectId/modules/crm/products/': {
+      id: '/_project/p/$projectId/modules/crm/products/'
+      path: '/'
+      fullPath: '/p/$projectId/modules/crm/products/'
+      preLoaderRoute: typeof ProjectPProjectIdModulesCrmProductsIndexRouteImport
+      parentRoute: typeof ProjectPProjectIdModulesCrmProductsRoute
+    }
+    '/_project/p/$projectId/modules/crm/products/$productId': {
+      id: '/_project/p/$projectId/modules/crm/products/$productId'
+      path: '/$productId'
+      fullPath: '/p/$projectId/modules/crm/products/$productId'
+      preLoaderRoute: typeof ProjectPProjectIdModulesCrmProductsProductIdRouteImport
+      parentRoute: typeof ProjectPProjectIdModulesCrmProductsRoute
+    }
   }
 }
-
-interface AppModulesCrmProductsRouteChildren {
-  AppModulesCrmProductsProductIdRoute: typeof AppModulesCrmProductsProductIdRoute
-  AppModulesCrmProductsIndexRoute: typeof AppModulesCrmProductsIndexRoute
-}
-
-const AppModulesCrmProductsRouteChildren: AppModulesCrmProductsRouteChildren = {
-  AppModulesCrmProductsProductIdRoute: AppModulesCrmProductsProductIdRoute,
-  AppModulesCrmProductsIndexRoute: AppModulesCrmProductsIndexRoute,
-}
-
-const AppModulesCrmProductsRouteWithChildren =
-  AppModulesCrmProductsRoute._addFileChildren(
-    AppModulesCrmProductsRouteChildren,
-  )
-
-interface AppModulesCrmRouteChildren {
-  AppModulesCrmAnalyticsRoute: typeof AppModulesCrmAnalyticsRoute
-  AppModulesCrmCitypakRoute: typeof AppModulesCrmCitypakRoute
-  AppModulesCrmCompaniesRoute: typeof AppModulesCrmCompaniesRoute
-  AppModulesCrmContactsRoute: typeof AppModulesCrmContactsRoute
-  AppModulesCrmInquiriesRoute: typeof AppModulesCrmInquiriesRoute
-  AppModulesCrmInventoryRoute: typeof AppModulesCrmInventoryRoute
-  AppModulesCrmMeetingsRoute: typeof AppModulesCrmMeetingsRoute
-  AppModulesCrmOrdersRoute: typeof AppModulesCrmOrdersRoute
-  AppModulesCrmProductsRoute: typeof AppModulesCrmProductsRouteWithChildren
-  AppModulesCrmQuotationsRoute: typeof AppModulesCrmQuotationsRoute
-  AppModulesCrmSmsRoute: typeof AppModulesCrmSmsRoute
-  AppModulesCrmSourcesRoute: typeof AppModulesCrmSourcesRoute
-  AppModulesCrmIndexRoute: typeof AppModulesCrmIndexRoute
-}
-
-const AppModulesCrmRouteChildren: AppModulesCrmRouteChildren = {
-  AppModulesCrmAnalyticsRoute: AppModulesCrmAnalyticsRoute,
-  AppModulesCrmCitypakRoute: AppModulesCrmCitypakRoute,
-  AppModulesCrmCompaniesRoute: AppModulesCrmCompaniesRoute,
-  AppModulesCrmContactsRoute: AppModulesCrmContactsRoute,
-  AppModulesCrmInquiriesRoute: AppModulesCrmInquiriesRoute,
-  AppModulesCrmInventoryRoute: AppModulesCrmInventoryRoute,
-  AppModulesCrmMeetingsRoute: AppModulesCrmMeetingsRoute,
-  AppModulesCrmOrdersRoute: AppModulesCrmOrdersRoute,
-  AppModulesCrmProductsRoute: AppModulesCrmProductsRouteWithChildren,
-  AppModulesCrmQuotationsRoute: AppModulesCrmQuotationsRoute,
-  AppModulesCrmSmsRoute: AppModulesCrmSmsRoute,
-  AppModulesCrmSourcesRoute: AppModulesCrmSourcesRoute,
-  AppModulesCrmIndexRoute: AppModulesCrmIndexRoute,
-}
-
-const AppModulesCrmRouteWithChildren = AppModulesCrmRoute._addFileChildren(
-  AppModulesCrmRouteChildren,
-)
-
-interface AppModulesIntegrationsRouteChildren {
-  AppModulesIntegrationsProviderKeyRoute: typeof AppModulesIntegrationsProviderKeyRoute
-  AppModulesIntegrationsConnectionsRoute: typeof AppModulesIntegrationsConnectionsRoute
-  AppModulesIntegrationsIndexRoute: typeof AppModulesIntegrationsIndexRoute
-}
-
-const AppModulesIntegrationsRouteChildren: AppModulesIntegrationsRouteChildren =
-  {
-    AppModulesIntegrationsProviderKeyRoute:
-      AppModulesIntegrationsProviderKeyRoute,
-    AppModulesIntegrationsConnectionsRoute:
-      AppModulesIntegrationsConnectionsRoute,
-    AppModulesIntegrationsIndexRoute: AppModulesIntegrationsIndexRoute,
-  }
-
-const AppModulesIntegrationsRouteWithChildren =
-  AppModulesIntegrationsRoute._addFileChildren(
-    AppModulesIntegrationsRouteChildren,
-  )
 
 interface AppModulesRouteRouteChildren {
-  AppModulesModuleKeyRoute: typeof AppModulesModuleKeyRoute
-  AppModulesCrmRoute: typeof AppModulesCrmRouteWithChildren
-  AppModulesIntegrationsRoute: typeof AppModulesIntegrationsRouteWithChildren
-  AppModulesOverviewRoute: typeof AppModulesOverviewRoute
+  AppModulesSplatRoute: typeof AppModulesSplatRoute
   AppModulesIndexRoute: typeof AppModulesIndexRoute
-  AppModulesLeadsLeadIdRoute: typeof AppModulesLeadsLeadIdRoute
-  AppModulesQuotesQuoteIdRoute: typeof AppModulesQuotesQuoteIdRoute
 }
 
 const AppModulesRouteRouteChildren: AppModulesRouteRouteChildren = {
-  AppModulesModuleKeyRoute: AppModulesModuleKeyRoute,
-  AppModulesCrmRoute: AppModulesCrmRouteWithChildren,
-  AppModulesIntegrationsRoute: AppModulesIntegrationsRouteWithChildren,
-  AppModulesOverviewRoute: AppModulesOverviewRoute,
+  AppModulesSplatRoute: AppModulesSplatRoute,
   AppModulesIndexRoute: AppModulesIndexRoute,
-  AppModulesLeadsLeadIdRoute: AppModulesLeadsLeadIdRoute,
-  AppModulesQuotesQuoteIdRoute: AppModulesQuotesQuoteIdRoute,
 }
 
 const AppModulesRouteRouteWithChildren = AppModulesRouteRoute._addFileChildren(
@@ -2033,6 +2087,127 @@ const AppRouteRouteChildren: AppRouteRouteChildren = {
 const AppRouteRouteWithChildren = AppRouteRoute._addFileChildren(
   AppRouteRouteChildren,
 )
+
+interface ProjectPProjectIdModulesCrmProductsRouteChildren {
+  ProjectPProjectIdModulesCrmProductsProductIdRoute: typeof ProjectPProjectIdModulesCrmProductsProductIdRoute
+  ProjectPProjectIdModulesCrmProductsIndexRoute: typeof ProjectPProjectIdModulesCrmProductsIndexRoute
+}
+
+const ProjectPProjectIdModulesCrmProductsRouteChildren: ProjectPProjectIdModulesCrmProductsRouteChildren =
+  {
+    ProjectPProjectIdModulesCrmProductsProductIdRoute:
+      ProjectPProjectIdModulesCrmProductsProductIdRoute,
+    ProjectPProjectIdModulesCrmProductsIndexRoute:
+      ProjectPProjectIdModulesCrmProductsIndexRoute,
+  }
+
+const ProjectPProjectIdModulesCrmProductsRouteWithChildren =
+  ProjectPProjectIdModulesCrmProductsRoute._addFileChildren(
+    ProjectPProjectIdModulesCrmProductsRouteChildren,
+  )
+
+interface ProjectPProjectIdModulesCrmRouteChildren {
+  ProjectPProjectIdModulesCrmAnalyticsRoute: typeof ProjectPProjectIdModulesCrmAnalyticsRoute
+  ProjectPProjectIdModulesCrmCitypakRoute: typeof ProjectPProjectIdModulesCrmCitypakRoute
+  ProjectPProjectIdModulesCrmCompaniesRoute: typeof ProjectPProjectIdModulesCrmCompaniesRoute
+  ProjectPProjectIdModulesCrmContactsRoute: typeof ProjectPProjectIdModulesCrmContactsRoute
+  ProjectPProjectIdModulesCrmInquiriesRoute: typeof ProjectPProjectIdModulesCrmInquiriesRoute
+  ProjectPProjectIdModulesCrmInventoryRoute: typeof ProjectPProjectIdModulesCrmInventoryRoute
+  ProjectPProjectIdModulesCrmMeetingsRoute: typeof ProjectPProjectIdModulesCrmMeetingsRoute
+  ProjectPProjectIdModulesCrmOrdersRoute: typeof ProjectPProjectIdModulesCrmOrdersRoute
+  ProjectPProjectIdModulesCrmProductsRoute: typeof ProjectPProjectIdModulesCrmProductsRouteWithChildren
+  ProjectPProjectIdModulesCrmQuotationsRoute: typeof ProjectPProjectIdModulesCrmQuotationsRoute
+  ProjectPProjectIdModulesCrmSmsRoute: typeof ProjectPProjectIdModulesCrmSmsRoute
+  ProjectPProjectIdModulesCrmSourcesRoute: typeof ProjectPProjectIdModulesCrmSourcesRoute
+  ProjectPProjectIdModulesCrmIndexRoute: typeof ProjectPProjectIdModulesCrmIndexRoute
+}
+
+const ProjectPProjectIdModulesCrmRouteChildren: ProjectPProjectIdModulesCrmRouteChildren =
+  {
+    ProjectPProjectIdModulesCrmAnalyticsRoute:
+      ProjectPProjectIdModulesCrmAnalyticsRoute,
+    ProjectPProjectIdModulesCrmCitypakRoute:
+      ProjectPProjectIdModulesCrmCitypakRoute,
+    ProjectPProjectIdModulesCrmCompaniesRoute:
+      ProjectPProjectIdModulesCrmCompaniesRoute,
+    ProjectPProjectIdModulesCrmContactsRoute:
+      ProjectPProjectIdModulesCrmContactsRoute,
+    ProjectPProjectIdModulesCrmInquiriesRoute:
+      ProjectPProjectIdModulesCrmInquiriesRoute,
+    ProjectPProjectIdModulesCrmInventoryRoute:
+      ProjectPProjectIdModulesCrmInventoryRoute,
+    ProjectPProjectIdModulesCrmMeetingsRoute:
+      ProjectPProjectIdModulesCrmMeetingsRoute,
+    ProjectPProjectIdModulesCrmOrdersRoute:
+      ProjectPProjectIdModulesCrmOrdersRoute,
+    ProjectPProjectIdModulesCrmProductsRoute:
+      ProjectPProjectIdModulesCrmProductsRouteWithChildren,
+    ProjectPProjectIdModulesCrmQuotationsRoute:
+      ProjectPProjectIdModulesCrmQuotationsRoute,
+    ProjectPProjectIdModulesCrmSmsRoute: ProjectPProjectIdModulesCrmSmsRoute,
+    ProjectPProjectIdModulesCrmSourcesRoute:
+      ProjectPProjectIdModulesCrmSourcesRoute,
+    ProjectPProjectIdModulesCrmIndexRoute:
+      ProjectPProjectIdModulesCrmIndexRoute,
+  }
+
+const ProjectPProjectIdModulesCrmRouteWithChildren =
+  ProjectPProjectIdModulesCrmRoute._addFileChildren(
+    ProjectPProjectIdModulesCrmRouteChildren,
+  )
+
+interface ProjectPProjectIdModulesIntegrationsRouteChildren {
+  ProjectPProjectIdModulesIntegrationsProviderKeyRoute: typeof ProjectPProjectIdModulesIntegrationsProviderKeyRoute
+  ProjectPProjectIdModulesIntegrationsConnectionsRoute: typeof ProjectPProjectIdModulesIntegrationsConnectionsRoute
+  ProjectPProjectIdModulesIntegrationsIndexRoute: typeof ProjectPProjectIdModulesIntegrationsIndexRoute
+}
+
+const ProjectPProjectIdModulesIntegrationsRouteChildren: ProjectPProjectIdModulesIntegrationsRouteChildren =
+  {
+    ProjectPProjectIdModulesIntegrationsProviderKeyRoute:
+      ProjectPProjectIdModulesIntegrationsProviderKeyRoute,
+    ProjectPProjectIdModulesIntegrationsConnectionsRoute:
+      ProjectPProjectIdModulesIntegrationsConnectionsRoute,
+    ProjectPProjectIdModulesIntegrationsIndexRoute:
+      ProjectPProjectIdModulesIntegrationsIndexRoute,
+  }
+
+const ProjectPProjectIdModulesIntegrationsRouteWithChildren =
+  ProjectPProjectIdModulesIntegrationsRoute._addFileChildren(
+    ProjectPProjectIdModulesIntegrationsRouteChildren,
+  )
+
+interface ProjectPProjectIdModulesRouteRouteChildren {
+  ProjectPProjectIdModulesModuleKeyRoute: typeof ProjectPProjectIdModulesModuleKeyRoute
+  ProjectPProjectIdModulesCrmRoute: typeof ProjectPProjectIdModulesCrmRouteWithChildren
+  ProjectPProjectIdModulesIntegrationsRoute: typeof ProjectPProjectIdModulesIntegrationsRouteWithChildren
+  ProjectPProjectIdModulesOverviewRoute: typeof ProjectPProjectIdModulesOverviewRoute
+  ProjectPProjectIdModulesIndexRoute: typeof ProjectPProjectIdModulesIndexRoute
+  ProjectPProjectIdModulesLeadsLeadIdRoute: typeof ProjectPProjectIdModulesLeadsLeadIdRoute
+  ProjectPProjectIdModulesQuotesQuoteIdRoute: typeof ProjectPProjectIdModulesQuotesQuoteIdRoute
+}
+
+const ProjectPProjectIdModulesRouteRouteChildren: ProjectPProjectIdModulesRouteRouteChildren =
+  {
+    ProjectPProjectIdModulesModuleKeyRoute:
+      ProjectPProjectIdModulesModuleKeyRoute,
+    ProjectPProjectIdModulesCrmRoute:
+      ProjectPProjectIdModulesCrmRouteWithChildren,
+    ProjectPProjectIdModulesIntegrationsRoute:
+      ProjectPProjectIdModulesIntegrationsRouteWithChildren,
+    ProjectPProjectIdModulesOverviewRoute:
+      ProjectPProjectIdModulesOverviewRoute,
+    ProjectPProjectIdModulesIndexRoute: ProjectPProjectIdModulesIndexRoute,
+    ProjectPProjectIdModulesLeadsLeadIdRoute:
+      ProjectPProjectIdModulesLeadsLeadIdRoute,
+    ProjectPProjectIdModulesQuotesQuoteIdRoute:
+      ProjectPProjectIdModulesQuotesQuoteIdRoute,
+  }
+
+const ProjectPProjectIdModulesRouteRouteWithChildren =
+  ProjectPProjectIdModulesRouteRoute._addFileChildren(
+    ProjectPProjectIdModulesRouteRouteChildren,
+  )
 
 interface ProjectPProjectIdAuditRouteChildren {
   ProjectPProjectIdAuditIndexRoute: typeof ProjectPProjectIdAuditIndexRoute
@@ -2090,17 +2265,21 @@ const ProjectPProjectIdSettingsRouteWithChildren =
   )
 
 interface ProjectPProjectIdRouteRouteChildren {
+  ProjectPProjectIdModulesRouteRoute: typeof ProjectPProjectIdModulesRouteRouteWithChildren
+  ProjectPProjectIdAiRoute: typeof ProjectPProjectIdAiRoute
   ProjectPProjectIdAuditRoute: typeof ProjectPProjectIdAuditRouteWithChildren
   ProjectPProjectIdBacklinksRoute: typeof ProjectPProjectIdBacklinksRoute
   ProjectPProjectIdBrandLookupRoute: typeof ProjectPProjectIdBrandLookupRoute
   ProjectPProjectIdDomainRoute: typeof ProjectPProjectIdDomainRoute
   ProjectPProjectIdKeywordsRoute: typeof ProjectPProjectIdKeywordsRoute
+  ProjectPProjectIdPerformanceRoute: typeof ProjectPProjectIdPerformanceRoute
   ProjectPProjectIdPromptExplorerRoute: typeof ProjectPProjectIdPromptExplorerRoute
   ProjectPProjectIdRankTrackingRoute: typeof ProjectPProjectIdRankTrackingRouteWithChildren
   ProjectPProjectIdSamRoute: typeof ProjectPProjectIdSamRoute
   ProjectPProjectIdSavedRoute: typeof ProjectPProjectIdSavedRoute
   ProjectPProjectIdSearchPerformanceRoute: typeof ProjectPProjectIdSearchPerformanceRoute
   ProjectPProjectIdSettingsRoute: typeof ProjectPProjectIdSettingsRouteWithChildren
+  ProjectPProjectIdWorkspaceSettingsRoute: typeof ProjectPProjectIdWorkspaceSettingsRoute
   ProjectPProjectIdIndexRoute: typeof ProjectPProjectIdIndexRoute
   ProjectPProjectIdCompetitorsIndexRoute: typeof ProjectPProjectIdCompetitorsIndexRoute
   ProjectPProjectIdOptimizationsIndexRoute: typeof ProjectPProjectIdOptimizationsIndexRoute
@@ -2108,11 +2287,15 @@ interface ProjectPProjectIdRouteRouteChildren {
 
 const ProjectPProjectIdRouteRouteChildren: ProjectPProjectIdRouteRouteChildren =
   {
+    ProjectPProjectIdModulesRouteRoute:
+      ProjectPProjectIdModulesRouteRouteWithChildren,
+    ProjectPProjectIdAiRoute: ProjectPProjectIdAiRoute,
     ProjectPProjectIdAuditRoute: ProjectPProjectIdAuditRouteWithChildren,
     ProjectPProjectIdBacklinksRoute: ProjectPProjectIdBacklinksRoute,
     ProjectPProjectIdBrandLookupRoute: ProjectPProjectIdBrandLookupRoute,
     ProjectPProjectIdDomainRoute: ProjectPProjectIdDomainRoute,
     ProjectPProjectIdKeywordsRoute: ProjectPProjectIdKeywordsRoute,
+    ProjectPProjectIdPerformanceRoute: ProjectPProjectIdPerformanceRoute,
     ProjectPProjectIdPromptExplorerRoute: ProjectPProjectIdPromptExplorerRoute,
     ProjectPProjectIdRankTrackingRoute:
       ProjectPProjectIdRankTrackingRouteWithChildren,
@@ -2121,6 +2304,8 @@ const ProjectPProjectIdRouteRouteChildren: ProjectPProjectIdRouteRouteChildren =
     ProjectPProjectIdSearchPerformanceRoute:
       ProjectPProjectIdSearchPerformanceRoute,
     ProjectPProjectIdSettingsRoute: ProjectPProjectIdSettingsRouteWithChildren,
+    ProjectPProjectIdWorkspaceSettingsRoute:
+      ProjectPProjectIdWorkspaceSettingsRoute,
     ProjectPProjectIdIndexRoute: ProjectPProjectIdIndexRoute,
     ProjectPProjectIdCompetitorsIndexRoute:
       ProjectPProjectIdCompetitorsIndexRoute,

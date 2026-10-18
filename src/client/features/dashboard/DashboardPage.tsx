@@ -1,3 +1,4 @@
+import { useProjectAddress } from "@/client/lib/use-project-address";
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -76,6 +77,8 @@ function OnboardingChecklist({
   projectId: string;
   activation: DashboardActivation;
 }) {
+  const workspaceProjectAddress = useProjectAddress();
+
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [domainInput, setDomainInput] = useState("");
@@ -213,7 +216,8 @@ function OnboardingChecklist({
             </form>
           ) : step === "mcp" ? (
             <Link
-              to="/ai"
+              to="/p/$projectId/ai"
+              params={{ projectId: workspaceProjectAddress }}
               className="link link-primary text-sm font-medium"
               onClick={() =>
                 captureClientEvent("dashboard:next_move_click", { step })

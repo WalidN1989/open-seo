@@ -1,9 +1,12 @@
+import { useProjectAddress } from "@/client/lib/use-project-address";
 import { Link } from "@tanstack/react-router";
 import { Bot } from "lucide-react";
 import type { AssistantConfig } from "./assistantQuery";
 
 /** Whether this business has a Claude connection, and where to fix it. */
 export function AssistantStatusBanner({ ai }: { ai: AssistantConfig["ai"] }) {
+  const workspaceProjectAddress = useProjectAddress();
+
   return (
     <section
       className={`rounded-xl border p-4 ${ai.connected ? "border-success/40 bg-success/5" : "border-warning/50 bg-warning/10"}`}
@@ -26,7 +29,11 @@ export function AssistantStatusBanner({ ai }: { ai: AssistantConfig["ai"] }) {
               <span className="font-medium">Claude is not connected.</span>{" "}
               Instant answers and escalation still work; AI replies start once
               you connect Claude Haiku under{" "}
-              <Link to="/modules/integrations" className="link link-primary">
+              <Link
+                to="/p/$projectId/modules/integrations"
+                params={{ projectId: workspaceProjectAddress }}
+                className="link link-primary"
+              >
                 Integrations
               </Link>
               .

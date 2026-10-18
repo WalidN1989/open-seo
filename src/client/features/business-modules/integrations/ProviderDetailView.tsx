@@ -1,3 +1,4 @@
+import { useProjectAddress } from "@/client/lib/use-project-address";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useParams } from "@tanstack/react-router";
 import { toast } from "sonner";
@@ -21,8 +22,10 @@ import {
 const WORKSPACE_KEY = ["integrations", "workspace"];
 
 export function IntegrationProviderDetailView() {
+  const workspaceProjectAddress = useProjectAddress();
+
   const { providerKey } = useParams({
-    from: "/_app/modules/integrations/$providerKey",
+    from: "/_project/p/$projectId/modules/integrations/$providerKey",
   });
   const queryClient = useQueryClient();
 
@@ -99,7 +102,11 @@ export function IntegrationProviderDetailView() {
 
   return (
     <div className="space-y-6">
-      <Link to="/modules/integrations" className="btn btn-ghost btn-sm -ml-2">
+      <Link
+        to="/p/$projectId/modules/integrations"
+        params={{ projectId: workspaceProjectAddress }}
+        className="btn btn-ghost btn-sm -ml-2"
+      >
         <ArrowLeft className="size-4" />
         Integrations
       </Link>

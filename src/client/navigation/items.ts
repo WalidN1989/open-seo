@@ -83,34 +83,41 @@ const projectNavItems = [
   },
 ] as const;
 
-const aiNavItem = linkOptions({
-  to: "/ai" as const,
-  label: "AI & MCP",
-  icon: Bot,
-});
+/** Business navigation always keeps the current workspace in the address. */
+export function getDemoOverviewNavItem(projectId: string) {
+  return linkOptions({
+    to: "/p/$projectId/modules/overview",
+    params: { projectId },
+    label: "Overview",
+    icon: Gauge,
+  });
+}
 
-/** Where a client on sample data lands: a worked example of their business. */
-export const demoOverviewNavItem = linkOptions({
-  to: "/modules/overview" as const,
-  label: "Overview",
-  icon: Gauge,
-});
-
-const businessModulesNavItem = linkOptions({
-  to: "/modules" as const,
-  label: "Business",
-  icon: PackageOpen,
-});
-
-// Always-visible sidebar group (not project-scoped, unlike the groups below).
-export const connectNavGroup = {
-  label: "Connect",
-  items: [
-    businessModulesNavItem,
-    aiNavItem,
-    linkOptions({ to: "/performance", label: "Performance", icon: Gauge }),
-  ],
-};
+export function getConnectNavGroup(projectId: string) {
+  return {
+    label: "Connect",
+    items: [
+      linkOptions({
+        to: "/p/$projectId/modules",
+        params: { projectId },
+        label: "Business",
+        icon: PackageOpen,
+      }),
+      linkOptions({
+        to: "/p/$projectId/ai",
+        params: { projectId },
+        label: "AI & MCP",
+        icon: Bot,
+      }),
+      linkOptions({
+        to: "/p/$projectId/performance",
+        params: { projectId },
+        label: "Performance",
+        icon: Gauge,
+      }),
+    ],
+  };
+}
 
 function getProjectNavItems(projectId: string) {
   return linkOptions(

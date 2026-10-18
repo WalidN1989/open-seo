@@ -1,3 +1,4 @@
+import { useProjectAddress } from "@/client/lib/use-project-address";
 import { useCallback, useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { ArrowLeft, Building2, FileSignature } from "lucide-react";
@@ -80,20 +81,22 @@ function LeadHeader({
   detail: LeadDetail;
   onStage: (stageId: string) => void;
 }) {
+  const workspaceProjectAddress = useProjectAddress();
+
   const name = detail.company?.name ?? detail.lead.title;
   return (
     <div className="flex flex-wrap items-center gap-3">
       <Link
-        to="/modules/$moduleKey"
-        params={{ moduleKey: "leads" }}
+        to="/p/$projectId/modules/$moduleKey"
+        params={{ projectId: workspaceProjectAddress, moduleKey: "leads" }}
         className="flex items-center gap-1.5 text-sm text-base-content/55 hover:text-base-content"
       >
         <ArrowLeft className="size-4" />
         Leads /<span className="font-medium text-base-content">{name}</span>
       </Link>
       <Link
-        to="/modules/quotes/$quoteId"
-        params={{ quoteId: "new" }}
+        to="/p/$projectId/modules/quotes/$quoteId"
+        params={{ projectId: workspaceProjectAddress, quoteId: "new" }}
         search={{ leadId: detail.lead.id }}
         className="btn btn-primary btn-sm ml-auto"
       >

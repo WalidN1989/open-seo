@@ -1,3 +1,4 @@
+import { useProjectAddress } from "@/client/lib/use-project-address";
 import { Link } from "@tanstack/react-router";
 import { FileSignature, Plus } from "lucide-react";
 import { formatMoney } from "@/server/features/invoicing/invoiceTotals";
@@ -9,6 +10,8 @@ import {
 
 /** The Quotes tab of the invoicing workspace. */
 export function QuotesSection() {
+  const workspaceProjectAddress = useProjectAddress();
+
   const query = useQuotesWorkspace();
   if (query.isPending) {
     return (
@@ -29,8 +32,8 @@ export function QuotesSection() {
   return (
     <div className="space-y-3">
       <Link
-        to="/modules/quotes/$quoteId"
-        params={{ quoteId: "new" }}
+        to="/p/$projectId/modules/quotes/$quoteId"
+        params={{ projectId: workspaceProjectAddress, quoteId: "new" }}
         className="btn btn-primary btn-sm"
       >
         <Plus className="size-4" /> New quote
@@ -44,8 +47,8 @@ export function QuotesSection() {
         quotes.map((quote) => (
           <Link
             key={quote.id}
-            to="/modules/quotes/$quoteId"
-            params={{ quoteId: quote.id }}
+            to="/p/$projectId/modules/quotes/$quoteId"
+            params={{ projectId: workspaceProjectAddress, quoteId: quote.id }}
             className="flex w-full flex-wrap items-center gap-3 rounded-xl border border-base-300 px-4 py-3 text-left transition-colors hover:bg-base-200/60"
           >
             <span

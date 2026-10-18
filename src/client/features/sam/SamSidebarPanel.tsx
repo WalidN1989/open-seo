@@ -1,3 +1,4 @@
+import { useProjectAddress } from "@/client/lib/use-project-address";
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
@@ -14,6 +15,8 @@ const BETA_NOTICE_DISMISSED_KEY = "sam-beta-notice-dismissed";
 // tab. Dismissible per browser; localStorage is read in an effect so SSR and
 // the first client render stay identical (same pattern as AppShell).
 function BetaNotice() {
+  const workspaceProjectAddress = useProjectAddress();
+
   const [dismissed, setDismissed] = useState(true);
   useEffect(() => {
     setDismissed(localStorage.getItem(BETA_NOTICE_DISMISSED_KEY) === "1");
@@ -40,7 +43,11 @@ function BetaNotice() {
         For more powerful AI workflows, use the Digital Urgency MCP with your
         own agent like Claude Code or Hermes.
       </p>
-      <Link to="/ai" className="link link-primary mt-1.5 inline-block text-xs">
+      <Link
+        to="/p/$projectId/ai"
+        params={{ projectId: workspaceProjectAddress }}
+        className="link link-primary mt-1.5 inline-block text-xs"
+      >
         Set up the MCP →
       </Link>
     </div>

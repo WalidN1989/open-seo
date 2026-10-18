@@ -1,3 +1,4 @@
+import { useProjectAddress } from "@/client/lib/use-project-address";
 import { Link } from "@tanstack/react-router";
 import { FileSignature, Plus } from "lucide-react";
 import { formatMoney } from "@/server/features/invoicing/invoiceTotals";
@@ -9,6 +10,8 @@ import {
 
 /** Quotes raised for this lead, and the way to raise another. */
 export function LeadQuotesCard({ leadId }: { leadId: string }) {
+  const workspaceProjectAddress = useProjectAddress();
+
   const query = useLeadQuotes(leadId);
   if (!query.data?.canQuote) return null;
   const { quotes } = query.data;
@@ -20,8 +23,8 @@ export function LeadQuotesCard({ leadId }: { leadId: string }) {
           {quotes.length}
         </span>
         <Link
-          to="/modules/quotes/$quoteId"
-          params={{ quoteId: "new" }}
+          to="/p/$projectId/modules/quotes/$quoteId"
+          params={{ projectId: workspaceProjectAddress, quoteId: "new" }}
           search={{ leadId }}
           className="btn btn-ghost btn-xs ml-auto"
         >
@@ -35,8 +38,11 @@ export function LeadQuotesCard({ leadId }: { leadId: string }) {
           {quotes.map((quote) => (
             <li key={quote.id}>
               <Link
-                to="/modules/quotes/$quoteId"
-                params={{ quoteId: quote.id }}
+                to="/p/$projectId/modules/quotes/$quoteId"
+                params={{
+                  projectId: workspaceProjectAddress,
+                  quoteId: quote.id,
+                }}
                 className="flex items-center gap-2 px-3 py-2 hover:bg-base-200/50"
               >
                 <FileSignature className="size-4 shrink-0 text-base-content/50" />

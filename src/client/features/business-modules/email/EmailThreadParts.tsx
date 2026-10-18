@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useProjectAddress } from "@/client/lib/use-project-address";
 import { useQuery } from "@tanstack/react-query";
 import { Paperclip, Sparkles } from "lucide-react";
 import {
@@ -30,6 +31,7 @@ export function MessageCard({
   ownAddress: string;
   microsoft: boolean;
 }) {
+  const projectId = useProjectAddress();
   const [showQuoted, setShowQuoted] = useState(false);
   const attachments = useQuery({
     queryKey: ["email", "microsoft-attachments", message.id],
@@ -124,7 +126,7 @@ export function MessageCard({
               <a
                 key={file.id}
                 className="btn btn-outline btn-xs max-w-full gap-1"
-                href={`/api/email/attachments/${encodeURIComponent(message.id)}/${encodeURIComponent(file.id)}`}
+                href={`/api/email/attachments/${encodeURIComponent(message.id)}/${encodeURIComponent(file.id)}?projectId=${encodeURIComponent(projectId)}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 title={`${file.name} (${Math.ceil(file.size / 1024)} KB)`}

@@ -1,3 +1,4 @@
+import { useProjectAddress } from "@/client/lib/use-project-address";
 import { useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import {
@@ -53,6 +54,8 @@ export function QuotePage({
   leadId: string | null;
   edit: boolean;
 }) {
+  const workspaceProjectAddress = useProjectAddress();
+
   const navigate = useNavigate();
   const isNew = quoteId === "new";
   const workspace = useQuotesWorkspace();
@@ -61,16 +64,22 @@ export function QuotePage({
 
   const open = (id: string, editing = false) =>
     void navigate({
-      to: "/modules/quotes/$quoteId",
-      params: { quoteId: id },
+      to: "/p/$projectId/modules/quotes/$quoteId",
+      params: { projectId: workspaceProjectAddress, quoteId: id },
       search: editing ? { edit: true } : {},
     });
   const back = () => {
     const lead = detail.data?.quote.leadId ?? leadId;
     if (lead) {
-      void navigate({ to: "/modules/leads/$leadId", params: { leadId: lead } });
+      void navigate({
+        to: "/p/$projectId/modules/leads/$leadId",
+        params: { projectId: workspaceProjectAddress, leadId: lead },
+      });
     } else {
-      void navigate({ to: "/modules/crm/quotations" });
+      void navigate({
+        params: { projectId: workspaceProjectAddress },
+        to: "/p/$projectId/modules/crm/quotations",
+      });
     }
   };
 
@@ -115,6 +124,8 @@ function QuoteView({
   onBack: () => void;
   onEdit: () => void;
 }) {
+  const workspaceProjectAddress = useProjectAddress();
+
   const { quote } = detail;
   const setStatus = useSetQuoteStatus();
   const remove = useDeleteQuote();
@@ -284,8 +295,11 @@ function QuoteView({
           ) : null}
           {quote.convertedInvoiceId ? (
             <Link
-              to="/modules/$moduleKey"
-              params={{ moduleKey: "invoicing" }}
+              to="/p/$projectId/modules/$moduleKey"
+              params={{
+                projectId: workspaceProjectAddress,
+                moduleKey: "invoicing",
+              }}
               className="btn btn-ghost btn-sm"
             >
               <FileText className="size-4" /> Invoiced

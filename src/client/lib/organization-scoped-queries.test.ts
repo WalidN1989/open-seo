@@ -1,6 +1,6 @@
 import { QueryClient } from "@tanstack/react-query";
-import { describe, expect, it } from "vitest";
-import { resetOrganizationScopedQueries } from "./organization-scoped-queries";
+import { describe, expect, it, vi } from "vitest";
+import { discardWorkspaceQueries } from "./organization-scoped-queries";
 
 function clientWith(entries: [readonly unknown[], unknown][]) {
   const queryClient = new QueryClient({
@@ -11,6 +11,39 @@ function clientWith(entries: [readonly unknown[], unknown][]) {
 }
 
 describe("discarding the previous client's cached answers", () => {
+  it("cancels old in-flight business results before mounting another workspace", async () => {
+    const queryClient = clientWith([
+      [["projects"], [{ id: "project_a" }]],
+      [["dashboardOverview", "project_a"], { clicks: 42 }],
+      [["whatsapp", "workspace"], { customer: "Alpha" }],
+    ]);
+    let finish: (value: unknown) => void = vi.fn();
+    const pending = queryClient
+      .fetchQuery({
+        queryKey: ["crm", "workspace"],
+        queryFn: () =>
+          new Promise((resolve) => {
+            finish = resolve;
+          }),
+      })
+      .catch(() => undefined);
+    await discardWorkspaceQueries(queryClient);
+    queryClient.setQueryData(["crm", "workspace"], { customer: "Beta" });
+    finish({ customer: "Alpha" });
+    await pending;
+    expect(queryClient.getQueryData(["crm", "workspace"])).toEqual({
+      customer: "Beta",
+    });
+    expect(queryClient.getQueryData(["whatsapp", "workspace"])).toBeUndefined();
+    expect(queryClient.getQueryData(["projects"])).toEqual([
+      { id: "project_a" },
+    ]);
+    expect(
+      queryClient.getQueryData(["dashboardOverview", "project_a"]),
+    ).toEqual({ clicks: 42 });
+    queryClient.clear();
+  });
+
   it("drops business-module data, which is keyed by module and not by project", async () => {
     const queryClient = clientWith([
       [["integrations", "workspace"], { connections: ["shopify"] }],
@@ -23,7 +56,7 @@ describe("discarding the previous client's cached answers", () => {
       [["business", "settings", "currency"], { currency: "AUD" }],
     ]);
 
-    await resetOrganizationScopedQueries(queryClient);
+    await discardWorkspaceQueries(queryClient);
 
     for (const key of [
       ["integrations", "workspace"],
@@ -38,9 +71,8 @@ describe("discarding the previous client's cached answers", () => {
     }
   });
 
-  // Clearing these is what left the dashboard on skeletons until the page was
-  // navigated away from and back: their observers were still mounted, and an
-  // observer whose query has been removed has nothing to refetch.
+  // SEO data already carries the project in its key. Leave it warm for the
+  // next visit, along with the membership list used by the project switcher.
   it("leaves project-keyed SEO data alone", async () => {
     const queryClient = clientWith([
       [["dashboardOverview", "project_a"], { clicks: 6081 }],
@@ -50,7 +82,7 @@ describe("discarding the previous client's cached answers", () => {
       [["integrations", "workspace"], { connections: ["shopify"] }],
     ]);
 
-    await resetOrganizationScopedQueries(queryClient);
+    await discardWorkspaceQueries(queryClient);
 
     expect(
       queryClient.getQueryData(["dashboardOverview", "project_a"]),

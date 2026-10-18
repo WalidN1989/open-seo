@@ -1,15 +1,20 @@
 import { useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
-import { setActiveProject } from "@/serverFunctions/projects";
-import { resetOrganizationScopedQueries } from "@/client/lib/organization-scoped-queries";
+import { getProjects, setActiveProject } from "@/serverFunctions/projects";
+import { projectAddress } from "@/client/lib/active-project";
+import { projectScopedPath } from "@/shared/project-navigation";
+
 import type {
   EngineeringSignal,
   PerformanceRecord,
 } from "@/shared/performance";
 
 export function RecordList({ records }: { records: PerformanceRecord[] }) {
-  const client = useQueryClient();
+  const projects = useQuery({
+    queryKey: ["projects"],
+    queryFn: () => getProjects(),
+  });
   const navigate = useNavigate();
   const [opening, setOpening] = useState<string | null>(null);
   const [error, setError] = useState(false);
@@ -17,9 +22,12 @@ export function RecordList({ records }: { records: PerformanceRecord[] }) {
     setOpening(record.id);
     setError(false);
     try {
-      await setActiveProject({ data: { projectId: record.projectId } });
-      await resetOrganizationScopedQueries(client);
-      await navigate({ href: record.path });
+      const project = projects.data?.find((p) => p.id === record.projectId);
+      if (!project) throw new Error("Workspace unavailable");
+      await navigate({
+        href: projectScopedPath(projectAddress(project), record.path),
+      });
+      await setActiveProject({ data: { projectId: project.id } });
     } catch {
       setError(true);
     } finally {

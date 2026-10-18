@@ -109,6 +109,8 @@ async function blobToBase64(blob: Blob) {
 
 export function VoiceAgentLauncher() {
   const client = useQueryClient();
+  const mountedRef = useRef(true);
+  const turnRef = useRef<AbortController | null>(null);
   const [open, setOpen] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [listening, setListening] = useState(false);
@@ -243,7 +245,9 @@ export function VoiceAgentLauncher() {
       mimeType: string;
     }) => transcribeVoiceAudio({ data: { ...data, language: "multi" } }),
     onSuccess: async (result) => {
+      if (!mountedRef.current) return;
       await client.invalidateQueries({ queryKey: ["voice"] });
+      if (!mountedRef.current) return;
       // A pause is not a failure. Keep the microphone open and say so plainly
       // rather than ending the conversation on an error the person did not
       // cause.
@@ -284,13 +288,17 @@ export function VoiceAgentLauncher() {
     audioBase64: string;
     mimeType: string;
   }) => {
+    if (!mountedRef.current) return;
+    const controller = new AbortController();
+    turnRef.current = controller;
     setStatus("Thinking…");
     let queue: SpeechQueue | null = null;
     try {
-      for await (const event of streamVoiceTurn({
-        ...data,
-        language: "multi",
-      })) {
+      for await (const event of streamVoiceTurn(
+        { ...data, language: "multi" },
+        controller.signal,
+      )) {
+        if (!mountedRef.current) return;
         if (event.type === "silence") {
           // A pause is not a failure: keep the microphone open.
           setStatus("Listening…");
@@ -318,6 +326,7 @@ export function VoiceAgentLauncher() {
       if (queue) finishSpeaking(queue);
       void client.invalidateQueries({ queryKey: ["voice"] });
     } catch (error) {
+      if (!mountedRef.current || controller.signal.aborted) return;
       if (queue) {
         stopReply();
         setStatus(getStandardErrorMessage(error));
@@ -334,7 +343,11 @@ export function VoiceAgentLauncher() {
 
   const beginListening = async (openStream?: MediaStream) => {
     const activeConversationId = conversationRef.current;
-    if (!activeConversationId || recorderRef.current?.state === "recording") {
+    if (
+      !mountedRef.current ||
+      !activeConversationId ||
+      recorderRef.current?.state === "recording"
+    ) {
       openStream?.getTracks().forEach((track) => track.stop());
       return;
     }
@@ -342,6 +355,10 @@ export function VoiceAgentLauncher() {
       const stream =
         openStream ??
         (await navigator.mediaDevices.getUserMedia({ audio: MICROPHONE }));
+      if (!mountedRef.current) {
+        stream.getTracks().forEach((track) => track.stop());
+        return;
+      }
       const recorder = new MediaRecorder(stream);
       const chunks: Blob[] = [];
       recorderRef.current = recorder;
@@ -352,7 +369,7 @@ export function VoiceAgentLauncher() {
       recorder.onstop = async () => {
         releaseMicrophone();
         recorderRef.current = null;
-        if (!chunks.length) return;
+        if (!mountedRef.current || !chunks.length) return;
         setStatus("Thinking…");
         const blob = new Blob(chunks, { type: recorder.mimeType });
         void runTurn({
@@ -409,6 +426,7 @@ export function VoiceAgentLauncher() {
   const start = useMutation({
     mutationFn: async () => {
       const latest = await getVoiceWorkspace();
+      if (!mountedRef.current) throw new Error("Workspace changed");
       const agent =
         latest.agents[0] ??
         (await createVoiceAgent({
@@ -420,9 +438,11 @@ export function VoiceAgentLauncher() {
             credentialReference: "OPENSEO_VOICE",
           },
         }));
+      if (!mountedRef.current) throw new Error("Workspace changed");
       return startVoiceConversation({ data: { agentConfigId: agent.id } });
     },
     onSuccess: async (conversation) => {
+      if (!mountedRef.current) return;
       conversationRef.current = conversation.id;
       setConversationId(conversation.id);
       continuousRef.current = true;
@@ -496,17 +516,23 @@ export function VoiceAgentLauncher() {
     return () => window.removeEventListener("keydown", shortcut);
   }, [start]);
 
-  useEffect(
-    () => () => {
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      turnRef.current?.abort();
       continuousRef.current = false;
       replyRef.current?.queue.stop();
       replyRef.current?.stopWatch();
       if (animationFrameRef.current !== null)
         cancelAnimationFrame(animationFrameRef.current);
       streamRef.current?.getTracks().forEach((track) => track.stop());
-    },
-    [],
-  );
+      const recorder = recorderRef.current;
+      if (recorder) recorder.onstop = null;
+      if (recorder?.state === "recording") recorder.stop();
+      void audioContextRef.current?.close().catch(() => undefined);
+    };
+  }, []);
 
   // Moving to another page fades the panel away so the page can be used; the
   // conversation carries on, and the orb brings the panel back.
@@ -712,7 +738,7 @@ export function VoiceAgentLauncher() {
         }
         aria-expanded={open}
         title="Voice Agent · Ctrl+Space or \u2318\u21e7Space"
-        className="group fixed right-4 bottom-5 z-50 grid size-14 place-items-center rounded-full transition hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary md:right-6 md:bottom-6"
+        className="group fixed right-4 bottom-5 z-50 grid size-14 place-items-center rounded-full opacity-65 transition hover:-translate-y-0.5 hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary md:right-6 md:bottom-6"
       >
         {/* While a conversation is live the orb keeps glowing, so it is plain
             the agent is still with you after the panel fades away. */}

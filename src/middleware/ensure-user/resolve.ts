@@ -4,6 +4,7 @@ import { resolveCloudflareAccessContext } from "./cloudflareAccess";
 import { resolveLocalNoAuthContext } from "./delegated";
 import { resolveHostedContext } from "./hosted";
 import type { EnsuredUserContext } from "./types";
+import { resolveRequestProject } from "./project";
 
 // Resolves the authenticated user for a request's headers across every auth
 // mode. Shared by ensureUserMiddleware (server functions) and raw API routes,
@@ -13,10 +14,13 @@ export async function resolveUserContextFromHeaders(
 ): Promise<EnsuredUserContext> {
   const authMode = getAuthMode(env.AUTH_MODE);
   if (authMode === "local_noauth") {
-    return resolveLocalNoAuthContext();
+    return resolveRequestProject(await resolveLocalNoAuthContext(), headers);
   }
   if (isUserAuthMode(authMode)) {
-    return resolveHostedContext(headers);
+    return resolveRequestProject(await resolveHostedContext(headers), headers);
   }
-  return resolveCloudflareAccessContext(headers);
+  return resolveRequestProject(
+    await resolveCloudflareAccessContext(headers),
+    headers,
+  );
 }

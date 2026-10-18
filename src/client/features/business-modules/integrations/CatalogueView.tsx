@@ -1,3 +1,4 @@
+import { useProjectAddress } from "@/client/lib/use-project-address";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
@@ -117,6 +118,8 @@ function IntegrationCard({
   connected: boolean;
   statusKnown: boolean;
 }) {
+  const workspaceProjectAddress = useProjectAddress();
+
   const state = connected
     ? "Connected"
     : entry.state === "built_in"
@@ -128,8 +131,8 @@ function IntegrationCard({
           : "Status unavailable";
   return (
     <Link
-      to="/modules/integrations/$providerKey"
-      params={{ providerKey: entry.key }}
+      to="/p/$projectId/modules/integrations/$providerKey"
+      params={{ projectId: workspaceProjectAddress, providerKey: entry.key }}
       className={`integration-tile ${connected ? "is-connected" : ""}`}
       aria-label={`${entry.name} — ${state}`}
       title={`${entry.name}: ${entry.tagline}`}

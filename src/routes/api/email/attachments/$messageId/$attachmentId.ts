@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { resolveUserContextFromHeaders } from "@/middleware/ensure-user/resolve";
 import { openMicrosoftAttachment } from "@/server/features/email/services/MicrosoftAttachmentService";
+import { PROJECT_SCOPE_HEADER } from "@/shared/project-navigation";
 
 const viewable = new Set([
   "application/pdf",
@@ -18,7 +19,10 @@ export const Route = createFileRoute(
       GET: async ({ params, request }) => {
         let context;
         try {
-          context = await resolveUserContextFromHeaders(request.headers);
+          const headers = new Headers(request.headers);
+          const projectId = new URL(request.url).searchParams.get("projectId");
+          if (projectId !== null) headers.set(PROJECT_SCOPE_HEADER, projectId);
+          context = await resolveUserContextFromHeaders(headers);
         } catch {
           return new Response("Sign in to view this attachment.", {
             status: 401,

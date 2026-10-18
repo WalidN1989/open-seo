@@ -7,6 +7,8 @@ import type {
 } from "@/middleware/ensure-user/types";
 import { AppError } from "@/server/lib/errors";
 import { ProjectRepository } from "@/server/features/projects/repositories/ProjectRepository";
+import { projectScopeHeaders } from "@/shared/project-navigation";
+import { assertRequestProjectInput } from "@/middleware/ensure-user/project";
 
 function extractProjectId(data: unknown) {
   if (!data || typeof data !== "object" || !("projectId" in data)) {
@@ -62,52 +64,63 @@ async function resolveOrAnonymous(headers: Headers) {
 
 export const ensureUserMiddleware = createMiddleware({
   type: "function",
-}).server(async ({ next, data }) => {
-  const context = await resolveOrAnonymous(getRequest().headers);
-  // One `next` call, so the context has one type whether or not a user was
-  // found. Anonymous is an empty object; the endpoint's own middleware is
-  // what turns "empty" into a refusal.
-  let resolved: Partial<EnsuredUserContext> = {};
+})
+  .client(async ({ next }) =>
+    next({
+      headers:
+        typeof window === "undefined"
+          ? {}
+          : projectScopeHeaders(window.location.pathname),
+    }),
+  )
+  .server(async ({ next, data }) => {
+    const context = await resolveOrAnonymous(getRequest().headers);
+    // One `next` call, so the context has one type whether or not a user was
+    // found. Anonymous is an empty object; the endpoint's own middleware is
+    // what turns "empty" into a refusal.
+    let resolved: Partial<EnsuredUserContext> = {};
 
-  const projectId = context ? extractProjectId(data) : null;
+    const projectId = context ? extractProjectId(data) : null;
 
-  let project: EnsuredProject | undefined;
+    let project: EnsuredProject | undefined = context?.project;
 
-  let organizationId = context?.organizationId;
+    let organizationId = context?.organizationId;
 
-  if (context && projectId && organizationId) {
-    // ADR 0001 intentionally keeps project authorization here so every
-    // project-scoped server function gets the same request-scoped org+project
-    // check before handlers run. Function-level middleware narrows the type.
-    project = await ProjectRepository.getProjectForOrganization(
-      projectId,
-      organizationId,
-    );
+    assertRequestProjectInput(context, projectId);
 
-    if (!project) {
-      // Each project owns its own organization, so a project the active
-      // organization does not contain is usually the user's own project in a
-      // different one — a switcher click, a bookmark, or a link into another
-      // client. Authorize it by membership and move the session with it, so
-      // the business modules (which read the active organization and know
-      // nothing about projects) follow the project the user is actually in.
-      project = await ProjectRepository.getProjectForMember(
-        context.userId,
+    if (context && !project && projectId && organizationId) {
+      // ADR 0001 intentionally keeps project authorization here so every
+      // project-scoped server function gets the same request-scoped org+project
+      // check before handlers run. Function-level middleware narrows the type.
+      project = await ProjectRepository.getProjectForOrganization(
         projectId,
+        organizationId,
       );
 
       if (!project) {
-        throw new AppError("NOT_FOUND");
+        // Each project owns its own organization, so a project the active
+        // organization does not contain is usually the user's own project in a
+        // different one — a switcher click, a bookmark, or a link into another
+        // client. Authorize it by membership and move the session with it, so
+        // the business modules (which read the active organization and know
+        // nothing about projects) follow the project the user is actually in.
+        project = await ProjectRepository.getProjectForMember(
+          context.userId,
+          projectId,
+        );
+
+        if (!project) {
+          throw new AppError("NOT_FOUND");
+        }
+
+        organizationId = project.organizationId;
+        await activateOrganization(organizationId);
       }
-
-      organizationId = project.organizationId;
-      await activateOrganization(organizationId);
     }
-  }
 
-  if (context) {
-    resolved = { ...context, organizationId, project };
-  }
+    if (context) {
+      resolved = { ...context, organizationId, project };
+    }
 
-  return next({ context: resolved });
-});
+    return next({ context: resolved });
+  });

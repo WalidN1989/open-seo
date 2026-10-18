@@ -1,3 +1,4 @@
+import { useProjectAddress } from "@/client/lib/use-project-address";
 import {
   Building2,
   CalendarDays,
@@ -159,6 +160,8 @@ function useCrmView() {
 }
 
 export function CrmOverviewView() {
+  const workspaceProjectAddress = useProjectAddress();
+
   const { crm, workspace } = useCrmView();
   if (!workspace) return <CrmQueryState query={crm.query} />;
 
@@ -181,38 +184,43 @@ export function CrmOverviewView() {
         {(
           [
             {
+              params: { projectId: workspaceProjectAddress },
               label: "Contacts",
               value: workspace.contacts.length,
               icon: Users,
-              to: "/modules/crm/contacts",
+              to: "/p/$projectId/modules/crm/contacts",
               tone: "blue",
             },
             {
+              params: { projectId: workspaceProjectAddress },
               label: "Companies",
               value: workspace.companies.length,
               icon: Building2,
-              to: "/modules/crm/companies",
+              to: "/p/$projectId/modules/crm/companies",
               tone: "teal",
             },
             {
+              params: { projectId: workspaceProjectAddress },
               label: "Open inquiries",
               value: openInquiries.length,
               icon: Inbox,
-              to: "/modules/crm/inquiries",
+              to: "/p/$projectId/modules/crm/inquiries",
               tone: "amber",
             },
             {
+              params: { projectId: workspaceProjectAddress },
               label: "Upcoming meetings",
               value: upcomingMeetings.length,
               icon: CalendarDays,
-              to: "/modules/crm/meetings",
+              to: "/p/$projectId/modules/crm/meetings",
               tone: "violet",
             },
           ] as const
-        ).map(({ label, value, icon: Icon, to, tone }) => (
+        ).map(({ label, value, icon: Icon, to, tone, params }) => (
           <Link
             key={label}
             to={to}
+            params={params}
             className="crm-overview-stat"
             data-tone={tone}
           >
@@ -230,7 +238,11 @@ export function CrmOverviewView() {
           <div className="crm-overview-list">
             <ContactRows workspace={workspace} />
           </div>
-          <Link to="/modules/crm/contacts" className="crm-overview-more">
+          <Link
+            to="/p/$projectId/modules/crm/contacts"
+            params={{ projectId: workspaceProjectAddress }}
+            className="crm-overview-more"
+          >
             View all contacts <ArrowUpRight className="size-4" />
           </Link>
         </CrmPanel>
@@ -238,7 +250,11 @@ export function CrmOverviewView() {
           <div className="crm-overview-list">
             <CompanyRows workspace={workspace} />
           </div>
-          <Link to="/modules/crm/companies" className="crm-overview-more">
+          <Link
+            to="/p/$projectId/modules/crm/companies"
+            params={{ projectId: workspaceProjectAddress }}
+            className="crm-overview-more"
+          >
             View all companies <ArrowUpRight className="size-4" />
           </Link>
         </CrmPanel>
