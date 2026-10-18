@@ -78,6 +78,9 @@ vi.mock("../providers/microsoft", () => ({
     );
   },
 }));
+vi.mock("../repositories/MicrosoftSentRepository", () => ({
+  MicrosoftSentRepository: { pendingMicrosoftSent: async () => [] },
+}));
 vi.mock("../repositories/EmailRepository", () => ({
   EmailRepository: {
     getAccount: async () => state.account,

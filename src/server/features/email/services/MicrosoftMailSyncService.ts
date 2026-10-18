@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { AppError } from "@/server/lib/errors";
 import { BusinessModuleService } from "@/server/features/business-modules/services/BusinessModuleService";
+import { reconcileMicrosoftSent } from "./MicrosoftSentReconciliation";
 import { graphRequest } from "../providers/microsoft";
 import {
   EmailRepository as Repo,
@@ -91,6 +92,18 @@ async function ingest(
   )
     return;
   if (await Repo.findMessageByExternalId(account.id, message.id)) return;
+  if (
+    folder === "sentitems" &&
+    (await reconcileMicrosoftSent(account, {
+      id: message.id,
+      conversationId: message.conversationId ?? message.id,
+      occurredAt,
+      subject: message.subject ?? "",
+      text: message.body?.content ?? "",
+      to: (message.toRecipients ?? []).map((item) => item.emailAddress.address),
+    }))
+  )
+    return;
   const threadKey = message.conversationId ?? message.id;
   const existing = await Repo.findThreadByExternalId(account.id, threadKey);
   const latest = !existing || occurredAt >= existing.lastMessageAt;
