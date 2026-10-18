@@ -1915,3 +1915,25 @@ activation or customer send is included. Citypak still awaits its API key and
 separate integration release; the pending Citypak branch must be reconciled
 with the new review components before merging. Production deployment requires
 separate owner approval. Localhost/production data syncing remains deferred.
+
+### October 18, 2026 — restore selected Microsoft mailboxes on VPS
+
+The owner requested restoring South Side Fencing email sync and importing its
+missing mail, while keeping other scheduled jobs paused. Microsoft authentication
+and Graph access work, but its automatic delta sync stopped with the October 8
+cost reduction. This is independent of the completed VPS migration; Railway and
+Neon are deleted and are not runtime or recovery dependencies.
+
+The existing VPS mailbox bridge now runs a one-minute, non-overlapping sync loop
+only for account IDs explicitly configured in `MICROSOFT_MAIL_SYNC_ACCOUNT_IDS`.
+The default is off. It calls an internal-secret-protected mailbox-only operation;
+it never dispatches the standard/fast/slow job tiers. Inbox resumes its saved
+Microsoft delta cursor, and Sent maintains its own cursor after history import.
+Existing message IDs prevent duplicates. Mirroring never invokes the assistant
+or sends mail. Credentials remain encrypted in the VPS database and runtime
+settings remain in Coolify. No schema migration is needed.
+
+Release verification must compare Microsoft and CRM newest-message dates,
+confirm the selected mailbox advances without errors, preserve existing mail and
+ensure other background jobs remain paused. Disabling the account-ID setting
+stops periodic Microsoft syncing; existing mirrored messages remain available.
