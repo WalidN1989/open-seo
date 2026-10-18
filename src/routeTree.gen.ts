@@ -53,6 +53,7 @@ import { Route as AppHelpDataforseoApiKeyRouteImport } from './routes/_app/help/
 import { Route as ProjectPProjectIdRouteRouteImport } from './routes/_project/p/$projectId/route'
 import { Route as ProjectPProjectIdIndexRouteImport } from './routes/_project/p/$projectId/index'
 import { Route as ApiVoiceElevenlabsConnectionIdRouteImport } from './routes/api/voice/elevenlabs/$connectionId'
+import { Route as ApiVoiceElevenlabsQueryConnectionIdRouteImport } from './routes/api/voice/elevenlabs-query/$connectionId'
 import { Route as ApiVoiceElevenlabsCallerConnectionIdRouteImport } from './routes/api/voice/elevenlabs-caller/$connectionId'
 import { Route as ApiVoiceDeepgramConnectionIdRouteImport } from './routes/api/voice/deepgram/$connectionId'
 import { Route as ApiSmsTwilioConnectionIdRouteImport } from './routes/api/sms/twilio/$connectionId'
@@ -333,6 +334,12 @@ const ApiVoiceElevenlabsConnectionIdRoute =
   ApiVoiceElevenlabsConnectionIdRouteImport.update({
     id: '/api/voice/elevenlabs/$connectionId',
     path: '/api/voice/elevenlabs/$connectionId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiVoiceElevenlabsQueryConnectionIdRoute =
+  ApiVoiceElevenlabsQueryConnectionIdRouteImport.update({
+    id: '/api/voice/elevenlabs-query/$connectionId',
+    path: '/api/voice/elevenlabs-query/$connectionId',
     getParentRoute: () => rootRouteImport,
   } as any)
 const ApiVoiceElevenlabsCallerConnectionIdRoute =
@@ -743,6 +750,7 @@ export interface FileRoutesByFullPath {
   '/api/sms/twilio/$connectionId': typeof ApiSmsTwilioConnectionIdRoute
   '/api/voice/deepgram/$connectionId': typeof ApiVoiceDeepgramConnectionIdRoute
   '/api/voice/elevenlabs-caller/$connectionId': typeof ApiVoiceElevenlabsCallerConnectionIdRoute
+  '/api/voice/elevenlabs-query/$connectionId': typeof ApiVoiceElevenlabsQueryConnectionIdRoute
   '/api/voice/elevenlabs/$connectionId': typeof ApiVoiceElevenlabsConnectionIdRoute
   '/p/$projectId/': typeof ProjectPProjectIdIndexRoute
   '/p/$projectId/modules/$moduleKey': typeof ProjectPProjectIdModulesModuleKeyRoute
@@ -838,6 +846,7 @@ export interface FileRoutesByTo {
   '/api/sms/twilio/$connectionId': typeof ApiSmsTwilioConnectionIdRoute
   '/api/voice/deepgram/$connectionId': typeof ApiVoiceDeepgramConnectionIdRoute
   '/api/voice/elevenlabs-caller/$connectionId': typeof ApiVoiceElevenlabsCallerConnectionIdRoute
+  '/api/voice/elevenlabs-query/$connectionId': typeof ApiVoiceElevenlabsQueryConnectionIdRoute
   '/api/voice/elevenlabs/$connectionId': typeof ApiVoiceElevenlabsConnectionIdRoute
   '/p/$projectId': typeof ProjectPProjectIdIndexRoute
   '/p/$projectId/modules/$moduleKey': typeof ProjectPProjectIdModulesModuleKeyRoute
@@ -941,6 +950,7 @@ export interface FileRoutesById {
   '/api/sms/twilio/$connectionId': typeof ApiSmsTwilioConnectionIdRoute
   '/api/voice/deepgram/$connectionId': typeof ApiVoiceDeepgramConnectionIdRoute
   '/api/voice/elevenlabs-caller/$connectionId': typeof ApiVoiceElevenlabsCallerConnectionIdRoute
+  '/api/voice/elevenlabs-query/$connectionId': typeof ApiVoiceElevenlabsQueryConnectionIdRoute
   '/api/voice/elevenlabs/$connectionId': typeof ApiVoiceElevenlabsConnectionIdRoute
   '/_project/p/$projectId/': typeof ProjectPProjectIdIndexRoute
   '/_project/p/$projectId/modules/$moduleKey': typeof ProjectPProjectIdModulesModuleKeyRoute
@@ -1044,6 +1054,7 @@ export interface FileRouteTypes {
     | '/api/sms/twilio/$connectionId'
     | '/api/voice/deepgram/$connectionId'
     | '/api/voice/elevenlabs-caller/$connectionId'
+    | '/api/voice/elevenlabs-query/$connectionId'
     | '/api/voice/elevenlabs/$connectionId'
     | '/p/$projectId/'
     | '/p/$projectId/modules/$moduleKey'
@@ -1139,6 +1150,7 @@ export interface FileRouteTypes {
     | '/api/sms/twilio/$connectionId'
     | '/api/voice/deepgram/$connectionId'
     | '/api/voice/elevenlabs-caller/$connectionId'
+    | '/api/voice/elevenlabs-query/$connectionId'
     | '/api/voice/elevenlabs/$connectionId'
     | '/p/$projectId'
     | '/p/$projectId/modules/$moduleKey'
@@ -1241,6 +1253,7 @@ export interface FileRouteTypes {
     | '/api/sms/twilio/$connectionId'
     | '/api/voice/deepgram/$connectionId'
     | '/api/voice/elevenlabs-caller/$connectionId'
+    | '/api/voice/elevenlabs-query/$connectionId'
     | '/api/voice/elevenlabs/$connectionId'
     | '/_project/p/$projectId/'
     | '/_project/p/$projectId/modules/$moduleKey'
@@ -1313,6 +1326,7 @@ export interface RootRouteChildren {
   ApiSmsTwilioConnectionIdRoute: typeof ApiSmsTwilioConnectionIdRoute
   ApiVoiceDeepgramConnectionIdRoute: typeof ApiVoiceDeepgramConnectionIdRoute
   ApiVoiceElevenlabsCallerConnectionIdRoute: typeof ApiVoiceElevenlabsCallerConnectionIdRoute
+  ApiVoiceElevenlabsQueryConnectionIdRoute: typeof ApiVoiceElevenlabsQueryConnectionIdRoute
   ApiVoiceElevenlabsConnectionIdRoute: typeof ApiVoiceElevenlabsConnectionIdRoute
   ApiEmailAttachmentsMessageIdAttachmentIdRoute: typeof ApiEmailAttachmentsMessageIdAttachmentIdRoute
   ApiVoiceCallsCallIdRecordingRoute: typeof ApiVoiceCallsCallIdRecordingRoute
@@ -1626,6 +1640,13 @@ declare module '@tanstack/react-router' {
       path: '/api/voice/elevenlabs/$connectionId'
       fullPath: '/api/voice/elevenlabs/$connectionId'
       preLoaderRoute: typeof ApiVoiceElevenlabsConnectionIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/voice/elevenlabs-query/$connectionId': {
+      id: '/api/voice/elevenlabs-query/$connectionId'
+      path: '/api/voice/elevenlabs-query/$connectionId'
+      fullPath: '/api/voice/elevenlabs-query/$connectionId'
+      preLoaderRoute: typeof ApiVoiceElevenlabsQueryConnectionIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/voice/elevenlabs-caller/$connectionId': {
@@ -2394,6 +2415,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiVoiceDeepgramConnectionIdRoute: ApiVoiceDeepgramConnectionIdRoute,
   ApiVoiceElevenlabsCallerConnectionIdRoute:
     ApiVoiceElevenlabsCallerConnectionIdRoute,
+  ApiVoiceElevenlabsQueryConnectionIdRoute:
+    ApiVoiceElevenlabsQueryConnectionIdRoute,
   ApiVoiceElevenlabsConnectionIdRoute: ApiVoiceElevenlabsConnectionIdRoute,
   ApiEmailAttachmentsMessageIdAttachmentIdRoute:
     ApiEmailAttachmentsMessageIdAttachmentIdRoute,

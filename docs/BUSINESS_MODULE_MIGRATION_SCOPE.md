@@ -1,5 +1,21 @@
 # OpenSEO business module migration scope
 
+### 2026-10-18 — BooXworm voice/WhatsApp CRM lookup prepared
+
+The owner requested CRM stock and price answers, sender-number-first order
+lookup, returning-caller greetings and a ten-minute call cap. Read-only provider
+inspection confirmed ElevenLabs Main still queries the legacy Supabase
+`fathima-api`; it does not read the newly reconciled CRM inventory. The protected
+DigitalUrgency caller-initiation webhook is already configured.
+
+Branch `codex/booxworm-voice-crm` prepares a protected CRM product/order endpoint,
+sender-first WhatsApp lookup and post-call capture of an explicitly supplied
+customer phone. It does not activate Citypak, change stock/prices, approve
+orders or send messages. The ElevenLabs `DigitalUrgency CRM` branch is prepared
+with no live traffic; Main and its legacy tool remain unchanged. Deployment
+and the provider traffic switch still require owner approval. See
+`BOOXWORM_CUSTOMER_ASSISTANT.md` for the endpoint contract and release checks.
+
 ## Current production — confirmed 2026-10-18
 
 All apps and databases run on the Hostinger VPS under Coolify. The owner has
