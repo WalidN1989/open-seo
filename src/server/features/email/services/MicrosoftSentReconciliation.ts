@@ -1,3 +1,7 @@
+import {
+  normalisePhone,
+  phoneRegionOf,
+} from "../../voice-calls/elevenlabsWebhook";
 import { MicrosoftSentRepository } from "../repositories/MicrosoftSentRepository";
 import { z } from "zod";
 import {
@@ -21,7 +25,8 @@ function normalize(text: string) {
         }
         return url.hostname === "wa.me" &&
           /^\/\+?\d+$/.test(url.pathname) &&
-          url.pathname.replace(/\D/g, "") === shown.replace(/\D/g, "")
+          normalisePhone(shown, phoneRegionOf(`+${url.pathname.slice(1)}`)) ===
+            `+${url.pathname.slice(1)}`
           ? shown
           : all;
       },

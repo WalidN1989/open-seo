@@ -112,13 +112,13 @@ it("requires the same recipient and a nearby send time", async () => {
 it("recognizes Outlook auto-links only when their targets match the visible contacts", async () => {
   const { account, thread } = await seed();
   const original = await sent(account.id, thread.id);
-  const text = "Contact +61 400 000 001 or shop@example.com.";
+  const text = "Contact 0400 000 001 or shop@example.com.";
   await db
     .update(schema.emailMessages)
     .set({ textBody: text })
     .where(eq(schema.emailMessages.id, original.id));
   const rendered =
-    "Contact +61 400 000 001<https://wa.me/61400000001> or shop@example.com<mailto:shop@example.com>.";
+    "Contact 0400 000 001<https://wa.me/61400000001> or shop@example.com<mailto:shop@example.com>.";
   expect(
     await reconcile(account, {
       ...incoming,
