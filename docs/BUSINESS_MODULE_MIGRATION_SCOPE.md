@@ -1811,10 +1811,17 @@ on the VPS for recovery. No Citypak shipment was submitted for these data change
 Lovable confirms the API key secret exists but does not expose its value; owner
 entry through the DU courier field is still required before activation.
 
-Validation: 2,826 tests across 307 files, full ci:check, and selfhost build pass.
+Validation: 2,827 tests across 307 files, full ci:check, and selfhost build pass.
 An isolated PostgreSQL 18 database applied all 85 migrations and executed the real
 approval/dispatch queries with synthetic rows and a mocked Citypak provider,
 including scoped lookup and partial-payment COD. The actual review component was
 checked in a synthetic browser preview for delivery validation and waybill success
 feedback. These checks do not prove the live Citypak key or provider portal flow.
 Release and live provider verification remain outstanding.
+
+PR #41 contains the implementation. GitHub's Actions UI reports that Actions is
+currently disabled for the repository and directs the owner to GitHub Support;
+required GitHub ci/docker-build checks have not started, despite workflow settings
+reporting enabled via the API. Main protection is preserved; no merge, deployment,
+workflow-policy change or provider activation was performed. The Citypak key is
+still absent in DU. These external prerequisites remain before live verification.

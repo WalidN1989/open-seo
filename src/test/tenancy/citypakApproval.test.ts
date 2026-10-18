@@ -250,3 +250,21 @@ it("blocks approval when enabled Citypak has lost its credential", async () => {
   expect(await repo.effects(ORG_A, input.orderId)).toEqual([]);
   expect(provider.create).not.toHaveBeenCalled();
 });
+
+it("approving an old pending order does not backfill invoice or loyalty actions", async () => {
+  const input = await pending("old-citypak-only");
+  await repo.configure(ORG_A, connectionId, {
+    invoiceEnabled: true,
+    loyaltyMinorPerPoint: 100,
+  });
+  const result = await retail.approveImportedOrder(ORG_A, USER_OWNER_A, input);
+  expect(result.citypak?.status).toBe("succeeded");
+  expect(await repo.effects(ORG_A, input.orderId)).toMatchObject([
+    { kind: "citypak", status: "succeeded" },
+  ]);
+  const entries = await fixture.db
+    .select()
+    .from(schema.commerceLoyaltyEntries)
+    .where(eq(schema.commerceLoyaltyEntries.orderId, input.orderId));
+  expect(entries).toEqual([]);
+});
