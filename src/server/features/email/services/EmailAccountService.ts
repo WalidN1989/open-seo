@@ -339,7 +339,7 @@ async function connectMailbox(
 }
 
 /**
- * The host may not let SMTP out at all (Railway blocks 25, 465 and 587).
+ * A host or network policy may block outbound SMTP ports.
  * Reading still works over IMAP, and sending can go through Resend's HTTPS
  * API from the same address, provided Resend has verified that domain —
  * which is the case when the server's own sender is on it.

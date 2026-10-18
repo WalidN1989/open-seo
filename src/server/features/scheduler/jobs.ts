@@ -15,12 +15,12 @@ import { runDueWhatsappReplies } from "@/server/features/communications/services
 let registered = false;
 
 /**
- * Adding a job here is the only thing needed to make it run; the tier decides
- * how often (see CRON_TIER_INTERVAL_MS).
+ * Register jobs available to an explicitly invoked tier. Registration alone
+ * does not schedule them (see CRON_TIER_INTERVAL_MS).
  *
  * The two SEO jobs were previously reachable only through Cloudflare's
- * `scheduled` handler. On Railway that handler is never invoked, so neither
- * had ever run in this deployment.
+ * `scheduled` handler. Container deployments do not invoke that handler;
+ * they need an explicit trigger. Do not re-enable disabled legacy pollers.
  *
  * Idempotent: the handler calls it on every request and the registry rejects
  * duplicate names.

@@ -1,3 +1,7 @@
+# Legacy Railway configuration retained for compatibility, not used by DU.
+# Production apps and databases run on the VPS under Coolify.
+# See docs/VPS_RELEASES.md for the current release process.
+
 [build]
 builder = "DOCKERFILE"
 dockerfilePath = "Dockerfile.selfhost"

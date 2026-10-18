@@ -150,7 +150,7 @@ function mailboxOutbound(
   const from = { address: account.address, name: account.displayName ?? "" };
   // The key travels whenever Resend could send for this domain, not only
   // when Resend is the chosen transport: a host that let SMTP through at
-  // connect time can block it later (Railway does, intermittently), and the
+  // connect time can block it later, and the
   // bridge then falls back rather than timing out on a real customer.
   const resendApiKey = resendKeyFor(account.address);
   if (transport === "resend" && !resendApiKey) {

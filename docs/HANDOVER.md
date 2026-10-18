@@ -6,7 +6,8 @@ where the checkout lives, how to ship safely, the traps already paid for, and
 what is deliberately not built yet.
 
 This repository is **public**. Nothing here names a secret, an account id or a
-customer record — those live in Railway, Neon and each provider's console.
+customer record — those stay in private VPS storage, protected Coolify
+configuration and the relevant provider consoles.
 
 ## Where to work
 
@@ -24,10 +25,12 @@ customer record — those live in Railway, Neon and each provider's console.
 
 ## How to ship
 
-Railway's active production deployment was verified on **`main`** on
-2026-09-27. Follow `docs/FOUNDATION.md` for the release policy and
-`docs/RECOVERY.md` for rollback. Check live service settings before each release;
-a branch name alone cannot prevent someone from deploying it manually.
+Production runs on the **Hostinger VPS under Coolify**, with apps and
+databases on that server. The owner confirmed on **2026-10-18** that the
+Railway and Neon projects were deleted. They are not available for deployment
+or recovery. Use `docs/VPS_RELEASES.md` for the current image release process,
+`docs/FOUNDATION.md` for policy and `docs/RECOVERY.md` for rollback. Coolify is
+manual-only; check the actual live revision and settings before each release.
 
 1. Fetch current `origin/main`, then work in an isolated worktree on a short
    feature branch. Keep the primary checkout clean on `main`.
@@ -43,9 +46,10 @@ a branch name alone cannot prevent someone from deploying it manually.
 3. Open a pull request to our fork's `main`. Require passing CI, review, a
    migration/rollback assessment and the owner's release approval. Never push
    a local feature branch directly to `main`.
-4. Confirm Railway deploys the approved commit, then check health, login,
-   tenant isolation and the changed workflow. Record a known-good release only
-   after these pass. Delete a merged branch after accounting for its local work.
+4. Deploy only the owner-approved image/revision through Coolify, then check
+   health, login, tenant isolation and the changed workflow. Record a known-good
+   release only after these pass. Delete a merged branch after accounting for
+   its local work.
 
 At the 2026-09-27 audit, API flags reported Actions and CI enabled, but the
 Actions page initially required fork workflow activation. Subsequent inspection
@@ -79,18 +83,19 @@ Rules the gate enforces that are easy to trip:
 - **Project route params are slugs**, not ids. Use `isProjectAtAddress`.
 - **workerd** (the runtime the app serves from) cannot open TCP sockets and
   rejects `fetch(…, { redirect: "error" })`. SMTP and IMAP go through the Node
-  sidecar `scripts/mail-bridge.ts`; Railway blocks outbound SMTP below its Pro
-  plan, so the bridge falls back to Resend.
+  sidecar `scripts/mail-bridge.ts`. Check VPS/provider connectivity when
+  diagnosing mail delivery; the former Railway SMTP restriction is historical.
 - **Twilio webhooks** send any plain-text response body back to the customer as
   a message. Answer with empty TwiML.
 - **New public pages** need `h-dvh overflow-y-auto`: the app shell sets
   `overflow: hidden` on `html, body`.
 - **Resend** only verifies the root domain; subdomain senders are refused.
-- **`ALLOWED_HOST` and `BETTER_AUTH_URL`** must name different hosts, and
-  `BETTER_AUTH_URL` must include the scheme or the build fails.
-- **Neon bills awake time.** Background pollers are widened by env vars
-  (`INTERNAL_CRON_STANDARD_MS`, `INTERNAL_CRON_SLOW_MS`); a new poller must not
-  keep the database awake.
+- **Public build configuration:** `ALLOWED_HOST` is the bare application
+  hostname; `BETTER_AUTH_URL` is its full HTTPS URL. Match the approved Coolify
+  settings when building an image.
+- **Background work is explicit.** Do not re-enable legacy pollers or a global
+  scheduler as part of a deployment. Preserve the current event-driven and
+  manual job controls; duplicate workers can repeat customer-facing actions.
 
 ## Agent safety rules
 
@@ -105,16 +110,16 @@ Rules the gate enforces that are easy to trip:
 
 ## What exists (the short map)
 
-| Area                                 | Where to start                                                                                                     |
-| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------ |
-| Business modules, scheduler, Railway | `docs/BUSINESS_MODULE_MIGRATION_SCOPE.md`                                                                          |
-| MCP module surfaces                  | `docs/MCP_MODULE_SURFACES.md`, `src/server/mcp/server.ts`                                                          |
-| Email (AgentMail + own mailbox)      | `docs/EMAIL_MODULE.md`, `src/server/features/email/`                                                               |
-| Client Accounts / Client Reports     | `docs/CLIENT_ACCOUNTS_MODULE.md`, `docs/CLIENT_REPORTS_MODULE.md`                                                  |
-| Content Optimization                 | `docs/OPTIMIZATIONS_MODULE.md`                                                                                     |
-| CRM lead page, journal, reminders    | `src/server/features/crm/`, `src/client/features/business-modules/leads/detail/`, `src/client/features/reminders/` |
-| Quotations (catalogue, PDF, email)   | `src/server/features/quotes/`, `src/client/features/business-modules/quotes/`                                      |
-| Phone calls (ElevenLabs post-call)   | `src/server/features/voice-calls/`                                                                                 |
+| Area                                    | Where to start                                                                                                     |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| Business modules and deployment history | `docs/BUSINESS_MODULE_MIGRATION_SCOPE.md`                                                                          |
+| MCP module surfaces                     | `docs/MCP_MODULE_SURFACES.md`, `src/server/mcp/server.ts`                                                          |
+| Email (AgentMail + own mailbox)         | `docs/EMAIL_MODULE.md`, `src/server/features/email/`                                                               |
+| Client Accounts / Client Reports        | `docs/CLIENT_ACCOUNTS_MODULE.md`, `docs/CLIENT_REPORTS_MODULE.md`                                                  |
+| Content Optimization                    | `docs/OPTIMIZATIONS_MODULE.md`                                                                                     |
+| CRM lead page, journal, reminders       | `src/server/features/crm/`, `src/client/features/business-modules/leads/detail/`, `src/client/features/reminders/` |
+| Quotations (catalogue, PDF, email)      | `src/server/features/quotes/`, `src/client/features/business-modules/quotes/`                                      |
+| Phone calls (ElevenLabs post-call)      | `src/server/features/voice-calls/`                                                                                 |
 
 ### Phone-call pipeline
 

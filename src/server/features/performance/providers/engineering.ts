@@ -66,7 +66,7 @@ export async function engineeringSignals(): Promise<EngineeringSignal[]> {
         signal(
           "GitHub",
           "not_configured",
-          "Set the Performance repository and read-only GitHub token in Railway.",
+          "Set the Performance repository and read-only GitHub token in Coolify runtime settings.",
         ),
       ];
     if (!/^[\w.-]+\/[\w.-]+$/.test(repo))
@@ -194,7 +194,7 @@ export async function engineeringSignals(): Promise<EngineeringSignal[]> {
         signal(
           "Railway",
           "not_configured",
-          "Set a scoped Railway project token and project, environment, service IDs.",
+          "Legacy Railway monitoring is optional and is not used by VPS hosting.",
         ),
       ];
     const data = railwaySchema.parse(

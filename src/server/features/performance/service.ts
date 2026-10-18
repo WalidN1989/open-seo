@@ -61,7 +61,7 @@ export async function getOverview(
     jev: {
       status: "not_configured",
       detail:
-        "Set TYPESAFE_API_KEY in Railway to enable quick questions and suggested priorities.",
+        "Set TYPESAFE_API_KEY in Coolify runtime settings to enable quick questions and suggested priorities.",
     },
   };
   // Sequential organizations keep database concurrency bounded; each summary uses

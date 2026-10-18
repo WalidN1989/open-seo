@@ -17,9 +17,13 @@ Use this instruction for future requests:
 > Explain what changed, the test results, and how we recover if it fails.
 > Wait for my release approval before merging or deploying.
 
-The business name is DigitalUrgency. The GitHub repository remains
-`WalidN1989/open-seo` to avoid breaking deployment connections and existing
-links. Keeping that repository name does not give the upstream author control.
+The business name is DigitalUrgency. Production apps and databases run on the
+Hostinger VPS under Coolify. The owner confirmed the Railway and Neon projects
+were deleted on 2026-10-18. GitHub remains the source/CI service;
+`VPS_RELEASES.md` describes the current owner-approved deployment process.
+The GitHub repository remains `WalidN1989/open-seo` to avoid breaking deployment
+connections and existing links. Keeping that repository name does not give the
+upstream author control.
 
 ## One change, one branch, one release decision
 
@@ -119,8 +123,8 @@ Never reset our `main` to upstream. Declining feature updates is fine; continue
 reviewing dependency and security fixes so freezing upstream does not mean
 freezing security maintenance.
 
-Source ownership is only one dependency. Railway, Neon, DNS, package registries
-and providers such as Twilio, Meta, Microsoft and DataForSEO are separate
+Source ownership is only one dependency. Hostinger, Coolify, DNS, package
+registries and providers such as Twilio, Meta, Microsoft and DataForSEO are separate
 services. Keep account ownership, recovery methods, configuration and tested
 backups under the business owner's control. Archive deployable artifacts and
 locked dependencies as well as source for an emergency rebuild.
@@ -146,7 +150,8 @@ Renaming routes, tables or moving whole modules is a separate tested change.
 
 Close the audit's release-protection and recovery gaps. Prove tenant isolation
 and restore a backup into a separate environment. Verify account recovery for
-GitHub, Railway, Neon and DNS, and identify who acts if the owner is unavailable.
+GitHub, Hostinger, Coolify, backup storage and DNS, and identify who acts if the
+owner is unavailable.
 Decide acceptable data loss and recovery time, and measure those in the drill.
 Do not describe the platform as ready merely because a README or backup exists.
 
@@ -162,8 +167,8 @@ and observation time; unavailable information must say Unknown rather than
 green. Keep customer data and secrets out of logs and status details.
 
 Use server-side integrations with minimum read access. Do not put GitHub or
-Railway credentials in the browser. Deploy, merge, restore and delete buttons
-are out of the first version. The dashboard must report the safeguards already
+Coolify or VPS credentials in the browser. Deploy, merge, restore and delete
+buttons are out of the first version. The dashboard must report the safeguards already
 in place, rather than become the only way to recover the application.
 
 ## References

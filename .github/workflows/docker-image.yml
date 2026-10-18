@@ -1,58 +1,130 @@
-name: Publish Docker image
+name: Build Digital Urgency release
 
+# Builds use GitHub's runners. Coolify remains manual-only: publishing an
+# image never deploys it. The owner approves a production publish in the
+# protected environment, then approves the exact image for deployment.
 on:
-  push:
-    branches:
-      - main
-    tags:
-      - "v*"
   workflow_dispatch:
+    inputs:
+      publish:
+        description: Publish a production image (requires owner approval)
+        type: boolean
+        required: true
+        default: false
 
 permissions:
   contents: read
-  packages: write
+
+concurrency:
+  group: du-release-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
-  docker:
-    if: github.repository == 'every-app/open-seo'
+  verify:
+    if: github.repository == 'WalidN1989/open-seo'
     runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      checks: read
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - name: Require successful checks on this exact revision
+        uses: actions/github-script@v7
+        env:
+          PUBLISH_IMAGE: ${{ inputs.publish }}
+        with:
+          script: |
+            const publish = process.env.PUBLISH_IMAGE === 'true';
+            if (publish && context.ref !== 'refs/heads/main') {
+              throw new Error('Production images must be built from main.');
+            }
+            if (publish) {
+              const { data: main } = await github.rest.repos.getBranch({
+                ...context.repo, branch: 'main',
+              });
+              if (main.commit.sha !== context.sha) {
+                throw new Error('Main changed. Start a release for its current revision.');
+              }
+            }
+            const checks = await github.paginate(github.rest.checks.listForRef, {
+              ...context.repo, ref: context.sha, per_page: 100,
+            });
+            for (const name of ['ci', 'docker-build']) {
+              const latest = checks
+                .filter(check => check.name === name && check.app?.id === 15368)
+                .sort((a, b) => b.id - a.id)[0];
+              if (latest?.status !== 'completed' || latest.conclusion !== 'success') {
+                throw new Error(`The latest ${name} check must pass on ${context.sha}.`);
+              }
+            }
+            await core.summary
+              .addHeading(publish ? 'Production image requested' : 'Build-only verification')
+              .addRaw(`Source revision: ${context.sha}\n\n`)
+              .addRaw('No production deployment is performed by this workflow.\n')
+              .write();
 
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
+  image:
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment:
+      name: ${{ inputs.publish && 'Open SEO / production' || 'Open SEO / preview' }}
+      deployment: false
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout the checked revision
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
 
       - name: Set up Buildx
         uses: docker/setup-buildx-action@v3
 
       - name: Log in to GHCR
+        if: inputs.publish
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract Docker metadata
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ghcr.io/every-app/open-seo
-          tags: |
-            type=ref,event=branch
-            type=ref,event=tag
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=semver,pattern={{major}}
-            type=sha,prefix=sha-
-            type=raw,value=latest,enable={{is_default_branch}}
-
-      - name: Build and push image
+      - name: Build the production image
+        id: image
         uses: docker/build-push-action@v6
         with:
           context: .
           file: Dockerfile.selfhost
-          push: true
-          platforms: linux/amd64,linux/arm64
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          platforms: linux/amd64
+          push: ${{ inputs.publish }}
+          tags: ghcr.io/walidn1989/digital-urgency:sha-${{ github.sha }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/WalidN1989/open-seo
+            org.opencontainers.image.revision=${{ github.sha }}
+          build-args: |
+            AUTH_MODE=selfhosted
+            ALLOWED_HOST=seo.digitalurgency.com.au
+            BETTER_AUTH_URL=https://seo.digitalurgency.com.au
+            VITE_SHOW_DEVTOOLS=false
+          cache-from: type=gha,scope=du-release
+          cache-to: type=gha,mode=max,scope=du-release
+
+      - name: Record release identity and next step
+        env:
+          PUBLISH_IMAGE: ${{ inputs.publish }}
+          IMAGE_DIGEST: ${{ steps.image.outputs.digest }}
+          RELEASE_COMMIT: ${{ github.sha }}
+        run: |
+          {
+            echo '## Digital Urgency image'
+            echo "Commit: \`$RELEASE_COMMIT\`"
+            if [ "$PUBLISH_IMAGE" = 'true' ]; then
+              echo "Image: \`ghcr.io/walidn1989/digital-urgency@$IMAGE_DIGEST\`"
+              echo "Tag: \`sha-$RELEASE_COMMIT\`"
+              echo 'Await owner approval before changing the Coolify image or deploying.'
+            else
+              echo 'Build verified. Nothing was published or deployed.'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
