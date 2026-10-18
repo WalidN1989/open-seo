@@ -1,3 +1,4 @@
+import { CitypakSenderPanel } from "./CitypakSenderPanel";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
@@ -44,6 +45,7 @@ export function CitypakWaybills() {
   return (
     <div className="space-y-4">
       <h1 className="text-2xl font-bold">Citypak Waybills</h1>
+      <CitypakSenderPanel />
       <div className="flex flex-wrap gap-3">
         {[
           ["Total", query.data?.total || 0],

@@ -75,6 +75,32 @@ export const orderDecisionSchema = z.object({
   revision: z.string().min(1),
 });
 
+const citypakText = z
+  .string()
+  .trim()
+  .regex(
+    /^[\x20-\x7E]*$/,
+    "Use English letters, numbers and punctuation for Citypak.",
+  );
+const citypakPhone = z
+  .string()
+  .trim()
+  .regex(
+    /^\+[1-9]\d{7,14}$/,
+    "Use an international phone number, for example starting with +94.",
+  );
+export const citypakSenderSchema = z.object({
+  connectionId: z.string().min(1),
+  senderName: citypakText.min(1).max(100),
+  senderContactName: citypakText.max(100).nullable(),
+  senderPhone: citypakPhone,
+  senderAltPhone: citypakPhone.nullable(),
+  senderAddress1: citypakText.min(1).max(200),
+  senderAddress2: citypakText.max(200).nullable(),
+  senderAddress3: citypakText.max(200).nullable(),
+  senderCity: citypakText.min(1).max(100),
+  parcelWeightGrams: z.number().int().min(1).max(100_000),
+});
 export const orderOperationsSchema = z.object({
   connectionId: z.string().min(1),
   confirmationStartedAt: z.string().datetime().nullable(),
@@ -95,7 +121,7 @@ export const orderOperationsSchema = z.object({
   senderAddress2: z.string().trim().max(200).nullable(),
   senderAddress3: z.string().trim().max(200).nullable(),
   senderCity: z.string().trim().max(100).nullable(),
-  parcelWeightGrams: z.number().int().min(1).max(50_000),
+  parcelWeightGrams: z.number().int().min(1).max(100_000),
 });
 
 export const citypakDashboardSchema = z.object({

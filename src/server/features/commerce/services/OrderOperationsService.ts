@@ -175,9 +175,9 @@ async function createShipment(context: ActionContext) {
   const result = await createCitypakOrder(credentials.API_KEY, {
     reference: order.orderNumber,
     from_name: config.senderName || "",
-    from_contact_name: config.senderName || "",
+    from_contact_name: config.senderContactName || config.senderName || "",
     from_contact_1: config.senderPhone || "",
-    from_contact_2: "",
+    from_contact_2: config.senderAltPhone || "",
     from_address_line_1: config.senderAddress1 || "",
     from_address_line_2: config.senderAddress2 || "",
     from_address_line_3: config.senderAddress3 || "",

@@ -65,13 +65,13 @@ export function OrderOperationsSettings({
           cancellationTemplateId: read("cancellation") || null,
           invoiceEnabled: form.has("invoices"),
           loyaltyMinorPerPoint: Math.round(Number(read("earnRate")) * 100),
-          parcelWeightGrams: Number(read("weight")),
-          senderName: read("senderName") || null,
-          senderPhone: read("senderPhone") || null,
-          senderAddress1: read("senderAddress1") || null,
-          senderAddress2: read("senderAddress2") || null,
-          senderAddress3: read("senderAddress3") || null,
-          senderCity: read("senderCity") || null,
+          parcelWeightGrams: config.parcelWeightGrams,
+          senderName: config.senderName,
+          senderPhone: config.senderPhone,
+          senderAddress1: config.senderAddress1,
+          senderAddress2: config.senderAddress2,
+          senderAddress3: config.senderAddress3,
+          senderCity: config.senderCity,
         });
         if (!parsed.success) {
           toast.error("Check the sender details and amounts.");
@@ -156,36 +156,6 @@ export function OrderOperationsSettings({
           ? "Connected"
           : "Enter the API key in courier settings first"}
       </p>
-      {(
-        [
-          ["senderName", "Sender name", config.senderName],
-          ["senderPhone", "Sender phone (+94…)", config.senderPhone],
-          ["senderAddress1", "Sender address line 1", config.senderAddress1],
-          ["senderAddress2", "Sender address line 2", config.senderAddress2],
-          ["senderAddress3", "Sender address line 3", config.senderAddress3],
-          ["senderCity", "Sender city", config.senderCity],
-        ] as const
-      ).map(([name, label, value]) => (
-        <label key={name} className="block text-sm">
-          {label}
-          <input
-            name={name}
-            defaultValue={value || ""}
-            className="input input-bordered input-sm w-full"
-          />
-        </label>
-      ))}
-      <label className="block text-sm">
-        Parcel weight (grams)
-        <input
-          name="weight"
-          type="number"
-          min="1"
-          max="50000"
-          defaultValue={config.parcelWeightGrams}
-          className="input input-bordered input-sm w-full"
-        />
-      </label>
       <label className="block text-sm">
         <input
           name="invoices"

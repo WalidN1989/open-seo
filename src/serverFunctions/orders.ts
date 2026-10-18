@@ -1,4 +1,5 @@
 import { citypakTrackingSettingsSchema } from "@/types/schemas/orderReview";
+import { citypakSenderSchema } from "@/types/schemas/orderReview";
 import { OrderOperationsConfigService } from "@/server/features/commerce/services/OrderOperationsConfigService";
 import { citypakDashboardSchema } from "@/types/schemas/orderReview";
 import { orderOperationsSchema } from "@/types/schemas/orderReview";
@@ -31,6 +32,16 @@ export const getOrderSyncSettings = createServerFn({ method: "GET" })
   .middleware(requireAuthenticatedContext)
   .handler(({ context }) =>
     ShopifyOrderService.settings(context.organizationId, context.userId),
+  );
+export const saveCitypakSender = createServerFn({ method: "POST" })
+  .middleware(requireAuthenticatedContext)
+  .validator(citypakSenderSchema)
+  .handler(({ context, data }) =>
+    OrderOperationsConfigService.saveSender(
+      context.organizationId,
+      context.userId,
+      data,
+    ),
   );
 export const setOrderSyncEnabled = createServerFn({ method: "POST" })
   .middleware(requireAuthenticatedContext)

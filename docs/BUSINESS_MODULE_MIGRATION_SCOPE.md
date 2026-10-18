@@ -1836,3 +1836,25 @@ later actual delivery. Eleven regressions cover supported callback envelopes,
 normal delivery/non-delivery controls, scoped callback writes and refresh results.
 Full suite: 2,838 tests across 307 files pass; selfhost build passes. No schema,
 production data, credential, live provider call or tracking activation is changed.
+
+### October 18, 2026 — Citypak sender editor (pending release)
+
+The Citypak page and Shopify order settings now expose one shared sender form:
+business name, pickup contact, primary and alternate international phone,
+three address lines, city and default weight. Required provider fields and
+ASCII text are validated on the server. A blank contact name uses the sender
+name; optional contact fields do not block existing configurations. Saving
+sender details requires integrations/CRM management permission and changes
+only sender fields. It does not activate fulfillment or require a Citypak key.
+The API key and the explicit fulfillment switch remain separate prerequisites.
+
+SQLite migration 0106 and PostgreSQL migration 0085 add only nullable
+sender_contact_name and sender_alt_phone columns. Full migration sequences were
+applied to disposable SQLite and PostgreSQL 18 databases with a preexisting
+sender row; credentials, automation cutoffs, enablement and existing values were
+preserved. Actual PostgreSQL approval dispatched a mocked shipment with the
+saved pickup contact and alternate phone; foreign-tenant changes were rejected.
+The shared form was visually checked and saved against isolated synthetic data.
+No production schema or provider setting has changed. Apply additive migrations
+before release; rollback can retain these unused nullable columns while running
+the previous application revision. Do not drop them as part of code rollback.
