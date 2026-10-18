@@ -18,6 +18,7 @@ beforeAll(async () => {
     schema.voicePhoneCalls,
     schema.crmContacts,
     schema.crmLeads,
+    schema.businessSettings,
   ]) {
     const config = getTableConfig(table);
     await client.execute(
@@ -26,6 +27,9 @@ beforeAll(async () => {
   }
   await client.execute(
     "insert into crm_contacts (id,organization_id,first_name) values ('foreign-contact','org-b','Private')",
+  );
+  await client.execute(
+    "insert into business_settings (id,organization_id,currency) values ('settings-a','org-a','LKR'),('settings-b','org-b','AUD')",
   );
   await client.execute(
     "insert into crm_leads (id,organization_id,title) values ('foreign-lead','org-b','Private lead')",
@@ -38,6 +42,13 @@ afterAll(() => {
   client.close();
 });
 describe("call repository tenant and time filters", () => {
+  it("uses only the connection's workspace for the default phone region", async () => {
+    expect(await PhoneCallRepository.defaultPhoneRegion("org-a")).toBe("LK");
+    expect(await PhoneCallRepository.defaultPhoneRegion("org-b")).toBe("AU");
+    expect(await PhoneCallRepository.defaultPhoneRegion("org-empty")).toBe(
+      "AU",
+    );
+  });
   it("orders by start time, uses creation only when start is absent, and bounds rows", async () => {
     expect(
       (await PhoneCallRepository.listCalls("org-a", 2)).map(

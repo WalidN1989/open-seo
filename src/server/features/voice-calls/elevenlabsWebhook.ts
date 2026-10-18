@@ -152,12 +152,15 @@ const PHONE_REGIONS = {
 export type PhoneRegion = keyof typeof PHONE_REGIONS;
 
 /** The region to read a bare number as, taken from the line they rang on. */
-export function phoneRegionOf(callerNumber: string | null): PhoneRegion {
+export function phoneRegionOf(
+  callerNumber: string | null,
+  fallback: PhoneRegion = "AU",
+): PhoneRegion {
   const regions: PhoneRegion[] = ["AU", "LK"];
   return (
     regions.find((region) =>
       callerNumber?.startsWith(`+${PHONE_REGIONS[region].dial}`),
-    ) ?? "AU"
+    ) ?? fallback
   );
 }
 
@@ -228,12 +231,21 @@ export function shortNeed(text: string | undefined): string {
  * The call as the rest of the app needs it, or null for any other event
  * (audio, initiation failures), which are acknowledged and ignored.
  */
-export function readPostCall(payload: unknown): PhoneCallReport | null {
+export function readPostCall(
+  payload: unknown,
+  defaultRegion: PhoneRegion = "AU",
+): PhoneCallReport | null {
   const parsed = postCallSchema.safeParse(payload);
   if (!parsed.success) return null;
   const data = parsed.data.data;
   const dynamic = data.conversation_initiation_client_data?.dynamic_variables;
   const phone = data.metadata.phone_call;
+  const calledNumber =
+    normalisePhone(phone?.agent_number, defaultRegion) ??
+    normalisePhone(dynamic?.system__called_number, defaultRegion);
+  // Read a national caller ID using the business's line before adding a
+  // country code. Once +61 has been guessed, downstream code cannot undo it.
+  const callerRegion = phoneRegionOf(calledNumber, defaultRegion);
   const captured: Record<string, string> = {};
   for (const [key, result] of Object.entries(
     data.analysis?.data_collection_results ?? {},
@@ -249,11 +261,9 @@ export function readPostCall(payload: unknown): PhoneCallReport | null {
     agentName: data.agent_name ?? null,
     direction: phone?.direction ?? null,
     callerNumber:
-      normalisePhone(phone?.external_number) ??
-      normalisePhone(dynamic?.system__caller_id),
-    calledNumber:
-      normalisePhone(phone?.agent_number) ??
-      normalisePhone(dynamic?.system__called_number),
+      normalisePhone(phone?.external_number, callerRegion) ??
+      normalisePhone(dynamic?.system__caller_id, callerRegion),
+    calledNumber,
     startedAt:
       typeof start === "number" ? new Date(start * 1000).toISOString() : null,
     durationSeconds: data.metadata.call_duration_secs ?? null,
