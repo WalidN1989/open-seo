@@ -1784,3 +1784,37 @@ synthetic mirror; confirmation/operation cutoffs remain NULL, invoice false, loy
 Updated full suite: 2,818 tests across306files pass; selfhost build passes.
 Historical export includes26orders without lines and other reconciliation gaps;
 no historical import or provider activation is included in this deployment.
+
+### 2026-10-18 — Citypak approval setup (awaiting release)
+
+Owner approved BooXworm Citypak setup and accepts temporary duplicate waybills
+from the parallel legacy workflow during migration. Duplicate cleanup is deferred;
+no legacy integrations are disconnected. Repeated DU requests retain durable
+once-only claims and ambiguous provider outcomes are not automatically resent.
+
+The feature branch dispatches only the approved order's Citypak effect inside the
+staff approval request; it does not start a general scheduler or drain other
+queued actions. Approval records confirmed_at, allowing existing pending orders
+to become courier-eligible when explicitly approved after activation. Creation
+cutoffs for invoices, loyalty and customer messages stay unchanged. Delivery
+phone/address/city can be corrected during review and are committed with the
+approval. Enabled courier creation checks configuration and recipient details
+before approval; provider failure preserves approval with visible warning/activity.
+Pickup orders do not create waybills. Existing paid/outstanding amount logic and
+A4/4x6 labels are preserved. There is no new schema migration.
+
+Private runtime preparation copied the original tenant's sender configuration to
+DU while fulfillment remained disabled. Exact Shopify ID matching filled eight
+missing phone numbers and one address; existing values were preserved and no
+cities were inferred from unstructured addresses. Private before-images remain
+on the VPS for recovery. No Citypak shipment was submitted for these data changes.
+Lovable confirms the API key secret exists but does not expose its value; owner
+entry through the DU courier field is still required before activation.
+
+Validation: 2,826 tests across 307 files, full ci:check, and selfhost build pass.
+An isolated PostgreSQL 18 database applied all 85 migrations and executed the real
+approval/dispatch queries with synthetic rows and a mocked Citypak provider,
+including scoped lookup and partial-payment COD. The actual review component was
+checked in a synthetic browser preview for delivery validation and waybill success
+feedback. These checks do not prove the live Citypak key or provider portal flow.
+Release and live provider verification remain outstanding.

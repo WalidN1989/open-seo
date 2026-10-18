@@ -64,11 +64,23 @@ async function approveImportedOrder(
       "CONFLICT",
       "Review Shopify's total adjustments before approving.",
     );
+  const delivery = input.delivery
+    ? {
+        customerPhone: orderPhone(input.delivery.phone),
+        shippingAddress: input.delivery.address.trim() || null,
+        shippingCity: input.delivery.city.trim() || null,
+      }
+    : undefined;
+  await OrderOperationsService.validateCitypakApproval(organizationId, {
+    ...order,
+    ...delivery,
+  });
   const result = await OrderRepository.approveImport(
     organizationId,
     order.id,
     input.revision,
     input.lines.map((line) => ({ id: line.lineId, productId: line.productId })),
+    delivery,
   );
   if (
     result?.approvalStatus !== "approved" ||
@@ -77,7 +89,11 @@ async function approveImportedOrder(
   )
     throw new AppError("CONFLICT", "The order changed; reopen its review.");
   await OrderOperationsService.enqueueApproved(organizationId, order.id);
-  return result;
+  const citypak = await OrderOperationsService.dispatchCitypak(
+    organizationId,
+    order.id,
+  );
+  return { ...result, citypak };
 }
 
 async function rejectImportedOrder(

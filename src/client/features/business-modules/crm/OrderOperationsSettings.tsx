@@ -82,9 +82,10 @@ export function OrderOperationsSettings({
     >
       <h3 className="font-semibold">Order automation</h3>
       <p className="text-xs text-base-content/60">
-        Start only after the old workflow has stopped. Existing orders and
-        history imports do not send confirmations or create shipments
-        automatically.
+        Citypak runs when you approve a delivery order, including an existing
+        pending order. Enabling this does not approve orders or create
+        historical shipments. WhatsApp, invoices and loyalty are separate
+        settings.
       </p>
       <label className="block text-sm">
         <input

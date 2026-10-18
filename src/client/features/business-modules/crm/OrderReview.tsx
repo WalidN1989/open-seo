@@ -20,6 +20,11 @@ export function OrderReview({ detail }: { detail: Detail }) {
     Record<string, Detail["lines"][number]["product"]>
   >({});
   const [search, setSearch] = useState("");
+  const [delivery, setDelivery] = useState({
+    phone: detail.order.customerPhone || "",
+    address: detail.order.shippingAddress || "",
+    city: detail.order.shippingCity || "",
+  });
   const [acknowledgeAdjustments, setAcknowledgement] = useState(false);
   const money = useWorkspaceCurrency();
   const currencyMismatch = Boolean(
@@ -46,12 +51,29 @@ export function OrderReview({ detail }: { detail: Detail }) {
           orderId: detail.order.id,
           revision: detail.order.externalUpdatedAt ?? detail.order.updatedAt,
           acknowledgeAdjustments,
+          ...(!detail.order.pickup ? { delivery } : {}),
           lines,
         },
       }),
-    onSuccess: async () => {
+    onSuccess: async (result) => {
       await client.invalidateQueries({ queryKey: ["commerce"] });
-      toast.success("Order approved. Enabled DU automations are queued.");
+      if (result.citypak?.status === "succeeded")
+        toast.success(
+          `Order approved. Citypak waybill ${result.citypak.trackingNumber || ""} created.`,
+        );
+      else if (result.citypak?.status === "legacy")
+        toast.success(
+          "Order approved. Its existing Citypak waybill is linked.",
+        );
+      else if (result.citypak)
+        toast.warning(
+          "Order approved, but Citypak creation is not confirmed. Check Order activity and the Citypak portal before retrying.",
+          { duration: 15000 },
+        );
+      else
+        toast.success(
+          "Order approved. No Citypak action was enabled for this order.",
+        );
     },
     onError: (error) => toast.error(getStandardErrorMessage(error)),
   });
@@ -177,6 +199,40 @@ export function OrderReview({ detail }: { detail: Detail }) {
           />
           {detail.order.note} I have checked the Shopify total.
         </label>
+      ) : null}
+      {!detail.order.pickup ? (
+        <fieldset className="space-y-2 rounded-lg border border-base-300 p-3">
+          <legend className="text-sm font-medium">Delivery details</legend>
+          <p className="text-xs">
+            Citypak needs the recipient's phone in international format (+94…),
+            delivery address and city. Corrections are saved on this order when
+            approved.
+          </p>
+          {(
+            [
+              ["phone", "Delivery phone (+94…)"],
+              ["address", "Delivery address"],
+              ["city", "Delivery city"],
+            ] as const
+          ).map(([key, label]) => (
+            <label key={key} className="block text-sm">
+              {label}
+              <input
+                className="input input-bordered input-sm w-full"
+                value={delivery[key]}
+                maxLength={
+                  key === "address" ? 2000 : key === "phone" ? 80 : 100
+                }
+                onChange={(event) =>
+                  setDelivery((current) => ({
+                    ...current,
+                    [key]: event.target.value,
+                  }))
+                }
+              />
+            </label>
+          ))}
+        </fieldset>
       ) : null}
       <button
         className="btn btn-primary btn-sm"

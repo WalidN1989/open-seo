@@ -19,6 +19,13 @@ export const orderLoyaltyAdjustmentSchema = z
 export const orderReviewSchema = z.object({
   orderId: z.string().min(1),
   acknowledgeAdjustments: z.boolean().default(false),
+  delivery: z
+    .object({
+      phone: z.string().trim().max(80),
+      address: z.string().trim().max(2000),
+      city: z.string().trim().max(100),
+    })
+    .optional(),
   revision: z.string().min(1),
   lines: z
     .array(
