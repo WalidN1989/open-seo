@@ -83,6 +83,91 @@ describe("Citypak order boundaries", () => {
 });
 
 describe("Citypak legacy response and callback parity", () => {
+  it.each([
+    ["RTM", "DELIVERED", "RETURNED"],
+    [" rtm ", "DELIVERED", "RETURNED"],
+    ["DL", "DELIVERED", "DELIVERED"],
+    ["UD", "NOT DELIVERED", "NOT DELIVERED"],
+    ["UD", "OUT FOR DELIVERY", "OUT FOR DELIVERY"],
+  ])("maps callback code %s and label %s to %s", (code, label, expected) => {
+    const event = {
+      tracking_number: "DTEST-RTM",
+      status_type: code,
+      status: label,
+      delivered_datetime: "19-06-2024 13:30:59",
+    };
+    for (const payload of [event, [event], { events: [event] }])
+      expect(parseCitypakCallback(payload)).toEqual([
+        {
+          trackingNumber: "DTEST-RTM",
+          status: expected,
+          reason: null,
+          eventAt: "2024-06-19T08:00:59.000Z",
+        },
+      ]);
+  });
+  it.each([
+    { status_type: "DELIVERED", status_code: "RTM" },
+    { status_type: "RETURN TO MERCHANT", status_code: "RT" },
+  ])(
+    "does not classify a returned tracking result as delivered: %j",
+    async (status) => {
+      const fetcher = vi.fn<typeof fetch>().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            is_success: true,
+            data: {
+              is_delivered: true,
+              tracking_history: [
+                { ...status, date: "19-06-2024", time: "13:30:59" },
+              ],
+            },
+          }),
+        ),
+      );
+      const result = await trackCitypakOrder("test-key", "DTEST-RTM", fetcher);
+      expect(result.delivered).toBe(false);
+      expect(result.events).toEqual([
+        {
+          status: "RETURNED",
+          reason: null,
+          eventAt: "2024-06-19T08:00:59.000Z",
+        },
+      ]);
+    },
+  );
+  it("uses the latest terminal tracking event when a returned parcel is later delivered", async () => {
+    const fetcher = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          is_success: true,
+          data: {
+            is_delivered: true,
+            tracking_history: [
+              {
+                status_type: "DELIVERED",
+                status_code: "RTM",
+                date: "19-06-2024",
+                time: "13:30:59",
+              },
+              {
+                status_type: "DELIVERED",
+                status_code: "DL",
+                date: "20-06-2024",
+                time: "13:30:59",
+              },
+            ],
+          },
+        }),
+      ),
+    );
+    const result = await trackCitypakOrder("test-key", "DTEST-RTM", fetcher);
+    expect(result.delivered).toBe(true);
+    expect(result.events.map((event) => event.status)).toEqual([
+      "RETURNED",
+      "DELIVERED",
+    ]);
+  });
   it("sanitizes contacts and accepts a direct provider tracking identity", async () => {
     const fetcher = vi.fn<typeof fetch>().mockResolvedValue(
       new Response(

@@ -1825,3 +1825,14 @@ required GitHub ci/docker-build checks have not started, despite workflow settin
 reporting enabled via the API. Main protection is preserved; no merge, deployment,
 workflow-policy change or provider activation was performed. The Citypak key is
 still absent in DU. These external prerequisites remain before live verification.
+
+### 2026-10-18 — Citypak returned to merchant correction (awaiting release)
+
+The vendor draft documents status_type RTM with the generic status DELIVERED.
+The parser now gives RTM priority and records RETURNED; ordinary DL deliveries
+remain DELIVERED. Tracking refresh also reads status_code and suppresses a
+synthetic delivery when its latest terminal event is a return, while allowing a
+later actual delivery. Eleven regressions cover supported callback envelopes,
+normal delivery/non-delivery controls, scoped callback writes and refresh results.
+Full suite: 2,838 tests across 307 files pass; selfhost build passes. No schema,
+production data, credential, live provider call or tracking activation is changed.
