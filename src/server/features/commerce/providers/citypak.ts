@@ -1,6 +1,8 @@
 import { z } from "zod";
 const base = "https://falcon.citypak.lk/customer_api/v1/";
-export function citypakStatus(raw: string) {
+export function citypakStatus(raw: string, code?: string) {
+  // Citypak labels both DL and RTM callbacks "DELIVERED"; the code distinguishes returns.
+  if (code?.trim().toUpperCase() === "RTM") return "RETURNED";
   const value = raw.trim().toUpperCase();
   if (value.includes("NOT DELIVERED")) return "NOT DELIVERED";
   if (value.includes("RETURN") || value.includes("RTM")) return "RETURNED";
@@ -91,6 +93,7 @@ export async function trackCitypakOrder(
           .array(
             z.object({
               status_type: z.string().optional(),
+              status_code: z.string().optional(),
               status: z.string().optional(),
               description: z.string().optional(),
               date: z.string().optional(),
@@ -109,13 +112,22 @@ export async function trackCitypakOrder(
     throw new Error(
       "Citypak tracking is unavailable; the previous status is retained.",
     );
+  const events = parsed.data.data.tracking_history.map((event) => ({
+    status: citypakStatus(
+      event.status_type || event.status || "UNKNOWN",
+      event.status_code,
+    ),
+    reason: event.description ?? null,
+    eventAt: citypakEventTime(event.date, event.time),
+  }));
+  const terminal = events.findLast(
+    (event) => event.status === "RETURNED" || event.status === "DELIVERED",
+  );
   return {
-    delivered: parsed.data.data.is_delivered,
-    events: parsed.data.data.tracking_history.map((event) => ({
-      status: citypakStatus(event.status_type || event.status || "UNKNOWN"),
-      reason: event.description ?? null,
-      eventAt: citypakEventTime(event.date, event.time),
-    })),
+    // Do not synthesize a delivered event for a parcel returned to the merchant.
+    delivered:
+      terminal?.status === "RETURNED" ? false : parsed.data.data.is_delivered,
+    events,
   };
 }
 
@@ -175,7 +187,10 @@ export function parseCitypakCallback(payload: unknown) {
       ? envelope.events
       : [envelope];
   return events.map((event) => {
-    const status = citypakStatus(event.status || event.status_type || "");
+    const status = citypakStatus(
+      event.status || event.status_type || "",
+      event.status_type,
+    );
     if (!deliveryStates.has(status))
       throw new Error("Unsupported Citypak status");
     const timestamp = event.delivered_datetime || event.action_datetime;

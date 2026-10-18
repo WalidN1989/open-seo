@@ -2365,7 +2365,9 @@ export const commerceOrderSync = sqliteTable(
       .notNull()
       .default(0),
     senderName: text("sender_name"),
+    senderContactName: text("sender_contact_name"),
     senderPhone: text("sender_phone"),
+    senderAltPhone: text("sender_alt_phone"),
     senderAddress1: text("sender_address_1"),
     senderAddress2: text("sender_address_2"),
     senderAddress3: text("sender_address_3"),

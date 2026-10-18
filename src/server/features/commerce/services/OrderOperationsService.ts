@@ -1,9 +1,12 @@
 import {
+  enqueueApproved,
+  validateCitypakApproval,
+} from "./OrderApprovalService";
+import {
   dispatchCurrent,
   skipChanged,
   notificationFor,
 } from "./OrderDispatchService";
-import { OrderLoyaltyRepository } from "../repositories/OrderLoyaltyRepository";
 import { IntegrationSyncRepository } from "../repositories/IntegrationSyncRepository";
 import { BusinessModuleRepository } from "@/server/features/business-modules/repositories/BusinessModuleRepository";
 import { CommunicationsRepository } from "@/server/features/communications/repositories/CommunicationsRepository";
@@ -41,42 +44,22 @@ async function enqueueForWebhook(
   if (topic === "orders/cancelled" && config.cancellationTemplateId)
     await Repo.enqueue(organizationId, order.id, "cancellation");
 }
-async function enqueueApproved(organizationId: string, orderId: string) {
-  const order = await OrderRepository.getOrder(organizationId, orderId);
-  const connectionId =
-    order?.operationsConnectionId || order?.integrationConnectionId;
-  if (!order || !connectionId) return;
-  const config = await Repo.configuration(organizationId, connectionId);
-  if (
-    !config?.enabled ||
-    !config.operationsStartedAt ||
-    Date.parse(order.createdAt) < Date.parse(config.operationsStartedAt)
-  )
-    return;
-  if (order.approvalStatus !== "approved" || order.status !== "confirmed")
-    return;
-  const modules =
-    await BusinessModuleRepository.listEntitlements(organizationId);
-  const connection = await IntegrationSyncRepository.getConnection(
-    organizationId,
-    connectionId,
+async function dispatchCitypak(organizationId: string, orderId: string) {
+  const effect = (await Repo.effects(organizationId, orderId)).find(
+    (row) => row.kind === "citypak",
   );
-  if (
-    connection?.status !== "connected" ||
-    !modules.some(
-      (row) => row.moduleKey === "integrations" && row.status === "enabled",
-    )
-  )
-    return;
-  if (order.currency !== "LKR") return;
-  if (!order.pickup) await Repo.enqueue(organizationId, order.id, "citypak");
-  if (config.invoiceEnabled)
-    await Repo.enqueue(organizationId, order.id, "invoice");
-  await OrderLoyaltyRepository.award(
-    organizationId,
-    order,
-    config.loyaltyMinorPerPoint,
+  if (!effect) return null;
+  if (effect.status === "queued") await process(effect);
+  const result = (await Repo.effects(organizationId, orderId)).find(
+    (row) => row.id === effect.id,
   );
+  return result
+    ? {
+        status: result.status,
+        trackingNumber: result.externalId,
+        error: result.error,
+      }
+    : null;
 }
 export type ActionContext = {
   effect: Awaited<ReturnType<typeof Repo.due>>[number];
@@ -192,9 +175,9 @@ async function createShipment(context: ActionContext) {
   const result = await createCitypakOrder(credentials.API_KEY, {
     reference: order.orderNumber,
     from_name: config.senderName || "",
-    from_contact_name: config.senderName || "",
+    from_contact_name: config.senderContactName || config.senderName || "",
     from_contact_1: config.senderPhone || "",
-    from_contact_2: "",
+    from_contact_2: config.senderAltPhone || "",
     from_address_line_1: config.senderAddress1 || "",
     from_address_line_2: config.senderAddress2 || "",
     from_address_line_3: config.senderAddress3 || "",
@@ -395,5 +378,7 @@ async function runDue() {
 export const OrderOperationsService = {
   enqueueForWebhook,
   enqueueApproved,
+  validateCitypakApproval,
+  dispatchCitypak,
   runDue,
 };

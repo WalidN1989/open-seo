@@ -75,6 +75,89 @@ beforeEach(() => {
   });
 });
 describe("Citypak isolated tracking boundaries", () => {
+  it.each([
+    ["RTM", "RETURNED"],
+    ["DL", "DELIVERED"],
+  ])(
+    "records a documented %s callback as %s in its configured tenant",
+    async (code, expected) => {
+      expect(
+        await OrderShipmentService.callback("connection-a", secret, {
+          tracking_number: "D42",
+          status_type: code,
+          status: "DELIVERED",
+          delivered_datetime: "19-06-2024 13:30:59",
+        }),
+      ).toBe(200);
+      expect(mocks.shipmentEvent).toHaveBeenCalledExactlyOnceWith(
+        "org-a",
+        "shipment-a",
+        {
+          status: expected,
+          reason: null,
+          eventAt: "2024-06-19T08:00:59.000Z",
+          source: "webhook",
+        },
+      );
+    },
+  );
+  it("retains the returned status during refresh despite the provider delivered flag", async () => {
+    const actual = await vi.importActual<typeof CitypakProvider>(
+      "../providers/citypak",
+    );
+    const fetcher = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          is_success: true,
+          data: {
+            is_delivered: true,
+            tracking_history: [
+              {
+                status_type: "DELIVERED",
+                status_code: "RTM",
+                date: "19-06-2024",
+                time: "13:30:59",
+              },
+            ],
+          },
+        }),
+      ),
+    );
+    mocks.trackCitypakOrder.mockImplementation(
+      (key: string, trackingNumber: string) =>
+        actual.trackCitypakOrder(key, trackingNumber, fetcher),
+    );
+    mocks.getOrder.mockResolvedValue({
+      id: "order-a",
+      integrationConnectionId: "connection-a",
+    });
+    mocks.shipments.mockResolvedValue([
+      {
+        id: "shipment-a",
+        provider: "Citypak",
+        trackingNumber: "D42",
+        status: "PENDING",
+        checkedAt: null,
+      },
+    ]);
+    mocks.configuration.mockResolvedValue({ courierCredentials: "encrypted" });
+    await OrderShipmentService.refresh(
+      "org-a",
+      "user-a",
+      "order-a",
+      "shipment-a",
+    );
+    expect(mocks.shipmentEvent).toHaveBeenCalledExactlyOnceWith(
+      "org-a",
+      "shipment-a",
+      {
+        status: "RETURNED",
+        reason: null,
+        eventAt: "2024-06-19T08:00:59.000Z",
+        source: "pull",
+      },
+    );
+  });
   it("uses tracking for older Shopify rows instead of their unrelated fulfillment ID", async () => {
     const orderId = "shopify:connection-a:1";
     mocks.getOrder.mockResolvedValue({

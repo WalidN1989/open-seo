@@ -2,7 +2,10 @@ import { BusinessModuleService } from "@/server/features/business-modules/servic
 import { OrderOperationsRepository as Repo } from "../repositories/OrderOperationsRepository";
 import { decryptCredentials } from "@/server/lib/connection-secrets";
 import { AppError } from "@/server/lib/errors";
-import type { orderOperationsSchema } from "@/types/schemas/orderReview";
+import type {
+  orderOperationsSchema,
+  citypakSenderSchema,
+} from "@/types/schemas/orderReview";
 import type { z } from "zod";
 async function configure(
   organizationId: string,
@@ -108,4 +111,27 @@ async function settings(
   const credentials = await decryptCredentials(courierCredentials);
   return { ...config, courierConnected: Boolean(credentials.API_KEY) };
 }
-export const OrderOperationsConfigService = { configure, settings };
+async function saveSender(
+  organizationId: string,
+  userId: string,
+  input: z.infer<typeof citypakSenderSchema>,
+) {
+  await BusinessModuleService.requireAccess(
+    organizationId,
+    userId,
+    "integrations",
+    "manage",
+  );
+  await BusinessModuleService.requireAccess(
+    organizationId,
+    userId,
+    "crm",
+    "manage",
+  );
+  const config = await Repo.configuration(organizationId, input.connectionId);
+  if (!config) throw new AppError("NOT_FOUND");
+  const { connectionId, ...values } = input;
+  // Sender editing never enables fulfillment, tracking, messages or other effects.
+  await Repo.configure(organizationId, connectionId, values);
+}
+export const OrderOperationsConfigService = { configure, settings, saveSender };

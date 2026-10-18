@@ -6,7 +6,11 @@ export async function dispatchCurrent(context: ActionContext) {
     effect.kind === "confirmation" || effect.kind === "cancellation"
       ? config.confirmationStartedAt
       : config.operationsStartedAt;
-  if (!cutoff || Date.parse(order.createdAt) < Date.parse(cutoff)) return false;
+  const eligibleAt =
+    effect.kind === "citypak" && order.confirmedAt
+      ? Math.max(Date.parse(order.createdAt), Date.parse(order.confirmedAt))
+      : Date.parse(order.createdAt);
+  if (!cutoff || !(eligibleAt >= Date.parse(cutoff))) return false;
   const connectionId =
     order.operationsConnectionId || order.integrationConnectionId;
   if (!connectionId) return false;
@@ -22,7 +26,9 @@ export async function dispatchCurrent(context: ActionContext) {
     "invoiceEnabled",
     "courierCredentials",
     "senderName",
+    "senderContactName",
     "senderPhone",
+    "senderAltPhone",
     "senderAddress1",
     "senderAddress2",
     "senderAddress3",

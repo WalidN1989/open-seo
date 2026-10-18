@@ -1784,3 +1784,77 @@ synthetic mirror; confirmation/operation cutoffs remain NULL, invoice false, loy
 Updated full suite: 2,818 tests across306files pass; selfhost build passes.
 Historical export includes26orders without lines and other reconciliation gaps;
 no historical import or provider activation is included in this deployment.
+
+### 2026-10-18 — Citypak approval setup (awaiting release)
+
+Owner approved BooXworm Citypak setup and accepts temporary duplicate waybills
+from the parallel legacy workflow during migration. Duplicate cleanup is deferred;
+no legacy integrations are disconnected. Repeated DU requests retain durable
+once-only claims and ambiguous provider outcomes are not automatically resent.
+
+The feature branch dispatches only the approved order's Citypak effect inside the
+staff approval request; it does not start a general scheduler or drain other
+queued actions. Approval records confirmed_at, allowing existing pending orders
+to become courier-eligible when explicitly approved after activation. Creation
+cutoffs for invoices, loyalty and customer messages stay unchanged. Delivery
+phone/address/city can be corrected during review and are committed with the
+approval. Enabled courier creation checks configuration and recipient details
+before approval; provider failure preserves approval with visible warning/activity.
+Pickup orders do not create waybills. Existing paid/outstanding amount logic and
+A4/4x6 labels are preserved. There is no new schema migration.
+
+Private runtime preparation copied the original tenant's sender configuration to
+DU while fulfillment remained disabled. Exact Shopify ID matching filled eight
+missing phone numbers and one address; existing values were preserved and no
+cities were inferred from unstructured addresses. Private before-images remain
+on the VPS for recovery. No Citypak shipment was submitted for these data changes.
+Lovable confirms the API key secret exists but does not expose its value; owner
+entry through the DU courier field is still required before activation.
+
+Validation: 2,827 tests across 307 files, full ci:check, and selfhost build pass.
+An isolated PostgreSQL 18 database applied all 85 migrations and executed the real
+approval/dispatch queries with synthetic rows and a mocked Citypak provider,
+including scoped lookup and partial-payment COD. The actual review component was
+checked in a synthetic browser preview for delivery validation and waybill success
+feedback. These checks do not prove the live Citypak key or provider portal flow.
+Release and live provider verification remain outstanding.
+
+PR #41 contains the implementation. GitHub's Actions UI reports that Actions is
+currently disabled for the repository and directs the owner to GitHub Support;
+required GitHub ci/docker-build checks have not started, despite workflow settings
+reporting enabled via the API. Main protection is preserved; no merge, deployment,
+workflow-policy change or provider activation was performed. The Citypak key is
+still absent in DU. These external prerequisites remain before live verification.
+
+### 2026-10-18 — Citypak returned to merchant correction (awaiting release)
+
+The vendor draft documents status_type RTM with the generic status DELIVERED.
+The parser now gives RTM priority and records RETURNED; ordinary DL deliveries
+remain DELIVERED. Tracking refresh also reads status_code and suppresses a
+synthetic delivery when its latest terminal event is a return, while allowing a
+later actual delivery. Eleven regressions cover supported callback envelopes,
+normal delivery/non-delivery controls, scoped callback writes and refresh results.
+Full suite: 2,838 tests across 307 files pass; selfhost build passes. No schema,
+production data, credential, live provider call or tracking activation is changed.
+
+### October 18, 2026 — Citypak sender editor (pending release)
+
+The Citypak page and Shopify order settings now expose one shared sender form:
+business name, pickup contact, primary and alternate international phone,
+three address lines, city and default weight. Required provider fields and
+ASCII text are validated on the server. A blank contact name uses the sender
+name; optional contact fields do not block existing configurations. Saving
+sender details requires integrations/CRM management permission and changes
+only sender fields. It does not activate fulfillment or require a Citypak key.
+The API key and the explicit fulfillment switch remain separate prerequisites.
+
+SQLite migration 0106 and PostgreSQL migration 0085 add only nullable
+sender_contact_name and sender_alt_phone columns. Full migration sequences were
+applied to disposable SQLite and PostgreSQL 18 databases with a preexisting
+sender row; credentials, automation cutoffs, enablement and existing values were
+preserved. Actual PostgreSQL approval dispatched a mocked shipment with the
+saved pickup contact and alternate phone; foreign-tenant changes were rejected.
+The shared form was visually checked and saved against isolated synthetic data.
+No production schema or provider setting has changed. Apply additive migrations
+before release; rollback can retain these unused nullable columns while running
+the previous application revision. Do not drop them as part of code rollback.

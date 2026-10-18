@@ -16,43 +16,51 @@ const state = vi.hoisted(() => ({
   finish: vi.fn(),
   completeMessage: vi.fn(),
 }));
-const fixtures = vi.hoisted(() => ({
-  order: {
-    id: "order",
-    organizationId: "org",
-    integrationConnectionId: "connection",
-    status: "confirmed",
-    approvalStatus: "approved",
-    currency: "LKR",
-    createdAt: "2026-10-14T00:00:00Z",
-    updatedAt: "revision",
-    customerName: "Synthetic",
-    customerPhone: "+94770000000",
-    customerEmail: "customer@example.test",
-    orderNumber: "SHOP-1",
-    shippingAddress: "Synthetic road",
-    shippingCity: "Synthetic city",
-    totalMinor: 1000,
-    paidMinor: 0,
-    pickup: false,
-  },
-  config: {
-    enabled: true,
-    confirmationStartedAt: "2026-01-01T00:00:00Z",
-    operationsStartedAt: "2026-01-01T00:00:00Z",
-    confirmationSenderId: "sender",
-    confirmationTemplateId: "template",
-    invoiceEnabled: true,
-    parcelWeightGrams: 500,
-  },
-  sender: { id: "sender", provider: "twilio", status: "connected" },
-  template: {
-    id: "template",
-    connectionId: "sender",
-    body: "Hi {{1}} {{2}}",
-    status: "approved",
-  },
-}));
+const fixtures = vi.hoisted(() => {
+  const contacts: {
+    senderContactName: string | null;
+    senderAltPhone: string | null;
+  } = { senderContactName: null, senderAltPhone: null };
+  return {
+    order: {
+      id: "order",
+      organizationId: "org",
+      integrationConnectionId: "connection",
+      status: "confirmed",
+      approvalStatus: "approved",
+      currency: "LKR",
+      createdAt: "2026-10-14T00:00:00Z",
+      updatedAt: "revision",
+      customerName: "Synthetic",
+      customerPhone: "+94770000000",
+      customerEmail: "customer@example.test",
+      orderNumber: "SHOP-1",
+      shippingAddress: "Synthetic road",
+      shippingCity: "Synthetic city",
+      totalMinor: 1000,
+      paidMinor: 0,
+      pickup: false,
+    },
+    config: {
+      enabled: true,
+      confirmationStartedAt: "2026-01-01T00:00:00Z",
+      operationsStartedAt: "2026-01-01T00:00:00Z",
+      confirmationSenderId: "sender",
+      confirmationTemplateId: "template",
+      invoiceEnabled: true,
+      parcelWeightGrams: 500,
+      senderName: "Synthetic Books",
+      ...contacts,
+    },
+    sender: { id: "sender", provider: "twilio", status: "connected" },
+    template: {
+      id: "template",
+      connectionId: "sender",
+      body: "Hi {{1}} {{2}}",
+      status: "approved",
+    },
+  };
+});
 vi.mock(
   "@/server/features/commerce/repositories/OrderOperationsRepository",
   () => ({
@@ -80,6 +88,7 @@ vi.mock(
       canDispatch: async () => state.eligible,
       message: async () => "message",
       finish: state.finish,
+      recordShipment: vi.fn(),
       defer: async () => undefined,
     },
   }),
@@ -190,3 +199,37 @@ it("records uncertain provider outcomes in the inbox without an automatic resend
   expect(state.send).toHaveBeenCalledTimes(1);
   expect(state.effectStatus).toBe("unknown");
 });
+
+it.each([
+  [null, null, "Synthetic Books", ""],
+  ["Test Staff", "+94110000001", "Test Staff", "+94110000001"],
+])(
+  "uses saved sender contacts for Citypak (%s)",
+  async (contact, phone, expectedContact, expectedPhone) => {
+    state.invalidateDuringClaim = false;
+    state.kind = "citypak";
+    fixtures.config.senderContactName = contact;
+    fixtures.config.senderAltPhone = phone;
+    state.citypak.mockResolvedValue({
+      trackingNumber: "D-SYNTHETIC",
+      externalId: "synthetic",
+    });
+    const { OrderOperationsService } = await import("./OrderOperationsService");
+    await OrderOperationsService.runDue();
+    expect(state.citypak).toHaveBeenCalledWith(
+      "synthetic",
+      expect.objectContaining({
+        from_contact_name: expectedContact,
+        from_contact_2: expectedPhone,
+      }),
+    );
+    expect(state.finish).toHaveBeenCalledWith(
+      "org",
+      "effect",
+      expect.objectContaining({
+        status: "succeeded",
+        externalId: "D-SYNTHETIC",
+      }),
+    );
+  },
+);

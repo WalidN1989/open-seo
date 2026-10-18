@@ -290,6 +290,11 @@ async function approveImport(
   orderId: string,
   revision: string,
   lines: { id: string; productId: string }[],
+  delivery?: {
+    customerPhone: string | null;
+    shippingAddress: string | null;
+    shippingCity: string | null;
+  },
 ) {
   const guard = and(
     eq(commerceOrders.organizationId, organizationId),
@@ -323,6 +328,8 @@ async function approveImport(
       .set({
         approvalStatus: "approved",
         status: "confirmed",
+        confirmedAt: new Date().toISOString(),
+        ...delivery,
         updatedAt: new Date().toISOString(),
       })
       .where(and(guard, eq(commerceOrders.status, "draft"))),

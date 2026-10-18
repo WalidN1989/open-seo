@@ -1,3 +1,4 @@
+import { CitypakSenderSettings } from "./CitypakSenderSettings";
 import { OrderOperationsSettings } from "./OrderOperationsSettings";
 import { LegacyOrderImport } from "./LegacyOrderImport";
 import { useState } from "react";
@@ -170,6 +171,7 @@ export function OrderSyncPanel() {
                   </p>
                 </>
               ) : null}
+              <CitypakSenderSettings connectionId={config.connectionId} />
               <OrderOperationsSettings connectionId={config.connectionId} />
               <LegacyOrderImport connectionId={config.connectionId} />
             </div>
