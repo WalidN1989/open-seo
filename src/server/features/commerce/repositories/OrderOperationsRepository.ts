@@ -96,13 +96,31 @@ async function effects(organizationId: string, orderId: string) {
       ),
     );
 }
-async function due() {
+async function due(connectionId?: string) {
   return db
     .select()
     .from(commerceOrderEffects)
     .where(
       and(
         eq(commerceOrderEffects.status, "queued"),
+        connectionId
+          ? and(
+              eq(commerceOrderEffects.kind, "citypak"),
+              sql`exists ${db
+                .select({ id: commerceOrders.id })
+                .from(commerceOrders)
+                .where(
+                  and(
+                    eq(commerceOrders.id, commerceOrderEffects.orderId),
+                    eq(
+                      commerceOrders.organizationId,
+                      commerceOrderEffects.organizationId,
+                    ),
+                    sql`coalesce(${commerceOrders.operationsConnectionId}, ${commerceOrders.integrationConnectionId}) = ${connectionId}`,
+                  ),
+                )}`,
+            )
+          : undefined,
         or(
           sql`${commerceOrderEffects.nextAttemptAt} is null`,
           sql`${commerceOrderEffects.nextAttemptAt} <= ${new Date().toISOString()}`,

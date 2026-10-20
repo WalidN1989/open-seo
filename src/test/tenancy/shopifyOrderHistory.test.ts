@@ -293,9 +293,10 @@ describe("Shopify history, webhook and courier boundaries", () => {
       .shipments[0];
     expect(updated.status).toBe("NOT DELIVERED");
     expect(updated.checkedAt).toBeTruthy();
-    // A fresh result is cached; exercise provider failure only after expiry.
+    // A manual refresh always rechecks Citypak, even while the poll cache is fresh.
     await OrderShipmentService.refresh(ORG_A, USER_OWNER_A, id, shipment.id);
-    expect(fetcher).toHaveBeenCalledTimes(1);
+    expect(fetcher).toHaveBeenCalledTimes(2);
+    expect(updated.lastEventAt).toBeNull();
     await fixture.db
       .update(schema.commerceOrderShipments)
       .set({

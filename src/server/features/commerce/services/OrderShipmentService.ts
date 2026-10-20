@@ -95,7 +95,7 @@ async function refresh(
       "INTEGRATION_CHECK_FAILED",
       "Enter the Citypak API key in this order's connection settings first.",
     );
-  return refreshShipment(organizationId, shipment, credentials.API_KEY);
+  return refreshShipment(organizationId, shipment, credentials.API_KEY, true);
 }
 async function refreshShipment(
   organizationId: string,
@@ -103,16 +103,25 @@ async function refreshShipment(
     Awaited<ReturnType<typeof CitypakRepository.trackingShipment>>
   >,
   apiKey: string,
+  force = false,
 ) {
-  if (["DELIVERED", "RETURNED", "RTM"].includes(shipment.status)) return;
+  if (!force && ["DELIVERED", "RETURNED", "RTM"].includes(shipment.status))
+    return;
   if (
+    !force &&
     shipment.checkedAt &&
     Date.now() - Date.parse(shipment.checkedAt) < 2 * 60 * 60 * 1000
   )
     return;
   const tracking = await trackCitypakOrder(apiKey, shipment.trackingNumber);
   for (const event of tracking.events) {
-    if (event.eventAt)
+    if (
+      event.eventAt &&
+      !(
+        ["DELIVERED", "RETURNED", "RTM"].includes(shipment.status) &&
+        !["DELIVERED", "RETURNED"].includes(event.status)
+      )
+    )
       await OrderOperationsRepository.shipmentEvent(
         organizationId,
         shipment.id,
@@ -120,26 +129,31 @@ async function refreshShipment(
       );
   }
   const latest = tracking.events.at(-1);
-  if (latest && !latest.eventAt) {
-    await OrderOperationsRepository.shipmentEvent(organizationId, shipment.id, {
-      ...latest,
-      eventAt: new Date().toISOString(),
-      source: "pull",
-    });
-  }
+  // An observation is not a dated courier scan. Never manufacture scan times.
+  if (
+    latest &&
+    !latest.eventAt &&
+    !["DELIVERED", "RETURNED", "RTM"].includes(shipment.status)
+  )
+    await Repo.recordStatus(
+      organizationId,
+      shipment.orderId,
+      shipment.id,
+      latest.status,
+    );
   if (
     tracking.delivered &&
-    !tracking.events.some(
-      (event) => event.status === "DELIVERED" && event.eventAt,
-    )
-  ) {
-    await OrderOperationsRepository.shipmentEvent(organizationId, shipment.id, {
-      status: "DELIVERED",
-      eventAt: new Date().toISOString(),
-      reason: null,
-      source: "pull",
-    });
-  }
+    !tracking.events.some((event) =>
+      ["DELIVERED", "RETURNED"].includes(event.status),
+    ) &&
+    !["RETURNED", "RTM"].includes(shipment.status)
+  )
+    await Repo.recordStatus(
+      organizationId,
+      shipment.orderId,
+      shipment.id,
+      "DELIVERED",
+    );
   // A successful pull remains fresh even when it contains no newer events.
   await CitypakRepository.touch(organizationId, shipment.id);
 }
@@ -163,9 +177,10 @@ async function trackingAccess(organizationId: string) {
     ),
   );
 }
-async function runDueTracking() {
+async function runDueTracking(connectionId?: string) {
   let processed = 0;
   for (const config of await CitypakRepository.trackingConnections()) {
+    if (connectionId && config.connectionId !== connectionId) continue;
     const credentials = await decryptCredentials(config.courierCredentials);
     if (
       credentials.TRACKING_ENABLED !== "true" ||

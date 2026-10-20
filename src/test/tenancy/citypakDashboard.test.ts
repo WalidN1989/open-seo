@@ -49,7 +49,9 @@ describe("Citypak dashboard pagination and scoping", () => {
       new Set([...first.rows, ...second.rows].map((row) => row.shipment.id))
         .size,
     ).toBe(55);
-    expect(first.inTransit).toBe(54);
+    expect(first.inTransit).toBe(0);
+    expect(first.awaitingScan).toBe(54);
+    expect(first.delivered).toBe(1);
   });
   it("filters before pagination and updates the summary counts", async () => {
     const found = await repo.dashboard(ORG_A, {

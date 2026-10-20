@@ -4,12 +4,17 @@ import {
   getCitypakDashboard,
   refreshOrderShipment,
 } from "@/serverFunctions/orders";
-import { formatMoney } from "@/shared/currencies";
+import { Link, useParams } from "@tanstack/react-router";
+import { Truck, RefreshCw, Search } from "lucide-react";
+import { CitypakWaybillRow } from "./CitypakWaybillRow";
 import { toast } from "sonner";
 import { getStandardErrorMessage } from "@/client/lib/error-messages";
 import { Loading, ErrorState } from "./inventoryShared";
 export function CitypakWaybills() {
   const client = useQueryClient();
+  const { projectId } = useParams({
+    from: "/_project/p/$projectId/modules/crm/citypak",
+  });
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
   const [payment, setPayment] = useState<
@@ -27,6 +32,7 @@ export function CitypakWaybills() {
       paymentMethod,
       offset,
     ],
+    refetchInterval: 60_000,
     queryFn: () =>
       getCitypakDashboard({
         data: { search, status, payment, paymentMethod, offset, limit: 50 },
@@ -35,7 +41,10 @@ export function CitypakWaybills() {
   const refresh = useMutation({
     mutationFn: (data: { orderId: string; shipmentId: string }) =>
       refreshOrderShipment({ data }),
-    onSuccess: () => client.invalidateQueries({ queryKey: ["commerce"] }),
+    onSuccess: async () => {
+      await client.invalidateQueries({ queryKey: ["commerce"] });
+      toast.success("Checked Citypak for the latest delivery status");
+    },
     onError: (e) => toast.error(getStandardErrorMessage(e)),
   });
   if (query.isLoading) return <Loading />;
@@ -43,23 +52,52 @@ export function CitypakWaybills() {
   const rows = query.data?.rows || [];
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-bold">Citypak Waybills</h1>
-      <div className="flex flex-wrap gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="flex items-center gap-2 text-2xl font-bold">
+            <Truck className="size-6 text-primary" /> Citypak waybills
+          </h1>
+          <p className="mt-1 text-sm text-base-content/60">
+            Manage deliveries, check courier scans and print shipping labels.
+          </p>
+        </div>
+        <Link
+          className="btn btn-primary btn-sm"
+          to="/p/$projectId/modules/crm/orders"
+          params={{ projectId }}
+        >
+          Open orders
+        </Link>
+      </div>
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {[
-          ["Total", query.data?.total || 0],
-          ["Paid", query.data?.paid || 0],
-          ["COD / unpaid", (query.data?.total || 0) - (query.data?.paid || 0)],
+          ["Total waybills", query.data?.total || 0],
+          ["Awaiting courier scan", query.data?.awaitingScan || 0],
           ["In transit", query.data?.inTransit || 0],
+          ["Delivered", query.data?.delivered || 0],
         ].map(([label, count]) => (
-          <div className="rounded-lg border border-base-300 p-3" key={label}>
-            <p className="text-xs">{label}</p>
-            <p className="text-xl font-semibold">{count}</p>
+          <div
+            className="rounded-xl border border-base-300 bg-base-100 p-4"
+            key={label}
+          >
+            <p className="text-xs font-medium text-base-content/60">{label}</p>
+            <p className="mt-2 text-3xl font-semibold tabular-nums">{count}</p>
           </div>
         ))}
       </div>
+      <p className="text-xs text-base-content/60">
+        New waybills are created after order approval when fulfillment is
+        enabled in order settings. Active deliveries are checked every two hours
+        when automatic tracking is enabled. Refresh checks Citypak immediately.
+      </p>
       <div className="flex flex-wrap gap-2">
+        <Search
+          aria-hidden="true"
+          className="my-2 size-4 text-base-content/50"
+        />
         <input
-          className="input input-bordered input-sm flex-1"
+          aria-label="Search Citypak waybills"
+          className="input input-bordered input-sm min-w-48 flex-1"
           placeholder="Search order, tracking, customer or phone"
           value={search}
           onChange={(e) => {
@@ -69,6 +107,7 @@ export function CitypakWaybills() {
         />
         <select
           className="select select-bordered select-sm"
+          aria-label="Payment state"
           value={payment}
           onChange={(e) => {
             const value = e.target.value;
@@ -90,6 +129,7 @@ export function CitypakWaybills() {
         </select>
         <select
           className="select select-bordered select-sm"
+          aria-label="Payment method"
           value={paymentMethod}
           onChange={(event) => {
             setPaymentMethod(event.target.value);
@@ -106,6 +146,7 @@ export function CitypakWaybills() {
         </select>
         <select
           className="select select-bordered select-sm"
+          aria-label="Delivery status"
           value={status}
           onChange={(e) => {
             setStatus(e.target.value);
@@ -130,13 +171,18 @@ export function CitypakWaybills() {
         </select>
         <button
           className="btn btn-outline btn-sm"
+          disabled={query.isFetching}
           onClick={() => void query.refetch()}
         >
-          Reload
+          <RefreshCw
+            aria-hidden="true"
+            className={`size-4 ${query.isFetching ? "animate-spin" : ""}`}
+          />{" "}
+          Reload list
         </button>
       </div>
-      <div className="overflow-x-auto">
-        <table className="table table-sm">
+      <div className="overflow-x-auto rounded-xl border border-base-300 bg-base-100">
+        <table className="table table-sm [&_td]:py-4">
           <thead>
             <tr>
               <th>Order</th>
@@ -145,74 +191,42 @@ export function CitypakWaybills() {
               <th>Payment</th>
               <th>Total</th>
               <th>Status</th>
-              <th>Updated</th>
+              <th>Tracking times</th>
               <th>Actions</th>
             </tr>
           </thead>
           <tbody>
-            {rows.map(({ shipment, order }) => (
-              <tr key={shipment.id}>
-                <td>{order.orderNumber}</td>
-                <td>
-                  {order.customerName}
-                  <p className="text-xs">{order.customerPhone}</p>
-                </td>
-                <td>{shipment.trackingNumber}</td>
-                <td>
-                  {order.paymentStatus}
-                  <p className="text-xs">
-                    {order.paymentMethod || "None / unmapped"}
-                  </p>
-                </td>
-                <td>
-                  {formatMoney(order.totalMinor, order.currency || "LKR")}
-                </td>
-                <td>
-                  {shipment.status}
-                  <p className="text-xs">{shipment.reason}</p>
-                </td>
-                <td>
-                  {shipment.checkedAt
-                    ? new Date(shipment.checkedAt).toLocaleString()
-                    : "Not checked"}
-                </td>
-                <td>
-                  <button
-                    className="btn btn-ghost btn-xs"
-                    disabled={refresh.isPending}
-                    onClick={() =>
-                      refresh.mutate({
-                        orderId: order.id,
-                        shipmentId: shipment.id,
-                      })
-                    }
-                  >
-                    Refresh
-                  </button>
-                  <a
-                    className="btn btn-ghost btn-xs"
-                    target="_blank"
-                    rel="noreferrer"
-                    href={`/api/orders/${encodeURIComponent(order.id)}/label?organizationId=${encodeURIComponent(query.data?.organizationId || "")}&shipmentId=${encodeURIComponent(shipment.id)}`}
-                  >
-                    A4 label
-                  </a>
-                  <a
-                    className="btn btn-ghost btn-xs"
-                    target="_blank"
-                    rel="noreferrer"
-                    href={`/api/orders/${encodeURIComponent(order.id)}/label?organizationId=${encodeURIComponent(query.data?.organizationId || "")}&shipmentId=${encodeURIComponent(shipment.id)}&size=4X6`}
-                  >
-                    4×6 label
-                  </a>
-                </td>
-              </tr>
+            {rows.map((row) => (
+              <CitypakWaybillRow
+                key={row.shipment.id}
+                row={row}
+                organizationId={query.data?.organizationId || ""}
+                refreshing={
+                  refresh.isPending &&
+                  refresh.variables?.shipmentId === row.shipment.id
+                }
+                refreshDisabled={refresh.isPending}
+                onRefresh={() =>
+                  refresh.mutate({
+                    orderId: row.order.id,
+                    shipmentId: row.shipment.id,
+                  })
+                }
+              />
             ))}
           </tbody>
         </table>
       </div>
       {rows.length === 0 ? (
-        <p className="text-sm">No waybills match the filters.</p>
+        <div className="rounded-xl border border-dashed border-base-300 p-8 text-center">
+          <Truck className="mx-auto mb-3 size-8 text-base-content/40" />
+          <p className="font-medium">No waybills match these filters</p>
+          <p className="mt-1 text-sm text-base-content/60">
+            New deliveries appear here after waybill creation. Link an existing
+            tracking number from the order to bring older deliveries into this
+            view.
+          </p>
+        </div>
       ) : null}
       <div className="flex items-center gap-2">
         <button

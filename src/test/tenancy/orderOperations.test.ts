@@ -341,3 +341,29 @@ describe("durable order actions", () => {
     expect(await InvoiceRepository.getInvoice(ORG_B, invoiceId)).toBeNull();
   });
 });
+
+it("selects only Citypak actions for the requested operations connection before the batch limit", async () => {
+  const schema = await import("@/db/schema");
+  const [original] = await fixture.db
+    .select()
+    .from(schema.commerceOrders)
+    .where(eq(schema.commerceOrders.id, ORDER_A));
+  for (let i = 0; i < 25; i++) {
+    const id = `courier-only-paused-${i}`;
+    await fixture.db
+      .insert(schema.commerceOrders)
+      .values({ ...original, id, orderNumber: `PAUSED-${i}` });
+    await repo.enqueue(ORG_A, id, "confirmation");
+  }
+  const id = "courier-only-target";
+  await fixture.db
+    .insert(schema.commerceOrders)
+    .values({ ...original, id, orderNumber: "COURIER-TARGET" });
+  await repo.enqueue(ORG_A, id, "citypak");
+  const rows = await repo.due("operations-fixture");
+  expect(rows.some((row) => row.orderId === id)).toBe(true);
+  expect(
+    rows.every((row) => row.kind === "citypak" && row.organizationId === ORG_A),
+  ).toBe(true);
+  expect(await repo.due("another-connection")).toEqual([]);
+});

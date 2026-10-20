@@ -1,3 +1,5 @@
+import { CITYPAK_SYNC_PATH } from "@/shared/citypak";
+import { handleCitypakSync } from "@/server/features/commerce/citypakSyncHandler";
 import {
   createStartHandler,
   defaultStreamHandler,
@@ -177,6 +179,7 @@ function handleFetch(
   if (pathname === WHATSAPP_REPLY_WAKEUP_PATH) {
     return handleWhatsappReplyWakeup(publicRequest);
   }
+  if (pathname === CITYPAK_SYNC_PATH) return handleCitypakSync(publicRequest);
   if (pathname === INTERNAL_CRON_PATH) {
     return handleInternalCronRequest(publicRequest, env);
   }

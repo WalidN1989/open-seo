@@ -15,6 +15,7 @@ const state = vi.hoisted(() => ({
   email: vi.fn(),
   finish: vi.fn(),
   completeMessage: vi.fn(),
+  recordShipment: vi.fn(),
 }));
 const fixtures = vi.hoisted(() => ({
   order: {
@@ -68,6 +69,7 @@ vi.mock(
               },
             ]
           : [],
+      recordShipment: state.recordShipment,
       configuration: async () => fixtures.config,
       sender: async () => fixtures.sender,
       template: async () => fixtures.template,
@@ -189,4 +191,45 @@ it("records uncertain provider outcomes in the inbox without an automatic resend
   await OrderOperationsService.runDue();
   expect(state.send).toHaveBeenCalledTimes(1);
   expect(state.effectStatus).toBe("unknown");
+});
+
+it.each(["confirmation", "cancellation", "invoice"])(
+  "courier-only worker cannot dispatch %s",
+  async (kind) => {
+    state.kind = kind;
+    state.invalidateDuringClaim = false;
+    const { OrderOperationsService } = await import("./OrderOperationsService");
+    await OrderOperationsService.runDue("connection");
+    expect(state.send).not.toHaveBeenCalled();
+    expect(state.email).not.toHaveBeenCalled();
+    expect(state.invoice).not.toHaveBeenCalled();
+    expect(state.citypak).not.toHaveBeenCalled();
+    expect(state.effectStatus).toBe("queued");
+  },
+);
+it("creates one confirmed waybill and never retries an ambiguous courier response", async () => {
+  state.kind = "citypak";
+  state.invalidateDuringClaim = false;
+  state.citypak.mockResolvedValueOnce({
+    trackingNumber: "D123",
+    externalId: "123",
+  });
+  const { OrderOperationsService } = await import("./OrderOperationsService");
+  await OrderOperationsService.runDue("connection");
+  expect(state.citypak).toHaveBeenCalledTimes(1);
+  expect(state.recordShipment).toHaveBeenCalledWith(
+    "org",
+    "order",
+    "D123",
+    "123",
+  );
+  expect(state.effectStatus).toBe("succeeded");
+  state.effectStatus = "queued";
+  state.citypak.mockRejectedValueOnce(new Error("Unknown after submission"));
+  await OrderOperationsService.runDue("connection");
+  expect(state.effectStatus).toBe("unknown");
+  await OrderOperationsService.runDue("connection");
+  expect(state.citypak).toHaveBeenCalledTimes(2);
+  expect(state.send).not.toHaveBeenCalled();
+  expect(state.invoice).not.toHaveBeenCalled();
 });

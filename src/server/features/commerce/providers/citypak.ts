@@ -6,6 +6,7 @@ export function citypakStatus(raw: string) {
   if (value.includes("RETURN") || value.includes("RTM")) return "RETURNED";
   if (value.includes("DELIVERED")) return "DELIVERED";
   if (value.includes("OUT FOR DELIVERY")) return "OUT FOR DELIVERY";
+  if (value.includes("DISPATCHED")) return "DISPATCHED";
   if (value.includes("FIRST MILE") || value.includes("RECEIVE SCAN"))
     return "FIRST MILE RECEIVE SCAN";
   if (value.includes("RECEIVED IN FACILITY")) return "IN TRANSIT";
@@ -16,7 +17,11 @@ export function citypakEventTime(date?: string, time?: string) {
   if (!match || !time || !/^\d{2}:\d{2}:\d{2}$/.test(time)) return null;
   const iso = `${match[3]}-${match[2].padStart(2, "0")}-${match[1].padStart(2, "0")}T${time}+05:30`;
   const parsed = Date.parse(iso);
-  return Number.isFinite(parsed) ? new Date(parsed).toISOString() : null;
+  if (!Number.isFinite(parsed)) return null;
+  const local = new Date(parsed + 330 * 60_000).toISOString();
+  return local.startsWith(iso.slice(0, 19))
+    ? new Date(parsed).toISOString()
+    : null;
 }
 export async function createCitypakOrder(
   apiKey: string,
@@ -92,6 +97,7 @@ export async function trackCitypakOrder(
             z.object({
               status_type: z.string().optional(),
               status: z.string().optional(),
+              status_code: z.string().optional(),
               description: z.string().optional(),
               date: z.string().optional(),
               time: z.string().optional(),
@@ -111,11 +117,17 @@ export async function trackCitypakOrder(
     );
   return {
     delivered: parsed.data.data.is_delivered,
-    events: parsed.data.data.tracking_history.map((event) => ({
-      status: citypakStatus(event.status_type || event.status || "UNKNOWN"),
-      reason: event.description ?? null,
-      eventAt: citypakEventTime(event.date, event.time),
-    })),
+    events: parsed.data.data.tracking_history
+      .map((event) => ({
+        status: citypakStatus(
+          event.status_code === "RTM"
+            ? "RTM"
+            : event.status_type || event.status || "UNKNOWN",
+        ),
+        reason: event.description ?? null,
+        eventAt: citypakEventTime(event.date, event.time),
+      }))
+      .toSorted((a, b) => (a.eventAt || "").localeCompare(b.eventAt || "")),
   };
 }
 
@@ -175,7 +187,11 @@ export function parseCitypakCallback(payload: unknown) {
       ? envelope.events
       : [envelope];
   return events.map((event) => {
-    const status = citypakStatus(event.status || event.status_type || "");
+    const status = citypakStatus(
+      event.status_type === "RTM"
+        ? "RTM"
+        : event.status || event.status_type || "",
+    );
     if (!deliveryStates.has(status))
       throw new Error("Unsupported Citypak status");
     const timestamp = event.delivered_datetime || event.action_datetime;

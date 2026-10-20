@@ -386,8 +386,9 @@ async function process(effect: Awaited<ReturnType<typeof Repo.due>>[number]) {
     });
   }
 }
-async function runDue() {
-  for (const effect of await Repo.due()) {
+async function runDue(connectionId?: string) {
+  for (const effect of await Repo.due(connectionId)) {
+    if (connectionId && effect.kind !== "citypak") continue;
     await process(effect);
     await Repo.defer(effect.organizationId, effect.id);
   }
