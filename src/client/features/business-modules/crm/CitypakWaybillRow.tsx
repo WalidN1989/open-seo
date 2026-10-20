@@ -68,7 +68,7 @@ export function CitypakWaybillRow({
           Checked: {timestamp(shipment.checkedAt)}
         </p>
       </td>
-      <td>
+      <td className="pr-20">
         <div className="flex items-center gap-1">
           <button
             className="btn btn-ghost btn-sm"
