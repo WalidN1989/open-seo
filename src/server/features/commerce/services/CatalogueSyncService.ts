@@ -137,9 +137,9 @@ async function runSync(organizationId: string, connectionId: string) {
   });
 
   try {
-    // Incremental after the first run: ask only for what changed. A full
-    // resync overrides that, which is how a newly added field reaches products
-    // the store itself has not touched since they were first imported.
+    // Adapters may use incremental updates after the first run. WooCommerce
+    // deliberately ignores this filter to reconcile old publication states.
+    // A full resync also backfills fields on unchanged source products.
     const modifiedAfter =
       connection.lastSyncedAt && !connection.fullResync
         ? new Date(
@@ -162,6 +162,8 @@ async function runSync(organizationId: string, connectionId: string) {
       const {
         drafts,
         sourceItemCount,
+        syncedItemCount,
+        unpublishedExternalIds,
         nextCursor,
         done,
         rewriteProductUrlOrigin,
@@ -203,6 +205,14 @@ async function runSync(organizationId: string, connectionId: string) {
       // emptied out from under it.
       const movements: StockMovementDraft[] = [];
 
+      if (unpublishedExternalIds?.length) {
+        await CommerceRepository.archiveExternalProducts(
+          organizationId,
+          connection.providerKey,
+          unpublishedExternalIds,
+        );
+      }
+
       for (const draft of drafts) {
         const row = await CommerceRepository.upsertExternalProduct(
           organizationId,
@@ -215,6 +225,7 @@ async function runSync(organizationId: string, connectionId: string) {
             category: draft.category,
             salePriceMinor: draft.salePriceMinor,
             productUrl: draft.productUrl,
+            status: draft.status,
           },
         );
         // Null means the store does not track stock for this item, which is a
@@ -240,10 +251,9 @@ async function runSync(organizationId: string, connectionId: string) {
         await InventoryRepository.applyMovements(organizationId, movements);
       }
 
-      // Progress is measured in provider products. Shopify can turn one
-      // product into several variant rows, so counting drafts made a page of
-      // 50 products misleadingly appear as (for example) "82 products".
-      synced += sourceItemCount;
+      // WooCommerce counts only published imports. Shopify counts source
+      // products rather than the multiple variant rows each may produce.
+      synced += syncedItemCount ?? sourceItemCount;
       if (done) break;
       cursor = nextCursor;
       if (pageIndex === PAGES_PER_RUN - 1) finished = false;

@@ -140,8 +140,8 @@ export function CatalogueSyncPanel({
         ))}
       </select>
       <p className="mt-2 text-xs text-base-content/40">
-        Only products changed since the last check are fetched, so price and
-        stock edits in your store appear here on their own.
+        Sync updates product details, prices and stock. Unpublished WooCommerce
+        products are excluded from the active catalogue.
       </p>
     </div>
   );

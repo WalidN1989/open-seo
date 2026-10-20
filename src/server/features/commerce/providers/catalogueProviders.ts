@@ -23,12 +23,18 @@ type CatalogueDraft = {
   salePriceMinor: number;
   productUrl: string | null;
   stockTarget: number | null;
+  /** WooCommerce publication owns whether its imported row is active. */
+  status?: "active";
 };
 
 type CataloguePage = {
   drafts: CatalogueDraft[];
   /** Provider products consumed, distinct from rows/variants produced. */
   sourceItemCount: number;
+  /** Published products imported, when source pages also contain drafts. */
+  syncedItemCount?: number;
+  /** Non-public source IDs: retire existing imports without creating rows. */
+  unpublishedExternalIds?: string[];
   /** Where the next call should resume from. */
   nextCursor: number;
   /** True when the provider has nothing more to give. */
@@ -59,38 +65,47 @@ type CatalogueProvider = {
 const wooProvider: CatalogueProvider = {
   initialCursor: 1,
   health: woocommerce.fetchStoreHealth,
-  async fetchPage(connection, cursor, limit, modifiedAfter, fetcher) {
+  async fetchPage(connection, cursor, limit, _modifiedAfter, fetcher) {
     const page = Math.max(1, cursor);
     const products = await woocommerce.fetchProductPage(
       connection,
       page,
       limit,
-      modifiedAfter,
+      // Revisit publication on every pass, including unchanged old drafts.
+      // Keep normal bounded paging/checkpoints rather than a separate sweep.
+      null,
       fetcher,
     );
-    const drafts = products.map((product) => ({
-      externalId: String(product.id),
-      // A product with no SKU cannot be identified in a catalogue, and the
-      // assistant would have nothing to quote.
-      sku: product.sku?.trim() || `WOO-${product.id}`,
-      name: woocommerce.plainText(product.name) || product.name,
-      description:
-        woocommerce.plainText(product.short_description) ||
-        woocommerce.plainText(product.description) ||
-        null,
-      category: woocommerce.plainText(product.categories?.[0]?.name) || null,
-      salePriceMinor: woocommerce.toMinorUnits(
-        product.price ?? product.regular_price,
-      ),
-      productUrl: product.permalink?.trim() || null,
-      stockTarget:
-        product.manage_stock && typeof product.stock_quantity === "number"
-          ? product.stock_quantity
-          : null,
-    }));
+    const drafts: CatalogueDraft[] = products
+      .filter((product) => product.status === "publish")
+      .map((product) => ({
+        externalId: String(product.id),
+        // A product with no SKU cannot be identified in a catalogue, and the
+        // assistant would have nothing to quote.
+        sku: product.sku?.trim() || `WOO-${product.id}`,
+        name: woocommerce.plainText(product.name) || product.name,
+        description:
+          woocommerce.plainText(product.short_description) ||
+          woocommerce.plainText(product.description) ||
+          null,
+        category: woocommerce.plainText(product.categories?.[0]?.name) || null,
+        salePriceMinor: woocommerce.toMinorUnits(
+          product.price ?? product.regular_price,
+        ),
+        productUrl: product.permalink?.trim() || null,
+        status: "active",
+        stockTarget:
+          product.manage_stock && typeof product.stock_quantity === "number"
+            ? product.stock_quantity
+            : null,
+      }));
     return {
       drafts,
       sourceItemCount: products.length,
+      syncedItemCount: drafts.length,
+      unpublishedExternalIds: products
+        .filter((product) => product.status !== "publish")
+        .map((product) => String(product.id)),
       nextCursor: page + 1,
       done: products.length < limit,
     };

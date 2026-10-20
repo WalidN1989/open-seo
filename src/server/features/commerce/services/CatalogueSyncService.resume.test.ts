@@ -73,6 +73,7 @@ const CONNECTION = {
 function wooProduct(overrides: Record<string, unknown> = {}) {
   return {
     id: 101,
+    status: "publish",
     name: "The Blue Book",
     sku: "BLUE-1",
     price: "19.99",

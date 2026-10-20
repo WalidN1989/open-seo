@@ -81,7 +81,7 @@ const wooProductSchema = z.object({
   regular_price: z.string().nullable().optional(),
   stock_quantity: z.number().nullable().optional(),
   manage_stock: z.boolean().optional(),
-  status: z.string().optional(),
+  status: z.string(),
   permalink: z.string().nullable().optional(),
   categories: z
     .array(z.object({ name: z.string() }))
@@ -137,7 +137,7 @@ export async function fetchStoreHealth(
   const response = await request(
     connection,
     "/wp-json/wc/v3/products",
-    new URLSearchParams({ per_page: "1" }),
+    new URLSearchParams({ per_page: "1", status: "publish" }),
     fetcher,
   );
   const total = Number(response.headers.get("x-wp-total") ?? "0");
@@ -163,6 +163,9 @@ export async function fetchProductPage(
     // every later page and the resume would skip real rows.
     orderby: "id",
     order: "asc",
+    // Read non-public records too, so sync can retire earlier imports. Only
+    // published products are converted into catalogue rows by the adapter.
+    status: "any",
     // Ask only for what changed since the last run when there is a marker.
     ...(modifiedAfter
       ? { modified_after: modifiedAfter, dates_are_gmt: "true" }

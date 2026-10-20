@@ -283,6 +283,7 @@ async function upsertExternalProduct(
     category: string | null;
     salePriceMinor: number;
     productUrl: string | null;
+    status?: "active";
     /**
      * A service has no stock, so it must not be counted like one. Store syncs
      * leave this alone and keep the "product" default.
@@ -335,12 +336,36 @@ async function upsertExternalProduct(
         category: input.category,
         salePriceMinor: input.salePriceMinor,
         productUrl: input.productUrl,
+        status: input.status,
         itemType: input.itemType ?? "product",
         updatedAt: now,
       },
     })
     .returning();
   return row;
+}
+
+/** Keep stock/order history, but remove unpublished source rows from AI reads. */
+async function archiveExternalProducts(
+  organizationId: string,
+  externalSource: string,
+  externalIds: string[],
+) {
+  if (!externalIds.length) return;
+  await db
+    .update(commerceProducts)
+    .set({
+      status: "archived",
+      productUrl: null,
+      updatedAt: new Date().toISOString(),
+    })
+    .where(
+      and(
+        eq(commerceProducts.organizationId, organizationId),
+        eq(commerceProducts.externalSource, externalSource),
+        inArray(commerceProducts.externalId, externalIds),
+      ),
+    );
 }
 
 /** Replace an integration's redirecting product-link origin in one query. */
@@ -367,6 +392,7 @@ async function rewriteExternalProductUrlOrigin(
 }
 
 export const CommerceRepository = {
+  archiveExternalProducts,
   upsertExternalProduct,
   listProducts,
   getProduct,

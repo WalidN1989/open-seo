@@ -16,6 +16,7 @@ const mocks = vi.hoisted(() => ({
   setSchedule: vi.fn(),
   listDueSyncs: vi.fn(),
   upsertExternalProduct: vi.fn(),
+  archiveExternalProducts: vi.fn(),
   reconcileToQuantity: vi.fn(),
   applyMovements: vi.fn(),
   fetchStoreHealth: vi.fn(),
@@ -38,7 +39,10 @@ vi.mock("../repositories/IntegrationSyncRepository", () => ({
   },
 }));
 vi.mock("../repositories/CommerceRepository", () => ({
-  CommerceRepository: { upsertExternalProduct: mocks.upsertExternalProduct },
+  CommerceRepository: {
+    upsertExternalProduct: mocks.upsertExternalProduct,
+    archiveExternalProducts: mocks.archiveExternalProducts,
+  },
 }));
 vi.mock("../repositories/InventoryRepository", () => ({
   InventoryRepository: {
@@ -75,6 +79,7 @@ const CONNECTION = {
 function wooProduct(overrides: Record<string, unknown> = {}) {
   return {
     id: 101,
+    status: "publish",
     name: "The Blue Book",
     sku: "BLUE-1",
     price: "19.99",
@@ -387,14 +392,14 @@ describe("a catalogue too large for one request", () => {
 });
 
 describe("full resync", () => {
-  it("asks only for recent changes on a scheduled run", async () => {
+  it("rechecks unchanged WooCommerce publication on a scheduled run", async () => {
     mocks.getConnection.mockResolvedValue({
       ...CONNECTION,
       lastSyncedAt: "2026-08-01T00:00:00.000Z",
       fullResync: false,
     });
     await CatalogueSyncService.runSync(ORG, CONNECTION.id);
-    expect(mocks.fetchProductPage.mock.calls[0][3]).toEqual(expect.any(String));
+    expect(mocks.fetchProductPage.mock.calls[0][3]).toBeNull();
   });
 
   it("ignores the incremental filter when a full resync was asked for", async () => {

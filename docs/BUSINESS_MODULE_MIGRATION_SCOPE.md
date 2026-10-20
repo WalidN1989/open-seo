@@ -1989,3 +1989,35 @@ waybills, the selected mailbox configuration/cursors and existing order data.
 Citypak push callbacks still require account-coordinator registration and the
 configured callback secret; polling does not depend on that registration. No
 ElevenLabs configuration, customer message or live waybill is changed by this PR.
+
+### October 20, 2026 — WooCommerce publication reconciliation (pending release)
+
+WooCommerce catalogue sync now imports only products whose source status is
+`publish`. It reads all source statuses in the existing bounded, resumable pages
+so previously imported drafts can be archived without creating new draft rows.
+Every WooCommerce pass revisits unchanged source products instead of using the
+incremental modification filter; this cleans up drafts imported before the fix
+and catches subsequent unpublishing. Shopify retains its incremental behavior.
+Health and imported counts describe published products, while paging still uses
+the full source-page size so a draft-only page cannot end the pass early.
+
+Archiving is scoped by organization, source and external product ID. It clears
+the imported public URL and removes the record from existing active-only WhatsApp
+search, price tokens and browser voice context. Stock balances, movements, IDs
+and order references remain intact. Republishing reactivates the same imported
+record with its current source price/link. Publication is authoritative for
+WooCommerce; Shopify upserts retain existing local archive behavior.
+
+No migration, provider configuration, scheduler activation or customer send is
+included. Release approval is required before deploying; run a complete manual
+WooCommerce sync afterward and verify published results and archived drafts in
+the intended organization. Cleanup occurs as each successful page is processed;
+failed or incomplete passes must not be described as complete. An old image
+rollback preserves archives but can import drafts again on its next sync, so
+keep WooCommerce syncing paused under that rollback until the fix is restored.
+Restoring archived products is a separate, source-verified data operation.
+
+Validation: 2,917 tests across 321 files, ci:check and the selfhost production
+build passed locally. Regressions cover publication filtering, draft-only pages,
+failed fetch/archive writes, source/tenant isolation, AI exclusion, unchanged
+stock balances and stable-ID reactivation. No live sync or deployment was run.
