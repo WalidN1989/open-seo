@@ -1989,3 +1989,41 @@ waybills, the selected mailbox configuration/cursors and existing order data.
 Citypak push callbacks still require account-coordinator registration and the
 configured callback secret; polling does not depend on that registration. No
 ElevenLabs configuration, customer message or live waybill is changed by this PR.
+
+### October 20, 2026 — Citypak deployed and selected courier worker active
+
+The owner approved publishing after local testing without waiting for another
+confirmation. PR #49 passed both required checks and merged as
+`b0dc29c45491c21ec1b0164f22b52c51d721404f`; main CI and the protected production
+image build also passed. Coolify deployed the immutable image
+`sha256:a9e1e4976947ae3124ef392a0bf3481b145dd04e14a22387741d4139df2d4e2f`.
+The running container's source revision, image identity and healthy state match.
+
+Private VPS recovery material includes the prior image/settings, a database dump
+verified by an isolated restore, and a final stopped-app database/runtime checkpoint.
+Release checks preserve every project, existing order total, product/price, stock
+balance, email ID, runtime credential and storage/network mapping. No migration
+or sample database was used. Local validation passed 2,909 tests in 318 files,
+ci:check and the production build; the actual app was checked with synthetic data.
+
+Only the selected BooXworm Citypak worker is enabled. Delivery tracking is on;
+fulfillment uses a new activation cutoff, so historical orders and approvals are
+not replayed. WhatsApp confirmations, invoice generation and loyalty earning
+remain off. The general ticker is absent and the selected Microsoft mailbox loop
+continues unchanged. Legacy services were not disconnected by this release.
+
+An owner-supplied existing waybill was linked through the normal CRM order form
+only after its Citypak reference uniquely matched the order. Automatic polling
+updated its checked time; a subsequent manual refresh advanced that time again
+within the two-hour polling cooldown. The provider currently reports no scans,
+so the app correctly shows awaiting scan with no invented courier scan date.
+Authenticated A4 and thermal labels render in Chrome. The existing customer lookup
+returns the linked tracking record and correct CRM product price/stock; wrong
+caller, missing secret and unlisted worker connection probes are rejected.
+
+There was no live shipment-creation test, order approval or test customer message.
+Creation's confirmed/ambiguous response paths were exercised with mocked provider
+calls; the first eligible real approval will exercise live creation. ElevenLabs
+agent settings and WhatsApp configuration were left to the owner as requested.
+Push callbacks remain unregistered; active tracking currently uses polling.
+Private account identifiers and verification reports stay outside this repository.
