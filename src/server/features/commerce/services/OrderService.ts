@@ -323,6 +323,8 @@ async function convertOrderRequest(
     {
       externalSource: WHATSAPP_REQUEST_SOURCE,
       externalId: request.id,
+      customerName: request.customerName,
+      customerPhone: request.customerPhone,
     },
   );
 
