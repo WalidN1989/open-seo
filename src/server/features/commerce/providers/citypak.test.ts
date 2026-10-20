@@ -151,3 +151,45 @@ describe("Citypak legacy response and callback parity", () => {
     ).toThrow();
   });
 });
+
+it("interprets the documented delivered RTM callback as returned to merchant", () => {
+  expect(
+    parseCitypakCallback({
+      tracking_number: "D42",
+      status: "DELIVERED",
+      status_type: "RTM",
+      delivered_datetime: "14-10-2026 10:00:00",
+    })[0].status,
+  ).toBe("RETURNED");
+  expect(citypakEventTime("31-02-2026", "10:00:00")).toBeNull();
+});
+it("accepts is_success and sorts courier scans by their source time", async () => {
+  const fetcher = vi.fn<typeof fetch>().mockResolvedValue(
+    new Response(
+      JSON.stringify({
+        is_success: true,
+        data: {
+          is_delivered: true,
+          tracking_history: [
+            {
+              status_type: "DELIVERED",
+              status_code: "RTM",
+              date: "14-10-2026",
+              time: "10:00:00",
+            },
+            {
+              status_type: "DISPATCHED TO FACILITY",
+              date: "13-10-2026",
+              time: "10:00:00",
+            },
+          ],
+        },
+      }),
+    ),
+  );
+  const result = await trackCitypakOrder("test-key", "D42", fetcher);
+  expect(result.events.map((event) => event.status)).toEqual([
+    "DISPATCHED",
+    "RETURNED",
+  ]);
+});

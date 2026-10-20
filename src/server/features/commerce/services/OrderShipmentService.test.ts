@@ -14,6 +14,7 @@ const mocks = vi.hoisted(() => ({
   getOrder: vi.fn(),
   shipments: vi.fn(),
   configuration: vi.fn(),
+  recordStatus: vi.fn(),
 }));
 vi.mock("../repositories/CitypakRepository", () => ({
   CitypakRepository: mocks,
@@ -34,7 +35,10 @@ vi.mock(
   () => ({ BusinessModuleService: { requireAccess: vi.fn() } }),
 );
 vi.mock("../repositories/OrderShipmentRepository", () => ({
-  OrderShipmentRepository: { configuration: mocks.configuration },
+  OrderShipmentRepository: {
+    configuration: mocks.configuration,
+    recordStatus: mocks.recordStatus,
+  },
 }));
 vi.mock("../repositories/OrderRepository", () => ({
   OrderRepository: { getOrder: mocks.getOrder, shipments: mocks.shipments },
@@ -186,4 +190,75 @@ describe("Citypak isolated tracking boundaries", () => {
     expect(mocks.shipmentEvent).not.toHaveBeenCalled();
     expect(mocks.touch).toHaveBeenCalledTimes(20);
   });
+});
+
+it("manual refresh bypasses the polling cooldown and records real scan times only", async () => {
+  mocks.getOrder.mockResolvedValue({
+    id: "order-a",
+    integrationConnectionId: "connection-a",
+  });
+  mocks.shipments.mockResolvedValue([
+    {
+      id: "shipment-a",
+      orderId: "order-a",
+      provider: "Citypak",
+      trackingNumber: "D42",
+      status: "PENDING",
+      checkedAt: new Date().toISOString(),
+    },
+  ]);
+  mocks.configuration.mockResolvedValue({ courierCredentials: "encrypted" });
+  mocks.trackCitypakOrder.mockResolvedValue({ delivered: true, events: [] });
+  await OrderShipmentService.refresh(
+    "org-a",
+    "user-a",
+    "order-a",
+    "shipment-a",
+  );
+  expect(mocks.trackCitypakOrder).toHaveBeenCalledWith("test-key", "D42");
+  expect(mocks.recordStatus).toHaveBeenCalledWith(
+    "org-a",
+    "order-a",
+    "shipment-a",
+    "DELIVERED",
+  );
+  expect(mocks.shipmentEvent).not.toHaveBeenCalled();
+});
+it("polling only considers the requested courier connection", async () => {
+  mocks.trackingConnections.mockResolvedValue([
+    {
+      organizationId: "org-b",
+      connectionId: "connection-b",
+      courierCredentials: "encrypted",
+    },
+  ]);
+  await OrderShipmentService.runDueTracking("connection-a");
+  expect(mocks.decryptCredentials).not.toHaveBeenCalled();
+  expect(mocks.dueTracking).not.toHaveBeenCalled();
+});
+it("keeps an empty Citypak history unknown rather than claiming delivery", async () => {
+  mocks.getOrder.mockResolvedValue({
+    id: "order-a",
+    integrationConnectionId: "connection-a",
+  });
+  mocks.shipments.mockResolvedValue([
+    {
+      id: "shipment-a",
+      orderId: "order-a",
+      provider: "Citypak",
+      trackingNumber: "D42",
+      status: "UNKNOWN",
+    },
+  ]);
+  mocks.configuration.mockResolvedValue({ courierCredentials: "encrypted" });
+  mocks.trackCitypakOrder.mockResolvedValue({ delivered: false, events: [] });
+  await OrderShipmentService.refresh(
+    "org-a",
+    "user-a",
+    "order-a",
+    "shipment-a",
+  );
+  expect(mocks.recordStatus).not.toHaveBeenCalled();
+  expect(mocks.shipmentEvent).not.toHaveBeenCalled();
+  expect(mocks.touch).toHaveBeenCalledWith("org-a", "shipment-a");
 });

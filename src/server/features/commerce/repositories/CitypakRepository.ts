@@ -54,7 +54,9 @@ async function dashboard(organizationId: string, filters: Filters) {
     .select({
       total: sql<number>`count(*)`,
       paid: sql<number>`coalesce(sum(case when ${commerceOrders.paymentStatus} = 'paid' then 1 else 0 end), 0)`,
-      inTransit: sql<number>`coalesce(sum(case when ${commerceOrderShipments.status} not in ('DELIVERED','RETURNED','RTM') then 1 else 0 end),0)`,
+      inTransit: sql<number>`coalesce(sum(case when ${commerceOrderShipments.status} in ('FIRST MILE RECEIVE SCAN','DISPATCHED','IN TRANSIT','OUT FOR DELIVERY') then 1 else 0 end),0)`,
+      awaitingScan: sql<number>`coalesce(sum(case when ${commerceOrderShipments.status} in ('PENDING','UNKNOWN') then 1 else 0 end),0)`,
+      delivered: sql<number>`coalesce(sum(case when ${commerceOrderShipments.status} = 'DELIVERED' then 1 else 0 end),0)`,
     })
     .from(commerceOrderShipments)
     .innerJoin(commerceOrders, join)
@@ -78,6 +80,8 @@ async function dashboard(organizationId: string, filters: Filters) {
     total: Number(counts?.total || 0),
     paid: Number(counts?.paid || 0),
     inTransit: Number(counts?.inTransit || 0),
+    awaitingScan: Number(counts?.awaitingScan || 0),
+    delivered: Number(counts?.delivered || 0),
   };
 }
 async function connection(connectionId: string) {

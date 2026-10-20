@@ -1944,3 +1944,48 @@ body match. Exact Outlook auto-link annotations are normalized only when their
 destinations match the visible email/phone. Existing message IDs and content are
 preserved; provider IDs are linked to the existing row. Ambiguous, cross-mailbox
 and cross-tenant matches cannot overwrite another message.
+
+### October 20, 2026 — Citypak courier worker and waybill screen (pending release)
+
+The owner clarified that voice and WhatsApp agent configuration is separate from
+this application work. Keep their existing lookup endpoints unchanged. This
+release concentrates on Citypak waybill creation, label printing and delivery
+tracking inside the CRM.
+
+A dedicated, opt-in VPS loop runs alongside the existing mailbox bridge when
+`CITYPAK_SYNC_CONNECTION_IDS` names selected commerce connections. Its internal
+endpoint requires the existing internal secret, the same connection allowlist,
+and an active connected Shopify configuration. It processes only queued Citypak
+creation effects for that connection, then explicitly enabled Citypak tracking.
+It never invokes the general scheduler, confirmation sends, invoice jobs or
+other paused job tiers. The selected Microsoft mailbox loop is unchanged.
+Courier passes run one minute after completion without overlapping in the Node
+process. Creation retains approval, fulfillment cutover, current revision,
+module entitlement and durable claim checks. Ambiguous submissions remain
+`unknown` and require provider-history review instead of automatic retry.
+
+Automatic tracking retains its bounded two-hour cadence for active deliveries;
+manual refresh now calls Citypak immediately, including terminal deliveries.
+Courier scan times come from the provider; missing timestamps and the delivered
+flag cannot fabricate a dated scan. Documented RTM callbacks are returned to
+merchant even when their status field says DELIVERED. Empty scan history remains
+unknown. The dashboard distinguishes awaiting scan, genuinely in transit and
+delivered, with accessible refresh and A4/4x6 PDF actions, payment filters,
+source scan times and last-check times. Reloading the list reads CRM data.
+
+Release activation requires a reviewed image, a verified database/configuration
+backup and owner release approval. Add only the selected connection ID(s) to the
+Coolify runtime environment; the runtime binding writer forwards that allowlist
+to the app. Enable tracking independently in the connection's delivery settings.
+Verify sender details before enabling fulfillment for future orders; do not
+backdate the cutover or replay historical approvals. Existing waybills must be
+linked or imported without creating replacement shipments. Read-only verification
+must check a known reference/order match, authenticated PDF response and tracking
+response; a real shipment must not be created as a connectivity test.
+
+There is no database migration. Rollback removes the Citypak runtime allowlist
+and restores the prior image. Preserve encrypted courier credentials, all linked
+waybills, the selected mailbox configuration/cursors and existing order data.
+Citypak push callbacks still require account-coordinator registration and the
+configured callback secret; polling does not depend on that registration. No
+ElevenLabs configuration, customer message or live waybill is changed by this PR.

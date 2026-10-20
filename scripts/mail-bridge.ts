@@ -17,6 +17,7 @@
  * is reachable from outside the container.
  */
 import { createServer, type IncomingMessage } from "node:http";
+import { startCitypakSync } from "./citypak-sync";
 import { startMicrosoftMailSync } from "./microsoft-mail-sync";
 import { ImapFlow } from "imapflow";
 import { simpleParser, type AddressObject } from "mailparser";
@@ -647,4 +648,5 @@ async function waitForServer() {
 void waitForServer().then(async () => {
   await reload();
   startMicrosoftMailSync();
+  startCitypakSync();
 });
