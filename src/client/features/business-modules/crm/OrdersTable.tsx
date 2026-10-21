@@ -190,13 +190,16 @@ export function OrdersTable({
                 <td>
                   <div className="flex items-center justify-end gap-1">
                     <button
-                      className="btn btn-ghost btn-sm gap-1.5"
-                      aria-label={`View order ${order.orderNumber}`}
+                      className={`btn btn-sm gap-1.5 ${order.approvalStatus === "pending" && order.status === "draft" ? "btn-primary" : "btn-ghost"}`}
+                      aria-label={`${order.approvalStatus === "pending" && order.status === "draft" ? "Review and approve order" : "View order"} ${order.orderNumber}`}
                       aria-haspopup="dialog"
                       onClick={() => showOrder(order.id)}
                     >
                       <Info className="size-4" aria-hidden="true" />
-                      View
+                      {order.approvalStatus === "pending" &&
+                      order.status === "draft"
+                        ? "Review & approve"
+                        : "View"}
                     </button>
                     <button
                       className="btn btn-ghost btn-sm"

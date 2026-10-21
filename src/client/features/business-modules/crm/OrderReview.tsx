@@ -57,7 +57,9 @@ export function OrderReview({ detail }: { detail: Detail }) {
       }),
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: ["commerce"] });
-      toast.success("Order approved. Enabled DU automations are queued.");
+      toast.success(
+        "Order approved. Check Fulfillment or Activity for waybill status.",
+      );
     },
     onError: (error) => toast.error(getStandardErrorMessage(error)),
   });
