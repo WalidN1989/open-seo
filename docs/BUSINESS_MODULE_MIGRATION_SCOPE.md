@@ -1989,3 +1989,20 @@ waybills, the selected mailbox configuration/cursors and existing order data.
 Citypak push callbacks still require account-coordinator registration and the
 configured callback secret; polling does not depend on that registration. No
 ElevenLabs configuration, customer message or live waybill is changed by this PR.
+
+### October 21, 2026 — make pending approval discoverable (pending release)
+
+Live inspection confirmed that pending orders already open an enabled Approve order
+control through View → Details & review when catalogue prices match. The pending
+list did not name that action. Pending draft rows now show a primary Review & approve
+button that opens the same review modal; it never submits approval directly. Other
+orders retain View. The approval toast points staff to Fulfillment/Activity rather
+than claiming that gated actions were necessarily queued.
+
+This is a UI-only change with no migration, provider configuration, activation-date
+change, customer order approval or shipment submission. Existing catalogue matching,
+cutover dates, durable courier claims and existing-waybill checks are preserved.
+Local validation: 2,909 tests pass; ci:check and production build pass; a synthetic
+browser fixture confirms the new label opens review without an approval request.
+Live Citypak creation is enabled and confirmations/invoice automation are disabled;
+those settings were inspected only. Owner release approval is still required.
