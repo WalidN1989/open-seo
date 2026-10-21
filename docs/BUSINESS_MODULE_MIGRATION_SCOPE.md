@@ -2044,7 +2044,7 @@ browser fixture confirms the new label opens review without an approval request.
 Live Citypak creation is enabled and confirmations/invoice automation are disabled;
 those settings were inspected only. Owner release approval is still required.
 
-### October 21, 2026 — WooCommerce orders and approved WhatsApp confirmations (pending release)
+### October 21, 2026 — WooCommerce orders and approved WhatsApp confirmations (released October 22)
 
 The owner requested WooCommerce REST orders in the CRM and automatic WhatsApp
 order confirmations after template approval. Orders now has a WooCommerce setup
@@ -2137,3 +2137,42 @@ Prior immutable image and settings are preserved privately on the VPS. Release
 verification remains pending until the final CI, merge and Coolify deployment.
 The owner's chat approval is the release authorization; it is not an independent
 second-person GitHub review. Org-wide Greptile baseline was not verified/changed.
+
+
+### October 22, 2026 — WooCommerce order release and selected-store activation
+
+The owner explicitly approved merging PR57, deploying and activating Period.lk,
+including automatic WhatsApp order confirmations after Twilio approval. PR57 was
+squash-merged as `d7db5efc9387beccec0f22cced007eff363dc031`. After reconciling
+current main, all 2,978 tests across 327 files and `ci:check` passed. Resolved-head
+CI 39670148087 and merged-main CI 39670797187 passed both required checks.
+Production release workflow 39671404413 published the immutable image
+`ghcr.io/walidn1989/digital-urgency@sha256:74c5dc9494e41ed3ff6e2b195ff96bfe2432a072e5e9a62f287797b75c94e7cc`,
+then native Coolify deployed it successfully. The protected-environment approval
+used the owner's explicit release authorization, not an independent peer review.
+
+A fresh database/configuration backup was restored and verified in an isolated
+database before cutover. Public health, exact image revision, existing records,
+environment settings, storage and networks passed verification. The disposable
+restore database was removed after verification; private rollback backups remain.
+The global scheduler stays paused, with one existing mail bridge and WhatsApp
+reply process. Existing mailbox, courier, FITSMS and AI settings were preserved.
+
+Only Period.lk's WooCommerce connection was added to the runtime allowlist and
+enabled in Orders. Its selected connected Twilio sender and submitted utility
+Content SID were saved using actual provider validation. Twilio still reports
+pending approval. Confirmation activation uses the server-set cutoff; repeated
+automatic worker passes succeeded after activation. The two initial worker
+attempts preceded enabling the store and returned unavailable, then recovered
+on the next scheduled pass without intervention. The settings persisted after
+reload. Historical import completed with 22 WooCommerce orders (19 pending
+review and three cancelled); none created confirmation effects. No synthetic
+order or test customer message was sent. New eligible orders wait automatically
+until approval; the worker refreshes Twilio approval every pass and sends only
+through the approved template. No further deployment is needed for approval.
+
+Private operational records hold exact connection IDs, template SID, cutoff,
+backup locations, verification output and the live screenshot. They are not
+committed to this public repository. PR51's catalogue filtering and PR55's inbox
+changes remain separate and were not included in this release. Org-wide Greptile
+baseline was not verified or changed.
