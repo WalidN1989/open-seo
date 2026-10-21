@@ -2176,3 +2176,11 @@ backup locations, verification output and the live screenshot. They are not
 committed to this public repository. PR51's catalogue filtering and PR55's inbox
 changes remain separate and were not included in this release. Org-wide Greptile
 baseline was not verified or changed.
+
+Non-blocking UI follow-up: the confirmation sender select can show its placeholder
+on reload because its options arrive after the uncontrolled default value.
+The saved sender and worker binding were independently verified correct; choosing
+the same sender restores its display. Preserve unsaved edits when fixing this
+asynchronous form initialization. Repository issues are disabled, so the finding
+is retained here rather than silently lost. This does not prevent approval checks
+or automatic dispatch through the saved sender.
