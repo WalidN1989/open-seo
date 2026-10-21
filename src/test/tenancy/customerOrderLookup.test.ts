@@ -81,15 +81,13 @@ describe("sender-first customer order lookup", () => {
 
 it("finds Woo order numbers only for the sending customer and refuses ambiguous store numbers", async () => {
   const schema = await import("@/db/schema");
-  await fixture.db
-    .insert(schema.commerceOrders)
-    .values({
-      id: "woo-lookup",
-      organizationId: ORG_A,
-      branchId: `default:${ORG_A}`,
-      orderNumber: "WOO-110",
-      customerPhone: "+94770000000",
-    });
+  await fixture.db.insert(schema.commerceOrders).values({
+    id: "woo-lookup",
+    organizationId: ORG_A,
+    branchId: `default:${ORG_A}`,
+    orderNumber: "WOO-110",
+    customerPhone: "+94770000000",
+  });
   const lookup = async (
     organizationId: string,
     phone: string,
