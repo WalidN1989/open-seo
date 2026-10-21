@@ -2441,3 +2441,32 @@ export const commerceOrderGapAnnotations = pgTable(
     ),
   ],
 );
+
+// Preparation records only: no approval state or executable schedule.
+export const smsCampaignDrafts = pgTable(
+  "sms_campaign_drafts",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    connectionId: text("connection_id")
+      .notNull()
+      .references(() => integrationConnections.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    kind: text("kind", { enum: ["weekly", "flash"] }).notNull(),
+    senderId: text("sender_id").notNull(),
+    message: text("message").notNull(),
+    audienceDescription: text("audience_description").notNull(),
+    firstSendDate: text("first_send_date").notNull(),
+    sendTime: text("send_time").notNull(),
+    timezone: text("timezone").notNull().default("Asia/Colombo"),
+    createdAt: createdAt(),
+  },
+  (table) => [
+    index("sms_campaign_drafts_org_connection_idx").on(
+      table.organizationId,
+      table.connectionId,
+    ),
+  ],
+);

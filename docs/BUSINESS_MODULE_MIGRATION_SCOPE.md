@@ -2087,3 +2087,53 @@ removes the allowlist, disables the confirmation setting and restores the prior
 image while preserving imported orders, cursors, effect/message history and all
 existing mailbox/courier settings. Never reset sending/unknown effects for a retry
 without checking provider history first.
+
+### 2026-10-21 — FITSMS integration and campaign preparation
+
+Owner requested FITSMS in DU for weekly promotions and flash discounts, with no
+SMS sent before campaign approval. Prepared on an isolated checkout of origin/main
+(eab3be47), preserving the unrelated primary-checkout changes.
+
+FITSMS is a connectable Channels integration using the existing encrypted API
+credential store. Its health check performs only GET /api/v4/sms?page=1 against
+the fixed FITSMS host, refuses redirects, validates application-level success,
+and returns neither provider history nor credentials. No live token was copied,
+rotated or tested. The owner must enter a fresh token through DU's connection
+form after release; the previously shared screenshot exposed the old token.
+
+The provider page saves organization-scoped weekly/flash campaign drafts with
+an approved-sender field, message, audience planning note and proposed date/time
+in Asia/Colombo. These are planning records, not executable schedules or actual
+recipient selections. Draft reads require Integrations view access and creation
+requires manage access. SQLite0107 / PG0086 add the normalized draft table.
+No send/launch/approval endpoint, callback route, contact upload, cron job or
+scheduler registration is introduced. Existing Twilio SMS inbox/send paths and
+legacy FITSMS subscriptions are untouched. Future activation must review actual
+consented recipients and opt-outs, segmentation/cost, sender approval, provider
+limits and timezone behavior, and obtain explicit campaign delivery approval.
+Do not infer approval from a saved draft or a connected credential.
+
+Validation: full suite 2,952 tests across 323 files passed. 646 focused tests
+including schema parity, real migrated SQLite
+organization isolation, input validation and no-network draft creation passed;
+existing Twilio SMS and integration authorization regressions passed. TypeScript,
+type-aware lint, Knip and production selfhost build passed. Browser preview used
+the actual form with synthetic in-memory data; saved weekly draft was visibly
+'Draft · Not scheduled', and 390px layout had no horizontal overflow.
+Screenshots: /private/tmp/fitsms-setup-desktop.png and
+/private/tmp/fitsms-setup-mobile.png. No live SMS, contact sync, account setting
+change, production migration or deployment occurred during preparation.
+
+Release approval: the owner explicitly authorized checking/fixing CI, merging
+PR58 and deploying the FITSMS preparation, while keeping SMS sends and schedules
+disabled until campaign approval. The first CI failed the existing integration
+page complexity limit (42, limit40); provider-specific visibility now lives in
+the FITSMS setup component, and the full local quality gate passes without any
+lint/check configuration changes. Live Coolify is manual-only on healthy main
+eab3be47. A fresh private VPS database/configuration backup was restored into an
+isolated database and PG0086 passed there, preserving existing product/order/SMS
+counts. The migration is additive; code rollback retains the empty draft table.
+Prior immutable image and settings are preserved privately on the VPS. Release
+verification remains pending until the final CI, merge and Coolify deployment.
+The owner's chat approval is the release authorization; it is not an independent
+second-person GitHub review. Org-wide Greptile baseline was not verified/changed.

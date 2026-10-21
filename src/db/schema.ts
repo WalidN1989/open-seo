@@ -148,6 +148,7 @@ export const {
   crmInquiryLeads,
   crmMeetings,
   integrationConnections,
+  smsCampaignDrafts,
   whatsappConnections,
   whatsappConversations,
   whatsappMessages,

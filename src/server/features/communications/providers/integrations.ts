@@ -6,6 +6,7 @@ import {
   siteOrigin,
   wordpressWhoAmI,
 } from "@/server/features/optimizations/wordpress/wordpressClient";
+import { checkFitsmsConnection } from "@/server/features/sms/providers/fitsms";
 import { resolveConnectionCredential } from "@/server/lib/connection-secrets";
 import { z } from "zod";
 import { fetchStoreName } from "@/server/features/commerce/providers/shopify";
@@ -131,6 +132,13 @@ export async function testIntegrationConnection(
   fetcher: typeof fetch = fetch,
 ) {
   switch (connection.providerKey) {
+    case "fitsms":
+      await checkFitsmsConnection(connection, fetcher);
+      return {
+        providerKey: "fitsms",
+        detail:
+          "FITSMS v4 authenticated with a read-only check. SMS sending and schedules remain disabled.",
+      };
     case "apify": {
       const key = await credentialValue(connection, "API_TOKEN");
       await checkedJson(
