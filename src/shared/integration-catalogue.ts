@@ -158,7 +158,7 @@ export const integrationCatalogue: readonly IntegrationCatalogueEntry[] = [
           title: "Products stay current",
           bullets: [
             "Names, prices, descriptions and categories come from your store.",
-            "Later syncs ask only for what changed since the last run.",
+            "Each sync checks publication status; only published products stay in the active catalogue.",
           ],
         },
         {
