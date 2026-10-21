@@ -2043,3 +2043,39 @@ Local validation: 2,909 tests pass; ci:check and production build pass; a synthe
 browser fixture confirms the new label opens review without an approval request.
 Live Citypak creation is enabled and confirmations/invoice automation are disabled;
 those settings were inspected only. Owner release approval is still required.
+
+### 2026-10-21 — FITSMS integration and campaign preparation
+
+Owner requested FITSMS in DU for weekly promotions and flash discounts, with no
+SMS sent before campaign approval. Prepared on an isolated checkout of origin/main
+(eab3be47), preserving the unrelated primary-checkout changes.
+
+FITSMS is a connectable Channels integration using the existing encrypted API
+credential store. Its health check performs only GET /api/v4/sms?page=1 against
+the fixed FITSMS host, refuses redirects, validates application-level success,
+and returns neither provider history nor credentials. No live token was copied,
+rotated or tested. The owner must enter a fresh token through DU's connection
+form after release; the previously shared screenshot exposed the old token.
+
+The provider page saves organization-scoped weekly/flash campaign drafts with
+an approved-sender field, message, audience planning note and proposed date/time
+in Asia/Colombo. These are planning records, not executable schedules or actual
+recipient selections. Draft reads require Integrations view access and creation
+requires manage access. SQLite0107 / PG0086 add the normalized draft table.
+No send/launch/approval endpoint, callback route, contact upload, cron job or
+scheduler registration is introduced. Existing Twilio SMS inbox/send paths and
+legacy FITSMS subscriptions are untouched. Future activation must review actual
+consented recipients and opt-outs, segmentation/cost, sender approval, provider
+limits and timezone behavior, and obtain explicit campaign delivery approval.
+Do not infer approval from a saved draft or a connected credential.
+
+Validation: full suite 2,952 tests across 323 files passed. 646 focused tests
+including schema parity, real migrated SQLite
+organization isolation, input validation and no-network draft creation passed;
+existing Twilio SMS and integration authorization regressions passed. TypeScript,
+type-aware lint, Knip and production selfhost build passed. Browser preview used
+the actual form with synthetic in-memory data; saved weekly draft was visibly
+'Draft · Not scheduled', and 390px layout had no horizontal overflow.
+Screenshots: /private/tmp/fitsms-setup-desktop.png and
+/private/tmp/fitsms-setup-mobile.png. No live SMS, contact sync, account setting
+change, production migration or deployment occurred during preparation.

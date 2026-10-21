@@ -84,6 +84,40 @@ export type IntegrationCatalogueEntry = {
 
 export const integrationCatalogue: readonly IntegrationCatalogueEntry[] = [
   {
+    key: "fitsms",
+    name: "FITSMS",
+    tagline: "Prepare Sri Lankan SMS promotions",
+    description:
+      "Connect FITSMS v4 and save weekly promotion or flash discount drafts. Sending and schedule activation are disabled during setup.",
+    category: "channels",
+    state: "connectable",
+    credentialFields: [
+      {
+        key: "API_TOKEN",
+        label: "FITSMS API token",
+        type: "secret",
+        required: true,
+        help: "Enter a fresh token from FITSMS Developers. It is stored encrypted and used only for a read-only connection check.",
+      },
+    ],
+    capabilities: [
+      "read-only authentication check",
+      "weekly promotion drafts",
+      "flash discount drafts",
+    ],
+    howToConnect: [
+      "Enter your FITSMS v4 API token and save the connection.",
+      "Check the connection. This reads message history without sending an SMS.",
+      "Prepare a campaign draft below. Confirm the sender is active in FITSMS.",
+      "Review the audience, consent, message and timing before separately approving delivery. Saving a draft never activates a schedule.",
+    ],
+    notes: [
+      "FITSMS charges separately for SMS usage; connecting DU does not include message credits.",
+      "Use Asia/Colombo for Sri Lankan campaign times.",
+      "This setup does not sync contacts, configure callbacks or send SMS. Campaign delivery requires a later approved activation step.",
+    ],
+  },
+  {
     key: "webhooks",
     name: "Webhooks",
     tagline: "Push events to any system you run",

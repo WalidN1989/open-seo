@@ -9,6 +9,7 @@ import {
 } from "@/serverFunctions/commerce";
 import { getIntegrationsWorkspace } from "@/serverFunctions/communications";
 import { integrationCatalogue } from "@/shared/integration-catalogue";
+import { FitsmsCampaignDraftPanel } from "./FitsmsCampaignDraftPanel";
 import { ProviderConnectPanel } from "./ProviderConnectPanel";
 import { CatalogueSyncPanel } from "./CatalogueSyncPanel";
 import { verifyConnection } from "./verifyConnection";
@@ -287,6 +288,13 @@ export function IntegrationProviderDetailView() {
               entry={entry}
               connection={connection}
               workspaceKey={WORKSPACE_KEY}
+            />
+          ) : null}
+
+          {entry.key === "fitsms" && connection ? (
+            <FitsmsCampaignDraftPanel
+              key={connection.id}
+              connectionId={connection.id}
             />
           ) : null}
 
