@@ -6,6 +6,7 @@ import type { IntegrationCatalogueEntry } from "@/shared/integration-catalogue";
  * jumble. A monochrome mark has no hue and sorts last within its group.
  */
 const BRAND_HUE: Record<string, number> = {
+  fitsms: 250,
   zoho: 0,
   hubspot: 14,
   claude_haiku: 18,
