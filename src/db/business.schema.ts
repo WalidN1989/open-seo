@@ -964,6 +964,13 @@ export const whatsappOrderRequests = sqliteTable(
     externalOrderId: text("external_order_id"),
     summary: text("summary").notNull(),
     amountCents: integer("amount_cents").notNull().default(0),
+    expectedArrival: text("expected_arrival"),
+    notifiedAt: text("notified_at"),
+    notificationState: text("notification_state"),
+    notificationMessageId: text("notification_message_id").references(
+      () => whatsappMessages.id,
+      { onDelete: "set null" },
+    ),
     status: text("status").notNull().default("requested"),
     createdAt: createdAt(),
     updatedAt: text("updated_at")
