@@ -2043,3 +2043,43 @@ Local validation: 2,909 tests pass; ci:check and production build pass; a synthe
 browser fixture confirms the new label opens review without an approval request.
 Live Citypak creation is enabled and confirmations/invoice automation are disabled;
 those settings were inspected only. Owner release approval is still required.
+
+### October 21, 2026 — waybill WhatsApp notifications (pending release)
+
+Owner requested a WhatsApp message containing the Citypak WB ID after generation,
+and a second update the next day estimating delivery in 2–3 days. Two text utility
+templates were submitted in BooXworm's Twilio console: `booxworm_waybill_generated`
+and `booxworm_delivery_estimate`. Twilio approval is still pending; the separate
+existing order-confirmation template was verified approved. Provider references and
+screenshots stay in private local evidence, not in this public ledger.
+
+The new shipment-message gate and sender/template selections are independent of
+order confirmations. Both dialects add nullable configuration columns only; the
+migration leaves all notifications disabled. The selected Citypak worker can send
+only these explicitly enabled shipment notifications; it still does not start a
+global scheduler, confirmation or invoice jobs. Existing Citypak tracking and
+creation allowlists remain unchanged.
+
+Reconciliation queues each notification once per order through the existing durable
+outbox and unique key. It requires a newly generated Citypak shipment after the
+server-controlled enablement date, matching successful DU creation evidence, an
+approved template on the selected connected Twilio sender, an eligible order,
+module access and no recipient opt-out. Imported/linked historical waybills are
+excluded. The estimate waits at least 24 hours after generation and the first
+accepted notification, preventing a burst after downtime. Delivered, returned and
+cancelled orders are suppressed. Dispatch rechecks settings, order revision,
+shipment identity, access and opt-out before the external request. Uncertain sends
+are retained for manual provider-history review without automatic retry.
+
+New Citypak generation records write explicit ISO timestamps for both SQLite and
+Postgres. Activation requires approved templates and owner approval of the reviewed
+release. No live notification gate or existing confirmation setting was changed;
+no customer message was sent during implementation. Rollback disables shipment
+updates and restores the previous image; keep additive columns, message records and
+outbox outcomes, and never reset accepted/uncertain sends for automatic replay.
+
+Validation: ci:check passed; the full regression suite passed 2,933 tests across
+322 files. An isolated browser fixture rendered the actual settings component and
+confirmed saving emits only shipment configuration fields. Existing live order
+confirmation/Citypak gates were not edited. Production build and GitHub CI are
+recorded in the PR when complete.

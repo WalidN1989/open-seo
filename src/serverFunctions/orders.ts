@@ -1,3 +1,5 @@
+import { shipmentMessagesSchema } from "@/types/schemas/orderReview";
+import { ShipmentMessagesConfigService } from "@/server/features/commerce/services/ShipmentMessagesConfigService";
 import { citypakTrackingSettingsSchema } from "@/types/schemas/orderReview";
 import { OrderOperationsConfigService } from "@/server/features/commerce/services/OrderOperationsConfigService";
 import { citypakDashboardSchema } from "@/types/schemas/orderReview";
@@ -185,3 +187,14 @@ export const configureCitypakTracking = createServerFn({ method: "POST" })
     ),
   );
 import { orderLoyaltyAdjustmentSchema } from "@/types/schemas/orderReview";
+
+export const configureShipmentMessages = createServerFn({ method: "POST" })
+  .middleware(requireAuthenticatedContext)
+  .validator(shipmentMessagesSchema)
+  .handler(({ context, data }) =>
+    ShipmentMessagesConfigService.configure(
+      context.organizationId,
+      context.userId,
+      data,
+    ),
+  );

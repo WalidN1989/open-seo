@@ -2349,6 +2349,18 @@ export const commerceOrderSync = sqliteTable(
     courierCredentials: text("courier_credentials"),
     confirmationStartedAt: text("confirmation_started_at"),
     operationsStartedAt: text("operations_started_at"),
+    shipmentMessagesStartedAt: text("shipment_messages_started_at"),
+    shipmentSenderId: text("shipment_sender_id").references(
+      () => whatsappConnections.id,
+      { onDelete: "set null" },
+    ),
+    waybillTemplateId: text("waybill_template_id").references(
+      () => whatsappTemplates.id,
+      { onDelete: "set null" },
+    ),
+    deliveryEstimateTemplateId: text(
+      "delivery_estimate_template_id",
+    ).references(() => whatsappTemplates.id, { onDelete: "set null" }),
     confirmationSenderId: text("confirmation_sender_id").references(
       () => whatsappConnections.id,
       { onDelete: "set null" },
@@ -2422,7 +2434,14 @@ export const commerceOrderEffects = sqliteTable(
       .notNull()
       .references(() => commerceOrders.id, { onDelete: "cascade" }),
     kind: text("kind", {
-      enum: ["confirmation", "cancellation", "invoice", "citypak"],
+      enum: [
+        "confirmation",
+        "cancellation",
+        "invoice",
+        "citypak",
+        "waybill",
+        "delivery_estimate",
+      ],
     }).notNull(),
     status: text("status", {
       enum: [

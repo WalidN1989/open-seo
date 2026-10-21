@@ -1,5 +1,5 @@
 import { orderDispatchGuard, canDispatch } from "./OrderDispatchRepository";
-import { and, asc, desc, eq, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, or, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { runBatch } from "@/db/runBatch";
 import {
@@ -103,6 +103,12 @@ async function due(connectionId?: string) {
     .where(
       and(
         eq(commerceOrderEffects.status, "queued"),
+        inArray(commerceOrderEffects.kind, [
+          "confirmation",
+          "cancellation",
+          "invoice",
+          "citypak",
+        ]),
         connectionId
           ? and(
               eq(commerceOrderEffects.kind, "citypak"),
@@ -248,6 +254,7 @@ async function recordShipment(
       trackingNumber,
       externalId,
       status: "PENDING",
+      createdAt: new Date().toISOString(),
       checkedAt: new Date().toISOString(),
     })
     .onConflictDoNothing();
