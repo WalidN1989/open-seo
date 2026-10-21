@@ -89,6 +89,7 @@ describe("WooCommerce order boundary", () => {
       { total: "1.001" },
       { currency: "JPY" },
       { date_modified_gmt: "not a date" },
+      { date_paid_gmt: "not a date" },
       { line_items: [raw.line_items[0], raw.line_items[0]] },
     ])
       expect(wooOrderSchema.safeParse({ ...raw, ...patch }).success).toBe(

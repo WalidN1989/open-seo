@@ -62,7 +62,7 @@ export const wooOrderSchema = z.object({
   billing: address,
   shipping: address,
   payment_method: z.string().max(120),
-  date_paid_gmt: z.string().nullable(),
+  date_paid_gmt: utc.nullable(),
   customer_note: z.string().max(10_000).default(""),
   shipping_lines: z
     .array(z.object({ method_id: z.string() }))
