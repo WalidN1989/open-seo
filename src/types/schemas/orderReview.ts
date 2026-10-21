@@ -105,3 +105,11 @@ export const citypakTrackingSettingsSchema = z.object({
   trackingEnabled: z.boolean(),
   webhookSecret: z.string().trim().min(16).max(1000).optional(),
 });
+
+export const shipmentMessagesSchema = z.object({
+  connectionId: z.string().min(1),
+  enabled: z.boolean(),
+  senderId: z.string().min(1).nullable(),
+  waybillTemplateId: z.string().min(1).nullable(),
+  deliveryEstimateTemplateId: z.string().min(1).nullable(),
+});
