@@ -602,11 +602,18 @@ async function getWhatsappWorkspace(organizationId: string) {
       activity.set(message.conversationId, new Date(at).toISOString());
   }
   const orderedConversations = conversations
-    .map((conversation) => ({
-      ...conversation,
-      lastMessageAt:
-        activity.get(conversation.id) ?? conversation.lastMessageAt,
-    }))
+    .map((conversation) => {
+      const latest = activity.get(conversation.id);
+      const actual = parseWhatsappTimestamp(latest);
+      const previous = parseWhatsappTimestamp(conversation.lastMessageAt);
+      return {
+        ...conversation,
+        lastMessageAt:
+          latest && actual !== null && (previous === null || actual >= previous)
+            ? latest
+            : conversation.lastMessageAt,
+      };
+    })
     .toSorted(
       (a, b) =>
         (parseWhatsappTimestamp(b.lastMessageAt) ?? 0) -

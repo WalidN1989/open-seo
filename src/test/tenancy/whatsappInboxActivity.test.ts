@@ -131,6 +131,13 @@ it("persists outgoing activity, prevents older completions moving it backwards, 
     .from(whatsappConversations)
     .where(eq(whatsappConversations.id, "a-old"));
   expect(unchanged.lastMessageAt).toBe(chat.lastMessageAt);
+  await repo.completeWhatsappMessage(ORG_A, queued.id, {
+    status: "sent",
+    sentAt: "2026-10-20T10:00:00Z",
+  });
+  expect(
+    (await repo.getWhatsappWorkspace(ORG_A)).conversations[0].lastMessageAt,
+  ).toBe(chat.lastMessageAt);
 });
 
 it("orders mixed SQLite and ISO timestamps chronologically and includes new incoming activity", async () => {
