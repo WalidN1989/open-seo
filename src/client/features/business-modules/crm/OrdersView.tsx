@@ -1,3 +1,4 @@
+import { WooOrderSyncPanel } from "./WooOrderSyncPanel";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Clock, FileText, Hash, RotateCcw, ShoppingCart } from "lucide-react";
@@ -35,6 +36,7 @@ export function CrmOrdersView() {
   return (
     <div className="space-y-4">
       <h1 className="text-2xl font-bold">Orders</h1>
+      <WooOrderSyncPanel />
       <OrderSyncPanel />
       <section className="rounded-xl border border-base-300 bg-base-100 p-3 sm:p-5">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-base-300 pb-2">

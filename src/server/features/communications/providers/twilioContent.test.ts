@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   createContentTemplate,
+  fetchOrderConfirmationTemplate,
   withNumberedPlaceholders,
   fetchApproval,
   submitForApproval,
@@ -155,5 +156,59 @@ describe("withNumberedPlaceholders", () => {
     const { text, variables } = withNumberedPlaceholders("Hi, how are things?");
     expect(text).toBe("Hi, how are things?");
     expect(variables).toEqual({});
+  });
+});
+
+describe("order confirmation approval gate", () => {
+  const sid = `HX${"a".repeat(32)}`;
+  const body = "Hi {{1}}, order {{2}} total {{3}}.";
+  function fetcher(
+    status: string,
+    category = "UTILITY",
+    wording = body,
+  ): typeof fetch {
+    return async (input) =>
+      urlOf(input).endsWith("/ApprovalRequests")
+        ? Response.json({ whatsapp: { status, category } })
+        : Response.json({
+            sid,
+            language: "en",
+            types: { "twilio/text": { body: wording } },
+          });
+  }
+  it("reads pending/approved directly from Twilio without trusting a manually entered SID", async () => {
+    process.env.TEST_TW_AUTH_TOKEN = "private-token";
+    expect(
+      await fetchOrderConfirmationTemplate(connection, sid, fetcher("pending")),
+    ).toMatchObject({ status: "pending", body });
+    expect(
+      await fetchOrderConfirmationTemplate(
+        connection,
+        sid,
+        fetcher("approved"),
+      ),
+    ).toMatchObject({ status: "approved", languageCode: "en" });
+    delete process.env.TEST_TW_AUTH_TOKEN;
+  });
+  it("blocks reclassified templates, unknown variables and paused templates", async () => {
+    process.env.TEST_TW_AUTH_TOKEN = "private-token";
+    await expect(
+      fetchOrderConfirmationTemplate(
+        connection,
+        sid,
+        fetcher("approved", "MARKETING"),
+      ),
+    ).rejects.toThrow("utility");
+    await expect(
+      fetchOrderConfirmationTemplate(
+        connection,
+        sid,
+        fetcher("approved", "UTILITY", body + " {{4}}"),
+      ),
+    ).rejects.toThrow();
+    expect(
+      await fetchOrderConfirmationTemplate(connection, sid, fetcher("paused")),
+    ).toMatchObject({ status: "pending" });
+    delete process.env.TEST_TW_AUTH_TOKEN;
   });
 });

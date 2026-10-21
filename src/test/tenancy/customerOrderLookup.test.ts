@@ -78,3 +78,53 @@ describe("sender-first customer order lookup", () => {
     ).toMatchObject({ found: false });
   });
 });
+
+it("finds Woo order numbers only for the sending customer and refuses ambiguous store numbers", async () => {
+  const schema = await import("@/db/schema");
+  await fixture.db
+    .insert(schema.commerceOrders)
+    .values({
+      id: "woo-lookup",
+      organizationId: ORG_A,
+      branchId: `default:${ORG_A}`,
+      orderNumber: "WOO-110",
+      customerPhone: "+94770000000",
+    });
+  const lookup = async (
+    organizationId: string,
+    phone: string,
+    number: string,
+  ) =>
+    z
+      .object({ found: z.boolean(), orderId: z.string().optional() })
+      .parse(
+        JSON.parse(
+          await orders.lookupCustomerOrder(organizationId, phone, number),
+        ),
+      );
+  expect(await lookup(ORG_A, "+94770000000", "110")).toMatchObject({
+    found: true,
+    orderId: "WOO-110",
+  });
+  expect(await lookup(ORG_A, "+94772222222", "110")).toMatchObject({
+    found: false,
+  });
+  expect(await lookup(ORG_B, "+94770000000", "110")).toMatchObject({
+    found: false,
+  });
+  await fixture.db.insert(schema.commerceOrders).values({
+    id: "shop-number-collision",
+    branchId: `default:${ORG_A}`,
+    organizationId: ORG_A,
+    externalSource: "shopify",
+    orderNumber: "SHOP-110",
+    customerPhone: "+94770000000",
+  });
+  expect(await lookup(ORG_A, "+94770000000", "110")).toMatchObject({
+    found: false,
+  });
+  expect(await lookup(ORG_A, "+94770000000", "WOO-110")).toMatchObject({
+    found: true,
+    orderId: "WOO-110",
+  });
+});
