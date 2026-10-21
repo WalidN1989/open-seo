@@ -2044,6 +2044,50 @@ browser fixture confirms the new label opens review without an approval request.
 Live Citypak creation is enabled and confirmations/invoice automation are disabled;
 those settings were inspected only. Owner release approval is still required.
 
+### October 21, 2026 — WooCommerce orders and approved WhatsApp confirmations (pending release)
+
+The owner requested WooCommerce REST orders in the CRM and automatic WhatsApp
+order confirmations after template approval. Orders now has a WooCommerce setup
+panel for existing connected stores, history import and the selected Twilio
+sender/Content SID. History imports are read-only mirrors for Pending Approval;
+they do not enqueue messages or perform stock, invoice or courier actions.
+Amounts, billing contact details, line quantities and UTC provider revision times
+are validated at the boundary. Exact international phones are retained; Sri
+Lankan national numbers are normalized only with an explicit LK billing country.
+Ambiguous numbers cannot become WhatsApp recipients.
+
+WooCommerce reuses the atomic, revision-guarded order mirror and durable effect
+claims already used by Shopify. Shopify retains its existing basket fingerprint
+and fulfillment behavior. A separate live modification cursor uses bounded pages,
+provider pagination headers, a timestamp overlap and compare-and-set progress.
+The watermark advances only after the page succeeds. History import does not move
+this cursor. Duplicate snapshots and overlapping passes retain one confirmation
+effect per order; ambiguous provider outcomes stay unknown for staff review.
+
+Confirmations are explicitly enabled with a server-generated activation cutoff.
+Only orders created after that cutoff are eligible. The local template is bound
+to the selected sender and gets its wording, language, category and actual approval
+state from Twilio. Pending orders wait durably. Each selected worker pass refreshes
+approval, and dispatch checks current utility approval and unchanged wording again
+before sending. Rejected, paused, reclassified or unavailable templates cannot send;
+STOP, tenant/module access, disconnected senders and cancelled orders remain gated.
+Variables come directly from the order: customer first name, Woo order number and
+formatted order total. No language-model call is needed for fixed approved wording.
+
+A dedicated VPS bridge loop is opt-in via `WOOCOMMERCE_ORDER_CONNECTION_IDS` and
+runs one minute after the previous pass completes. Its internal endpoint requires
+the existing internal secret and that same allowlist. It processes only selected
+WooCommerce imports and confirmation effects; the global scheduler and other paused
+jobs remain untouched. The runtime binding writer forwards the allowlist. There
+is no database migration. Release requires passing checks, a verified backup,
+owner release approval, selected-connection activation and saving the submitted
+order confirmation SID against the correct connected Twilio sender. Never mark a
+pending SID approved manually or send a real customer message as a test. Rollback
+removes the allowlist, disables the confirmation setting and restores the prior
+image while preserving imported orders, cursors, effect/message history and all
+existing mailbox/courier settings. Never reset sending/unknown effects for a retry
+without checking provider history first.
+
 ### 2026-10-21 — FITSMS integration and campaign preparation
 
 Owner requested FITSMS in DU for weekly promotions and flash discounts, with no

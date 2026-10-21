@@ -73,7 +73,7 @@ export function OrderReview({ detail }: { detail: Detail }) {
       }),
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: ["commerce"] });
-      toast.success("Review rejected here. Shopify and Zoho are unchanged.");
+      toast.success("Order review rejected.");
     },
     onError: (error) => toast.error(getStandardErrorMessage(error)),
   });
@@ -81,8 +81,8 @@ export function OrderReview({ detail }: { detail: Detail }) {
     <div className="space-y-3">
       <h3 className="text-sm font-semibold">Product & price review</h3>
       <p className="text-xs text-base-content/60">
-        Map each item to the correct product and edition. Keep the Shopify
-        selling price; correct catalogue prices before approval.
+        Map each item to the correct product and edition. Keep the store selling
+        price; correct catalogue prices before approval.
       </p>
       {currencyMismatch ? (
         <p role="alert" className="text-sm text-error">
@@ -138,7 +138,7 @@ export function OrderReview({ detail }: { detail: Detail }) {
             checked={acknowledgeAdjustments}
             onChange={(event) => setAcknowledgement(event.target.checked)}
           />
-          {detail.order.note} I have checked the Shopify total.
+          {detail.order.note} I have checked the store total.
         </label>
       ) : null}
       <button

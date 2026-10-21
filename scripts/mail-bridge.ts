@@ -1,3 +1,4 @@
+import { startWooOrderSync } from "./woo-order-sync";
 /**
  * The mailbox bridge: IMAP and SMTP for mailboxes a business already owns.
  *
@@ -649,4 +650,5 @@ void waitForServer().then(async () => {
   await reload();
   startMicrosoftMailSync();
   startCitypakSync();
+  startWooOrderSync();
 });

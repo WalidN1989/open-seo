@@ -182,3 +182,61 @@ export async function fetchApproval(
       : null;
   return readApproval(whatsapp);
 }
+
+/** Fetch both the registered wording and Meta's current approval/category.
+ * A SID typed into settings is not evidence that a template is approved. */
+export async function fetchOrderConfirmationTemplate(
+  connection: WhatsappConnectionRecord,
+  contentSid: string,
+  fetcher: typeof fetch = fetch,
+) {
+  if (!/^HX[0-9a-f]{32}$/i.test(contentSid))
+    throw new Error("Invalid Twilio Content SID.");
+  const content = z
+    .object({
+      sid: z.literal(contentSid),
+      language: z.string().min(1),
+      types: z.object({
+        "twilio/text": z.object({ body: z.string().min(1).max(1600) }),
+      }),
+    })
+    .parse(
+      await call(
+        connection,
+        `/Content/${encodeURIComponent(contentSid)}`,
+        undefined,
+        fetcher,
+        "GET",
+      ),
+    );
+  const approval = z
+    .object({
+      whatsapp: z.object({ status: z.string(), category: z.string() }),
+    })
+    .parse(
+      await call(
+        connection,
+        `/Content/${encodeURIComponent(contentSid)}/ApprovalRequests`,
+        undefined,
+        fetcher,
+        "GET",
+      ),
+    );
+  const body = content.types["twilio/text"].body;
+  const slots = [...body.matchAll(/\{\{\s*([^}]+)\s*\}\}/g)].map((match) =>
+    match[1].trim(),
+  );
+  if (
+    approval.whatsapp.category.toUpperCase() !== "UTILITY" ||
+    new Set(slots).size !== 3 ||
+    !["1", "2", "3"].every((key) => slots.includes(key))
+  )
+    throw new Error(
+      "Choose a utility order confirmation with slots 1 (name), 2 (order number) and 3 (total).",
+    );
+  return {
+    body,
+    languageCode: content.language,
+    status: readApproval(approval.whatsapp).status,
+  };
+}

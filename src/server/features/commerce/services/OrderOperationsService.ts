@@ -1,3 +1,4 @@
+import { sendNotification } from "./OrderNotificationService";
 import {
   dispatchCurrent,
   skipChanged,
@@ -6,8 +7,6 @@ import {
 import { OrderLoyaltyRepository } from "../repositories/OrderLoyaltyRepository";
 import { IntegrationSyncRepository } from "../repositories/IntegrationSyncRepository";
 import { BusinessModuleRepository } from "@/server/features/business-modules/repositories/BusinessModuleRepository";
-import { CommunicationsRepository } from "@/server/features/communications/repositories/CommunicationsRepository";
-import { sendWhatsappTemplate } from "@/server/features/communications/providers/whatsapp";
 import { InvoiceRepository } from "@/server/features/invoicing/repositories/InvoiceRepository";
 import { settingsOrDefaults } from "@/server/features/invoicing/issuer";
 import {
@@ -88,74 +87,6 @@ export type ActionContext = {
   sender: Awaited<ReturnType<typeof Repo.sender>> | null;
   template: Awaited<ReturnType<typeof Repo.template>> | null;
 };
-async function sendNotification(context: ActionContext) {
-  const { effect, order, claim, sender, template } = context;
-  if (!sender || !template) return;
-
-  if (!order.customerPhone) {
-    await Repo.finish(effect.organizationId, claim.id, {
-      status: "skipped",
-      error: "Order has no valid WhatsApp recipient.",
-    });
-    return;
-  }
-  const variables = {
-    "1": order.customerName?.split(/\s+/)[0] || "there",
-    "2": order.orderNumber,
-  };
-  const body = template.body
-    .replaceAll("{{1}}", variables["1"])
-    .replaceAll("{{2}}", variables["2"]);
-  const messageId = await Repo.message(
-    effect.organizationId,
-    sender.id,
-    order.customerPhone,
-    body,
-    claim.id,
-  );
-  if (!messageId) {
-    await Repo.finish(effect.organizationId, claim.id, {
-      status: "skipped",
-      error: "Recipient opted out.",
-    });
-    return;
-  }
-  if (!(await dispatchCurrent(context))) {
-    await CommunicationsRepository.completeWhatsappMessage(
-      effect.organizationId,
-      messageId,
-      { status: "failed" },
-    );
-    await skipChanged(context);
-    return;
-  }
-  const result = await sendWhatsappTemplate(sender, order.customerPhone, {
-    ...template,
-    variables,
-  }).catch(async (error: unknown) => {
-    await CommunicationsRepository.completeWhatsappMessage(
-      effect.organizationId,
-      messageId,
-      { status: "unknown" },
-    );
-    throw error;
-  });
-  await CommunicationsRepository.completeWhatsappMessage(
-    effect.organizationId,
-    messageId,
-    {
-      externalMessageId: result.externalMessageId,
-      status: result.status,
-      sentAt: new Date().toISOString(),
-    },
-  );
-  await Repo.finish(effect.organizationId, claim.id, {
-    status: "succeeded",
-    externalId: result.externalMessageId,
-    messageId,
-  });
-  return;
-}
 async function createShipment(context: ActionContext) {
   const { effect, order, config, claim, credentials } = context;
 
@@ -393,7 +324,20 @@ async function runDue(connectionId?: string) {
     await Repo.defer(effect.organizationId, effect.id);
   }
 }
+async function runDueConfirmations(
+  organizationId: string,
+  connectionId: string,
+) {
+  for (const effect of await Repo.dueConfirmations(
+    organizationId,
+    connectionId,
+  )) {
+    await process(effect);
+    await Repo.defer(effect.organizationId, effect.id);
+  }
+}
 export const OrderOperationsService = {
+  runDueConfirmations,
   enqueueForWebhook,
   enqueueApproved,
   runDue,

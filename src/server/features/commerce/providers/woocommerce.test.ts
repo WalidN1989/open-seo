@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { plainText } from "./woocommerce";
+import { fetchWooOrderPage, plainText } from "./woocommerce";
 
 describe("provider text is reduced to plain text at the boundary", () => {
   it("strips the wrapping markup WooCommerce renders", () => {
@@ -43,4 +43,35 @@ describe("provider text is reduced to plain text at the boundary", () => {
   it("leaves already-plain text untouched", () => {
     expect(plainText("The Daily Stoic")).toBe("The Daily Stoic");
   });
+});
+
+it("fetches bounded Woo orders using GMT modification cursors and credentials in headers", async () => {
+  process.env.TEST_WOO_BASE_URL = "https://shop.example.test";
+  process.env.TEST_WOO_CONSUMER_KEY = "test-key";
+  process.env.TEST_WOO_CONSUMER_SECRET = "test-secret";
+  let requested: URL | undefined;
+  let auth: string | null = null;
+  const result = await fetchWooOrderPage(
+    { providerKey: "woocommerce", credentialReference: "TEST_WOO" },
+    2,
+    "2026-10-21T12:00:00.000Z",
+    async (input, init) => {
+      requested = new URL(input instanceof Request ? input.url : input);
+      auth = new Headers(init?.headers).get("Authorization");
+      return Response.json([]);
+    },
+  );
+  expect(result).toEqual({ payload: [], hasMore: false });
+  expect(requested?.pathname).toBe("/wp-json/wc/v3/orders");
+  expect(requested?.searchParams.get("page")).toBe("2");
+  expect(requested?.searchParams.get("per_page")).toBe("25");
+  expect(requested?.searchParams.get("dates_are_gmt")).toBe("true");
+  expect(requested?.searchParams.get("modified_after")).toBe(
+    "2026-10-21T12:00:00.000",
+  );
+  expect(requested?.href).not.toContain("test-secret");
+  expect(auth).toBe(`Basic ${btoa("test-key:test-secret")}`);
+  delete process.env.TEST_WOO_BASE_URL;
+  delete process.env.TEST_WOO_CONSUMER_KEY;
+  delete process.env.TEST_WOO_CONSUMER_SECRET;
 });
