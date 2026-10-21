@@ -1945,6 +1945,43 @@ destinations match the visible email/phone. Existing message IDs and content are
 preserved; provider IDs are linked to the existing row. Ambiguous, cross-mailbox
 and cross-tenant matches cannot overwrite another message.
 
+### October 21, 2026 — WhatsApp order-request follow-up (pending release)
+
+The order-request table resolves customer identity through its organization-scoped
+conversation/contact relationships, including older AI-created requests without
+a direct contact ID. It shows the WhatsApp number, customer, requested date,
+expected arrival and Pending/Ordered/Available/Notified status, with search and
+an Open chat action. Amounts use the workspace currency. Conversion into a native
+draft carries the resolved customer and original WhatsApp number; it remains a
+manual action and does not confirm orders or move stock.
+
+Notify customer previews the exact message and recipient before the staff send.
+The existing WhatsApp outreach service enforces opt-out, reply-window and follow-up
+rules. Outside the reply window, staff choose an approved utility template and
+complete its variables. A conditional database claim prevents concurrent clicks
+and repeated sends for one request. Accepted messages are linked to the request
+and timestamped; interrupted, rejected or ambiguous sends stay locked for manual
+conversation/provider-history review rather than being resent automatically.
+Notified means provider acceptance, not confirmed delivery. There is no automatic
+stock-arrival sender or new agent/MCP sending tool.
+
+SQLite migration 0106 / PostgreSQL 0085 add nullable arrival/notification fields
+and a message foreign key. They backfill only missing customer snapshots on
+WhatsApp-created CRM orders from matching organization-scoped requests and chats;
+existing customer details and unrelated orders are preserved. New fields are
+compatible with the previous image. Code rollback retains recovered snapshots
+and notification records; do not drop the columns or replay uncertain sends.
+Release requires owner approval and a verified database backup before migration.
+Existing schedulers, sender settings, fulfillment and courier gates are unchanged.
+
+Validation: all 2,926 tests, ci:check and the selfhost build passed locally.
+The legacy SQLite migration and isolated PostgreSQL-engine migration/backfill
+tests pass. The actual components were checked with synthetic customers at
+desktop and 390px mobile widths, including search, notification previews,
+template requirements and a mocked send. No production migration, order edit,
+customer send or deployment has occurred. The organization-level review baseline
+was not verified or changed.
+
 ### October 20, 2026 — Citypak courier worker and waybill screen (pending release)
 
 The owner clarified that voice and WhatsApp agent configuration is separate from

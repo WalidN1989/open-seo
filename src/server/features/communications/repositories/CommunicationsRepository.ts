@@ -12,6 +12,7 @@ import {
   sql,
 } from "drizzle-orm";
 import { db } from "@/db";
+import { WhatsappOrderRequestRepository } from "./WhatsappOrderRequestRepository";
 import {
   integrationConnections,
   crmContacts,
@@ -610,11 +611,7 @@ async function getWhatsappOperations(organizationId: string) {
         .select()
         .from(whatsappAutomationRules)
         .where(eq(whatsappAutomationRules.organizationId, organizationId)),
-      db
-        .select()
-        .from(whatsappOrderRequests)
-        .where(eq(whatsappOrderRequests.organizationId, organizationId))
-        .orderBy(desc(whatsappOrderRequests.createdAt)),
+      WhatsappOrderRequestRepository.list(organizationId),
     ]);
 
   return {

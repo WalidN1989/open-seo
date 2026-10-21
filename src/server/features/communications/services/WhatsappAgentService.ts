@@ -172,6 +172,7 @@ async function sendTemplate(
 }
 
 export const WhatsappAgentService = {
+  requireAllowed,
   listChats,
   getChat,
   sendReply,

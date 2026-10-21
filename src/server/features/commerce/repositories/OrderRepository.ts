@@ -6,6 +6,7 @@ import {
 import { reverseEarnedPointsStatement } from "./OrderFinancialRepository";
 import { and, desc, eq, like, or, sql } from "drizzle-orm";
 import { db } from "@/db";
+import { WhatsappOrderRequestRepository } from "@/server/features/communications/repositories/WhatsappOrderRequestRepository";
 import { runBatch } from "@/db/runBatch";
 import {
   commerceOrderShipments,
@@ -247,17 +248,7 @@ async function transitionNative(
 }
 
 async function getOrderRequest(organizationId: string, requestId: string) {
-  const [row] = await db
-    .select()
-    .from(whatsappOrderRequests)
-    .where(
-      and(
-        eq(whatsappOrderRequests.id, requestId),
-        eq(whatsappOrderRequests.organizationId, organizationId),
-      ),
-    )
-    .limit(1);
-  return row ?? null;
+  return WhatsappOrderRequestRepository.get(organizationId, requestId);
 }
 
 async function linkOrderRequest(

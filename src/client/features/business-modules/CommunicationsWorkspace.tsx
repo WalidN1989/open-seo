@@ -56,7 +56,7 @@ import {
   refreshWhatsappTemplate,
 } from "@/serverFunctions/communications-admin";
 import { createCrmContact } from "@/serverFunctions/crm";
-import { convertWhatsappOrderRequest } from "@/serverFunctions/commerce";
+import { OrderRequestsSection } from "./whatsapp/OrderRequestsSection";
 import { getStandardErrorMessage } from "@/client/lib/error-messages";
 import {
   createWhatsappConnectionSchema,
@@ -1670,29 +1670,15 @@ export function WhatsappWorkspace({
             </Panel>
           ) : null}
           {activeSection === "Order Requests" ? (
-            <Panel title="Order requests" icon={FileText}>
-              <div className="border-b border-base-300 p-3">
-                <button
-                  className="btn btn-primary btn-sm"
-                  onClick={() => setForm("order")}
-                >
-                  <Plus className="size-4" /> Order request
-                </button>
-              </div>
-              {(ops?.orders ?? []).length ? (
-                (ops?.orders ?? []).map((item) => (
-                  <OrderRequestRow
-                    key={item.id}
-                    id={item.id}
-                    summary={item.summary}
-                    detail={`${item.status} · $${(item.amountCents / 100).toFixed(2)}`}
-                    convertedOrderId={item.externalOrderId}
-                  />
-                ))
-              ) : (
-                <Empty text="No order requests yet." />
-              )}
-            </Panel>
+            <OrderRequestsSection
+              requests={ops?.orders ?? []}
+              onCreate={() => setForm("order")}
+              onOpenChat={(id) => {
+                setSelectedConversationId(id);
+                setActiveSection("Inbox");
+                setMobileConversationOpen(true);
+              }}
+            />
           ) : null}
           {activeSection === "AI Config" ? <AssistantConfigSection /> : null}
           {activeSection === "Instant Answers" ? (
@@ -2186,58 +2172,6 @@ function Panel({
     </section>
   );
 }
-/**
- * An order request is an enquiry. Turning it into an order is an explicit act
- * by a person — never something an AI reply does — and it produces a DRAFT, so
- * no stock moves until someone confirms it.
- */
-function OrderRequestRow({
-  id,
-  summary,
-  detail,
-  convertedOrderId,
-}: {
-  id: string;
-  summary: string;
-  detail: string;
-  convertedOrderId: string | null;
-}) {
-  const queryClient = useQueryClient();
-  const convert = useMutation({
-    mutationFn: () => convertWhatsappOrderRequest({ data: { requestId: id } }),
-    onSuccess: async () => {
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["whatsapp", "workspace"] }),
-        queryClient.invalidateQueries({ queryKey: ["commerce", "orders"] }),
-      ]);
-      toast.success("Draft order created");
-    },
-    onError: (error) => toast.error(getStandardErrorMessage(error)),
-  });
-
-  return (
-    <div className="flex items-center justify-between gap-3 p-4">
-      <div className="min-w-0">
-        <p className="truncate font-medium">{summary}</p>
-        <p className="text-sm text-base-content/60">{detail}</p>
-      </div>
-      {convertedOrderId ? (
-        <span className="badge badge-ghost badge-sm shrink-0">
-          Order created
-        </span>
-      ) : (
-        <button
-          className="btn btn-outline btn-xs shrink-0"
-          disabled={convert.isPending}
-          onClick={() => convert.mutate()}
-        >
-          Create draft order
-        </button>
-      )}
-    </div>
-  );
-}
-
 function Row({ title, detail }: { title: string; detail: string }) {
   return (
     <div className="p-4">

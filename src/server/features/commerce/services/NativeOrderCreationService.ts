@@ -98,7 +98,12 @@ async function createOrder(
   organizationId: string,
   userId: string,
   input: CreateOrderInput,
-  options: { externalSource?: string; externalId?: string } = {},
+  options: {
+    externalSource?: string;
+    externalId?: string;
+    customerName?: string | null;
+    customerPhone?: string | null;
+  } = {},
 ) {
   await BusinessModuleService.requireAccess(
     organizationId,
@@ -189,8 +194,12 @@ async function createOrder(
         contactId: input.contactId ?? null,
         customerName: contact
           ? [contact.firstName, contact.lastName].filter(Boolean).join(" ")
-          : null,
-        customerPhone: contact?.phone || contact?.whatsappPhone || null,
+          : options.customerName || null,
+        customerPhone:
+          options.customerPhone ||
+          contact?.phone ||
+          contact?.whatsappPhone ||
+          null,
         customerEmail: contact?.email ?? null,
         shippingAddress: input.shippingAddress || null,
         shippingCity: input.shippingCity || null,

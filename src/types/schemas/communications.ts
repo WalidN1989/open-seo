@@ -104,6 +104,17 @@ export const createWhatsappOrderSchema = z.object({
   summary: z.string().trim().min(1).max(2000),
   amountCents: z.number().int().min(0).max(1_000_000_000).default(0),
 });
+export const updateWhatsappOrderRequestSchema = z.object({
+  requestId: z.string().min(1),
+  status: z.enum(["requested", "ordered", "available"]).optional(),
+  expectedArrival: z.iso.date().nullable().optional(),
+});
+export const notifyWhatsappOrderRequestSchema = z.object({
+  requestId: z.string().min(1),
+  body: z.string().trim().min(1).max(4000),
+  templateId: z.string().min(1).optional(),
+  variables: z.record(z.string(), z.string().max(2000)).optional(),
+});
 export const createVoiceAgentSchema = z.object({
   name: z.string().trim().min(1).max(100),
   speechToTextProvider: z.string().trim().max(100).optional(),

@@ -286,7 +286,9 @@ describe("provider and enquiry idempotency", () => {
   it("converts an enquiry into a draft order and records the link", async () => {
     mocks.getOrderRequest.mockResolvedValue({
       id: "req_1",
-      contactId: "contact_1",
+      contactId: null,
+      customerName: "WhatsApp customer",
+      customerPhone: "+61400000001",
       summary: "Two copies of the blue book",
       amountCents: 4000,
       externalOrderId: null,
@@ -300,6 +302,15 @@ describe("provider and enquiry idempotency", () => {
 
     // Draft, so nothing is deducted until a person confirms it.
     expect(order).toMatchObject({ status: "draft" });
+    expect(mocks.createOrderWithLines).toHaveBeenCalledWith(
+      ORG,
+      expect.objectContaining({
+        customerName: "WhatsApp customer",
+        customerPhone: "+61400000001",
+      }),
+      expect.anything(),
+      expect.anything(),
+    );
     expect(mocks.transitionNative).not.toHaveBeenCalled();
   });
 
