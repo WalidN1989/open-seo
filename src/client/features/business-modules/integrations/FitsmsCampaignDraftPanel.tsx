@@ -34,11 +34,23 @@ const fields = [
   },
 ] as const;
 
-export function FitsmsCampaignDraftPanel({
-  connectionId,
+export function FitsmsCampaignDraftSetup({
+  providerKey,
+  connection,
 }: {
-  connectionId: string;
+  providerKey: string;
+  connection: { id: string } | undefined;
 }) {
+  if (providerKey !== "fitsms" || !connection) return null;
+  return (
+    <FitsmsCampaignDraftPanel
+      key={connection.id}
+      connectionId={connection.id}
+    />
+  );
+}
+
+function FitsmsCampaignDraftPanel({ connectionId }: { connectionId: string }) {
   const client = useQueryClient();
   const queryKey = ["fitsms", connectionId, "campaign-drafts"];
   const drafts = useQuery({

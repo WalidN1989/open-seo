@@ -2079,3 +2079,17 @@ the actual form with synthetic in-memory data; saved weekly draft was visibly
 Screenshots: /private/tmp/fitsms-setup-desktop.png and
 /private/tmp/fitsms-setup-mobile.png. No live SMS, contact sync, account setting
 change, production migration or deployment occurred during preparation.
+
+Release approval: the owner explicitly authorized checking/fixing CI, merging
+PR58 and deploying the FITSMS preparation, while keeping SMS sends and schedules
+disabled until campaign approval. The first CI failed the existing integration
+page complexity limit (42, limit40); provider-specific visibility now lives in
+the FITSMS setup component, and the full local quality gate passes without any
+lint/check configuration changes. Live Coolify is manual-only on healthy main
+eab3be47. A fresh private VPS database/configuration backup was restored into an
+isolated database and PG0086 passed there, preserving existing product/order/SMS
+counts. The migration is additive; code rollback retains the empty draft table.
+Prior immutable image and settings are preserved privately on the VPS. Release
+verification remains pending until the final CI, merge and Coolify deployment.
+The owner's chat approval is the release authorization; it is not an independent
+second-person GitHub review. Org-wide Greptile baseline was not verified/changed.

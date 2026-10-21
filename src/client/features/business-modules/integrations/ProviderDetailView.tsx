@@ -9,7 +9,7 @@ import {
 } from "@/serverFunctions/commerce";
 import { getIntegrationsWorkspace } from "@/serverFunctions/communications";
 import { integrationCatalogue } from "@/shared/integration-catalogue";
-import { FitsmsCampaignDraftPanel } from "./FitsmsCampaignDraftPanel";
+import { FitsmsCampaignDraftSetup } from "./FitsmsCampaignDraftPanel";
 import { ProviderConnectPanel } from "./ProviderConnectPanel";
 import { CatalogueSyncPanel } from "./CatalogueSyncPanel";
 import { verifyConnection } from "./verifyConnection";
@@ -291,12 +291,10 @@ export function IntegrationProviderDetailView() {
             />
           ) : null}
 
-          {entry.key === "fitsms" && connection ? (
-            <FitsmsCampaignDraftPanel
-              key={connection.id}
-              connectionId={connection.id}
-            />
-          ) : null}
+          <FitsmsCampaignDraftSetup
+            providerKey={entry.key}
+            connection={connection}
+          />
 
           {entry.notes?.length ? (
             <ul className="space-y-1 rounded-xl border border-base-300 p-4 text-sm text-base-content/60">
