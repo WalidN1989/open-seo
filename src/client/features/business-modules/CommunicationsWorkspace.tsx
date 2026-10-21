@@ -63,6 +63,7 @@ import {
   updateWhatsappConnectionSchema,
 } from "@/types/schemas/communications";
 import { integrationProviders } from "@/shared/integration-providers";
+import { formatWhatsappTimestamp } from "@/shared/whatsapp-time";
 
 const whatsappConversationStatuses = ["open", "pending", "closed"] as const;
 /** Sections whose data the inbox poll has no reason to carry. */
@@ -101,16 +102,6 @@ const whatsappSettingsGroups = [
   },
   { label: "Workspace", sections: ["Reports", "Settings"] },
 ] as const;
-
-function formatWhatsappTime(value?: string | null) {
-  if (!value) return "";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "";
-  return new Intl.DateTimeFormat(undefined, {
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(date);
-}
 
 function formatConversationAge(value?: string | null) {
   if (!value) return "00:00";
@@ -255,7 +246,9 @@ export function WhatsappWorkspace({
   const query = useQuery({
     queryKey: ["whatsapp", "workspace"],
     queryFn: () => getWhatsappWorkspace(),
-    // Refresh on navigation, focus, and mutations; avoid idle database polling.
+    // Incoming activity is refreshed only while the inbox is open and visible.
+    refetchInterval: activeSection === "Inbox" ? 15_000 : false,
+    refetchIntervalInBackground: false,
   });
   const operations = useQuery({
     queryKey: ["whatsapp", "operations"],
@@ -510,7 +503,22 @@ export function WhatsappWorkspace({
     },
     onError: showError,
   });
-  const latestMessageId = query.data?.messages.at(-1)?.id;
+  useEffect(() => {
+    const conversations = query.data?.conversations;
+    if (
+      conversations?.length &&
+      !conversations.some(
+        (conversation) => conversation.id === selectedConversationId,
+      )
+    ) {
+      setSelectedConversationId(conversations[0].id);
+    }
+  }, [query.data?.conversations, selectedConversationId]);
+  const currentConversationId =
+    selectedConversationId ?? query.data?.conversations[0]?.id;
+  const latestMessageId = query.data?.messages.findLast(
+    (message) => message.conversationId === currentConversationId,
+  )?.id;
   useEffect(() => {
     if (activeSection !== "Inbox") return;
     const transcript = transcriptEndRef.current?.parentElement;
@@ -954,16 +962,19 @@ export function WhatsappWorkspace({
                               )}
                             </div>
                             <div className="min-w-0 flex-1">
-                              <div className="flex items-center justify-between gap-2">
-                                <p className="truncate text-sm font-semibold">
-                                  {name}
-                                </p>
-                                <span className="shrink-0 whitespace-nowrap text-[10px] text-base-content/50">
-                                  {formatWhatsappTime(
-                                    conversation.lastMessageAt,
-                                  )}
-                                </span>
-                              </div>
+                              <p className="truncate text-sm font-semibold">
+                                {name}
+                              </p>
+                              <time
+                                dateTime={
+                                  conversation.lastMessageAt ?? undefined
+                                }
+                                className="block text-[10px] text-base-content/50"
+                              >
+                                {formatWhatsappTimestamp(
+                                  conversation.lastMessageAt,
+                                )}
+                              </time>
                               <p className="truncate text-xs text-base-content/60">
                                 {lastMessage?.body || "No messages yet"}
                               </p>
@@ -1138,7 +1149,7 @@ export function WhatsappWorkspace({
                               {message.body}
                             </p>
                             <p className="mt-1 text-right text-[10px] opacity-60">
-                              {formatWhatsappTime(
+                              {formatWhatsappTimestamp(
                                 message.sentAt || message.createdAt,
                               )}
                             </p>
@@ -1418,7 +1429,7 @@ export function WhatsappWorkspace({
                                 >
                                   <p>{note.body}</p>
                                   <p className="mt-1 text-[10px] text-base-content/45">
-                                    {formatWhatsappTime(note.createdAt)}
+                                    {formatWhatsappTimestamp(note.createdAt)}
                                   </p>
                                 </div>
                               ))}
