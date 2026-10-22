@@ -42,6 +42,8 @@ describe("deliberate client verification", () => {
       "W4KD3TXR",
       "W4KD 3TXR",
       "my code is W4KD-3TXR",
+      "Here you go: w4kd 3txr",
+      "my code is ABCD EFGH",
     ]) {
       expect(redactAccessCode(body)).toBe("[Access code withheld]");
     }

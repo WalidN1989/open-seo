@@ -19,7 +19,14 @@ const LEGACY_WHOLE = new RegExp(
 );
 const LEGACY_HYPHENATED = new RegExp(`\\b${CHAR}{4}[-–—]${CHAR}{4}\\b`, "i");
 
+const LEGACY_SPACED = new RegExp(`\\b${CHAR}{4}\\s+${CHAR}{4}\\b`, "gi");
+
 export function redactAccessCode(body: string): string {
+  for (const match of body.matchAll(LEGACY_SPACED)) {
+    if (/\d/.test(match[0]) || /\bcode\b/i.test(body)) {
+      return "[Access code withheld]";
+    }
+  }
   return findAccessCodeCandidate(body) ||
     LEGACY_WHOLE.test(body.trim()) ||
     LEGACY_HYPHENATED.test(body)
