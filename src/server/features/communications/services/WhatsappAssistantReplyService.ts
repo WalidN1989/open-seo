@@ -20,7 +20,7 @@ import {
   type ClientAccess,
 } from "@/server/features/clients/services/ClientVerificationService";
 import { readClientData } from "@/server/features/clients/services/ClientDataService";
-import { findAccessCodeCandidate } from "@/server/features/clients/codeInMessage";
+import { redactAccessCode } from "@/server/features/clients/codeInMessage";
 import {
   CLIENT_DATA_TOPICS,
   CLIENT_DATA_TOPIC_HELP,
@@ -43,6 +43,8 @@ import { isPersonalMoneyRequest } from "../providers/whatsapp-reply-policy";
 
 const { withDefaults } = WhatsappAssistantService;
 const PROMPT_PRICE_LIMIT = 120;
+const VERIFICATION_REPLY =
+  /^(That code does not match any account\.|That is too many attempts\.|Thanks — you are verified as )/;
 
 /** Everything the model may treat as fact about this business. */
 export async function businessContext(
@@ -168,12 +170,13 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
  */
 /** What the assistant is told about who it is speaking to. */
 function accessNote(access: ClientAccess): string | null {
+  if (access.kind === "unavailable") return null;
   if (access.kind === "verified" || access.kind === "just_verified") {
     return `This person has verified as a client: ${access.displayName}.`;
   }
   // Never give an example code. Any string that reads like one is a code
   // somebody holds, and the assistant would be reading it out on request.
-  return "This person has NOT verified which client they are. Only if they ask about private SEO client data such as their site, rankings or SEO results, do not discuss specifics — ask them to reply with the access code we sent them, described only as eight characters in two groups of four. Never state, guess at, or give an example of a code. This verification is only for private SEO data, never for retail orders, purchases or delivery enquiries.";
+  return "This person has NOT verified which client they are. Only if they ask about private SEO client data such as their site, rankings or SEO results, do not discuss specifics — ask them to send /verify followed by their access code, described only as eight characters in two groups of four. Never state, guess at, or give an example of a code. This verification is only for private SEO data, never for retail orders, purchases or delivery enquiries.";
 }
 
 /**
@@ -248,9 +251,9 @@ export async function replyToInbound(
     organizationId,
     identifier: message.sender,
     body,
-  }).catch((error: unknown) => {
+  }).catch((error: unknown): ClientAccess => {
     console.error("Client access check failed", error);
-    return { kind: "anonymous" } as ClientAccess;
+    return { kind: "unavailable" };
   });
 
   if (access.kind === "locked") {
@@ -267,7 +270,7 @@ export async function replyToInbound(
       connection,
       conversationId,
       message.sender,
-      `That code does not match any account. Please check it and try again — it is eight characters in two groups of four. ${access.remaining} attempt${access.remaining === 1 ? "" : "s"} left.`,
+      `That code does not match any account. Send /verify followed by your code to try again — it is eight characters in two groups of four. ${access.remaining} attempt${access.remaining === 1 ? "" : "s"} left.`,
     );
     return true;
   }
@@ -382,16 +385,22 @@ export async function replyToInbound(
       return true;
     }
     const result = await generateWhatsappAiReply({
-      history: history.map((item) => ({
-        ...item,
-        body:
-          item.direction === "inbound" &&
-          findAccessCodeCandidate(item.body ?? "")
-            ? "[Access code withheld]"
-            : item.messageType === "image" && !item.body
+      history: history
+        .filter(
+          (item) =>
+            access.kind !== "unavailable" ||
+            item.direction !== "outbound" ||
+            !VERIFICATION_REPLY.test(item.body ?? ""),
+        )
+        .map((item) => ({
+          ...item,
+          body:
+            item.messageType === "image" && !item.body
               ? "[Customer sent an image]"
-              : item.body,
-      })),
+              : item.direction === "inbound"
+                ? redactAccessCode(item.body ?? "")
+                : item.body,
+        })),
       images,
       apiKey,
       model: settings.model ?? (await getOptionalEnvValue("WHATSAPP_AI_MODEL")),
@@ -415,15 +424,11 @@ export async function replyToInbound(
       conversationId,
     );
     if (latest && latest !== message.externalMessageId) return true;
-    const current = await Repo.getConversationReplyState(
+    const state = await Repo.getConversationReplyState(
       organizationId,
       conversationId,
     );
-    if (
-      !current ||
-      current.replyMode !== "auto" ||
-      current.status === "pending"
-    )
+    if (!state || state.replyMode !== "auto" || state.status === "pending")
       return true;
     if (result.ignore) {
       await CommunicationsRepository.updateWhatsappConversation(

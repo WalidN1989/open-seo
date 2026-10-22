@@ -2,58 +2,53 @@ import { describe, expect, it } from "vitest";
 import {
   findAccessCodeCandidate,
   looksLikeAccountEnquiry,
+  redactAccessCode,
 } from "./codeInMessage";
 
-describe("spotting a code someone sent", () => {
-  it("reads a code sent on its own, however they space it", () => {
-    for (const text of ["W4KD3TXR", "  w4kd3txr ", "W4KD-3TXR", "W4KD 3TXR"]) {
-      expect(findAccessCodeCandidate(text)?.code).toBe("W4KD3TXR");
-    }
+describe("deliberate client verification", () => {
+  it.each([
+    "/verify W4KD3TXR",
+    "/verify w4kd-3txr",
+    " /verify W4KD 3TXR ",
+    "/VERIFY W4KD—3TXR.",
+  ])("reads an explicit submission: %s", (text) => {
+    expect(findAccessCodeCandidate(text)).toEqual({ code: "W4KD3TXR" });
   });
-
-  it("reads a code inside a sentence when it is written in halves", () => {
-    expect(findAccessCodeCandidate("my code is W4KD-3TXR")?.code).toBe(
+  it.each([
+    "I need it by next week",
+    "next week",
+    "send them",
+    "best next",
+    "FEEDBACK",
+    "W4KD3TXR",
+    "W4KD-3TXR",
+    "W4KD 3TXR",
+    "my code is W4KD-3TXR",
+    "SHOP-6603",
+    "OCITTEA59",
+    "verify my order SHOP-6603",
+    "",
+    "   ",
+    "/verify",
+    "/verify 1234",
+    "/verify MAIL-BOX1",
+    "/verify W4KD-3TXR please",
+  ])("does not start verification for %s", (text) => {
+    expect(findAccessCodeCandidate(text)).toBeNull();
+  });
+  it("redacts new and historical code submissions without hiding the deadline regression", () => {
+    for (const body of [
+      "/verify W4KD-3TXR",
       "W4KD3TXR",
-    );
-    expect(findAccessCodeCandidate("W4KD-3TXR thanks")?.code).toBe("W4KD3TXR");
-    expect(findAccessCodeCandidate("Here you go: w4kd–3txr")?.code).toBe(
-      "W4KD3TXR",
-    );
-  });
-
-  it("treats four-and-four as deliberate and a bare word as a guess", () => {
-    // "FEEDBACK" is eight spellable characters — a whole valid code. It is
-    // still tried, because a right guess should verify them, but only the
-    // deliberate form may be refused out loud or counted towards a lockout.
-    expect(findAccessCodeCandidate("W4KD-3TXR")?.deliberate).toBe(true);
-    expect(findAccessCodeCandidate("FEEDBACK")?.deliberate).toBe(false);
-  });
-
-  it("ignores an ordinary word sitting inside a sentence", () => {
-    // BACKREST is eight spellable characters. Reading it out of prose would
-    // burn an attempt and could lock out the person trying to talk to us.
-    expect(
-      findAccessCodeCandidate("the backrest on my chair broke yesterday"),
-    ).toBeNull();
-    expect(findAccessCodeCandidate("STANDARD pricing please")).toBeNull();
-  });
-
-  it("ignores prose with no code in it", () => {
-    for (const text of [
-      "hi there",
-      "I'm a registered client. I would like to know something about my business",
-      "",
-      "   ",
-      "1234",
+      "W4KD 3TXR",
+      "my code is W4KD-3TXR",
     ]) {
-      expect(findAccessCodeCandidate(text)).toBeNull();
+      expect(redactAccessCode(body)).toBe("[Access code withheld]");
     }
-  });
-
-  it("ignores a code-shaped run that uses excluded characters", () => {
-    // I, O, L and U never appear in a real code, so these cannot be one.
-    expect(findAccessCodeCandidate("HELLOYOU")).toBeNull();
-    expect(findAccessCodeCandidate("MAIL-BOX1")).toBeNull();
+    expect(redactAccessCode("I need it by next week")).toBe(
+      "I need it by next week",
+    );
+    expect(redactAccessCode("SHOP-6603")).toBe("SHOP-6603");
   });
 });
 
