@@ -1,56 +1,37 @@
-/**
- * Deciding whether an inbound message is someone sending their access code.
- *
- * This has to be conservative. A wrong guess costs an attempt, and enough
- * attempts lock the number out — so mistaking an ordinary word for a code
- * would lock out the very client trying to talk to us.
- *
- * The alphabet excludes only the ambiguous characters, so plenty of ordinary
- * eight-letter words are spellable in it — "FEEDBACK" is a whole valid code.
- * So shape alone is not enough either, and a candidate carries how sure we
- * are: four-and-four is unmistakably someone typing a code, a bare word is
- * only a guess. A guess that turns out to be right verifies them; a guess that
- * is wrong is just a message, and costs nothing.
- */
-
+/** Verification starts only with an explicit command, never a code-shaped word. */
 const ALPHABET = "23456789ABCDEFGHJKMNPQRSTVWXYZ";
 const CHAR = `[${ALPHABET}]`;
+const SUBMISSION = new RegExp(
+  `^/verify\\s+(${CHAR}{4})(?:[-–—]|\\s+)?(${CHAR}{4})[.!]?$`,
+  "i",
+);
 
-/** `W4KD-3TXR`, `W4KD 3TXR` — the way a code is written down and read back. */
-const GROUPED = new RegExp(`\\b(${CHAR}{4})[-–—\\s](${CHAR}{4})\\b`, "i");
+export function findAccessCodeCandidate(body: string): { code: string } | null {
+  const match = SUBMISSION.exec(body.trim());
+  return match ? { code: `${match[1]}${match[2]}`.toUpperCase() } : null;
+}
 
-/** The whole message is the code and nothing else. */
-const BARE = new RegExp(`^\\s*(${CHAR}{8})\\s*$`, "i");
+// Old transcripts can contain codes sent before /verify was required. Keep
+// those out of model input without treating them as verification attempts.
+const LEGACY_WHOLE = new RegExp(
+  `^${CHAR}{4}(?:[-–—]|\\s+)?${CHAR}{4}[.!]?$`,
+  "i",
+);
+const LEGACY_HYPHENATED = new RegExp(`\\b${CHAR}{4}[-–—]${CHAR}{4}\\b`, "i");
 
-type AccessCodeCandidate = {
-  code: string;
-  /**
-   * Whether this is unambiguously someone sending a code. Only a deliberate
-   * attempt may be refused out loud or counted towards the lockout.
-   */
-  deliberate: boolean;
-};
+const LEGACY_SPACED = new RegExp(`\\b${CHAR}{4}\\s+${CHAR}{4}\\b`, "gi");
 
-export function findAccessCodeCandidate(
-  body: string,
-): AccessCodeCandidate | null {
-  const text = body.trim();
-  if (!text) return null;
-
-  // "my code is W4KD-3TXR", "W4KD-3TXR thanks" — the separator is what makes
-  // this a code rather than a word that happens to fit.
-  const grouped = GROUPED.exec(text);
-  if (grouped) {
-    return {
-      code: `${grouped[1]}${grouped[2]}`.toUpperCase(),
-      deliberate: true,
-    };
+export function redactAccessCode(body: string): string {
+  for (const match of body.matchAll(LEGACY_SPACED)) {
+    if (/\d/.test(match[0]) || /\bcode\b/i.test(body)) {
+      return "[Access code withheld]";
+    }
   }
-
-  const bare = BARE.exec(text);
-  if (bare) return { code: bare[1].toUpperCase(), deliberate: false };
-
-  return null;
+  return findAccessCodeCandidate(body) ||
+    LEGACY_WHOLE.test(body.trim()) ||
+    LEGACY_HYPHENATED.test(body)
+    ? "[Access code withheld]"
+    : body;
 }
 
 /**

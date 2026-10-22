@@ -80,7 +80,8 @@ export const clientContacts = sqliteTable(
       .default(sql`(current_timestamp)`),
   },
   (table) => [
-    uniqueIndex("client_contacts_channel_identifier_idx").on(
+    uniqueIndex("client_contacts_org_channel_identifier_idx").on(
+      table.organizationId,
       table.channel,
       table.identifier,
     ),

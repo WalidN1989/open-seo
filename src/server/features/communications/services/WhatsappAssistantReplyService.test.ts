@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   generate: vi.fn(),
   queue: vi.fn(),
   getSettings: vi.fn(),
+  recordQuestion: vi.fn(),
   integration: vi.fn(),
   history: vi.fn(),
   prices: vi.fn(),
@@ -23,7 +24,7 @@ vi.mock("../repositories/WhatsappAssistantRepository", () => ({
     getSettings: mocks.getSettings,
     latestInboundExternalId: vi.fn(),
     findInstantAnswer: mocks.instant,
-    recordAskedQuestion: vi.fn().mockResolvedValue(null),
+    recordAskedQuestion: mocks.recordQuestion,
     listPublishedAnswers: mocks.published,
     projectIdForOrganization: mocks.project,
   },
@@ -89,6 +90,7 @@ const message = (body: string): Parameters<typeof replyToInbound>[2] => ({
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mocks.recordQuestion.mockResolvedValue(null);
   mocks.integration.mockResolvedValue({ status: "connected" });
   mocks.history.mockResolvedValue([{ direction: "inbound", body: "help" }]);
   mocks.prices.mockResolvedValue([]);
@@ -168,5 +170,63 @@ describe("automatic reply controls", () => {
       true,
     );
     expect(mocks.send).toHaveBeenCalledWith(connection, "sender", "Hello");
+  });
+});
+
+describe("retail verification isolation", () => {
+  it("keeps the deadline and order ID, but omits SEO instructions, private tools and legacy rejection examples", async () => {
+    mocks.verify.mockResolvedValue({ kind: "unavailable" });
+    mocks.history.mockResolvedValue([
+      { direction: "inbound", body: "I need it by next week" },
+      {
+        direction: "outbound",
+        body: "That code does not match any account. 4 attempts left.",
+      },
+      {
+        direction: "outbound",
+        body: "That is too many attempts. Please wait.",
+      },
+      { direction: "outbound", body: "Thanks — you are verified as Alpha." },
+      { direction: "inbound", body: "Where is SHOP-6603?" },
+    ]);
+    await replyToInbound(connection, "chat", message("I need it by next week"));
+    expect(mocks.generate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        accessNote: null,
+        clientData: undefined,
+        history: [
+          { direction: "inbound", body: "I need it by next week" },
+          { direction: "inbound", body: "Where is SHOP-6603?" },
+        ],
+      }),
+    );
+    expect(mocks.send).toHaveBeenCalledWith(connection, "sender", "Hello");
+  });
+  it("does not ask for verification when eligibility could not be established", async () => {
+    mocks.verify.mockRejectedValue(new Error("eligibility lookup unavailable"));
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    await replyToInbound(connection, "chat", message("Where is SHOP-6603?"));
+    expect(mocks.generate).toHaveBeenCalledWith(
+      expect.objectContaining({ accessNote: null, clientData: undefined }),
+    );
+    error.mockRestore();
+  });
+  it("keeps code submissions redacted in retail history without treating the deadline as a code", async () => {
+    mocks.verify.mockResolvedValue({ kind: "unavailable" });
+    mocks.history.mockResolvedValue([
+      { direction: "inbound", body: "/verify K7MN-4PQR" },
+      { direction: "inbound", body: "K7MN-4PQR" },
+      { direction: "inbound", body: "I need it by next week" },
+    ]);
+    await replyToInbound(connection, "chat", message("I need it by next week"));
+    expect(mocks.generate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        history: [
+          { direction: "inbound", body: "[Access code withheld]" },
+          { direction: "inbound", body: "[Access code withheld]" },
+          { direction: "inbound", body: "I need it by next week" },
+        ],
+      }),
+    );
   });
 });

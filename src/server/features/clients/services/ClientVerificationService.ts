@@ -1,4 +1,4 @@
-import { and, eq, gt, isNull } from "drizzle-orm";
+import { and, count, eq, gt, isNull } from "drizzle-orm";
 import { db } from "@/db";
 import {
   clientAccounts,
@@ -24,6 +24,8 @@ import { findAccessCodeCandidate } from "../codeInMessage";
  */
 
 export type ClientAccess =
+  /** This workspace does not provide private SEO-client verification. */
+  | { kind: "unavailable" }
   /** A number the register has never seen prove itself. */
   | { kind: "anonymous" }
   /** Already verified on a previous message. */
@@ -45,7 +47,7 @@ export type ClientAccess =
   /** Too many wrong codes recently. */
   | { kind: "locked" };
 
-async function findVerifiedContact(identifier: string) {
+async function findVerifiedContact(organizationId: string, identifier: string) {
   const [row] = await db
     .select({
       accountId: clientAccounts.id,
@@ -58,10 +60,14 @@ async function findVerifiedContact(identifier: string) {
     .from(clientContacts)
     .innerJoin(
       clientAccounts,
-      eq(clientAccounts.id, clientContacts.clientAccountId),
+      and(
+        eq(clientAccounts.id, clientContacts.clientAccountId),
+        eq(clientAccounts.organizationId, organizationId),
+      ),
     )
     .where(
       and(
+        eq(clientContacts.organizationId, organizationId),
         eq(clientContacts.identifier, identifier),
         eq(clientContacts.channel, "whatsapp"),
         isNull(clientContacts.revokedAt),
@@ -71,18 +77,24 @@ async function findVerifiedContact(identifier: string) {
   return row ?? null;
 }
 
-async function recentFailures(identifier: string, since: string) {
-  const rows = await db
-    .select({ id: clientAccessEvents.id })
+async function recentFailures(
+  organizationId: string,
+  identifier: string,
+  since: string,
+) {
+  const [row] = await db
+    .select({ failures: count() })
     .from(clientAccessEvents)
     .where(
       and(
+        eq(clientAccessEvents.organizationId, organizationId),
+        eq(clientAccessEvents.channel, "whatsapp"),
         eq(clientAccessEvents.identifier, identifier),
         eq(clientAccessEvents.kind, "rejected"),
         gt(clientAccessEvents.createdAt, since),
       ),
     );
-  return rows.length;
+  return row?.failures ?? 0;
 }
 
 /**
@@ -122,13 +134,24 @@ export async function resolveClientAccess(input: {
   identifier: string;
   body: string;
 }): Promise<ClientAccess> {
-  const existing = await findVerifiedContact(input.identifier);
-  if (existing && existing.organizationId === input.organizationId) {
+  if (!(await Repo.verificationEnabled(input.organizationId))) {
+    return { kind: "unavailable" };
+  }
+  const existing = await findVerifiedContact(
+    input.organizationId,
+    input.identifier,
+  );
+  if (existing) {
     if (existing.status !== "active") return { kind: "anonymous" };
     await db
       .update(clientContacts)
       .set({ lastSeenAt: new Date().toISOString() })
-      .where(eq(clientContacts.id, existing.contactId));
+      .where(
+        and(
+          eq(clientContacts.organizationId, input.organizationId),
+          eq(clientContacts.id, existing.contactId),
+        ),
+      );
     return {
       kind: "verified",
       accountId: existing.accountId,
@@ -139,15 +162,14 @@ export async function resolveClientAccess(input: {
 
   const candidate = findAccessCodeCandidate(input.body);
   if (!candidate) return { kind: "anonymous" };
-  const { code, deliberate } = candidate;
+  const { code } = candidate;
 
-  // A word that merely fits the alphabet is never refused out loud and never
-  // counts against them: the `deliberate` guards below drop it back to
-  // anonymous. If it happens to be their code they are verified; if not, it
-  // was only ever a message. Someone writing four-and-four meant it.
+  // Only an explicit /verify submission reaches hashing or the lockout.
   const since = new Date(Date.now() - LOCKOUT_MS).toISOString();
-  if ((await recentFailures(input.identifier, since)) >= MAX_ATTEMPTS) {
-    if (!deliberate) return { kind: "anonymous" };
+  if (
+    (await recentFailures(input.organizationId, input.identifier, since)) >=
+    MAX_ATTEMPTS
+  ) {
     await Repo.recordEvent({
       id: crypto.randomUUID(),
       organizationId: input.organizationId,
@@ -162,7 +184,6 @@ export async function resolveClientAccess(input: {
 
   const account = await matchCode(input.organizationId, code);
   if (!account) {
-    if (!deliberate) return { kind: "anonymous" };
     await Repo.recordEvent({
       id: crypto.randomUUID(),
       organizationId: input.organizationId,
@@ -172,22 +193,42 @@ export async function resolveClientAccess(input: {
       kind: "rejected",
       detail: "Code did not match any client.",
     });
-    const failures = await recentFailures(input.identifier, since);
+    const failures = await recentFailures(
+      input.organizationId,
+      input.identifier,
+      since,
+    );
     return {
       kind: "rejected",
       remaining: Math.max(0, MAX_ATTEMPTS - failures),
     };
   }
 
-  await db.insert(clientContacts).values({
-    id: crypto.randomUUID(),
-    organizationId: input.organizationId,
-    clientAccountId: account.id,
-    channel: "whatsapp",
-    identifier: input.identifier,
-    verifiedAt: new Date().toISOString(),
-    lastSeenAt: new Date().toISOString(),
-  });
+  const verifiedAt = new Date().toISOString();
+  await db
+    .insert(clientContacts)
+    .values({
+      id: crypto.randomUUID(),
+      organizationId: input.organizationId,
+      clientAccountId: account.id,
+      channel: "whatsapp",
+      identifier: input.identifier,
+      verifiedAt,
+      lastSeenAt: verifiedAt,
+    })
+    .onConflictDoUpdate({
+      target: [
+        clientContacts.organizationId,
+        clientContacts.channel,
+        clientContacts.identifier,
+      ],
+      set: {
+        clientAccountId: account.id,
+        verifiedAt,
+        lastSeenAt: verifiedAt,
+        revokedAt: null,
+      },
+    });
   await Repo.recordEvent({
     id: crypto.randomUUID(),
     organizationId: input.organizationId,

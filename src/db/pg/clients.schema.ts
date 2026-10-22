@@ -76,7 +76,8 @@ export const clientContacts = pgTable(
     createdAt: text("created_at").notNull().default(isoNow),
   },
   (table) => [
-    uniqueIndex("client_contacts_channel_identifier_idx").on(
+    uniqueIndex("client_contacts_org_channel_identifier_idx").on(
+      table.organizationId,
       table.channel,
       table.identifier,
     ),

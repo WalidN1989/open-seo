@@ -1,0 +1,2 @@
+DROP INDEX `client_contacts_channel_identifier_idx`;--> statement-breakpoint
+CREATE UNIQUE INDEX `client_contacts_org_channel_identifier_idx` ON `client_contacts` (`organization_id`,`channel`,`identifier`);

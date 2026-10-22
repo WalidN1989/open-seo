@@ -43,8 +43,9 @@ function CodeReveal({
         <div>
           <p className="text-sm font-semibold">Access code for {name}</p>
           <p className="mt-1 text-sm text-base-content/65">
-            Send this to them once. It is not stored in a readable form, so this
-            is the only time it can be shown — if it gets lost, rotate it.
+            Ask them to send this verification message on WhatsApp. The code is
+            not stored in a readable form, so this is the only time it can be
+            shown — if it gets lost, rotate it.
           </p>
         </div>
         <button className="btn btn-ghost btn-xs" onClick={onClose}>
@@ -53,12 +54,12 @@ function CodeReveal({
       </div>
       <div className="mt-4 flex flex-wrap items-center gap-3">
         <code className="rounded-lg bg-base-100 px-4 py-2 font-mono text-xl tracking-widest">
-          {code}
+          /verify {code}
         </code>
         <button
           className="btn btn-sm"
           onClick={() => {
-            void navigator.clipboard.writeText(code);
+            void navigator.clipboard.writeText(`/verify ${code}`);
             setCopied(true);
           }}
         >

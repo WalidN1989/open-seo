@@ -757,6 +757,13 @@
       "when": 1792610406928,
       "tag": "0107_windy_spirit",
       "breakpoints": true
+    },
+    {
+      "idx": 108,
+      "version": "6",
+      "when": 1792696471249,
+      "tag": "0108_medical_radioactive_man",
+      "breakpoints": true
     }
   ]
 }

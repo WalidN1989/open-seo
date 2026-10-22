@@ -121,6 +121,12 @@ beforeAll(async () => {
   ({ WhatsappAssistantRepository: Repo } =
     await import("@/server/features/communications/repositories/WhatsappAssistantRepository"));
   schema = await import("@/db/schema");
+  await db.insert(schema.organizationModuleEntitlements).values({
+    id: "clients_access_a",
+    organizationId: ORG_A,
+    moduleKey: "clients",
+    status: "enabled",
+  });
   const row =
     await CommunicationsRepository.getWhatsappConnectionById(WHATSAPP_A);
   if (!row) throw new Error("fixture connection missing");
@@ -218,7 +224,7 @@ describe("a client proving who they are", () => {
       .where(eq(schema.whatsappConversations.id, first.conversationId));
     expect(escalated?.status).toBe("pending");
 
-    const { handled } = await inbound("K7MN-4PQR", sender);
+    const { handled } = await inbound("/verify K7MN-4PQR", sender);
     expect(handled).toBe(true);
     expect(sent.calls).toHaveLength(2);
     expect(sent.calls[1]?.body).toContain("Beta");
@@ -238,7 +244,7 @@ describe("a client proving who they are", () => {
 
   it("turns a wrong code away with the attempts left, and never reaches the model", async () => {
     await registerClient();
-    const { handled } = await inbound("K7MN-4PQQ", "+61400000011");
+    const { handled } = await inbound("/verify K7MN-4PQQ", "+61400000011");
     expect(handled).toBe(true);
     expect(sent.calls).toHaveLength(1);
     expect(sent.calls[0]?.body).toContain("does not match");
@@ -249,10 +255,10 @@ describe("a client proving who they are", () => {
     await registerClient();
     const sender = "+61400000014";
     for (let attempt = 0; attempt < 5; attempt += 1) {
-      await inbound("K7MN-4PQQ", sender);
+      await inbound("/verify K7MN-4PQQ", sender);
     }
     sent.calls.length = 0;
-    const { handled } = await inbound("K7MN-4PQQ", sender);
+    const { handled } = await inbound("/verify K7MN-4PQQ", sender);
     expect(handled).toBe(true);
     expect(sent.calls[0]?.body).toContain("paused");
   });
@@ -275,9 +281,9 @@ describe("a client proving who they are", () => {
     const access = await resolveClientAccess({
       organizationId: ORG_B,
       identifier: "+61400000013",
-      body: "K7MN-4PQR",
+      body: "/verify K7MN-4PQR",
     });
-    expect(access.kind).toBe("rejected");
+    expect(access.kind).toBe("unavailable");
   });
 });
 
