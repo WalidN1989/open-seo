@@ -233,6 +233,14 @@ describe("WhatsApp chat mode", () => {
       { replyRevision: 2, status: "processing" },
     );
   });
+  it("preserves model action ordering when the same response flags and records an enquiry", async () => {
+    await control.flagForTeam(ORG_A, chatId, 0);
+    await control.createOrder(ORG_A, chatId, 0, "Current enquiry", 0);
+    expect((await state()).status).toBe("pending");
+    expect(
+      (await db.select().from(schema.whatsappOrderRequests))[0],
+    ).toMatchObject({ summary: "Current enquiry", status: "requested" });
+  });
   it("repeating the current mode is idempotent", async () => {
     await mode("auto");
     expect((await state()).replyRevision).toBe(0);

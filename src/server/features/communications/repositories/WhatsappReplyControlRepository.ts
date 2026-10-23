@@ -146,7 +146,7 @@ async function createOrder(
     tx
       .update(whatsappConversations)
       .set({ replyRevision: sql`${whatsappConversations.replyRevision}` })
-      .where(eligible(organizationId, conversationId, revision)),
+      .where(eligible(organizationId, conversationId, revision, true)),
     tx.insert(whatsappOrderRequests).select(
       tx
         .select({
@@ -166,7 +166,7 @@ async function createOrder(
           updatedAt: sql<string>`${new Date().toISOString()}`.as("updatedAt"),
         })
         .from(whatsappConversations)
-        .where(eligible(organizationId, conversationId, revision)),
+        .where(eligible(organizationId, conversationId, revision, true)),
     ),
   ]);
 }
