@@ -1,3 +1,5 @@
+import { sendAutomaticWhatsappReply } from "./WhatsappAutomaticReplyService";
+import { WhatsappReplyControlRepository as Control } from "../repositories/WhatsappReplyControlRepository";
 import { OrderService } from "@/server/features/commerce/services/OrderService";
 import { loadWhatsappImage } from "../providers/whatsapp-media";
 import { getOptionalEnvValue } from "@/server/lib/runtime-env";
@@ -26,10 +28,7 @@ import {
   CLIENT_DATA_TOPIC_HELP,
   isClientDataTopic,
 } from "@/server/features/clients/clientDataTopics";
-import {
-  sendWhatsappText,
-  type InboundWhatsappMessage,
-} from "../providers/whatsapp";
+import { type InboundWhatsappMessage } from "../providers/whatsapp";
 import {
   DEFAULT_HANDOFF_MESSAGE,
   WhatsappAssistantService,
@@ -91,69 +90,33 @@ export async function lookupProducts(organizationId: string, query: string) {
   return formatCatalogueMatches(query, rows, currency);
 }
 
-/** Queue, send, and record one outbound reply on the conversation. */
-async function sendReply(
-  connection: Connection,
-  conversationId: string,
-  recipient: string,
-  body: string,
-) {
-  const current = await Repo.getConversationReplyState(
-    connection.organizationId,
-    conversationId,
-  );
-  if (!current || current.replyMode !== "auto") return;
-  const queued = await CommunicationsRepository.createQueuedWhatsappMessage(
-    connection.organizationId,
-    conversationId,
-    body,
-  );
-  try {
-    const sent = await sendWhatsappText(connection, recipient, body);
-    await CommunicationsRepository.completeWhatsappMessage(
-      connection.organizationId,
-      queued.id,
-      {
-        externalMessageId: sent.externalMessageId,
-        status: sent.status,
-        sentAt: new Date().toISOString(),
-      },
-    );
-  } catch (error) {
-    await CommunicationsRepository.completeWhatsappMessage(
-      connection.organizationId,
-      queued.id,
-      { status: "failed" },
-    );
-    throw error;
-  }
-}
-
 async function applyActions(
   organizationId: string,
   conversationId: string,
+  revision: number,
   actions: NonNullable<
     Awaited<ReturnType<typeof generateWhatsappAiReply>>
   >["actions"],
 ) {
   for (const action of actions) {
+    if (
+      !(await Control.isCurrent(organizationId, conversationId, revision, true))
+    )
+      return;
     if (action.name === "flag_for_team") {
-      await CommunicationsRepository.flagWhatsappConversationForTeam(
-        organizationId,
-        conversationId,
-      );
+      await Control.flagForTeam(organizationId, conversationId, revision);
       continue;
     }
     const rawAmount = Number(action.input.amount_cents || 0);
-    await CommunicationsRepository.createWhatsappOrder(organizationId, {
+    await Control.createOrder(
+      organizationId,
       conversationId,
-      summary:
-        typeof action.input.summary === "string"
-          ? action.input.summary.slice(0, 2000)
-          : "Customer order enquiry",
-      amountCents:
-        Number.isSafeInteger(rawAmount) && rawAmount >= 0 ? rawAmount : 0,
-    });
+      revision,
+      typeof action.input.summary === "string"
+        ? action.input.summary.slice(0, 2000)
+        : "Customer order enquiry",
+      Number.isSafeInteger(rawAmount) && rawAmount >= 0 ? rawAmount : 0,
+    );
   }
 }
 
@@ -213,7 +176,7 @@ export async function replyToInbound(
   connection: Connection,
   conversationId: string,
   message: InboundWhatsappMessage,
-  options: { scheduled?: boolean } = {},
+  options: { scheduled?: boolean; replyRevision?: number } = {},
 ): Promise<boolean> {
   const organizationId = connection.organizationId;
   const body = message.body?.trim() ?? "";
@@ -221,12 +184,34 @@ export async function replyToInbound(
     organizationId,
     conversationId,
   );
-  if (!conversation || conversation.replyMode !== "auto") return true;
-  if (isPersonalMoneyRequest(body)) {
-    await CommunicationsRepository.updateWhatsappConversation(organizationId, {
+  if (
+    !conversation ||
+    conversation.replyMode !== "auto" ||
+    (options.replyRevision !== undefined &&
+      options.replyRevision !== conversation.replyRevision)
+  )
+    return true;
+  const revision = conversation.replyRevision;
+  const current = (allowPending = false) =>
+    Control.isCurrent(organizationId, conversationId, revision, allowPending);
+  const sendReply = (replyBody: string) =>
+    sendAutomaticWhatsappReply(connection, {
       conversationId,
-      replyMode: "manual",
+      revision,
+      messageId: message.externalMessageId,
+      recipient: message.sender,
+      body: replyBody,
+      allowPending: true,
     });
+  if (isPersonalMoneyRequest(body)) {
+    await CommunicationsRepository.updateWhatsappConversation(
+      organizationId,
+      {
+        conversationId,
+        replyMode: "manual",
+      },
+      revision,
+    );
     return true;
   }
   const settings = withDefaults(await Repo.getSettings(organizationId));
@@ -258,27 +243,18 @@ export async function replyToInbound(
 
   if (access.kind === "locked") {
     await sendReply(
-      connection,
-      conversationId,
-      message.sender,
       "That is too many attempts. For security this number is paused for a few minutes — please try again shortly, or contact us and we will help.",
     );
     return true;
   }
   if (access.kind === "rejected") {
     await sendReply(
-      connection,
-      conversationId,
-      message.sender,
       `That code does not match any account. Send /verify followed by your code to try again — it is eight characters in two groups of four. ${access.remaining} attempt${access.remaining === 1 ? "" : "s"} left.`,
     );
     return true;
   }
   if (access.kind === "just_verified") {
     await sendReply(
-      connection,
-      conversationId,
-      message.sender,
       `Thanks — you are verified as ${access.displayName}. You will not need that code again from this number. What would you like to know?`,
     );
     return true;
@@ -292,16 +268,8 @@ export async function replyToInbound(
     parseKeywords(settings.escalationKeywords),
   );
   if (keyword) {
-    await CommunicationsRepository.flagWhatsappConversationForTeam(
-      organizationId,
-      conversationId,
-    );
-    await sendReply(
-      connection,
-      conversationId,
-      message.sender,
-      settings.handoffMessage ?? DEFAULT_HANDOFF_MESSAGE,
-    );
+    await Control.flagForTeam(organizationId, conversationId, revision);
+    await sendReply(settings.handoffMessage ?? DEFAULT_HANDOFF_MESSAGE);
     return true;
   }
 
@@ -312,9 +280,6 @@ export async function replyToInbound(
     );
     if (instant) {
       await sendReply(
-        connection,
-        conversationId,
-        message.sender,
         toWhatsappText(
           applyPriceTokens(instant.answer, await priceTokens(organizationId)),
         ),
@@ -377,13 +342,11 @@ export async function replyToInbound(
       );
       if (latest && latest !== message.externalMessageId) return true;
       await sendReply(
-        connection,
-        conversationId,
-        message.sender,
         "I received your image, but I can't view it right now. Could you describe what you'd like us to check?",
       );
       return true;
     }
+    if (!(await current())) return true;
     const result = await generateWhatsappAiReply({
       history: history
         .filter(
@@ -416,6 +379,7 @@ export async function replyToInbound(
         ),
       clientData: clientDataFor(access),
     });
+    if (!(await current())) return true;
     if (!result) return false;
     // Another customer message may arrive while Claude is thinking. The
     // newer scheduled job will answer the entire burst instead.
@@ -424,12 +388,6 @@ export async function replyToInbound(
       conversationId,
     );
     if (latest && latest !== message.externalMessageId) return true;
-    const state = await Repo.getConversationReplyState(
-      organizationId,
-      conversationId,
-    );
-    if (!state || state.replyMode !== "auto" || state.status === "pending")
-      return true;
     if (result.ignore) {
       await CommunicationsRepository.updateWhatsappConversation(
         organizationId,
@@ -437,20 +395,21 @@ export async function replyToInbound(
           conversationId,
           replyMode: "manual",
         },
+        revision,
       );
       return true;
     }
-    await applyActions(organizationId, conversationId, result.actions);
-    if (!result.reply) return false;
-    await sendReply(
-      connection,
+    await applyActions(
+      organizationId,
       conversationId,
-      message.sender,
-      toWhatsappText(result.reply),
+      revision,
+      result.actions,
     );
+    if (!result.reply) return false;
+    await sendReply(toWhatsappText(result.reply));
     return true;
   } catch (error) {
     console.error("WhatsApp assistant failed; using rule fallback", error);
-    return false;
+    return !(await current());
   }
 }

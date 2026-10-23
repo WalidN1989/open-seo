@@ -568,6 +568,9 @@ export const whatsappConversations = pgTable(
     replyMode: text("reply_mode", { enum: ["auto", "manual"] })
       .notNull()
       .default("auto"),
+    /** Invalidates work captured before an operator changes reply mode. */
+    replyRevision: integer("reply_revision").notNull().default(0),
+    lastAutoReplyKey: text("last_auto_reply_key"),
     lastMessageAt: text("last_message_at"),
     createdAt: createdAt(),
   },
@@ -601,6 +604,8 @@ export const whatsappMessages = pgTable(
     mediaUrl: text("media_url"),
     mediaContentType: text("media_content_type"),
     status: text("status").notNull().default("queued"),
+    /** Null for messages sent explicitly by a teammate or MCP agent. */
+    autoReplyRevision: integer("auto_reply_revision"),
     sentAt: text("sent_at"),
     createdAt: createdAt(),
   },
@@ -626,6 +631,7 @@ export const whatsappReplyJobs = pgTable(
       .notNull()
       .references(() => organization.id, { onDelete: "cascade" }),
     latestMessageId: text("latest_message_id").notNull(),
+    replyRevision: integer("reply_revision").notNull().default(0),
     dueAt: text("due_at").notNull(),
     status: text("status").notNull().default("pending"),
     claimExpiresAt: text("claim_expires_at"),

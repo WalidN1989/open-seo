@@ -50,6 +50,30 @@ Withheld: approving, publishing, submitting for review, rejecting. See
 [OPTIMIZATIONS_AGENT_BRIEF.md](./OPTIMIZATIONS_AGENT_BRIEF.md) for the field
 shapes and the loop.
 
+### WhatsApp — organization-scoped
+
+`list_whatsapp_chats` and `get_whatsapp_chat` include `replyMode` (`auto` or
+`manual`) in structured output and readable text. Use
+`set_whatsapp_chat_mode({organizationId?, conversationId, mode})` to change one
+chat. The tool requires membership, the WhatsApp entitlement and manage
+permission, and uses the same audited update as the inbox Replies setting.
+
+Manual persists until explicitly switched back, including when the customer
+writes again. A mode change increments a database revision, cancels stale
+queued jobs and marks unsent automatic messages failed. Returning to Auto
+permits future messages; it never replays cancelled work. Existing pending
+handoff status remains independent of reply mode.
+
+Generation, model actions, rule fallback and automatic dispatch use the captured
+revision. Dispatch and mode changes serialize through the conversation row in an
+atomic database batch/transaction. One deterministic outbound record per inbound
+and revision prevents concurrent/retried AI and fallback sends. Once a dispatch
+claim wins, a provider request may already be in progress; Manual cannot recall
+that message. Ambiguous provider failures are not automatically resent.
+Explicit teammate/MCP replies remain available in Manual and use their existing
+outreach rules. This tool does not configure the workspace assistant or send a
+message. No growing process cache or polling loop is added.
+
 ### Invoicing — organization-scoped
 
 | Tool                                      | What it does                                                                                           |

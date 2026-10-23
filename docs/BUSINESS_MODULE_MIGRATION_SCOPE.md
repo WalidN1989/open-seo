@@ -2137,3 +2137,27 @@ Prior immutable image and settings are preserved privately on the VPS. Release
 verification remains pending until the final CI, merge and Coolify deployment.
 The owner's chat approval is the release authorization; it is not an independent
 second-person GitHub review. Org-wide Greptile baseline was not verified/changed.
+
+### October 23, 2026 — per-chat WhatsApp reply mode over MCP (review only)
+
+The owner accepted the access-code fix and authorized the next separate PR.
+`set_whatsapp_chat_mode` uses the existing inbox update service, organization
+membership, WhatsApp manage permission and audit trail. Agent list/get reads
+include `replyMode`. Manual persists across new inbound messages; returning to
+Auto does not replay old work or clear an independent pending handoff.
+
+SQLite 0109 / Postgres 0088 add reply revisions to conversations/jobs, an
+automatic-message revision marker and the last dispatch key. Mode changes,
+scheduling, model actions and dispatch use atomic guarded writes. Revision
+changes invalidate generation and rule fallback; stale queued jobs are deleted
+and unsent automated messages marked failed. One outbound record per inbound
+and revision prevents duplicate automatic dispatch. Already-claimed provider
+requests cannot be recalled. No process cache, timer map or polling loop is
+added; existing runner wakeups find an empty durable queue after cancellation.
+
+This branch is not deployed. Schema additions preserve existing modes/messages
+and remain compatible with the previous image; retain them on code rollback.
+The previous image would lose revision guards and the MCP mode tool. Production
+settings, providers and customer messages are untouched. The 24-hour-window,
+product-matching and team-handoff fixes remain outside this PR. Merge/deploy
+still require owner review of this PR and explicit release approval.

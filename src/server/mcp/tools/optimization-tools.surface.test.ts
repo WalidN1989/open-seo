@@ -177,6 +177,7 @@ describe("the WhatsApp MCP surface", () => {
       "list_whatsapp_chats",
       "send_whatsapp_reply",
       "send_whatsapp_template",
+      "set_whatsapp_chat_mode",
     ]);
     // Sends go through WhatsappAgentService, which applies outreachDecision;
     // calling the raw provider or the unchecked service would skip the rules.

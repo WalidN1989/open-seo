@@ -345,6 +345,7 @@ async function getConversationReplyState(
     .select({
       status: whatsappConversations.status,
       replyMode: whatsappConversations.replyMode,
+      replyRevision: whatsappConversations.replyRevision,
     })
     .from(whatsappConversations)
     .where(
