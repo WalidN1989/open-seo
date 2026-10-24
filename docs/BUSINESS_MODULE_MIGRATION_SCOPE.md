@@ -2161,3 +2161,33 @@ The previous image would lose revision guards and the MCP mode tool. Production
 settings, providers and customer messages are untouched. The 24-hour-window,
 product-matching and team-handoff fixes remain outside this PR. Merge/deploy
 still require owner review of this PR and explicit release approval.
+
+### October 24, 2026 — named Shopify pickup methods and courier preflight (pending release)
+
+A reported missing waybill was traced read-only to a Shopify warehouse-pickup
+shipping method with no shipping address. DU recognized only the literal `pickup`
+code, so the named warehouse option was classified as delivery and reached courier
+preflight. No Citypak request was made; the catch-all failure message incorrectly
+suggested an uncertain provider submission. The selected courier worker is healthy
+and its existing activation settings remain unchanged.
+
+Shopify mapping now recognizes pickup/local-pickup code or title prefixes, including
+custom warehouse options, without treating delivery titles mentioning pickup or
+pickup-truck couriers as collection. The strict phone authorization boundary is
+unchanged. Pickup approval already excludes Citypak; review now explains that no
+waybill will be created. A missing delivery phone/address/city records a definite
+preflight failure stating no Citypak request was made. Actual provider/network
+exceptions retain the unknown/no-automatic-retry handling.
+
+This fix has no schema migration, provider call, historical replay, order approval,
+shipment creation or production configuration/data change. Existing records need
+separate scoped reconciliation against the authoritative Shopify shipping method;
+never substitute a billing address or reset uncertain courier actions automatically.
+Release still requires owner approval. Rollback is the previous image; no records
+or accepted provider actions are undone by a code rollback.
+
+Validation: ci:check and all 3,057 tests across 333 files pass, including synthetic
+pickup classification, delivery non-matches, no courier calls for pickup/missing
+fields, and unchanged ambiguous-provider no-retry behavior. Production build is
+verified separately in the PR. Production order data and activation settings remain
+unchanged while release approval is pending.

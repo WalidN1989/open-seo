@@ -114,8 +114,14 @@ async function createShipment(context: ActionContext) {
     .split(/[,\n]+/)
     .map((s) => s.trim())
     .filter(Boolean);
-  if (!order.customerPhone || !order.shippingAddress || !order.shippingCity)
-    throw new Error("Missing receiver details");
+  if (!order.customerPhone || !order.shippingAddress || !order.shippingCity) {
+    await Repo.finish(effect.organizationId, claim.id, {
+      status: "failed",
+      error:
+        "Missing delivery phone, address or city. No Citypak request was made. Confirm whether this is a pickup order before arranging delivery.",
+    });
+    return;
+  }
   if (!(await dispatchCurrent(context))) {
     await skipChanged(context);
     return;
