@@ -91,7 +91,7 @@ describe("live Citypak voice lookup", () => {
     });
     expect(fetcher).toHaveBeenCalledTimes(1);
     const [url, init] = fetcher.mock.calls[0];
-    expect(String(url)).toBe(
+    expect(url).toBe(
       "https://falcon.citypak.lk/customer_api/v1/track?tracking_number=D123",
     );
     expect(init).toMatchObject({
@@ -192,19 +192,19 @@ describe("live Citypak voice lookup", () => {
       pickup: true,
     });
     mocks.shipments.mockResolvedValue([]);
-    expect(await lookup()).toMatchObject({
-      waybillGenerated: false,
-      citypak: [],
-      note: expect.stringContaining("pickup"),
-    });
+    const result = await lookup();
+    expect(result).toMatchObject({ waybillGenerated: false, citypak: [] });
+    expect(result).toHaveProperty("note", expect.stringContaining("pickup"));
     expect(fetcher).not.toHaveBeenCalled();
   });
   it("does not interpret a missing WB as proof that the order has not shipped", async () => {
     mocks.shipments.mockResolvedValue([]);
-    expect(await lookup()).toMatchObject({
-      waybillGenerated: false,
-      note: expect.stringContaining("does not prove"),
-    });
+    const result = await lookup();
+    expect(result).toMatchObject({ waybillGenerated: false });
+    expect(result).toHaveProperty(
+      "note",
+      expect.stringContaining("does not prove"),
+    );
     expect(fetcher).not.toHaveBeenCalled();
   });
   it("retains saved details on missing or unreadable credentials", async () => {

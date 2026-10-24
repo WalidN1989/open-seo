@@ -1,3 +1,4 @@
+import { z } from "zod";
 import { OrderRepository } from "@/server/features/commerce/repositories/OrderRepository";
 import { OrderService } from "@/server/features/commerce/services/OrderService";
 import { OrderShipmentRepository } from "@/server/features/commerce/repositories/OrderShipmentRepository";
@@ -22,13 +23,17 @@ async function delivery(organizationId: string, phone: string, query: string) {
       found: false,
       next: "Verify the saved order number before disclosing details. Do not read another customer's order.",
     };
-  const details = JSON.parse(
-    await OrderService.lookupCustomerOrder(
-      organizationId,
-      phone,
-      order.orderNumber,
-    ),
-  ) as Record<string, unknown>;
+  const details = z
+    .record(z.string(), z.unknown())
+    .parse(
+      JSON.parse(
+        await OrderService.lookupCustomerOrder(
+          organizationId,
+          phone,
+          order.orderNumber,
+        ),
+      ),
+    );
   if (details.found !== true) return details;
   const shipments = (await OrderRepository.shipments(organizationId, order.id))
     .filter((s) => s.provider === "Citypak")
