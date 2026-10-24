@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   generate: vi.fn(),
   queue: vi.fn(),
   getSettings: vi.fn(),
+  recordQuestion: vi.fn(),
   integration: vi.fn(),
   history: vi.fn(),
   prices: vi.fn(),
@@ -16,6 +17,18 @@ const mocks = vi.hoisted(() => ({
   instant: vi.fn(),
   defaults: vi.fn(),
   key: vi.fn(),
+  isCurrent: vi.fn(),
+  claim: vi.fn(),
+  flag: vi.fn(),
+  order: vi.fn(),
+}));
+vi.mock("../repositories/WhatsappReplyControlRepository", () => ({
+  WhatsappReplyControlRepository: {
+    isCurrent: mocks.isCurrent,
+    claimDispatch: mocks.claim,
+    flagForTeam: mocks.flag,
+    createOrder: mocks.order,
+  },
 }));
 vi.mock("../repositories/WhatsappAssistantRepository", () => ({
   WhatsappAssistantRepository: {
@@ -23,7 +36,7 @@ vi.mock("../repositories/WhatsappAssistantRepository", () => ({
     getSettings: mocks.getSettings,
     latestInboundExternalId: vi.fn(),
     findInstantAnswer: mocks.instant,
-    recordAskedQuestion: vi.fn().mockResolvedValue(null),
+    recordAskedQuestion: mocks.recordQuestion,
     listPublishedAnswers: mocks.published,
     projectIdForOrganization: mocks.project,
   },
@@ -89,6 +102,12 @@ const message = (body: string): Parameters<typeof replyToInbound>[2] => ({
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mocks.isCurrent.mockResolvedValue(true);
+  mocks.claim.mockImplementation(async (input) => {
+    mocks.queue(input);
+    return { id: "queued" };
+  });
+  mocks.recordQuestion.mockResolvedValue(null);
   mocks.integration.mockResolvedValue({ status: "connected" });
   mocks.history.mockResolvedValue([{ direction: "inbound", body: "help" }]);
   mocks.prices.mockResolvedValue([]);
@@ -100,6 +119,7 @@ beforeEach(() => {
   mocks.getConversationReplyState.mockResolvedValue({
     status: "open",
     replyMode: "auto",
+    replyRevision: 0,
   });
   mocks.verify.mockResolvedValue({ kind: "anonymous" });
   mocks.generate.mockResolvedValue({
@@ -135,10 +155,14 @@ describe("automatic reply controls", () => {
         message("Please give me some money brother"),
       ),
     ).toBe(true);
-    expect(mocks.update).toHaveBeenCalledWith("organization", {
-      conversationId: "chat",
-      replyMode: "manual",
-    });
+    expect(mocks.update).toHaveBeenCalledWith(
+      "organization",
+      {
+        conversationId: "chat",
+        replyMode: "manual",
+      },
+      0,
+    );
     expect(mocks.verify).not.toHaveBeenCalled();
     expect(mocks.send).not.toHaveBeenCalled();
   });
@@ -147,16 +171,18 @@ describe("automatic reply controls", () => {
     expect(await replyToInbound(connection, "chat", message("help"))).toBe(
       true,
     );
-    expect(mocks.update).toHaveBeenCalledWith("organization", {
-      conversationId: "chat",
-      replyMode: "manual",
-    });
+    expect(mocks.update).toHaveBeenCalledWith(
+      "organization",
+      {
+        conversationId: "chat",
+        replyMode: "manual",
+      },
+      0,
+    );
     expect(mocks.queue).not.toHaveBeenCalled();
   });
   it("stops a generated response if the operator switches to Manual", async () => {
-    mocks.getConversationReplyState
-      .mockResolvedValueOnce({ status: "open", replyMode: "auto" })
-      .mockResolvedValue({ status: "open", replyMode: "manual" });
+    mocks.isCurrent.mockResolvedValueOnce(true).mockResolvedValue(false);
     expect(await replyToInbound(connection, "chat", message("help"))).toBe(
       true,
     );
@@ -168,5 +194,123 @@ describe("automatic reply controls", () => {
       true,
     );
     expect(mocks.send).toHaveBeenCalledWith(connection, "sender", "Hello");
+  });
+});
+
+describe("revision changes during generation", () => {
+  it.each(["Manual", "Manual then Auto"])(
+    "suppresses actions and dispatch after %s",
+    async () => {
+      mocks.generate.mockImplementationOnce(async () => {
+        mocks.isCurrent.mockResolvedValue(false);
+        return {
+          reply: "Old answer",
+          actions: [
+            { name: "create_order_request", input: { summary: "Old order" } },
+            { name: "flag_for_team", input: {} },
+          ],
+          ignore: false,
+        };
+      });
+      expect(await replyToInbound(connection, "chat", message("help"))).toBe(
+        true,
+      );
+      expect(mocks.order).not.toHaveBeenCalled();
+      expect(mocks.flag).not.toHaveBeenCalled();
+      expect(mocks.send).not.toHaveBeenCalled();
+    },
+  );
+  it("suppresses fallback when generation fails after a mode revision change", async () => {
+    mocks.generate.mockImplementationOnce(async () => {
+      mocks.isCurrent.mockResolvedValue(false);
+      throw new Error("generation failed");
+    });
+    expect(await replyToInbound(connection, "chat", message("help"))).toBe(
+      true,
+    );
+    expect(mocks.send).not.toHaveBeenCalled();
+  });
+  it("rejects a stale scheduled revision before verification or generation", async () => {
+    mocks.getConversationReplyState.mockResolvedValueOnce({
+      status: "open",
+      replyMode: "auto",
+      replyRevision: 2,
+    });
+    expect(
+      await replyToInbound(connection, "chat", message("help"), {
+        scheduled: true,
+        replyRevision: 0,
+      }),
+    ).toBe(true);
+    expect(mocks.verify).not.toHaveBeenCalled();
+    expect(mocks.generate).not.toHaveBeenCalled();
+  });
+  it("checks the revision again at dispatch after queue preparation", async () => {
+    mocks.claim.mockResolvedValueOnce(null);
+    expect(await replyToInbound(connection, "chat", message("help"))).toBe(
+      true,
+    );
+    expect(mocks.send).not.toHaveBeenCalled();
+    expect(mocks.claim).toHaveBeenCalledWith(
+      expect.objectContaining({ revision: 0, messageId: "message" }),
+    );
+  });
+});
+
+describe("retail verification isolation", () => {
+  it("keeps the deadline and order ID, but omits SEO instructions, private tools and legacy rejection examples", async () => {
+    mocks.verify.mockResolvedValue({ kind: "unavailable" });
+    mocks.history.mockResolvedValue([
+      { direction: "inbound", body: "I need it by next week" },
+      {
+        direction: "outbound",
+        body: "That code does not match any account. 4 attempts left.",
+      },
+      {
+        direction: "outbound",
+        body: "That is too many attempts. Please wait.",
+      },
+      { direction: "outbound", body: "Thanks — you are verified as Alpha." },
+      { direction: "inbound", body: "Where is SHOP-6603?" },
+    ]);
+    await replyToInbound(connection, "chat", message("I need it by next week"));
+    expect(mocks.generate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        accessNote: null,
+        clientData: undefined,
+        history: [
+          { direction: "inbound", body: "I need it by next week" },
+          { direction: "inbound", body: "Where is SHOP-6603?" },
+        ],
+      }),
+    );
+    expect(mocks.send).toHaveBeenCalledWith(connection, "sender", "Hello");
+  });
+  it("does not ask for verification when eligibility could not be established", async () => {
+    mocks.verify.mockRejectedValue(new Error("eligibility lookup unavailable"));
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    await replyToInbound(connection, "chat", message("Where is SHOP-6603?"));
+    expect(mocks.generate).toHaveBeenCalledWith(
+      expect.objectContaining({ accessNote: null, clientData: undefined }),
+    );
+    error.mockRestore();
+  });
+  it("keeps code submissions redacted in retail history without treating the deadline as a code", async () => {
+    mocks.verify.mockResolvedValue({ kind: "unavailable" });
+    mocks.history.mockResolvedValue([
+      { direction: "inbound", body: "/verify K7MN-4PQR" },
+      { direction: "inbound", body: "K7MN-4PQR" },
+      { direction: "inbound", body: "I need it by next week" },
+    ]);
+    await replyToInbound(connection, "chat", message("I need it by next week"));
+    expect(mocks.generate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        history: [
+          { direction: "inbound", body: "[Access code withheld]" },
+          { direction: "inbound", body: "[Access code withheld]" },
+          { direction: "inbound", body: "I need it by next week" },
+        ],
+      }),
+    );
   });
 });

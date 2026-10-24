@@ -389,6 +389,8 @@ async function updateWhatsappConversation(
       contactId: conversation.contactId,
       status: conversation.status,
       replyMode: conversation.replyMode,
+      requestedReplyMode: input.replyMode,
+      replyRevision: conversation.replyRevision,
     },
   });
   return conversation;
@@ -1474,6 +1476,12 @@ async function ingestWhatsappGroup(
       message,
     );
     if (!ingestion.duplicate && ingestion.conversationId) {
+      const replyState =
+        await WhatsappAssistantRepository.getConversationReplyState(
+          connection.organizationId,
+          ingestion.conversationId,
+        );
+      if (!replyState || replyState.replyMode !== "auto") continue;
       const assistantSettings = await WhatsappAssistantRepository.getSettings(
         connection.organizationId,
       );
@@ -1487,7 +1495,9 @@ async function ingestWhatsappGroup(
           ingestion.conversationId,
           message.externalMessageId,
           assistantSettings.replyDelaySeconds,
+          replyState.replyRevision,
         );
+        if (!wakeup) continue;
         await wakeWhatsappReply(wakeup).catch((error: unknown) => {
           // The durable row survives; startup recovery or a manual run can retry it.
           console.error("Could not schedule WhatsApp reply wakeup", error);
@@ -1498,6 +1508,7 @@ async function ingestWhatsappGroup(
         connection,
         ingestion.conversationId,
         message,
+        { replyRevision: replyState.replyRevision },
       );
       if (handled) continue;
       await runWhatsappAutomationFallback(
@@ -1505,7 +1516,11 @@ async function ingestWhatsappGroup(
         ingestion.conversationId,
         message.sender,
         message.body,
-        ingestion.isNew,
+        {
+          isNew: ingestion.isNew,
+          revision: replyState.replyRevision,
+          messageId: message.externalMessageId,
+        },
       );
     }
   }

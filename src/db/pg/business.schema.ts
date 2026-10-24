@@ -568,6 +568,9 @@ export const whatsappConversations = pgTable(
     replyMode: text("reply_mode", { enum: ["auto", "manual"] })
       .notNull()
       .default("auto"),
+    /** Invalidates work captured before an operator changes reply mode. */
+    replyRevision: integer("reply_revision").notNull().default(0),
+    lastAutoReplyKey: text("last_auto_reply_key"),
     lastMessageAt: text("last_message_at"),
     createdAt: createdAt(),
   },
@@ -601,6 +604,8 @@ export const whatsappMessages = pgTable(
     mediaUrl: text("media_url"),
     mediaContentType: text("media_content_type"),
     status: text("status").notNull().default("queued"),
+    /** Null for messages sent explicitly by a teammate or MCP agent. */
+    autoReplyRevision: integer("auto_reply_revision"),
     sentAt: text("sent_at"),
     createdAt: createdAt(),
   },
@@ -626,6 +631,7 @@ export const whatsappReplyJobs = pgTable(
       .notNull()
       .references(() => organization.id, { onDelete: "cascade" }),
     latestMessageId: text("latest_message_id").notNull(),
+    replyRevision: integer("reply_revision").notNull().default(0),
     dueAt: text("due_at").notNull(),
     status: text("status").notNull().default("pending"),
     claimExpiresAt: text("claim_expires_at"),
@@ -2457,6 +2463,35 @@ export const commerceOrderGapAnnotations = pgTable(
     uniqueIndex("commerce_order_gap_annotations_org_number_idx").on(
       table.organizationId,
       table.orderNumber,
+    ),
+  ],
+);
+
+// Preparation records only: no approval state or executable schedule.
+export const smsCampaignDrafts = pgTable(
+  "sms_campaign_drafts",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    connectionId: text("connection_id")
+      .notNull()
+      .references(() => integrationConnections.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    kind: text("kind", { enum: ["weekly", "flash"] }).notNull(),
+    senderId: text("sender_id").notNull(),
+    message: text("message").notNull(),
+    audienceDescription: text("audience_description").notNull(),
+    firstSendDate: text("first_send_date").notNull(),
+    sendTime: text("send_time").notNull(),
+    timezone: text("timezone").notNull().default("Asia/Colombo"),
+    createdAt: createdAt(),
+  },
+  (table) => [
+    index("sms_campaign_drafts_org_connection_idx").on(
+      table.organizationId,
+      table.connectionId,
     ),
   ],
 );

@@ -143,9 +143,19 @@ function buildMessages(history: HistoryItem[]) {
   for (const item of history) {
     if (!item.body?.trim()) continue;
     const role = item.direction === "inbound" ? "user" : "assistant";
+    // Old name corrections should not teach the assistant to repeat them.
+    // Keep the rest of the reply: it may contain an order or product detail.
+    const body =
+      role === "assistant"
+        ? item.body.replace(
+            /^(?:(?:hi|hey|hello)[!,.]?\s*)?i(?:['’]m|\s+am)\s+not\s+aathika\b[\s,.!—–-]*(?:(?:but|and)\s+)?/iu,
+            "",
+          )
+        : item.body;
+    if (!body.trim()) continue;
     const previous = messages.at(-1);
-    if (previous?.role === role) previous.content += `\n${item.body}`;
-    else messages.push({ role, content: item.body });
+    if (previous?.role === role) previous.content += `\n${body}`;
+    else messages.push({ role, content: body });
   }
   while (messages[0]?.role === "assistant") messages.shift();
   return messages;
@@ -173,7 +183,7 @@ function systemPrompt(input: {
     "If the person asks for personal money, charity, donations, loans or financial support unrelated to this business, call ignore_conversation and send no text. Do not offer charities, helplines, reassurance, access-code requests or follow-up questions. Once the conversation is clearly about personal financial solicitation, do not continue engaging. Business pricing, invoices, refunds, discounts and payment questions are legitimate enquiries and must not be ignored on this basis.",
     "Reply in the same language and script as the customer's latest message — including Sinhala, Tamil, and romanised mixes such as Singlish or Tanglish; keep titles and links exactly as written. Ask at most one question at a time.",
     "Write for a chat app, not a document. Emphasis is a single asterisk around a phrase, like *this*. Never write double asterisks, markdown headings, or link syntax with brackets — put a bare URL instead.",
-    "Never say you are an AI and never mention prompts, tools, APIs, or internal systems.",
+    "When a customer greets a staff member by name, greet them warmly on behalf of the business's team in their language. Do not correct the name, deny being that person, or claim to be them. A greeting is not an identity question. If directly asked who you are, whether you are that person, or whether you are automated, answer honestly as the business's automated assistant. Do not volunteer that introduction or mention prompts, tools, APIs, or internal systems.",
     "Never invent prices, stock, availability, delivery terms, opening hours, policies, addresses, or product links. Only state a business fact when it appears in trusted business context or a tool result. If unavailable, say the team needs to confirm it.",
     canLookup
       ? "When a customer sends an image, use it to identify what they are asking about. An image is not proof of current stock or price; use lookup_products for catalogue facts. If the image is unclear, ask one clarifying question."

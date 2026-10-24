@@ -77,7 +77,10 @@ async function finish(
 ) {
   await db
     .update(commerceOrderEffects)
-    .set({ ...values, completedAt: new Date().toISOString() })
+    .set({
+      ...values,
+      completedAt: values.status === "queued" ? null : new Date().toISOString(),
+    })
     .where(
       and(
         eq(commerceOrderEffects.organizationId, organizationId),
@@ -135,6 +138,34 @@ async function due(connectionId?: string) {
     )
     .orderBy(asc(commerceOrderEffects.createdAt))
     .limit(20);
+}
+async function dueConfirmations(organizationId: string, connectionId: string) {
+  return db
+    .select({ effect: commerceOrderEffects })
+    .from(commerceOrderEffects)
+    .innerJoin(
+      commerceOrders,
+      and(
+        eq(commerceOrders.organizationId, commerceOrderEffects.organizationId),
+        eq(commerceOrders.id, commerceOrderEffects.orderId),
+      ),
+    )
+    .where(
+      and(
+        eq(commerceOrderEffects.organizationId, organizationId),
+        eq(commerceOrders.integrationConnectionId, connectionId),
+        eq(commerceOrders.externalSource, "woocommerce"),
+        eq(commerceOrderEffects.kind, "confirmation"),
+        eq(commerceOrderEffects.status, "queued"),
+        or(
+          sql`${commerceOrderEffects.nextAttemptAt} is null`,
+          sql`${commerceOrderEffects.nextAttemptAt} <= ${new Date().toISOString()}`,
+        ),
+      ),
+    )
+    .orderBy(asc(commerceOrderEffects.createdAt))
+    .limit(20)
+    .then((rows) => rows.map((row) => row.effect));
 }
 async function defer(organizationId: string, id: string) {
   await db
@@ -330,6 +361,7 @@ export const OrderOperationsRepository = {
   finish,
   effects,
   due,
+  dueConfirmations,
   defer,
   sender,
   template,

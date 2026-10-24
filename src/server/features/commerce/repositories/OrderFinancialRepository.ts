@@ -1,14 +1,14 @@
 import { and, eq, sql, type SQL } from "drizzle-orm";
 import type { runBatch } from "@/db/runBatch";
 import { invoices, commerceLoyaltyEntries } from "@/db/schema";
-import type { shopifyOrderValues } from "../providers/shopifyOrders";
+import type { OrderSnapshot } from "./OrderMirrorRepository";
 
 type Executor = Parameters<Parameters<typeof runBatch>[0]>[0];
 export function mirroredFinancialStatements(
   tx: Executor,
   organizationId: string,
   orderId: string,
-  values: ReturnType<typeof shopifyOrderValues> & { hasRefund: boolean },
+  values: OrderSnapshot["values"] & { hasRefund: boolean },
   applied: SQL,
 ) {
   return [

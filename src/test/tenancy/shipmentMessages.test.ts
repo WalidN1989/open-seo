@@ -14,6 +14,10 @@ import type * as Repository from "@/server/features/commerce/repositories/Shipme
 import type * as Operations from "@/server/features/commerce/repositories/OrderOperationsRepository";
 import type * as Config from "@/server/features/commerce/services/ShipmentMessagesConfigService";
 vi.mock("cloudflare:workers", () => ({ env: { DATABASE_PROVIDER: "d1" } }));
+const approval = vi.hoisted(() => vi.fn());
+vi.mock("@/server/features/communications/providers/twilioContent", () => ({
+  fetchOrderConfirmationTemplate: approval,
+}));
 const send = vi.hoisted(() => vi.fn<typeof sendWhatsappTemplate>());
 vi.mock("@/server/features/communications/providers/whatsapp", () => ({
   sendWhatsappTemplate: send,
@@ -61,6 +65,7 @@ beforeAll(async () => {
       organizationId: ORG_A,
       connectionId: WHATSAPP_A,
       name: id,
+      category: "UTILITY",
       body: "Hi {{1}}, order {{2}}, waybill {{3}}.",
       status: "approved",
       externalTemplateId: "HXsynthetic",
@@ -68,6 +73,11 @@ beforeAll(async () => {
   );
 });
 beforeEach(async () => {
+  approval.mockReset().mockResolvedValue({
+    status: "approved",
+    body: "Hi {{1}}, order {{2}}, waybill {{3}}.",
+    languageCode: "en",
+  });
   send
     .mockReset()
     .mockResolvedValue({ externalMessageId: "SMsynthetic", status: "sent" });
@@ -285,4 +295,79 @@ it("normalizes new generation timestamps and excludes manually linked legacy way
       ),
     );
   expect(await repo.candidates(connection)).toHaveLength(0);
+});
+
+it("supports generation-only activation without queuing a next-day message", async () => {
+  await configService.configure(ORG_A, USER_OWNER_A, {
+    connectionId: connection,
+    enabled: true,
+    senderId: WHATSAPP_A,
+    waybillTemplateId: "wb",
+    deliveryEstimateTemplateId: null,
+  });
+  await Promise.all([service.runDue(connection), service.runDue(connection)]);
+  expect(send).toHaveBeenCalledTimes(1);
+  expect(await repo.candidates(connection)).toHaveLength(0);
+  vi.setSystemTime(Date.parse(generated) + 3 * 24 * 60 * 60 * 1000);
+  await service.runDue(connection);
+  expect(send).toHaveBeenCalledTimes(1);
+  expect(
+    (await operations.effects(ORG_A, currentOrder)).filter(
+      (e) => e.kind === "delivery_estimate",
+    ),
+  ).toHaveLength(0);
+});
+
+it("holds messages when current Twilio approval is paused or cannot be verified", async () => {
+  approval.mockResolvedValue({
+    status: "pending",
+    body: "Hi {{1}}, order {{2}}, waybill {{3}}.",
+    languageCode: "en",
+  });
+  await service.runDue(connection);
+  expect(send).not.toHaveBeenCalled();
+  await expect(
+    configService.configure(ORG_A, USER_OWNER_A, {
+      connectionId: connection,
+      enabled: true,
+      senderId: WHATSAPP_A,
+      waybillTemplateId: "wb",
+      deliveryEstimateTemplateId: null,
+    }),
+  ).rejects.toThrow();
+  approval.mockRejectedValue(new Error("Provider unavailable"));
+  await service.runDue(connection);
+  expect(send).not.toHaveBeenCalled();
+});
+
+it("rechecks current provider approval immediately before sending", async () => {
+  approval
+    .mockResolvedValueOnce({
+      status: "approved",
+      body: "Hi {{1}}, order {{2}}, waybill {{3}}.",
+      languageCode: "en",
+    })
+    .mockResolvedValue({
+      status: "pending",
+      body: "Hi {{1}}, order {{2}}, waybill {{3}}.",
+      languageCode: "en",
+    });
+  await service.runDue(connection);
+  expect(send).not.toHaveBeenCalled();
+});
+
+it("does not schedule a follow-up after an explicit failed provider result", async () => {
+  send.mockResolvedValue({
+    externalMessageId: "SMfailed",
+    status: "undelivered",
+  });
+  await service.runDue(connection);
+  expect(
+    (await operations.effects(ORG_A, currentOrder)).find(
+      (e) => e.kind === "waybill",
+    )?.status,
+  ).toBe("unknown");
+  vi.setSystemTime(Date.parse(generated) + 2 * 24 * 60 * 60 * 1000);
+  await service.runDue(connection);
+  expect(send).toHaveBeenCalledTimes(1);
 });

@@ -20,21 +20,23 @@ read. That is the whole design.
    you already manage for them.
 2. A code is issued and shown **once**. It is stored derived and salted, like a
    password, so it cannot be read back. Losing it costs one rotation.
-3. They send the code over WhatsApp. Verification happens **in code, before the
-   model runs** — a message carrying a code never reaches the assistant.
-4. Their number is now bound to that account and does not need the code again.
+3. They send `/verify` followed by the issued code over WhatsApp. The reveal
+   panel copies the complete message. Verification happens **in code, before
+   the model runs**.
+4. Their number is now bound inside this agency's workspace and does not need
+   the code again. The same number may verify independently with another agency.
 
-Five deliberate wrong codes lock the number for fifteen minutes.
+Verification is available only while the **Client Accounts** module is enabled
+and an active linked account has an issued code. Retail-only workspaces have no
+verification flow or private SEO access instructions. Ordinary phrases such as
+"next week", retail order IDs, and codes sent without `/verify` never consume an
+attempt or silently establish access. Existing verified contacts keep their
+access while the module and account remain active.
 
-### Why a bare word is not a wrong code
-
-The code alphabet leaves out only the characters people misread — no O, I, L or
-U. Ordinary eight-letter words are still spellable in it: `FEEDBACK` is a whole
-valid code. So a candidate carries whether it was **deliberate**. Four-and-four
-(`W4KD-3TXR`) is unmistakably someone typing a code and may be refused out loud
-and counted. A bare word is still tried — if it happens to be their code they
-are verified — but a miss is treated as an ordinary message and costs nothing.
-Without that, a client typing "feedback" five times would lock themselves out.
+Five explicit wrong submissions lock that number for fifteen minutes in that
+agency's WhatsApp channel only. Another agency's attempts cannot cause a lockout.
+Revoked contacts need a new deliberate verification. Legacy code submissions
+remain redacted from model history; customer messages are not rewritten.
 
 ## What a verified client can read
 

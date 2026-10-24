@@ -12,6 +12,7 @@ import {
   sql,
 } from "drizzle-orm";
 import { db } from "@/db";
+import { runBatch } from "@/db/runBatch";
 import { WhatsappOrderRequestRepository } from "./WhatsappOrderRequestRepository";
 import {
   integrationConnections,
@@ -28,6 +29,7 @@ import {
   whatsappConnections,
   whatsappConversations,
   whatsappMessages,
+  whatsappReplyJobs,
   whatsappContactProfiles,
   whatsappTags,
   whatsappContactTagAssignments,
@@ -322,6 +324,7 @@ async function getWhatsappConversationHistory(
       and(
         eq(whatsappMessages.organizationId, organizationId),
         eq(whatsappMessages.conversationId, conversationId),
+        sql`(${whatsappMessages.autoReplyRevision} is null or ${whatsappMessages.status} not in ('failed', 'queued', 'sending'))`,
       ),
     )
     .orderBy(desc(whatsappMessages.createdAt))
@@ -752,18 +755,67 @@ async function createWhatsappInternalNote(
 async function updateWhatsappConversation(
   organizationId: string,
   input: z.infer<typeof updateWhatsappConversationSchema>,
+  expectedRevision?: number,
 ) {
   const { conversationId, ...changes } = input;
-  const [row] = await db
-    .update(whatsappConversations)
-    .set(changes)
-    .where(
-      and(
-        eq(whatsappConversations.id, conversationId),
-        eq(whatsappConversations.organizationId, organizationId),
+  const scope = and(
+    eq(whatsappConversations.id, conversationId),
+    eq(whatsappConversations.organizationId, organizationId),
+  );
+  await runBatch((tx) => [
+    tx
+      .update(whatsappConversations)
+      .set({
+        ...changes,
+        ...(input.replyMode
+          ? {
+              replyRevision: sql`case when ${whatsappConversations.replyMode} <> ${input.replyMode} then ${whatsappConversations.replyRevision} + 1 else ${whatsappConversations.replyRevision} end`,
+            }
+          : {}),
+      })
+      .where(
+        and(
+          scope,
+          expectedRevision === undefined
+            ? undefined
+            : and(
+                eq(whatsappConversations.replyRevision, expectedRevision),
+                eq(whatsappConversations.replyMode, "auto"),
+              ),
+        ),
       ),
-    )
-    .returning();
+    ...(input.replyMode
+      ? [
+          tx
+            .delete(whatsappReplyJobs)
+            .where(
+              and(
+                eq(whatsappReplyJobs.organizationId, organizationId),
+                eq(whatsappReplyJobs.conversationId, conversationId),
+                sql`(${whatsappReplyJobs.replyRevision} <> (select reply_revision from whatsapp_conversations where id = ${conversationId} and organization_id = ${organizationId}) or (select reply_mode from whatsapp_conversations where id = ${conversationId} and organization_id = ${organizationId}) = 'manual')`,
+              ),
+            ),
+          // Failed unsent rows stay out of outreach/model-history calculations.
+          tx
+            .update(whatsappMessages)
+            .set({ status: "failed" })
+            .where(
+              and(
+                eq(whatsappMessages.organizationId, organizationId),
+                eq(whatsappMessages.conversationId, conversationId),
+                eq(whatsappMessages.status, "queued"),
+                isNotNull(whatsappMessages.autoReplyRevision),
+                sql`(${whatsappMessages.autoReplyRevision} <> (select reply_revision from whatsapp_conversations where id = ${conversationId} and organization_id = ${organizationId}) or (select reply_mode from whatsapp_conversations where id = ${conversationId} and organization_id = ${organizationId}) = 'manual')`,
+              ),
+            ),
+        ]
+      : []),
+  ]);
+  const [row] = await db
+    .select()
+    .from(whatsappConversations)
+    .where(scope)
+    .limit(1);
   return row ?? null;
 }
 

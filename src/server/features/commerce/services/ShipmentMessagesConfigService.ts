@@ -1,3 +1,4 @@
+import { currentUtilityTemplate } from "./OrderDispatchService";
 import { supportsShipmentVariables } from "@/shared/shipment-messages";
 import { BusinessModuleService } from "@/server/features/business-modules/services/BusinessModuleService";
 import { OrderOperationsRepository as Repo } from "../repositories/OrderOperationsRepository";
@@ -42,13 +43,16 @@ async function configure(
       );
     for (const id of [
       input.waybillTemplateId,
-      input.deliveryEstimateTemplateId,
+      ...(input.deliveryEstimateTemplateId
+        ? [input.deliveryEstimateTemplateId]
+        : []),
     ]) {
       const template = await Repo.template(organizationId, id || "");
       if (
         !template ||
         template.connectionId !== sender.id ||
-        !supportsShipmentVariables(template)
+        !supportsShipmentVariables(template) ||
+        !(await currentUtilityTemplate(sender, template))
       )
         throw new AppError(
           "VALIDATION_ERROR",

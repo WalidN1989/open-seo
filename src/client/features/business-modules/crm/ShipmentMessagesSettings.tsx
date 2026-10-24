@@ -74,13 +74,13 @@ export function ShipmentMessagesSettings({
           defaultChecked={Boolean(config.shipmentMessagesStartedAt)}
           className="checkbox checkbox-sm mr-2"
         />
-        Send waybill and next-day delivery updates
+        Send WhatsApp updates for new waybills
       </label>
       <p className="text-xs">
         For newly generated Citypak waybills only. Send the WB ID after
-        generation and an estimated delivery update 24 hours later. Delivered,
-        returned and cancelled orders are excluded. Existing waybills do not
-        trigger messages.
+        generation. The next-day estimate is optional and stays off unless a
+        template is selected. Delivered, returned and cancelled orders are
+        excluded. Existing waybills do not trigger messages.
       </p>
       <label className="block text-sm">
         Shipment WhatsApp sender
@@ -105,7 +105,7 @@ export function ShipmentMessagesSettings({
         ["waybill", "Waybill generated", config.waybillTemplateId],
         [
           "estimate",
-          "Next-day delivery estimate",
+          "Next-day delivery estimate (optional)",
           config.deliveryEstimateTemplateId,
         ],
       ].map(([name, label, value]) => (
@@ -116,7 +116,11 @@ export function ShipmentMessagesSettings({
             defaultValue={value || ""}
             className="select select-bordered select-sm w-full"
           >
-            <option value="">Choose approved template</option>
+            <option value="">
+              {name === "estimate"
+                ? "Off — no next-day message"
+                : "Choose approved template"}
+            </option>
             {templates.data?.templates
               .filter((t) => t.status === "approved")
               .map((t) => (

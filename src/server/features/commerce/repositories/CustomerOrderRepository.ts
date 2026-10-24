@@ -1,10 +1,10 @@
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
 import { db } from "@/db";
 import { commerceOrders } from "@/db/schema";
 
 async function customerOrder(
   organizationId: string,
-  orderNumber: string,
+  orderNumber: string | string[],
   phone: string,
 ) {
   const orders = await db
@@ -13,7 +13,10 @@ async function customerOrder(
     .where(
       and(
         eq(commerceOrders.organizationId, organizationId),
-        eq(commerceOrders.orderNumber, orderNumber),
+        inArray(
+          commerceOrders.orderNumber,
+          typeof orderNumber === "string" ? [orderNumber] : orderNumber,
+        ),
         eq(commerceOrders.customerPhone, phone),
       ),
     )

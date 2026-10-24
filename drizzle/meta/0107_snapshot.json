@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "f82409d9-7684-41c6-a8ed-bff7d65723f1",
+  "id": "6443e285-7e64-4aa2-94cd-405788c662cc",
   "prevId": "d965fa02-0fe4-42c6-9b8d-27277ae40ecc",
   "tables": {
     "backlink_snapshots": {
@@ -6647,34 +6647,6 @@
           "notNull": false,
           "autoincrement": false
         },
-        "shipment_messages_started_at": {
-          "name": "shipment_messages_started_at",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "shipment_sender_id": {
-          "name": "shipment_sender_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "waybill_template_id": {
-          "name": "waybill_template_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "delivery_estimate_template_id": {
-          "name": "delivery_estimate_template_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
         "confirmation_sender_id": {
           "name": "confirmation_sender_id",
           "type": "text",
@@ -6804,45 +6776,6 @@
             "id"
           ],
           "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "commerce_order_sync_shipment_sender_id_whatsapp_connections_id_fk": {
-          "name": "commerce_order_sync_shipment_sender_id_whatsapp_connections_id_fk",
-          "tableFrom": "commerce_order_sync",
-          "tableTo": "whatsapp_connections",
-          "columnsFrom": [
-            "shipment_sender_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "set null",
-          "onUpdate": "no action"
-        },
-        "commerce_order_sync_waybill_template_id_whatsapp_templates_id_fk": {
-          "name": "commerce_order_sync_waybill_template_id_whatsapp_templates_id_fk",
-          "tableFrom": "commerce_order_sync",
-          "tableTo": "whatsapp_templates",
-          "columnsFrom": [
-            "waybill_template_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "set null",
-          "onUpdate": "no action"
-        },
-        "commerce_order_sync_delivery_estimate_template_id_whatsapp_templates_id_fk": {
-          "name": "commerce_order_sync_delivery_estimate_template_id_whatsapp_templates_id_fk",
-          "tableFrom": "commerce_order_sync",
-          "tableTo": "whatsapp_templates",
-          "columnsFrom": [
-            "delivery_estimate_template_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "set null",
           "onUpdate": "no action"
         },
         "commerce_order_sync_confirmation_sender_id_whatsapp_connections_id_fk": {
@@ -11338,6 +11271,138 @@
             "id"
           ],
           "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "sms_campaign_drafts": {
+      "name": "sms_campaign_drafts",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "organization_id": {
+          "name": "organization_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "connection_id": {
+          "name": "connection_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "kind": {
+          "name": "kind",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "sender_id": {
+          "name": "sender_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "message": {
+          "name": "message",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "audience_description": {
+          "name": "audience_description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "first_send_date": {
+          "name": "first_send_date",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "send_time": {
+          "name": "send_time",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "timezone": {
+          "name": "timezone",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'Asia/Colombo'"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(current_timestamp)"
+        }
+      },
+      "indexes": {
+        "sms_campaign_drafts_org_connection_idx": {
+          "name": "sms_campaign_drafts_org_connection_idx",
+          "columns": [
+            "organization_id",
+            "connection_id"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "sms_campaign_drafts_organization_id_organization_id_fk": {
+          "name": "sms_campaign_drafts_organization_id_organization_id_fk",
+          "tableFrom": "sms_campaign_drafts",
+          "tableTo": "organization",
+          "columnsFrom": [
+            "organization_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "sms_campaign_drafts_connection_id_integration_connections_id_fk": {
+          "name": "sms_campaign_drafts_connection_id_integration_connections_id_fk",
+          "tableFrom": "sms_campaign_drafts",
+          "tableTo": "integration_connections",
+          "columnsFrom": [
+            "connection_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
           "onUpdate": "no action"
         }
       },

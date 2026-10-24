@@ -1,3 +1,5 @@
+import { WOO_ORDER_SYNC_PATH } from "@/shared/wooOrders";
+import { handleWooOrderSync } from "@/server/features/commerce/wooOrderSyncHandler";
 import { CITYPAK_SYNC_PATH } from "@/shared/citypak";
 import { handleCitypakSync } from "@/server/features/commerce/citypakSyncHandler";
 import {
@@ -179,6 +181,8 @@ function handleFetch(
   if (pathname === WHATSAPP_REPLY_WAKEUP_PATH) {
     return handleWhatsappReplyWakeup(publicRequest);
   }
+  if (pathname === WOO_ORDER_SYNC_PATH)
+    return handleWooOrderSync(publicRequest);
   if (pathname === CITYPAK_SYNC_PATH) return handleCitypakSync(publicRequest);
   if (pathname === INTERNAL_CRON_PATH) {
     return handleInternalCronRequest(publicRequest, env);

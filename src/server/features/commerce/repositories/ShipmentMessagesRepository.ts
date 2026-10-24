@@ -59,7 +59,7 @@ async function candidates(connectionId: string) {
               ),
             ),
           )}`,
-        sql`(select count(*) from ${commerceOrderEffects} where ${commerceOrderEffects.organizationId} = ${commerceOrders.organizationId} and ${commerceOrderEffects.orderId} = ${commerceOrders.id} and ${commerceOrderEffects.kind} in ('waybill','delivery_estimate')) < 2`,
+        sql`(select count(*) from ${commerceOrderEffects} where ${commerceOrderEffects.organizationId} = ${commerceOrders.organizationId} and ${commerceOrderEffects.orderId} = ${commerceOrders.id} and ${commerceOrderEffects.kind} in ('waybill','delivery_estimate')) < case when ${commerceOrderSync.deliveryEstimateTemplateId} is null then 1 else 2 end`,
       ),
     )
     .orderBy(asc(commerceOrderShipments.createdAt))

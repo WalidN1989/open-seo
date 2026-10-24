@@ -1,3 +1,4 @@
+import { currentUtilityTemplate } from "./OrderDispatchService";
 import { supportsShipmentVariables } from "@/shared/shipment-messages";
 import { ShipmentMessagesRepository as Repo } from "../repositories/ShipmentMessagesRepository";
 import { OrderOperationsRepository as Operations } from "../repositories/OrderOperationsRepository";
@@ -87,6 +88,7 @@ async function process(
     !order.customerPhone
   )
     return;
+  if (!(await currentUtilityTemplate(sender, template))) return;
   const claim = await Operations.claim(
     effect.organizationId,
     order.id,
@@ -132,6 +134,7 @@ async function process(
       settingsUnchanged(current, config) &&
       JSON.stringify(currentSender) === JSON.stringify(sender) &&
       JSON.stringify(currentTemplate) === JSON.stringify(template) &&
+      (await currentUtilityTemplate(sender, template)) &&
       latestShipment &&
       latestShipment.trackingNumber === shipment.trackingNumber &&
       !["DELIVERED", "RETURNED", "RTM", "CANCELLED"].includes(
@@ -169,7 +172,9 @@ async function process(
       },
     );
     await Operations.finish(effect.organizationId, claim.id, {
-      status: "succeeded",
+      status: ["failed", "undelivered"].includes(result.status)
+        ? "unknown"
+        : "succeeded",
       messageId,
       externalId: result.externalMessageId,
     });
@@ -196,13 +201,18 @@ async function runDue(connectionId: string) {
       shipment.trackingNumber,
       shipment.createdAt,
     );
-    await Repo.enqueue(
+    const config = await Operations.configuration(
       order.organizationId,
-      order.id,
-      "delivery_estimate",
-      shipment.trackingNumber,
-      new Date(Date.parse(shipment.createdAt) + DAY).toISOString(),
+      connectionId,
     );
+    if (config?.deliveryEstimateTemplateId)
+      await Repo.enqueue(
+        order.organizationId,
+        order.id,
+        "delivery_estimate",
+        shipment.trackingNumber,
+        new Date(Date.parse(shipment.createdAt) + DAY).toISOString(),
+      );
   }
   for (const { effect } of await Repo.due(connectionId)) {
     await process(effect);
