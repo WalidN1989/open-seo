@@ -1,3 +1,4 @@
+import { CallBookLinkService } from "./CallBookLinkService";
 import { BusinessAuditRepository } from "@/server/features/business-modules/repositories/BusinessAuditRepository";
 import { BusinessModuleService } from "@/server/features/business-modules/services/BusinessModuleService";
 import { CrmService } from "@/server/features/crm/services/CrmService";
@@ -114,10 +115,20 @@ function callRow(
   };
 }
 
+function handlesBookLink(provider: CallProvider, report: PhoneCallReport) {
+  return (
+    provider === "elevenlabs" &&
+    Object.hasOwn(report.captured, "whatsapp_link_consent")
+  );
+}
+
 async function recordCall(source: CallSource, report: PhoneCallReport) {
   const { provider, organizationId, integrationId, welcomeTemplate } = source;
   const existing = await Repo.findCall(organizationId, report.conversationId);
-  if (existing) return { callId: existing.id, duplicate: true };
+  if (existing) {
+    await CallBookLinkService.send(organizationId, integrationId, existing.id);
+    return { callId: existing.id, duplicate: true };
+  }
 
   const { firstName, lastName } = splitName(report.captured.caller_name);
   // Prefer the caller's explicit country, then the line they called, then
@@ -233,6 +244,8 @@ async function recordCall(source: CallSource, report: PhoneCallReport) {
     }),
   );
 
+  await CallBookLinkService.send(organizationId, integrationId, call.id);
+
   // The number the caller read out is the one they asked us to use; the line
   // they rang from can be a landline or a phone without WhatsApp.
   const whatsappTo =
@@ -240,21 +253,23 @@ async function recordCall(source: CallSource, report: PhoneCallReport) {
   // Anyone who has not had the thank-you yet gets it, so a caller whose
   // first call came before a template was set up is not left out.
   const welcomeOwed = !(await Repo.welcomeSentTo(organizationId, contact.id));
-  const welcome = welcomeOwed
-    ? await CallWelcomeService.sendWelcome({
-        organizationId,
-        template: welcomeTemplate,
-        recipient: whatsappTo,
-        contactId: contact.id,
-        // Template: "Hi {{1}}, thanks for calling … about {{2}} …"
-        variables: {
-          "1": knownName || "there",
-          "2": report.captured.service_interest
-            ? inSentence(shortNeed(report.captured.service_interest))
-            : "our services",
-        },
-      })
-    : "skipped: already welcomed";
+  const welcome = handlesBookLink(provider, report)
+    ? "skipped: book-link follow-up handled separately"
+    : welcomeOwed
+      ? await CallWelcomeService.sendWelcome({
+          organizationId,
+          template: welcomeTemplate,
+          recipient: whatsappTo,
+          contactId: contact.id,
+          // Template: "Hi {{1}}, thanks for calling … about {{2}} …"
+          variables: {
+            "1": knownName || "there",
+            "2": report.captured.service_interest
+              ? inSentence(shortNeed(report.captured.service_interest))
+              : "our services",
+          },
+        })
+      : "skipped: already welcomed";
   await Repo.setWelcomeStatus(call.id, welcome);
   const recapEmail = await CallRecapService.sendCallRecap({
     organizationId,
@@ -365,7 +380,7 @@ async function listCalls(
     options.limit ?? 100,
     options,
   );
-  return rows.map(({ call, contact, lead }) => ({
+  return rows.map(({ call, contact, lead, bookLinkMessage }) => ({
     id: call.id,
     provider: call.provider,
     agentName: call.agentName,
@@ -379,6 +394,8 @@ async function listCalls(
     captured: capturedFrom(call.capturedJson),
     transcript: transcriptFrom(call.transcriptJson),
     welcomeStatus: call.welcomeStatus,
+    bookLinkStatus: bookLinkMessage?.status ?? call.bookLinkStatus,
+    bookLinkAttempted: Boolean(bookLinkMessage),
     recapEmailStatus: call.recapEmailStatus,
     contact: contact
       ? {

@@ -1,3 +1,6 @@
+import { z } from "zod";
+import { voiceBookLinkSettingsSchema } from "@/types/schemas/voiceBookLinks";
+import { CallBookLinkService } from "@/server/features/voice-calls/services/CallBookLinkService";
 import { createServerFn } from "@tanstack/react-start";
 import { PhoneCallService } from "@/server/features/voice-calls/services/PhoneCallService";
 import { requireAuthenticatedContext } from "./middleware";
@@ -7,4 +10,31 @@ export const listPhoneCalls = createServerFn({ method: "GET" })
   .middleware(requireAuthenticatedContext)
   .handler(({ context }) =>
     PhoneCallService.listCalls(context.organizationId, context.userId),
+  );
+
+export const getCallBookLinkSettings = createServerFn({ method: "GET" })
+  .middleware(requireAuthenticatedContext)
+  .validator(z.object({ connectionId: z.string().min(1) }))
+  .handler(({ context, data }) =>
+    CallBookLinkService.settings(
+      context.organizationId,
+      context.userId,
+      data.connectionId,
+    ),
+  );
+export const setCallBookLinkSettings = createServerFn({ method: "POST" })
+  .middleware(requireAuthenticatedContext)
+  .validator(voiceBookLinkSettingsSchema)
+  .handler(({ context, data }) =>
+    CallBookLinkService.configure(context.organizationId, context.userId, data),
+  );
+export const sendCallBookLink = createServerFn({ method: "POST" })
+  .middleware(requireAuthenticatedContext)
+  .validator(z.object({ callId: z.string().min(1) }))
+  .handler(({ context, data }) =>
+    CallBookLinkService.sendManually(
+      context.organizationId,
+      context.userId,
+      data.callId,
+    ),
   );

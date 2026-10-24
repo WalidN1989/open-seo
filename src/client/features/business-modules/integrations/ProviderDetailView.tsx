@@ -1,3 +1,4 @@
+import { CallBookLinkSettings } from "./CallBookLinkSettings";
 import { useProjectAddress } from "@/client/lib/use-project-address";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useParams } from "@tanstack/react-router";
@@ -174,7 +175,10 @@ export function IntegrationProviderDetailView() {
           ) : null}
 
           {entry.key === "elevenlabs" && connection ? (
-            <ElevenLabsAddresses connectionId={connection.id} />
+            <>
+              <ElevenLabsAddresses connectionId={connection.id} />
+              <CallBookLinkSettings connectionId={connection.id} />
+            </>
           ) : null}
 
           {entry.key === "deepgram" && connection ? (

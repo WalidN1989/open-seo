@@ -1,8 +1,10 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { PhoneIncoming, Clock, ChevronDown } from "lucide-react";
 import "./calls.css";
-import { listPhoneCalls } from "@/serverFunctions/voiceCalls";
+import { toast } from "sonner";
+import { getStandardErrorMessage } from "@/client/lib/error-messages";
+import { listPhoneCalls, sendCallBookLink } from "@/serverFunctions/voiceCalls";
 
 function when(value: string) {
   const date = new Date(value);
@@ -38,6 +40,15 @@ function fieldLabel(key: string) {
 }
 
 export function PhoneCallsSection() {
+  const client = useQueryClient();
+  const send = useMutation({
+    mutationFn: (callId: string) => sendCallBookLink({ data: { callId } }),
+    onSuccess: async (status) => {
+      await client.invalidateQueries({ queryKey: ["voice", "phone-calls"] });
+      toast.info(`Book link: ${status}`);
+    },
+    onError: (e) => toast.error(getStandardErrorMessage(e)),
+  });
   const query = useQuery({
     queryKey: ["voice", "phone-calls"],
     queryFn: () => listPhoneCalls(),
@@ -164,8 +175,27 @@ export function PhoneCallsSection() {
                         </dd>
                       </div>
                       <div className="grid grid-cols-[7rem_1fr] gap-2">
-                        <dt className="text-base-content/55">WhatsApp</dt>
+                        <dt className="text-base-content/55">Welcome</dt>
                         <dd>{call.welcomeStatus ?? "not attempted"}</dd>
+                      </div>
+                      <div className="grid grid-cols-[7rem_1fr] gap-2">
+                        <dt className="text-base-content/55">
+                          WhatsApp book link
+                        </dt>
+                        <dd>
+                          {call.bookLinkStatus ?? "not attempted"}
+                          {call.captured.whatsapp_link_consent === "true" &&
+                          call.captured.requested_product_url &&
+                          !call.bookLinkAttempted ? (
+                            <button
+                              className="btn btn-outline btn-xs mt-2"
+                              disabled={send.isPending}
+                              onClick={() => send.mutate(call.id)}
+                            >
+                              Send requested book link
+                            </button>
+                          ) : null}
+                        </dd>
                       </div>
                       <div className="grid grid-cols-[7rem_1fr] gap-2">
                         <dt className="text-base-content/55">Recap email</dt>

@@ -203,6 +203,7 @@ export const {
   clientReportProfiles,
   clientReportLinks,
   voicePhoneCalls,
+  voiceBookLinkSettings,
   clientAccounts,
   clientContacts,
   clientAccessEvents,

@@ -240,3 +240,68 @@ export async function fetchOrderConfirmationTemplate(
     status: readApproval(approval.whatsapp).status,
   };
 }
+
+/** A caller-requested product link uses the approved name/link template, not a welcome. */
+export async function fetchCallBookLinkTemplate(
+  connection: WhatsappConnectionRecord,
+  sid: string,
+  fetcher: typeof fetch = fetch,
+) {
+  if (!/^HX[0-9a-f]{32}$/i.test(sid))
+    throw new Error("Invalid Twilio Content SID.");
+  const request: typeof fetch = (input, init) =>
+    fetcher(input, {
+      ...init,
+      redirect: "error",
+      signal: AbortSignal.timeout(8000),
+    });
+  const bodyType = z.object({ body: z.string().min(1).max(1600) });
+  const content = z
+    .object({
+      sid: z.literal(sid),
+      language: z.string().min(1),
+      types: z.object({
+        "twilio/quick-reply": bodyType.optional(),
+        "twilio/text": bodyType.optional(),
+      }),
+    })
+    .parse(
+      await call(connection, `/Content/${sid}`, undefined, request, "GET"),
+    );
+  const approval = z
+    .object({
+      whatsapp: z.object({
+        status: z.string(),
+        category: z.enum(["MARKETING", "UTILITY"]),
+      }),
+    })
+    .parse(
+      await call(
+        connection,
+        `/Content/${sid}/ApprovalRequests`,
+        undefined,
+        request,
+        "GET",
+      ),
+    );
+  const body =
+    content.types["twilio/quick-reply"]?.body ??
+    content.types["twilio/text"]?.body;
+  const slots = body
+    ? [...body.matchAll(/\{\{\s*([^}]+)\s*\}\}/g)].map((m) => m[1].trim())
+    : [];
+  if (
+    !body ||
+    new Set(slots).size !== 2 ||
+    !slots.includes("1") ||
+    !slots.includes("2")
+  )
+    throw new Error(
+      "Choose a name/link template with slots 1 (name) and 2 (product URL).",
+    );
+  return {
+    body,
+    languageCode: content.language,
+    status: readApproval(approval.whatsapp).status,
+  };
+}
