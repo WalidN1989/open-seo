@@ -7,6 +7,7 @@ import {
   crmLeads,
   integrationConnections,
   voicePhoneCalls,
+  whatsappMessages,
   whatsappConnections,
   businessSettings,
 } from "@/db/schema";
@@ -110,10 +111,18 @@ async function listCalls(
   return db
     .select({
       call: voicePhoneCalls,
+      bookLinkMessage: whatsappMessages,
       contact: crmContacts,
       lead: crmLeads,
     })
     .from(voicePhoneCalls)
+    .leftJoin(
+      whatsappMessages,
+      and(
+        eq(whatsappMessages.organizationId, organizationId),
+        eq(whatsappMessages.id, voicePhoneCalls.bookLinkMessageId),
+      ),
+    )
     .leftJoin(
       crmContacts,
       and(

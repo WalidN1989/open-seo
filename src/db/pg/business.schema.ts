@@ -1091,6 +1091,11 @@ export const voicePhoneCalls = pgTable(
     }),
     // What happened to the WhatsApp welcome: sent, skipped:<why>, failed:<why>.
     welcomeStatus: text("welcome_status"),
+    bookLinkStatus: text("book_link_status"),
+    bookLinkMessageId: text("book_link_message_id").references(
+      () => whatsappMessages.id,
+      { onDelete: "set null" },
+    ),
     /** What happened to the recap email: sent, skipped or failed, and why. */
     recapEmailStatus: text("recap_email_status"),
     createdAt: createdAt(),
@@ -2495,3 +2500,18 @@ export const smsCampaignDrafts = pgTable(
     ),
   ],
 );
+
+export const voiceBookLinkSettings = pgTable("voice_book_link_settings", {
+  connectionId: text("connection_id")
+    .primaryKey()
+    .references(() => integrationConnections.id, { onDelete: "cascade" }),
+  organizationId: text("organization_id")
+    .notNull()
+    .references(() => organization.id, { onDelete: "cascade" }),
+  senderId: text("sender_id").references(() => whatsappConnections.id, {
+    onDelete: "set null",
+  }),
+  contentSid: text("content_sid"),
+  enabled: boolean("enabled").notNull().default(false),
+  startedAt: text("started_at"),
+});

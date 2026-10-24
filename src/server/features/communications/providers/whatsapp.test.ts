@@ -302,3 +302,41 @@ describe("whatsappWebhookResponse", () => {
     await expect(response.text()).resolves.toBe("Invalid signature");
   });
 });
+
+it("includes the app delivery callback on an opted-in Twilio template send", async () => {
+  process.env.TEST_TWILIO_AUTH_TOKEN = "test-token";
+  let form: URLSearchParams | null = null;
+  const fetcher: typeof fetch = async (_input, init) => {
+    form = init?.body instanceof URLSearchParams ? init.body : null;
+    expect(form?.get("StatusCallback")).toBe(
+      "https://du.example/api/whatsapp/sender",
+    );
+    expect(form?.get("ContentSid")).toBe("HX" + "1".repeat(32));
+    expect(form?.get("ContentVariables")).toBe(
+      JSON.stringify({
+        "1": "Walid",
+        "2": "https://books.example/products/one",
+      }),
+    );
+    return Response.json({ sid: "MM" + "a".repeat(32), status: "queued" });
+  };
+  await sendWhatsappTemplate(
+    {
+      id: "sender",
+      provider: "twilio",
+      displayPhoneNumber: "+94766523362",
+      externalAccountId: "ACtest",
+      credentialReference: "TEST_TWILIO",
+    },
+    "+971501111111",
+    {
+      name: "voice_call_followup",
+      languageCode: "en",
+      externalTemplateId: "HX" + "1".repeat(32),
+      variables: { "1": "Walid", "2": "https://books.example/products/one" },
+      statusCallbackUrl: "https://du.example/api/whatsapp/sender",
+    },
+    fetcher,
+  );
+  delete process.env.TEST_TWILIO_AUTH_TOKEN;
+});

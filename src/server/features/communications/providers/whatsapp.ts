@@ -358,6 +358,7 @@ export async function sendWhatsappTemplate(
     externalTemplateId: string | null;
     /** Twilio content variables, keyed by placeholder number ("1", "2"…). */
     variables?: Record<string, string>;
+    statusCallbackUrl?: string;
   },
   fetcher: typeof fetch = fetch,
 ): Promise<WhatsappSendResult> {
@@ -420,6 +421,9 @@ export async function sendWhatsappTemplate(
           From: `whatsapp:${connection.displayPhoneNumber}`,
           To: `whatsapp:${recipient}`,
           ContentSid: template.externalTemplateId,
+          ...(template.statusCallbackUrl
+            ? { StatusCallback: template.statusCallbackUrl }
+            : {}),
           ...(template.variables
             ? { ContentVariables: JSON.stringify(template.variables) }
             : {}),

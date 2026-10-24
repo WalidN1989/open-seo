@@ -14,6 +14,7 @@ import * as schema from "@/db/business.schema";
 
 const state = vi.hoisted(() => ({
   db: null as unknown,
+  bookLink: vi.fn().mockResolvedValue("skipped: test"),
   welcome: vi.fn().mockResolvedValue("skipped: test"),
   recap: vi.fn().mockResolvedValue("skipped: test"),
   quote: vi.fn().mockResolvedValue("skipped: test"),
@@ -45,6 +46,9 @@ vi.mock(
 vi.mock("@/server/features/crm/services/CrmService", () => ({
   CrmService: { ensureStages: async () => [] },
 }));
+vi.mock("./CallBookLinkService", () => ({
+  CallBookLinkService: { send: state.bookLink },
+}));
 vi.mock("./CallWelcomeService", () => ({
   CallWelcomeService: { sendWelcome: state.welcome },
 }));
@@ -64,6 +68,7 @@ beforeAll(async () => {
     schema.businessSettings,
     schema.integrationConnections,
     schema.voicePhoneCalls,
+    schema.whatsappMessages,
     schema.crmContacts,
     schema.crmLeads,
     schema.crmActivities,
@@ -82,6 +87,7 @@ beforeAll(async () => {
 });
 afterAll(() => client.close());
 beforeEach(async () => {
+  vi.clearAllMocks();
   state.welcome.mockResolvedValue("skipped: test");
   state.recap.mockResolvedValue("skipped: test");
   state.quote.mockResolvedValue("skipped: test");
@@ -99,7 +105,7 @@ async function webhook(
   caller?: string,
   line?: string,
   callback?: string,
-  customerPhone?: string,
+  captured: { customerPhone?: string; consent?: string } = {},
 ) {
   const raw = JSON.stringify({
     type: "post_call_transcription",
@@ -114,9 +120,12 @@ async function webhook(
       },
       analysis: {
         data_collection_results: {
+          ...(captured.consent === undefined
+            ? {}
+            : { whatsapp_link_consent: { value: captured.consent } }),
           caller_name: { value: "Test Caller" },
           callback_details: { value: callback },
-          customer_phone_number: { value: customerPhone },
+          customer_phone_number: { value: captured.customerPhone },
         },
       },
     },
@@ -150,8 +159,41 @@ async function savedPhone() {
 }
 
 describe("workspace-aware phone calls and CRM", () => {
+  it.each(["true", "false"])(
+    "routes captured book-link consent %s separately from generic welcomes and resumes only the stored call on replay",
+    async (consent) => {
+      await webhook("lk-line", "+94761234567", "+94110000000", undefined, {
+        consent,
+      });
+      expect(state.welcome).not.toHaveBeenCalled();
+      const callId = (await client.execute("select id from voice_phone_calls"))
+        .rows[0]?.id;
+      expect(state.bookLink).toHaveBeenCalledWith("org-lk", "lk-line", callId);
+      await webhook("lk-line", "+94761234567", "+94110000000", undefined, {
+        consent,
+      });
+      expect(state.bookLink).toHaveBeenCalledTimes(2);
+      expect(state.bookLink).toHaveBeenLastCalledWith(
+        "org-lk",
+        "lk-line",
+        callId,
+      );
+      expect(state.recap).toHaveBeenCalledTimes(1);
+      expect(state.quote).toHaveBeenCalledTimes(1);
+      expect(
+        (
+          await client.execute(
+            "select count(*) as total from voice_phone_calls",
+          )
+        ).rows[0]?.total,
+      ).toBe(1);
+    },
+  );
+
   it("saves a first-time website caller's explicitly captured customer phone", async () => {
-    await webhook("lk-line", undefined, undefined, undefined, "0761234567");
+    await webhook("lk-line", undefined, undefined, undefined, {
+      customerPhone: "0761234567",
+    });
     expect(await savedPhone()).toBe("+94761234567");
     expect(
       (await client.execute("select first_name,phone from crm_contacts")).rows,

@@ -212,3 +212,63 @@ describe("order confirmation approval gate", () => {
     delete process.env.TEST_TW_AUTH_TOKEN;
   });
 });
+
+describe("call book-link approval", () => {
+  it("accepts an approved quick-reply name/link template", async () => {
+    const { fetchCallBookLinkTemplate } = await import("./twilioContent");
+    process.env.TEST_TW_AUTH_TOKEN = "test-token";
+    const sid = "HX" + "1".repeat(32);
+    const fetcher: typeof fetch = async (input, init) => {
+      expect(init?.redirect).toBe("error");
+      return Response.json(
+        urlOf(input).endsWith("ApprovalRequests")
+          ? { whatsapp: { status: "approved", category: "MARKETING" } }
+          : {
+              sid,
+              language: "en",
+              types: {
+                "twilio/quick-reply": {
+                  body: "Hi {{1}}, your requested link: {{2}}",
+                },
+              },
+            },
+      );
+    };
+    expect(await fetchCallBookLinkTemplate(connection, sid, fetcher)).toEqual({
+      body: "Hi {{1}}, your requested link: {{2}}",
+      languageCode: "en",
+      status: "approved",
+    });
+    delete process.env.TEST_TW_AUTH_TOKEN;
+  });
+  it("rejects authentication content and templates with the wrong variables", async () => {
+    const { fetchCallBookLinkTemplate } = await import("./twilioContent");
+    process.env.TEST_TW_AUTH_TOKEN = "test-token";
+    const sid = "HX" + "2".repeat(32);
+    for (const body of ["Hi {{1}}", "Hi {{1}} {{2}} {{3}}"]) {
+      const fetcher: typeof fetch = async (input) =>
+        Response.json(
+          urlOf(input).endsWith("ApprovalRequests")
+            ? { whatsapp: { status: "approved", category: "UTILITY" } }
+            : { sid, language: "en", types: { "twilio/text": { body } } },
+        );
+      await expect(
+        fetchCallBookLinkTemplate(connection, sid, fetcher),
+      ).rejects.toThrow("slots");
+    }
+    const fetcher: typeof fetch = async (input) =>
+      Response.json(
+        urlOf(input).endsWith("ApprovalRequests")
+          ? { whatsapp: { status: "approved", category: "AUTHENTICATION" } }
+          : {
+              sid,
+              language: "en",
+              types: { "twilio/text": { body: "{{1}} {{2}}" } },
+            },
+      );
+    await expect(
+      fetchCallBookLinkTemplate(connection, sid, fetcher),
+    ).rejects.toThrow();
+    delete process.env.TEST_TW_AUTH_TOKEN;
+  });
+});

@@ -2337,3 +2337,62 @@ courier effects remain independent. Current Twilio utility approval, wording and
 language are verified at configuration and before dispatch; unavailable/paused
 approval cannot send. Unknown sends never retry automatically. Voice order lookup
 and caller verification are a future flow, outside this activation.
+
+### 2026-10-24 — live Citypak voice lookup staged; OTP deferred
+
+The existing ElevenLabs integration already handles live CRM books, caller-bound
+orders, returning-caller recognition and post-call transcripts. A separate
+application branch adds authenticated `check_delivery` to query the caller's
+stored Citypak waybill during a call. It reuses the connected order fulfillment
+configuration, reads at most two waybills with six-second timeouts, distinguishes
+live courier responses from saved status, and never mutates orders, shipments,
+messages or stock. No migration or scheduler/provider activation is included.
+
+The separate ElevenLabs tool and prompt are staged with zero production traffic;
+Main and its existing shared tool remain unchanged. Backend deployment and a
+controlled caller test must precede any approved live switch. Targeted voice and
+Citypak regression tests, TypeScript, lint and production build pass.
+
+The owner deferred WhatsApp OTP pending a future test with their own number.
+Keep the local OTP draft, its submitted authentication template and its disabled
+settings separate; do not deploy its schema or activate message sending. A
+one-time reminder is scheduled for October 31. The existing daily waybill-template
+approval monitor and next-day-reminder-off requirement remain unchanged.
+
+The DU/BooXworm host allowlist is now saved on Main for
+`seo.digitalurgency.com.au`, `booxworm.lk` and `www.booxworm.lk`, with missing-
+Origin rejection enabled. Automatic review initially blocked publishing until
+native-phone compatibility could be checked. The owner then approved a controlled
+switch/test and confirmed their call connected and answered. ElevenLabs records
+a completed 66-second native SIP call on the secured Main version. Separate
+bounded WebSocket probes from an unapproved origin and without Origin were both
+rejected. Keep this verified security configuration during future agent merges.
+The production order/product tool remains unchanged; live Citypak is still
+staged with zero traffic, and OTP remains deferred.
+
+### 2026-10-24 — consented post-call book links tested; release pending
+
+The existing post-call pipeline recorded product-link consent and the requested
+URL, but its generic welcome sender did not use those fields. The separate
+book-link change reuses Twilio's existing approved `voice_call_followup` English
+quick-reply template, with customer name and catalogue URL in slots 1 and 2.
+No new template or ElevenLabs prompt change was needed.
+
+The new per-integration settings default to off. Activation applies to calls
+started after its cutoff, with explicit link consent, a confirmed WhatsApp
+number, an active product in the same workspace and a currently approved
+connected Twilio template. A durable WhatsApp message claim permits at most one
+provider attempt per call, including concurrent webhook replays and manual
+requests. Uncertain outcomes require receipt reconciliation, never an automatic
+resend. Delivery callbacks update the inbox and the linked call's displayed
+status. Generic welcome sending is suppressed for ElevenLabs book-link calls.
+
+The owner authorized one live test on their recent consented call. Exactly one
+existing-template message reached their number and Twilio confirmed it read;
+a second reconciliation found that receipt without sending again. The additive
+migration links such pre-release claims to their calls without creating messages.
+The new automatic workflow is not deployed or enabled yet. Its local tests,
+including concurrent claims, consent, opt-out, tenant isolation, webhook replay
+and migration preservation, pass. Follow the owner-reviewed PR/image release
+process before deploying and enabling only new calls. Do not replay other
+historical calls. OTP and next-day shipment reminders remain off.
