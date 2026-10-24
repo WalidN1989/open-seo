@@ -764,6 +764,13 @@
       "when": 1792696471249,
       "tag": "0108_medical_radioactive_man",
       "breakpoints": true
+    },
+    {
+      "idx": 109,
+      "version": "6",
+      "when": 1792773205360,
+      "tag": "0109_loose_kid_colt",
+      "breakpoints": true
     }
   ]
 }

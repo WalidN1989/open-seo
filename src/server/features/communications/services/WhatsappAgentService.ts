@@ -43,6 +43,7 @@ async function listChats(organizationId: string, userId: string, limit = 30) {
     phone: row.phone,
     name: [row.firstName, row.lastName].filter(Boolean).join(" ") || null,
     status: row.status,
+    replyMode: row.replyMode,
     optedOut: Boolean(row.optedOutAt),
     lastMessageAt: row.lastMessageAt,
     lastInboundAt: row.lastInboundAt,
@@ -172,6 +173,18 @@ async function sendTemplate(
 }
 
 export const WhatsappAgentService = {
+  setChatMode: async (
+    organizationId: string,
+    userId: string,
+    input: { conversationId: string; mode: "auto" | "manual" },
+  ) => {
+    const chat = await CommunicationsService.updateWhatsappConversation(
+      organizationId,
+      userId,
+      { conversationId: input.conversationId, replyMode: input.mode },
+    );
+    return { conversationId: chat.id, replyMode: chat.replyMode };
+  },
   requireAllowed,
   listChats,
   getChat,

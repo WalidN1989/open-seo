@@ -1,6 +1,11 @@
-import { and, asc, eq, inArray, lte, or } from "drizzle-orm";
+import { and, asc, eq, inArray, lte, or, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { whatsappMessages, whatsappReplyJobs } from "@/db/schema";
+import { runBatch } from "@/db/runBatch";
+import {
+  whatsappConversations,
+  whatsappMessages,
+  whatsappReplyJobs,
+} from "@/db/schema";
 
 const leaseMs = 300_000;
 
@@ -9,30 +14,70 @@ async function schedule(
   conversationId: string,
   latestMessageId: string,
   delaySeconds: number,
+  replyRevision: number,
 ) {
   const now = new Date();
   const dueAt = new Date(now.getTime() + delaySeconds * 1000).toISOString();
   const updatedAt = now.toISOString();
-  await db
-    .insert(whatsappReplyJobs)
-    .values({
-      organizationId,
-      conversationId,
-      latestMessageId,
-      dueAt,
-      updatedAt,
+  const guard = and(
+    eq(whatsappConversations.id, conversationId),
+    eq(whatsappConversations.organizationId, organizationId),
+    eq(whatsappConversations.replyMode, "auto"),
+    eq(whatsappConversations.replyRevision, replyRevision),
+  );
+  await runBatch((tx) => [
+    // Serialize scheduling with a mode change on Postgres; D1 batches are atomic.
+    tx
+      .update(whatsappConversations)
+      .set({ replyRevision: sql`${whatsappConversations.replyRevision}` })
+      .where(guard),
+    tx
+      .insert(whatsappReplyJobs)
+      .select(
+        tx
+          .select({
+            conversationId: whatsappConversations.id,
+            organizationId: whatsappConversations.organizationId,
+            latestMessageId: sql<string>`${latestMessageId}`.as(
+              "latestMessageId",
+            ),
+            replyRevision: sql<number>`${replyRevision}`.as("replyRevision"),
+            dueAt: sql<string>`${dueAt}`.as("dueAt"),
+            status: sql<string>`'pending'`.as("status"),
+            claimExpiresAt: sql<string | null>`null`.as("claimExpiresAt"),
+            updatedAt: sql<string>`${updatedAt}`.as("updatedAt"),
+          })
+          .from(whatsappConversations)
+          .where(guard),
+      )
+      .onConflictDoUpdate({
+        target: whatsappReplyJobs.conversationId,
+        set: {
+          latestMessageId,
+          replyRevision,
+          dueAt,
+          status: "pending",
+          claimExpiresAt: null,
+          updatedAt,
+        },
+      }),
+  ]);
+  const [row] = await db
+    .select({
+      conversationId: whatsappReplyJobs.conversationId,
+      dueAt: whatsappReplyJobs.dueAt,
     })
-    .onConflictDoUpdate({
-      target: whatsappReplyJobs.conversationId,
-      set: {
-        latestMessageId,
-        dueAt,
-        status: "pending",
-        claimExpiresAt: null,
-        updatedAt,
-      },
-    });
-  return { conversationId, dueAt };
+    .from(whatsappReplyJobs)
+    .where(
+      and(
+        eq(whatsappReplyJobs.organizationId, organizationId),
+        eq(whatsappReplyJobs.conversationId, conversationId),
+        eq(whatsappReplyJobs.latestMessageId, latestMessageId),
+        eq(whatsappReplyJobs.replyRevision, replyRevision),
+      ),
+    )
+    .limit(1);
+  return row ?? null;
 }
 
 async function claimDue(now = new Date(), conversationId?: string) {
@@ -74,6 +119,7 @@ async function claimDue(now = new Date(), conversationId?: string) {
           eq(whatsappReplyJobs.latestMessageId, candidate.latestMessageId),
           eq(whatsappReplyJobs.status, candidate.status),
           eq(whatsappReplyJobs.updatedAt, candidate.updatedAt),
+          eq(whatsappReplyJobs.replyRevision, candidate.replyRevision),
         ),
       )
       .returning();
@@ -100,19 +146,28 @@ async function inboundMessage(
   return row ?? null;
 }
 
-async function finish(conversationId: string, latestMessageId: string) {
+async function finish(
+  conversationId: string,
+  latestMessageId: string,
+  replyRevision: number,
+) {
   await db
     .delete(whatsappReplyJobs)
     .where(
       and(
         eq(whatsappReplyJobs.conversationId, conversationId),
         eq(whatsappReplyJobs.latestMessageId, latestMessageId),
+        eq(whatsappReplyJobs.replyRevision, replyRevision),
         eq(whatsappReplyJobs.status, "processing"),
       ),
     );
 }
 
-async function retry(conversationId: string, latestMessageId: string) {
+async function retry(
+  conversationId: string,
+  latestMessageId: string,
+  replyRevision: number,
+) {
   const now = new Date();
   await db
     .update(whatsappReplyJobs)
@@ -126,6 +181,7 @@ async function retry(conversationId: string, latestMessageId: string) {
       and(
         eq(whatsappReplyJobs.conversationId, conversationId),
         eq(whatsappReplyJobs.latestMessageId, latestMessageId),
+        eq(whatsappReplyJobs.replyRevision, replyRevision),
         eq(whatsappReplyJobs.status, "processing"),
       ),
     );

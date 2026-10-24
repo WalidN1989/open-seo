@@ -17,7 +17,11 @@ export async function runDueWhatsappReplies(conversationId?: string) {
           Jobs.inboundMessage(job.organizationId, job.latestMessageId),
         ]);
         if (!route || !message) {
-          await Jobs.finish(job.conversationId, job.latestMessageId);
+          await Jobs.finish(
+            job.conversationId,
+            job.latestMessageId,
+            job.replyRevision,
+          );
           return;
         }
         const handled = await replyToInbound(
@@ -33,7 +37,7 @@ export async function runDueWhatsappReplies(conversationId?: string) {
             mediaContentType: message.mediaContentType ?? undefined,
             receivedAt: message.sentAt ?? message.createdAt,
           },
-          { scheduled: true },
+          { scheduled: true, replyRevision: job.replyRevision },
         );
         if (!handled) {
           await runWhatsappAutomationFallback(
@@ -41,13 +45,25 @@ export async function runDueWhatsappReplies(conversationId?: string) {
             job.conversationId,
             route.conversation.externalConversationId ?? "",
             message.body ?? undefined,
-            false,
+            {
+              isNew: false,
+              revision: job.replyRevision,
+              messageId: job.latestMessageId,
+            },
           );
         }
-        await Jobs.finish(job.conversationId, job.latestMessageId);
+        await Jobs.finish(
+          job.conversationId,
+          job.latestMessageId,
+          job.replyRevision,
+        );
       } catch (error) {
         console.error("Scheduled WhatsApp reply failed", error);
-        await Jobs.retry(job.conversationId, job.latestMessageId);
+        await Jobs.retry(
+          job.conversationId,
+          job.latestMessageId,
+          job.replyRevision,
+        );
       }
     }),
   );

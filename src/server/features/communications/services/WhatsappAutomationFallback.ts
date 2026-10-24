@@ -1,6 +1,7 @@
-import { WhatsappAssistantRepository } from "../repositories/WhatsappAssistantRepository";
 import { CommunicationsRepository } from "../repositories/CommunicationsRepository";
-import { sendWhatsappText } from "../providers/whatsapp";
+import type { sendWhatsappText } from "../providers/whatsapp";
+import { sendAutomaticWhatsappReply } from "./WhatsappAutomaticReplyService";
+import { WhatsappReplyControlRepository as Control } from "../repositories/WhatsappReplyControlRepository";
 
 /** Preserve the existing rule replies when the assistant cannot answer. */
 export async function runWhatsappAutomationFallback(
@@ -10,12 +11,20 @@ export async function runWhatsappAutomationFallback(
   conversationId: string,
   sender: string,
   body: string | undefined,
-  isNew: boolean,
+  control: { revision: number; messageId: string; isNew: boolean },
 ) {
+  if (
+    !(await Control.isCurrent(
+      connection.organizationId,
+      conversationId,
+      control.revision,
+    ))
+  )
+    return;
   const rules = await CommunicationsRepository.listMatchingWhatsappAutomations(
     connection.organizationId,
     body,
-    isNew,
+    control.isNew,
   );
   for (const rule of rules) {
     if (!rule.responseTemplateId) continue;
@@ -24,38 +33,24 @@ export async function runWhatsappAutomationFallback(
       rule.responseTemplateId,
     );
     if (!template) continue;
-    const current = await WhatsappAssistantRepository.getConversationReplyState(
-      connection.organizationId,
-      conversationId,
-    );
     if (
-      !current ||
-      current.replyMode !== "auto" ||
-      current.status === "pending"
+      !(await Control.isCurrent(
+        connection.organizationId,
+        conversationId,
+        control.revision,
+      ))
     )
       return;
-    const queued = await CommunicationsRepository.createQueuedWhatsappMessage(
-      connection.organizationId,
-      conversationId,
-      template.body,
-    );
     try {
-      const result = await sendWhatsappText(connection, sender, template.body);
-      await CommunicationsRepository.completeWhatsappMessage(
-        connection.organizationId,
-        queued.id,
-        {
-          externalMessageId: result.externalMessageId,
-          status: result.status,
-          sentAt: new Date().toISOString(),
-        },
-      );
+      await sendAutomaticWhatsappReply(connection, {
+        conversationId,
+        revision: control.revision,
+        messageId: control.messageId,
+        recipient: sender,
+        body: template.body,
+      });
     } catch {
-      await CommunicationsRepository.completeWhatsappMessage(
-        connection.organizationId,
-        queued.id,
-        { status: "failed" },
-      );
+      // Failed provider attempts remain consumed; never blindly resend them.
     }
   }
 }

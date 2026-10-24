@@ -41,7 +41,7 @@ const listWhatsappChatsTool = {
   config: {
     title: "List WhatsApp chats",
     description:
-      "The business's WhatsApp chats, newest first: customer number and CRM name, status (pending means waiting for a person), when they last wrote and when the business last wrote, whether the 24-hour window is open, and whether they opted out.",
+      "The business's WhatsApp chats, newest first: customer number and CRM name, status (pending means waiting for a person), when they last wrote and when the business last wrote, whether the 24-hour window is open, replyMode (auto/manual), and whether they opted out.",
     inputSchema: listInput,
     outputSchema: {
       chats: z.array(looseObjectOutputSchema),
@@ -65,7 +65,7 @@ const listWhatsappChatsTool = {
           ? chats
               .map(
                 (chat) =>
-                  `${chat.name ?? chat.phone} · ${chat.status}${chat.optedOut ? " · OPTED OUT" : ""} · window ${chat.windowOpen ? "open" : "closed"} · last in ${chat.lastInboundAt?.slice(0, 16) ?? "never"} · last out ${chat.lastOutboundAt?.slice(0, 16) ?? "never"} · id ${chat.id}`,
+                  `${chat.name ?? chat.phone} · ${chat.status} · replies ${chat.replyMode}${chat.optedOut ? " · OPTED OUT" : ""} · window ${chat.windowOpen ? "open" : "closed"} · last in ${chat.lastInboundAt?.slice(0, 16) ?? "never"} · last out ${chat.lastOutboundAt?.slice(0, 16) ?? "never"} · id ${chat.id}`,
               )
               .join("\n")
           : "No WhatsApp chats yet.",
@@ -85,7 +85,7 @@ const getWhatsappChatTool = {
   config: {
     title: "Read a WhatsApp chat",
     description:
-      "The last 40 messages of one chat, oldest first, plus the templates approved in this workspace (with ids and bodies) for when the 24-hour window is closed.",
+      "The chat replyMode (auto/manual), its last 40 messages, oldest first, plus the templates approved in this workspace (with ids and bodies) for when the 24-hour window is closed.",
     inputSchema: getInput,
     outputSchema: {
       chat: looseObjectOutputSchema,
@@ -108,6 +108,7 @@ const getWhatsappChatTool = {
       );
       return mcpResponse({
         text: [
+          `Replies: ${result.chat.replyMode}.`,
           ...result.messages.map(
             (message) =>
               `${message.at.slice(0, 16)} ${message.direction === "inbound" ? "Customer" : "Business"}: ${message.body ?? ""}`,
@@ -121,6 +122,50 @@ const getWhatsappChatTool = {
           messages: result.messages,
           templates: result.templates,
         },
+      });
+    },
+  ),
+};
+
+const modeInput = {
+  organizationId: organizationIdSchema,
+  conversationId: conversationIdSchema,
+  mode: z
+    .enum(["auto", "manual"])
+    .describe(
+      "manual stops automatic replies until explicitly switched back; auto allows future inbound messages to be answered. Neither mode replays old work or sends a message.",
+    ),
+} as const;
+
+const setWhatsappChatModeTool = {
+  name: "set_whatsapp_chat_mode",
+  config: {
+    title: "Set WhatsApp chat reply mode",
+    description:
+      "Switch one existing chat to Manual when a person takes over, or back to Auto. Requires WhatsApp manage permission. Manual persists across new customer messages. A change cancels queued replies and invalidates replies still being generated; a message already dispatched to the provider cannot be recalled. This tool sends no message and does not change workspace assistant settings or handoff status.",
+    inputSchema: modeInput,
+    outputSchema: {
+      conversationId: z.string(),
+      replyMode: z.enum(["auto", "manual"]),
+      ...optionalMetaOutputSchema,
+    },
+    annotations: {
+      readOnlyHint: false,
+      openWorldHint: false,
+      destructiveHint: false,
+      idempotentHint: true,
+    },
+  },
+  handler: withMcpOrganizationAuth(
+    async (args: z.infer<z.ZodObject<typeof modeInput>>, context) => {
+      const result = await WhatsappAgentService.setChatMode(
+        context.organizationId,
+        context.auth.userId,
+        { conversationId: args.conversationId, mode: args.mode },
+      );
+      return mcpResponse({
+        text: `Replies set to ${result.replyMode}. No message sent.`,
+        structuredContent: result,
       });
     },
   ),
@@ -219,10 +264,11 @@ export const whatsappSurface: McpModuleSurface = {
   key: "whatsapp",
   scope: "organization",
   summary:
-    "Read WhatsApp chats and follow up within WhatsApp's rules: replies inside the 24-hour window, approved templates outside it, opt-outs and daily limits enforced by the app.",
+    "Read WhatsApp chats, set per-chat Auto/Manual reply mode, and follow up within WhatsApp's rules: replies inside the 24-hour window, approved templates outside it, opt-outs and daily limits enforced by the app.",
   tools: [
     listWhatsappChatsTool,
     getWhatsappChatTool,
+    setWhatsappChatModeTool,
     sendWhatsappReplyTool,
     sendWhatsappTemplateTool,
   ],
