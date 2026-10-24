@@ -2413,3 +2413,37 @@ approval redirects fail closed and message requests use the supported mode.
 No production image, activation cutoff, customer message or OTP action changed
 while preparing this correction. Include the compatibility fix in the reviewed
 release; do not deploy/activate the earlier unsupported request mode.
+
+### October 24, 2026 — post-call book links and contact editing deployed
+
+The owner approved publishing PR66/PR67 and explicitly approved including the
+Worker compatibility correction in PR68. All three merged through their required
+CI and container checks. The final source revision is
+`ea9acbb26e263eafc9a1d357c616ad4c47f476f6`; all 3,109 regression tests, local
+checks, production build and merged-main checks passed. Production image workflow
+40123969182 published immutable digest
+`sha256:24e9faca326a03299899f1c343e5162455736c29e3796226a583237f4bfe66f4`.
+Coolify finished deployment of that exact image and the application is healthy.
+
+A fresh private VPS database/runtime/configuration backup passed isolated restore
+and migration tests before deployment. Cutover took another fresh database
+snapshot. Verification preserved existing records, waybill identities, accepted
+or uncertain provider-effect outcomes, provider credentials, runtime configuration
+and persistent storage. Only expected source/container deployment metadata changed.
+The prior immutable image remains the code rollback target; retain the additive
+schema and message claims during rollback.
+
+BooXworm's existing approved `voice_call_followup` template is now enabled with
+its connected WhatsApp sender for explicitly consented new calls only. Activation
+cutoff is `2026-10-24T19:16:40.878Z` (23:16 Dubai). This setting queues no historical
+work. The one earlier owner-test message remains a single read receipt; no
+historical call was resent. OTP stays on hold, next-day shipment reminders stay
+off, and the separately staged live Citypak voice tool has not been activated.
+
+The live WhatsApp contact panel and Contacts list now expose the existing shared
+CRM contact editor. The live editor opened successfully on the owner's contact;
+verification cancelled without changing the saved name. Local browser checks
+covered successful name changes, cross-view refresh, validation, Cancel and server
+errors with synthetic data. Future manual edits update the shared contact rather
+than creating a duplicate. Release screenshots and private verification/recovery
+evidence are retained with this task and the VPS release preparation directory.
