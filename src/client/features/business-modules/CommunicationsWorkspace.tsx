@@ -22,6 +22,7 @@ import {
 import { toast } from "sonner";
 import { AssistantConfigSection } from "./whatsapp/AssistantConfigSection";
 import { PhoneCallsSection } from "./voice/PhoneCallsSection";
+import { ContactEditButton } from "./crm/ContactEditButton";
 import {
   AskedQuestionsSection,
   InstantAnswersSection,
@@ -1196,6 +1197,9 @@ export function WhatsappWorkspace({
                         <p className="text-xs text-base-content/55">
                           {selectedConversation?.externalConversationId}
                         </p>
+                        {selectedContact ? (
+                          <ContactEditButton contact={selectedContact} />
+                        ) : null}
                       </div>
                       {selectedConversation ? (
                         <div className="space-y-4">
@@ -1494,6 +1498,7 @@ export function WhatsappWorkspace({
                         <th>Marketing</th>
                         <th>Utility</th>
                         <th>Added</th>
+                        <th>Actions</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1540,6 +1545,9 @@ export function WhatsappWorkspace({
                               {new Date(
                                 contactRow.createdAt,
                               ).toLocaleDateString()}
+                            </td>
+                            <td>
+                              <ContactEditButton contact={contactRow} />
                             </td>
                           </tr>
                         );
