@@ -103,15 +103,6 @@ export const wooOrderSchema = z.object({
 });
 type WooOrder = z.infer<typeof wooOrderSchema>;
 
-function billingPhone(phone: string, country: string) {
-  const exact = orderPhone(phone);
-  if (exact) return exact;
-  // National Sri Lankan billing numbers are unambiguous only with country LK.
-  const national = phone.replace(/[\s().-]/g, "");
-  return country === "LK" && /^0[1-9]\d{8}$/.test(national)
-    ? `+94${national.slice(1)}`
-    : null;
-}
 export function wooOrderSnapshot(order: WooOrder): OrderSnapshot {
   const shipping = order.shipping.address_1 ? order.shipping : order.billing;
   const subtotalMinor = order.line_items.reduce(
@@ -144,7 +135,7 @@ export function wooOrderSnapshot(order: WooOrder): OrderSnapshot {
         [order.billing.first_name, order.billing.last_name]
           .filter(Boolean)
           .join(" ") || null,
-      customerPhone: billingPhone(order.billing.phone, order.billing.country),
+      customerPhone: orderPhone(order.billing.phone, order.billing.country),
       customerEmail: order.billing.email || null,
       shippingCity: shipping.city || null,
       shippingAddress:

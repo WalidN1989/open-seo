@@ -24,6 +24,7 @@ const address = z.object({
   province: z.string().nullish(),
   zip: z.string().nullish(),
   country: z.string().nullish(),
+  country_code: z.string().nullish(),
 });
 export const shopifyOrderSchema = z.object({
   id,
@@ -103,10 +104,17 @@ export const shopifyOrderSchema = z.object({
 });
 export type ShopifyOrder = z.infer<typeof shopifyOrderSchema>;
 
-/** Exact E.164 only. Ambiguous national numbers cannot authorize a chat lookup. */
-export function orderPhone(value: string | null | undefined) {
+/** National Sri Lankan numbers require the phone's own address country.
+ * Callers without that evidence retain the strict E.164 authorization boundary. */
+export function orderPhone(
+  value: string | null | undefined,
+  country?: string | null,
+) {
   const phone = value?.replace(/[\s().-]/g, "") ?? "";
-  return /^\+[1-9]\d{7,14}$/.test(phone) ? phone : null;
+  if (/^\+[1-9]\d{7,14}$/.test(phone)) return phone;
+  return country === "LK" && /^0[1-9]\d{8}$/.test(phone)
+    ? `+94${phone.slice(1)}`
+    : null;
 }
 
 export function shopifyOrderValues(order: ShopifyOrder) {
@@ -135,12 +143,14 @@ export function shopifyOrderValues(order: ShopifyOrder) {
     currency: order.currency,
     paymentMethod: order.payment_gateway_names[0] || null,
     customerName,
-    customerPhone: orderPhone(
-      order.phone ||
-        shipping?.phone ||
-        order.customer?.phone ||
+    customerPhone:
+      orderPhone(order.phone) ||
+      orderPhone(shipping?.phone, shipping?.country_code) ||
+      orderPhone(order.customer?.phone) ||
+      orderPhone(
         order.billing_address?.phone,
-    ),
+        order.billing_address?.country_code,
+      ),
     customerEmail: order.email || null,
     shippingCity: shipping?.city || null,
     shippingAddress: shipping
