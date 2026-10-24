@@ -268,7 +268,7 @@ async function send(
       (input, init) =>
         fetch(input, {
           ...init,
-          redirect: "error",
+          redirect: "manual",
           signal: AbortSignal.timeout(10000),
         }),
     );

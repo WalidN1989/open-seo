@@ -2396,3 +2396,20 @@ including concurrent claims, consent, opt-out, tenant isolation, webhook replay
 and migration preservation, pass. Follow the owner-reviewed PR/image release
 process before deploying and enabling only new calls. Do not replay other
 historical calls. OTP and next-day shipment reminders remain off.
+
+### 2026-10-24 — book-link release runtime check
+
+The owner approved publication of PR66 and PR67; both merged after passing their
+required checks. Combined regression tests passed (3,107). The pre-release VPS
+backup restored successfully and both additive PostgreSQL migrations preserved
+existing records, left book-link settings empty/off, and linked the one previously
+read owner-test message without sending again.
+
+An actual local Workerd probe caught unsupported `fetch` redirect mode `error`
+in the new template-approval and send wrappers before deployment. The follow-up
+uses `manual`, retains bounded requests and rejects non-success redirect
+responses without following their destinations. Regression coverage verifies
+approval redirects fail closed and message requests use the supported mode.
+No production image, activation cutoff, customer message or OTP action changed
+while preparing this correction. Include the compatibility fix in the reviewed
+release; do not deploy/activate the earlier unsupported request mode.

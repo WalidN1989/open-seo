@@ -77,3 +77,9 @@ Follow [VPS release controls](VPS_RELEASES.md) for CI, owner approval, backup,
 image deployment and migrations. After release, select the audited template and
 enable with a fresh cutoff. Verify a newly consented call and its delivery
 receipt; do not resend the completed owner test or other historical calls.
+
+The production Worker runtime supports `manual` redirects, rather than fetch's
+`error` redirect mode. The approval and message requests use `manual` and reject
+non-success redirect responses; they never forward provider credentials to a
+redirect target. This was checked in the installed Workerd runtime against a
+local HTTP target before production activation.
