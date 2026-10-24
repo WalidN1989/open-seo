@@ -155,7 +155,11 @@ export function shopifyOrderValues(order: ShopifyOrder) {
           .filter(Boolean)
           .join(", ")
       : null,
-    pickup: order.shipping_lines.some((line) => line.code === "pickup"),
+    pickup: order.shipping_lines.some((line) =>
+      [line.code, line.title].some((value) =>
+        /^(?:local[ _-]+)?pick[ _-]?up(?:\b|_)/i.test(value?.trim() || ""),
+      ),
+    ),
     subtotalMinor,
     discountMinor: order.total_discounts,
     deliveryMinor,

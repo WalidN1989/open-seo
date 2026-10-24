@@ -59,4 +59,40 @@ describe("Shopify payment method", () => {
       shopifyOrderValues(shopifyOrderSchema.parse(raw)).paymentMethod,
     ).toBeNull();
   });
+  it.each([
+    {
+      code: "Pickup From Warehouse (Demetagoda) FREE",
+      title: "Pickup From Warehouse (Demetagoda) FREE",
+    },
+    { code: "custom-collection", title: "  Local pickup  " },
+    { code: "pickup", title: "Collect at warehouse" },
+    { code: "pick_up", title: "Collect at warehouse" },
+  ])(
+    "recognizes Shopify pickup shipping methods without requiring a delivery address: $code",
+    (shipping) => {
+      const order = shopifyOrderValues(
+        shopifyOrderSchema.parse({
+          ...raw,
+          shipping_lines: [shipping],
+          shipping_address: null,
+        }),
+      );
+      expect(order.pickup).toBe(true);
+      expect(order.shippingAddress).toBeNull();
+    },
+  );
+  it.each([
+    "Standard delivery",
+    "Delivery (pickup unavailable)",
+    "Pickuptruck courier service",
+  ])("does not mistake delivery for pickup: %s", (title) => {
+    expect(
+      shopifyOrderValues(
+        shopifyOrderSchema.parse({
+          ...raw,
+          shipping_lines: [{ code: "delivery", title }],
+        }),
+      ).pickup,
+    ).toBe(false);
+  });
 });

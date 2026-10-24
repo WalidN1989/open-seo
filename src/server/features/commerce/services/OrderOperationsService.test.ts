@@ -144,6 +144,10 @@ beforeEach(() => {
   state.invalidateDuringClaim = true;
   state.effectStatus = "queued";
   state.kind = "confirmation";
+  fixtures.order.pickup = false;
+  fixtures.order.customerPhone = "+94770000000";
+  fixtures.order.shippingAddress = "Synthetic road";
+  fixtures.order.shippingCity = "Synthetic city";
   state.send.mockReset();
   state.finish.mockImplementation(
     (_org: string, _id: string, values: { status: string }) => {
@@ -233,3 +237,36 @@ it("creates one confirmed waybill and never retries an ambiguous courier respons
   expect(state.send).not.toHaveBeenCalled();
   expect(state.invoice).not.toHaveBeenCalled();
 });
+
+it("never requests a courier waybill for a warehouse pickup", async () => {
+  fixtures.order.pickup = true;
+  fixtures.order.shippingAddress = "";
+  state.kind = "citypak";
+  state.invalidateDuringClaim = false;
+  const { OrderOperationsService } = await import("./OrderOperationsService");
+  await OrderOperationsService.runDue("connection");
+  expect(state.citypak).not.toHaveBeenCalled();
+  expect(state.effectStatus).toBe("skipped");
+});
+const missingDeliveryFields: Array<
+  "customerPhone" | "shippingAddress" | "shippingCity"
+> = ["customerPhone", "shippingAddress", "shippingCity"];
+it.each(missingDeliveryFields)(
+  "reports missing %s before Citypak instead of marking an ambiguous submission",
+  async (field) => {
+    fixtures.order[field] = "";
+    state.kind = "citypak";
+    state.invalidateDuringClaim = false;
+    const { OrderOperationsService } = await import("./OrderOperationsService");
+    await OrderOperationsService.runDue("connection");
+    expect(state.citypak).not.toHaveBeenCalled();
+    expect(state.effectStatus).toBe("failed");
+    expect(state.finish).toHaveBeenCalledWith("org", "effect", {
+      status: "failed",
+      error:
+        "Missing delivery phone, address or city. No Citypak request was made. Confirm whether this is a pickup order before arranging delivery.",
+    });
+    await OrderOperationsService.runDue("connection");
+    expect(state.citypak).not.toHaveBeenCalled();
+  },
+);

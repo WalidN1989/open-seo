@@ -84,6 +84,11 @@ export function OrderReview({ detail }: { detail: Detail }) {
         Map each item to the correct product and edition. Keep the store selling
         price; correct catalogue prices before approval.
       </p>
+      {detail.order.pickup ? (
+        <p role="status" className="text-sm">
+          Warehouse pickup: approval will not create a Citypak waybill.
+        </p>
+      ) : null}
       {currencyMismatch ? (
         <p role="alert" className="text-sm text-error">
           Order currency differs from the workspace currency. Resolve the
