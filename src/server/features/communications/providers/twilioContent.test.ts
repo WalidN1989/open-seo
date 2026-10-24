@@ -219,7 +219,7 @@ describe("call book-link approval", () => {
     process.env.TEST_TW_AUTH_TOKEN = "test-token";
     const sid = "HX" + "1".repeat(32);
     const fetcher: typeof fetch = async (input, init) => {
-      expect(init?.redirect).toBe("error");
+      expect(init?.redirect).toBe("manual");
       return Response.json(
         urlOf(input).endsWith("ApprovalRequests")
           ? { whatsapp: { status: "approved", category: "MARKETING" } }
@@ -239,6 +239,24 @@ describe("call book-link approval", () => {
       languageCode: "en",
       status: "approved",
     });
+    delete process.env.TEST_TW_AUTH_TOKEN;
+  });
+  it("refuses a redirected approval request without following the target", async () => {
+    const { fetchCallBookLinkTemplate } = await import("./twilioContent");
+    process.env.TEST_TW_AUTH_TOKEN = "test-token";
+    let requests = 0;
+    const fetcher: typeof fetch = async (_input, init) => {
+      requests++;
+      expect(init?.redirect).toBe("manual");
+      return new Response(null, {
+        status: 302,
+        headers: { Location: "https://unapproved.example" },
+      });
+    };
+    await expect(
+      fetchCallBookLinkTemplate(connection, "HX" + "1".repeat(32), fetcher),
+    ).rejects.toThrow("302");
+    expect(requests).toBe(1);
     delete process.env.TEST_TW_AUTH_TOKEN;
   });
   it("rejects authentication content and templates with the wrong variables", async () => {

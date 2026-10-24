@@ -252,7 +252,7 @@ export async function fetchCallBookLinkTemplate(
   const request: typeof fetch = (input, init) =>
     fetcher(input, {
       ...init,
-      redirect: "error",
+      redirect: "manual",
       signal: AbortSignal.timeout(8000),
     });
   const bodyType = z.object({ body: z.string().min(1).max(1600) });

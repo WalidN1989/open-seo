@@ -153,6 +153,30 @@ describe("consented per-call book-link follow-up", () => {
     expect(message.external_message_id).toBe("SMtest");
     expect(message.body).toBe("Hi Walid, here is your requested book: " + url);
   });
+  it("uses Worker-compatible manual redirects for the message request", async () => {
+    const network = vi.fn(
+      async (_input: RequestInfo | URL, init?: RequestInit) => {
+        expect(init?.redirect).toBe("manual");
+        return Response.json({ sid: "MMtest", status: "queued" });
+      },
+    );
+    vi.stubGlobal("fetch", network);
+    state.send.mockImplementationOnce(
+      async (_sender, _recipient, _template, fetcher: typeof fetch) => {
+        const response = await fetcher("https://api.twilio.com/test", {
+          method: "POST",
+        });
+        expect(response.ok).toBe(true);
+        return { externalMessageId: "MMtest", status: "queued" };
+      },
+    );
+    try {
+      expect(await send()).toBe("queued");
+      expect(network).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
   it("atomically sends once under concurrent requests and subsequent retries", async () => {
     await Promise.all(Array.from({ length: 8 }, () => send()));
     await send();
