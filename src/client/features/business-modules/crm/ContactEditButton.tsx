@@ -55,7 +55,11 @@ function ContactEditDialog({
   const mutation = useMutation({
     mutationFn: (data: UpdateContactInput) => updateCrmContact({ data }),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["crm"] });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["crm"] }),
+        queryClient.invalidateQueries({ queryKey: ["whatsapp"] }),
+        queryClient.invalidateQueries({ queryKey: ["voice", "phone-calls"] }),
+      ]);
       toast.success("Contact updated");
       onClose();
     },
@@ -89,7 +93,7 @@ function ContactEditDialog({
         Edit contact
       </h2>
       <p className="text-sm text-base-content/60">
-        Changes apply to every lead linked to this contact.
+        Changes apply to the shared contact in CRM, WhatsApp and linked leads.
       </p>
       <form
         className="space-y-4"
