@@ -30,12 +30,15 @@ approved activation. No database migration or background-job change is needed.
 WhatsApp OTP is explicitly deferred at the owner's request; different-number
 callers continue to require staff verification.
 
-The host restriction was prepared as an unpublished browser draft for the
-DU and BooXworm hosts. Publishing was blocked by automatic approval review
-pending native-phone compatibility verification. Host restrictions control
-agent sessions, not the disclosure of API keys; never expose provider keys in
-browser code. Do not mark the production access restriction complete until its
-saved configuration and a controlled native call have been checked.
+The host allowlist is saved on production Main for `seo.digitalurgency.com.au`,
+`booxworm.lk` and `www.booxworm.lk`, with missing-Origin rejection enabled.
+After the owner's controlled-test approval, their native SIP call completed
+successfully for 66 seconds on the secured Main version. Bounded WebSocket
+probes from an unapproved origin and without an Origin header were both rejected
+with explicit provider reasons. Keep these settings when promoting or rebasing
+the staged agent. Host restrictions control agent sessions; provider API keys
+must still remain server-side. No ElevenLabs/Citypak API host or key-header
+references were found in the generated client JavaScript bundle.
 
 ## Historical preparation October 18, 2026 — subsequently deployed
 

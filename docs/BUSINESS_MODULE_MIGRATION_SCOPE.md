@@ -2359,8 +2359,13 @@ settings separate; do not deploy its schema or activate message sending. A
 one-time reminder is scheduled for October 31. The existing daily waybill-template
 approval monitor and next-day-reminder-off requirement remain unchanged.
 
-A DU/BooXworm host allowlist is prepared only as an unpublished browser draft.
-Automatic approval review rejected publishing while missing-Origin rejection
-could disrupt telephony. The owner approved publishing conditional on prior
-phone compatibility verification; that condition has not yet been established.
-Production host access restrictions therefore remain outstanding.
+The DU/BooXworm host allowlist is now saved on Main for
+`seo.digitalurgency.com.au`, `booxworm.lk` and `www.booxworm.lk`, with missing-
+Origin rejection enabled. Automatic review initially blocked publishing until
+native-phone compatibility could be checked. The owner then approved a controlled
+switch/test and confirmed their call connected and answered. ElevenLabs records
+a completed 66-second native SIP call on the secured Main version. Separate
+bounded WebSocket probes from an unapproved origin and without Origin were both
+rejected. Keep this verified security configuration during future agent merges.
+The production order/product tool remains unchanged; live Citypak is still
+staged with zero traffic, and OTP remains deferred.
