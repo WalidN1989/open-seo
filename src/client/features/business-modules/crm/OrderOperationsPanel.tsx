@@ -47,7 +47,12 @@ export function OrderOperationsPanel({ orderId }: { orderId: string }) {
       ) : (
         state.data.effects.map((effect) => (
           <p key={effect.id} className="text-sm">
-            {effect.kind} · {effect.status}
+            {effect.kind === "waybill"
+              ? "Waybill WhatsApp update"
+              : effect.kind === "delivery_estimate"
+                ? "Next-day WhatsApp update"
+                : effect.kind}{" "}
+            · {effect.status}
             {effect.externalId ? ` · ${effect.externalId}` : ""}
             {effect.error ? (
               <span className="block text-xs text-warning">{effect.error}</span>

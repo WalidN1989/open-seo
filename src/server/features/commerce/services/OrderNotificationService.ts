@@ -5,7 +5,7 @@ import { OrderOperationsRepository as Repo } from "../repositories/OrderOperatio
 import {
   dispatchCurrent,
   skipChanged,
-  currentWooTemplate,
+  currentUtilityTemplate,
 } from "./OrderDispatchService";
 import type { ActionContext } from "./OrderOperationsService";
 export async function sendNotification(context: ActionContext) {
@@ -39,7 +39,7 @@ export async function sendNotification(context: ActionContext) {
   );
   if (
     order.externalSource === "woocommerce" &&
-    !(await currentWooTemplate(sender, template))
+    !(await currentUtilityTemplate(sender, template))
   ) {
     // No message request has been made, so approval/API recovery can retry.
     // Never use this path after an ambiguous provider send outcome.

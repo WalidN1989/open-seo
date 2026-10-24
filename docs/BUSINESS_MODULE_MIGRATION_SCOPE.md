@@ -2234,3 +2234,106 @@ strict E.164 with no inferred country. WooCommerce reuses the same explicit-coun
 normalizer, preserving its existing LK behavior. No migration or historical bulk
 rewrite is included. Release requires reviewed passing checks and owner approval;
 rollback is the previous image, retaining the already recovered order and shipment.
+
+### October 21, 2026 — waybill WhatsApp notifications (pending release)
+
+Owner requested a WhatsApp message containing the Citypak WB ID after generation,
+and a second update the next day estimating delivery in 2–3 days. Two text utility
+templates were submitted in BooXworm's Twilio console: `booxworm_waybill_generated`
+and `booxworm_delivery_estimate`. Twilio approval is still pending; the separate
+existing order-confirmation template was verified approved. Provider references and
+screenshots stay in private local evidence, not in this public ledger.
+
+The new shipment-message gate and sender/template selections are independent of
+order confirmations. Both dialects add nullable configuration columns only; the
+migration leaves all notifications disabled. The selected Citypak worker can send
+only these explicitly enabled shipment notifications; it still does not start a
+global scheduler, confirmation or invoice jobs. Existing Citypak tracking and
+creation allowlists remain unchanged.
+
+Reconciliation queues each notification once per order through the existing durable
+outbox and unique key. It requires a newly generated Citypak shipment after the
+server-controlled enablement date, matching successful DU creation evidence, an
+approved template on the selected connected Twilio sender, an eligible order,
+module access and no recipient opt-out. Imported/linked historical waybills are
+excluded. The estimate waits at least 24 hours after generation and the first
+accepted notification, preventing a burst after downtime. Delivered, returned and
+cancelled orders are suppressed. Dispatch rechecks settings, order revision,
+shipment identity, access and opt-out before the external request. Uncertain sends
+are retained for manual provider-history review without automatic retry.
+
+New Citypak generation records write explicit ISO timestamps for both SQLite and
+Postgres. Activation requires approved templates and owner approval of the reviewed
+release. No live notification gate or existing confirmation setting was changed;
+no customer message was sent during implementation. Rollback disables shipment
+updates and restores the previous image; keep additive columns, message records and
+outbox outcomes, and never reset accepted/uncertain sends for automatic replay.
+
+Validation: ci:check passed; the full regression suite passed 2,933 tests across
+322 files. An isolated browser fixture rendered the actual settings component and
+confirmed saving emits only shipment configuration fields. Existing live order
+confirmation/Citypak gates were not edited. Production build and GitHub CI are
+recorded in the PR when complete.
+
+### October 24, 2026 — PR64 approved and deployed
+
+Owner approved merging/deploying PR64 after passing CI. It merged as
+`a9f8ff4b8bde8c327120b71958a19da5868ead1f`; branch and merged-main CI/Docker
+checks passed. Production image release 40100736710 published
+`sha256:b6d478abaacdb3872dbb32c95747a69259c8c7a4a5ffab221ecc8cad97866be0`.
+Coolify deployment `ed0e6ebe-26d7-48c5-b499-ad4b516f6726` finished healthy
+on that exact immutable image. The previous PR63 image and fresh database/runtime
+snapshots remain privately available; the database backup passed an isolated
+restore test before deployment.
+
+Post-deploy verification preserved protected record IDs, all shipment identities
+and counts, existing succeeded/unknown effect outcomes, order totals, stock,
+all automation settings, 32 runtime settings and persistent mounts. Live synthetic
+checks confirmed explicit-LK national address phone normalization, rejection without
+country evidence, valid candidate fallback, unchanged strict sender authorization
+and pickup classification. The Citypak worker completed its ordinary pass. The
+authenticated Citypak workspace retained the recovered order's single waybill.
+No historical replay, bulk import, reapproval, courier retry, provider test call,
+customer message or activation/configuration change was performed for this release.
+Rollback is the prior immutable image, retaining existing records and accepted
+provider actions. Private release evidence is with the VPS release preparations.
+
+### October 24, 2026 — existing-order source reconciliation
+
+Owner explicitly authorized fixing all existing affected orders after the scoped
+courier retry was explained. Audited 95 non-cancelled BooXworm Shopify orders
+against current source data using the deployed mapper. A private database dump,
+per-order/effect/shipment snapshots and source plan preceded guarded transactional
+repairs. Restored 38 missing phones and corrected five source-confirmed warehouse
+pickup classifications on orders without shipments; 42 distinct orders changed,
+each with an audit event. Approval states, monetary totals, inventory and activation
+settings were preserved. Existing courier submissions and shipments were retained.
+
+Only one confirmed/approved delivery met every retry condition: an explicit
+no-provider-request preflight failure, complete source-verified delivery details,
+no DU shipment and no Shopify tracking. Its existing effect was requeued once;
+the ordinary courier worker succeeded with exactly one linked shipment. No pending
+order was approved, no effect inserted, and no uncertain submission retried. Other
+effects remained unchanged. Twenty-eight records still have no valid source phone
+(two are pickup orders); details needing manual completion are listed privately.
+No missing phone or city was invented. Private source/recovery/verification records
+and the full backup are under the VPS order-reconciliation directory.
+
+### October 24, 2026 — shipment activation update
+
+Owner authorized updating/testing PR56 and deploying/activating shipment messages
+for future waybills only. Further clarification limits this activation to one
+waybill-generated notification; the next-day estimate stays disabled. Both original
+utility templates were approved on a fresh provider read, but generation wording
+promised a reminder. A separate generation-only utility template was submitted
+without that promise. Provider references and approval evidence remain private.
+
+Rebased migration metadata after the deployed history: SQLite 0110 / Postgres
+0089 add only four nullable shipment configuration fields. All existing migration
+SQL, snapshots and journal entries remain intact. Generation-only settings allow
+no estimate template and enqueue no estimate job; candidate selection stops after
+its single durable effect so old rows cannot starve new work. Existing order and
+courier effects remain independent. Current Twilio utility approval, wording and
+language are verified at configuration and before dispatch; unavailable/paused
+approval cannot send. Unknown sends never retry automatically. Voice order lookup
+and caller verification are a future flow, outside this activation.

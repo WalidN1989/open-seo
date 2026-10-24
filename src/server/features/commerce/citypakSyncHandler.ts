@@ -1,3 +1,4 @@
+import { ShipmentMessagesService } from "./services/ShipmentMessagesService";
 import { z } from "zod";
 import { authorizedByInternalSecret } from "@/server/lib/internal-secret";
 import { getOptionalEnvValue } from "@/server/lib/runtime-env";
@@ -5,7 +6,7 @@ import { CitypakRepository } from "./repositories/CitypakRepository";
 import { OrderOperationsService } from "./services/OrderOperationsService";
 import { OrderShipmentService } from "./services/OrderShipmentService";
 
-/** Courier-only work. Never dispatch the general scheduler or customer messages. */
+/** Selected courier work and explicitly enabled shipment messages; no global scheduler. */
 export async function handleCitypakSync(request: Request) {
   if (request.method !== "POST") return new Response(null, { status: 405 });
   if (!(await authorizedByInternalSecret(request)))
@@ -27,5 +28,6 @@ export async function handleCitypakSync(request: Request) {
     return new Response(null, { status: 404 });
   await OrderOperationsService.runDue(parsed.data.connectionId);
   await OrderShipmentService.runDueTracking(parsed.data.connectionId);
+  await ShipmentMessagesService.runDue(parsed.data.connectionId);
   return Response.json({ ok: true });
 }

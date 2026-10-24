@@ -81,13 +81,13 @@ export async function notificationFor(
     return null;
   if (
     order.externalSource === "woocommerce" &&
-    !(await currentWooTemplate(sender, template))
+    !(await currentUtilityTemplate(sender, template))
   )
     return null;
   return { sender, template };
 }
 
-export async function currentWooTemplate(
+export async function currentUtilityTemplate(
   sender: NonNullable<ActionContext["sender"]>,
   template: NonNullable<ActionContext["template"]>,
 ) {

@@ -5,6 +5,7 @@ const state = vi.hoisted(() => ({
   connection: vi.fn(),
   run: vi.fn(),
   tracking: vi.fn(),
+  messages: vi.fn(),
 }));
 vi.mock("@/server/lib/internal-secret", () => ({
   authorizedByInternalSecret: async () => state.authorized,
@@ -20,6 +21,9 @@ vi.mock("./services/OrderOperationsService", () => ({
 }));
 vi.mock("./services/OrderShipmentService", () => ({
   OrderShipmentService: { runDueTracking: state.tracking },
+}));
+vi.mock("./services/ShipmentMessagesService", () => ({
+  ShipmentMessagesService: { runDue: state.messages },
 }));
 import { handleCitypakSync } from "./citypakSyncHandler";
 function request(connectionId = state.configured) {
@@ -48,6 +52,7 @@ it("runs only the selected active connection's courier operations and tracking",
   expect((await handleCitypakSync(request())).status).toBe(200);
   expect(state.run).toHaveBeenCalledExactlyOnceWith(state.configured);
   expect(state.tracking).toHaveBeenCalledExactlyOnceWith(state.configured);
+  expect(state.messages).toHaveBeenCalledExactlyOnceWith(state.configured);
   state.connection.mockResolvedValue(null);
   expect((await handleCitypakSync(request())).status).toBe(404);
   expect(state.run).toHaveBeenCalledTimes(1);
