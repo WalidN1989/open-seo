@@ -2191,3 +2191,46 @@ pickup classification, delivery non-matches, no courier calls for pickup/missing
 fields, and unchanged ambiguous-provider no-retry behavior. Production build is
 verified separately in the PR. Production order data and activation settings remain
 unchanged while release approval is pending.
+
+### October 24, 2026 — PR63 approved and deployed
+
+Owner approved merging/deploying the named Shopify pickup and courier-preflight
+fix. PR63 merged as `a35087d3ef641a905560eb43682fd305480fbce4`; branch and merged-main
+CI/Docker checks passed. GitHub production image release 40098631921 published
+`sha256:090927a6f8f12c38416e1a58de35e1ac9a8b2b33988953b0327f8b1f70cf98aa`.
+Coolify deployed that exact revision and reports finished/healthy. The prior live
+revision was `31c0434b1f401ca70a38245054e1e76980a9e0fc`; its image, database and
+runtime/configuration backup were retained privately, and the database backup
+passed an isolated restore test before deployment.
+
+Post-deploy checks preserved protected records, existing order totals, inventory,
+all order-automation settings, 32 runtime settings and persistent mounts. Live
+synthetic mapper checks recognize the custom warehouse-pickup method, retain a
+delivery control and preserve the strict phone boundary. The shipped client includes
+the pickup notice; the authenticated live Orders workspace loads correctly. The
+selected Citypak worker started and completed a courier pass. There was no schema
+migration, provider test request, real order approval, manual courier retry or
+historical order reconciliation. Existing historical pickup flags/outbox outcomes
+remain unchanged; this release corrects future mapping and preflight behavior.
+Private release evidence is stored with the VPS release-preparation records.
+
+### October 24, 2026 — Shopify address phone normalization (pending release)
+
+An approved courier delivery failed before any Citypak request because Shopify's
+shipping phone was in national Sri Lankan format and DU retained only E.164.
+The source shipping address explicitly stated country LK. A scoped, guarded recovery
+backed up the existing order/effect privately, copied and normalized that source
+shipping phone, recorded an audit event and requeued only the definite preflight
+failure after verifying no DU/Shopify waybill existed. The ordinary worker created
+one waybill successfully. No reapproval, stock replay, customer message, global
+configuration change or uncertain-submission reset was performed. Per-order
+source/recovery evidence remains private on the VPS.
+
+The importer now validates each candidate phone independently, so an invalid
+higher-priority field cannot hide a valid shipping/billing number. National
+Sri Lankan numbers are normalized only with that phone's own address country LK;
+the order/customer phone fields and sender-based customer authorization retain
+strict E.164 with no inferred country. WooCommerce reuses the same explicit-country
+normalizer, preserving its existing LK behavior. No migration or historical bulk
+rewrite is included. Release requires reviewed passing checks and owner approval;
+rollback is the previous image, retaining the already recovered order and shipment.

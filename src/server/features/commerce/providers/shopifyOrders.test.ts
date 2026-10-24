@@ -95,4 +95,53 @@ describe("Shopify payment method", () => {
       ).pickup,
     ).toBe(false);
   });
+  it("normalizes the shipping address phone only when its country is explicitly Sri Lanka", () => {
+    const values = shopifyOrderValues(
+      shopifyOrderSchema.parse({
+        ...raw,
+        phone: "invalid",
+        shipping_address: { phone: "077 123 4567", country_code: "LK" },
+      }),
+    );
+    expect(values.customerPhone).toBe("+94771234567");
+    for (const country_code of [undefined, "AU", "US"]) {
+      expect(
+        shopifyOrderValues(
+          shopifyOrderSchema.parse({
+            ...raw,
+            shipping_address: { phone: "0771234567", country_code },
+          }),
+        ).customerPhone,
+      ).toBeNull();
+    }
+    expect(orderPhone("0771234567")).toBeNull();
+  });
+  it("skips an invalid earlier field, preserves international numbers and uses billing's own country", () => {
+    expect(
+      shopifyOrderValues(
+        shopifyOrderSchema.parse({
+          ...raw,
+          phone: "not a number",
+          shipping_address: { phone: "+94771234567" },
+        }),
+      ).customerPhone,
+    ).toBe("+94771234567");
+    expect(
+      shopifyOrderValues(
+        shopifyOrderSchema.parse({
+          ...raw,
+          billing_address: { phone: "0771234567", country_code: "LK" },
+        }),
+      ).customerPhone,
+    ).toBe("+94771234567");
+    expect(
+      shopifyOrderValues(
+        shopifyOrderSchema.parse({
+          ...raw,
+          phone: "0771234567",
+          shipping_address: { country_code: "LK" },
+        }),
+      ).customerPhone,
+    ).toBeNull();
+  });
 });
