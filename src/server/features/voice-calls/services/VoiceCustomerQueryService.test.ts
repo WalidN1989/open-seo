@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
   products: vi.fn(),
   entitlements: vi.fn(),
   orders: vi.fn(),
+  delivery: vi.fn(),
 }));
 vi.mock("@/server/lib/connection-secrets", () => ({
   decryptCredentials: async () => ({ CALLER_LOOKUP_SECRET: "test-secret" }),
@@ -29,6 +30,9 @@ vi.mock(
 );
 vi.mock("@/server/features/commerce/services/OrderService", () => ({
   OrderService: { lookupCustomerOrder: mocks.orders },
+}));
+vi.mock("./VoiceOrderLookupService", () => ({
+  VoiceOrderLookupService: { delivery: mocks.delivery },
 }));
 import { VoiceCustomerQueryService as service } from "./VoiceCustomerQueryService";
 
@@ -179,5 +183,57 @@ describe("ElevenLabs live CRM query", () => {
         )
       ).status,
     ).toBe(404);
+  });
+});
+
+describe("voice delivery action", () => {
+  it("uses the runtime caller identity and authenticated workspace", async () => {
+    mocks.delivery.mockResolvedValue({
+      found: true,
+      citypak: [{ live: true }],
+    });
+    const result = await service.query(
+      "connection",
+      headers(),
+      JSON.stringify({ action: "check_delivery", query: "SHOP-1" }),
+    );
+    expect(result.status).toBe(200);
+    expect(mocks.delivery).toHaveBeenCalledWith(
+      "org-a",
+      "+94771111111",
+      "SHOP-1",
+    );
+  });
+  it("rejects untrusted caller, model-selected phone and unauthenticated delivery queries", async () => {
+    const h = headers();
+    h.delete("x-caller-id");
+    expect(
+      (
+        await service.query(
+          "connection",
+          h,
+          '{"action":"check_delivery","query":"SHOP-1"}',
+        )
+      ).body,
+    ).toMatchObject({ found: false });
+    expect(
+      (
+        await service.query(
+          "connection",
+          headers(),
+          '{"action":"check_delivery","query":"SHOP-1","phone":"+94772222222"}',
+        )
+      ).status,
+    ).toBe(400);
+    expect(
+      (
+        await service.query(
+          "connection",
+          new Headers(),
+          '{"action":"check_delivery","query":"SHOP-1"}',
+        )
+      ).status,
+    ).toBe(401);
+    expect(mocks.delivery).not.toHaveBeenCalled();
   });
 });

@@ -2337,3 +2337,35 @@ courier effects remain independent. Current Twilio utility approval, wording and
 language are verified at configuration and before dispatch; unavailable/paused
 approval cannot send. Unknown sends never retry automatically. Voice order lookup
 and caller verification are a future flow, outside this activation.
+
+### 2026-10-24 — live Citypak voice lookup staged; OTP deferred
+
+The existing ElevenLabs integration already handles live CRM books, caller-bound
+orders, returning-caller recognition and post-call transcripts. A separate
+application branch adds authenticated `check_delivery` to query the caller's
+stored Citypak waybill during a call. It reuses the connected order fulfillment
+configuration, reads at most two waybills with six-second timeouts, distinguishes
+live courier responses from saved status, and never mutates orders, shipments,
+messages or stock. No migration or scheduler/provider activation is included.
+
+The separate ElevenLabs tool and prompt are staged with zero production traffic;
+Main and its existing shared tool remain unchanged. Backend deployment and a
+controlled caller test must precede any approved live switch. Targeted voice and
+Citypak regression tests, TypeScript, lint and production build pass.
+
+The owner deferred WhatsApp OTP pending a future test with their own number.
+Keep the local OTP draft, its submitted authentication template and its disabled
+settings separate; do not deploy its schema or activate message sending. A
+one-time reminder is scheduled for October 31. The existing daily waybill-template
+approval monitor and next-day-reminder-off requirement remain unchanged.
+
+The DU/BooXworm host allowlist is now saved on Main for
+`seo.digitalurgency.com.au`, `booxworm.lk` and `www.booxworm.lk`, with missing-
+Origin rejection enabled. Automatic review initially blocked publishing until
+native-phone compatibility could be checked. The owner then approved a controlled
+switch/test and confirmed their call connected and answered. ElevenLabs records
+a completed 66-second native SIP call on the secured Main version. Separate
+bounded WebSocket probes from an unapproved origin and without Origin were both
+rejected. Keep this verified security configuration during future agent merges.
+The production order/product tool remains unchanged; live Citypak is still
+staged with zero traffic, and OTP remains deferred.
