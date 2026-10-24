@@ -1,3 +1,4 @@
+import { VoiceOrderLookupService } from "./VoiceOrderLookupService";
 import { z } from "zod";
 import { decryptCredentials } from "@/server/lib/connection-secrets";
 import { BusinessModuleRepository } from "@/server/features/business-modules/repositories/BusinessModuleRepository";
@@ -9,7 +10,7 @@ import { timingSafeEqual } from "../elevenlabsWebhook";
 
 const requestSchema = z
   .object({
-    action: z.enum(["search_products", "search_orders"]),
+    action: z.enum(["search_products", "search_orders", "check_delivery"]),
     query: z.string().trim().max(200).default(""),
   })
   .strict();
@@ -96,6 +97,15 @@ async function query(connectionId: string, headers: Headers, rawBody: string) {
         found: false,
         next: "No trusted calling number is available. Ask for a number for staff follow-up; do not disclose order history or claim it was verified.",
       },
+    };
+  if (input.action === "check_delivery")
+    return {
+      status: 200,
+      body: await VoiceOrderLookupService.delivery(
+        organizationId,
+        caller,
+        input.query,
+      ),
     };
   const result = await OrderService.lookupCustomerOrder(
     organizationId,

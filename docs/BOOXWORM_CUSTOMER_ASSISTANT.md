@@ -1,6 +1,43 @@
 # BooXworm customer assistant
 
-## Prepared October 18, 2026 — not deployed
+## Live Citypak extension — prepared October 24, 2026
+
+The existing production connection already serves live CRM product queries,
+caller-bound order searches and post-call transcripts. This extension adds a
+read-only `check_delivery` action to that same protected query endpoint; it is
+not deployed or enabled for live callers yet.
+
+Match the caller's order with `search_orders`, then pass that returned canonical
+`orderId` as `query` for `check_delivery`. The backend rechecks the workspace
+and exact runtime caller number before it loads shipments or courier credentials.
+The model cannot choose a phone, tracking number, destination URL or workspace.
+Only stored Citypak waybills are queried, with at most two concurrent requests
+and a six-second timeout each. No shipment is created, no order is approved,
+no message is sent and no tracking or other business record is mutated.
+
+The response retains the recorded order fields and adds `waybillGenerated`
+and `citypak`: tracking number, status, check/event timestamps and a `live` flag.
+Only `live: true` is a courier response fetched during the call. Failure returns
+the previously recorded status with `live: false` and an explicit fallback note.
+Never present the recorded status as fresh, invent an ETA, or interpret an
+unrecorded waybill as proof that the order has not shipped. Pickup orders may
+legitimately have no courier waybill.
+
+A separate tool and prompt are staged on a zero-traffic ElevenLabs branch. The
+production shared tool and Main prompt remain unchanged. Deploy the reviewed
+backend first; verify a controlled caller/order in staging before any owner-
+approved activation. No database migration or background-job change is needed.
+WhatsApp OTP is explicitly deferred at the owner's request; different-number
+callers continue to require staff verification.
+
+The host restriction was prepared as an unpublished browser draft for the
+DU and BooXworm hosts. Publishing was blocked by automatic approval review
+pending native-phone compatibility verification. Host restrictions control
+agent sessions, not the disclosure of API keys; never expose provider keys in
+browser code. Do not mark the production access restriction complete until its
+saved configuration and a controlled native call have been checked.
+
+## Historical preparation October 18, 2026 — subsequently deployed
 
 ElevenLabs' Main branch still uses the legacy Supabase `fathima-api` endpoint.
 The separate `DigitalUrgency CRM` agent branch has no live traffic. It is
