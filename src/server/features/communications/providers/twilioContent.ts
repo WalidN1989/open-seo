@@ -305,3 +305,72 @@ export async function fetchCallBookLinkTemplate(
     status: readApproval(approval.whatsapp).status,
   };
 }
+
+/** Handoffs use a text-only utility template. Reject embedded actions with fixed recipients. */
+export async function fetchHandoffTemplate(
+  connection: WhatsappConnectionRecord,
+  contentSid: string,
+  fetcher: typeof fetch = fetch,
+) {
+  if (!/^HX[0-9a-f]{32}$/i.test(contentSid))
+    throw new Error("Invalid Content SID.");
+  const request: typeof fetch = (input, init) =>
+    fetcher(input, {
+      ...init,
+      redirect: "manual",
+      signal: AbortSignal.timeout(8000),
+    });
+  const content = z
+    .object({
+      sid: z.literal(contentSid),
+      language: z.string(),
+      types: z.record(z.string(), z.unknown()),
+    })
+    .parse(
+      await call(
+        connection,
+        `/Content/${contentSid}`,
+        undefined,
+        request,
+        "GET",
+      ),
+    );
+  const text = z
+    .object({ body: z.string().min(1).max(1600) })
+    .parse(content.types["twilio/text"]);
+  const slots = [...text.body.matchAll(/\{\{\s*([^}]+)\s*\}\}/g)].map((m) =>
+    m[1].trim(),
+  );
+  if (
+    Object.keys(content.types).length !== 1 ||
+    new Set(slots).size !== 3 ||
+    !["1", "2", "3"].every((s) => slots.includes(s))
+  )
+    throw new Error(
+      "Use a text-only handoff template with slots 1 (customer), 2 (reason), 3 (window expiry).",
+    );
+  const approval = z
+    .object({
+      whatsapp: z.object({ status: z.string(), category: z.string() }),
+    })
+    .parse(
+      await call(
+        connection,
+        `/Content/${contentSid}/ApprovalRequests`,
+        undefined,
+        request,
+        "GET",
+      ),
+    );
+  if (
+    approval.whatsapp.status.toLowerCase() !== "approved" ||
+    approval.whatsapp.category.toUpperCase() !== "UTILITY"
+  )
+    throw new Error("Handoff template must be an approved utility template.");
+  return {
+    body: text.body,
+    languageCode: content.language,
+    externalTemplateId: contentSid,
+    name: "handoff",
+  };
+}
