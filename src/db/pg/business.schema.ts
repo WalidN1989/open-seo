@@ -351,6 +351,10 @@ export const crmReminders = pgTable(
     leadId: text("lead_id").references(() => crmLeads.id, {
       onDelete: "cascade",
     }),
+    whatsappConversationId: text("whatsapp_conversation_id").references(
+      () => whatsappConversations.id,
+      { onDelete: "cascade" },
+    ),
     title: text("title").notNull(),
     note: text("note"),
     remindAt: text("remind_at").notNull(),
@@ -1598,6 +1602,7 @@ export const whatsappAssistantSettings = pgTable(
     address: text("address"),
     escalationKeywords: text("escalation_keywords"),
     handoffMessage: text("handoff_message"),
+    handoffContentSid: text("handoff_content_sid"),
     persona: text("persona"),
     businessFacts: text("business_facts"),
     createdAt: createdAt(),
@@ -2515,3 +2520,80 @@ export const voiceBookLinkSettings = pgTable("voice_book_link_settings", {
   enabled: boolean("enabled").notNull().default(false),
   startedAt: text("started_at"),
 });
+
+/** Trusted staff destinations; customer/model input never supplies an alert recipient. */
+export const whatsappHandoffContacts = pgTable(
+  "whatsapp_handoff_contacts",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    phone: text("phone").notNull(),
+    enabled: boolean("enabled").notNull().default(true),
+  },
+  (t) => [
+    uniqueIndex("whatsapp_handoff_contact_org_phone_idx").on(
+      t.organizationId,
+      t.phone,
+    ),
+  ],
+);
+
+/** One handoff per Auto revision; resuming Auto explicitly permits a later handoff. */
+export const whatsappHandoffs = pgTable(
+  "whatsapp_handoffs",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    conversationId: text("conversation_id")
+      .notNull()
+      .references(() => whatsappConversations.id, { onDelete: "cascade" }),
+    replyRevision: integer("reply_revision").notNull(),
+    reason: text("reason").notNull(),
+    summary: text("summary").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    uniqueIndex("whatsapp_handoff_revision_idx").on(
+      t.conversationId,
+      t.replyRevision,
+    ),
+    index("whatsapp_handoff_org_idx").on(t.organizationId, t.createdAt),
+  ],
+);
+
+/** Durable claims survive restarts. A possibly accepted request is never resent. */
+export const whatsappHandoffOutbox = pgTable(
+  "whatsapp_handoff_outbox",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    handoffId: text("handoff_id")
+      .notNull()
+      .references(() => whatsappHandoffs.id, { onDelete: "cascade" }),
+    conversationId: text("conversation_id")
+      .notNull()
+      .references(() => whatsappConversations.id, { onDelete: "cascade" }),
+    contactId: text("contact_id").references(() => whatsappHandoffContacts.id, {
+      onDelete: "set null",
+    }),
+    kind: text("kind").notNull(),
+    status: text("status").notNull().default("pending"),
+    attempts: integer("attempts").notNull().default(0),
+    dueAt: text("due_at").notNull(),
+    claimExpiresAt: text("claim_expires_at"),
+    claimToken: text("claim_token"),
+    externalMessageId: text("external_message_id"),
+    error: text("error"),
+  },
+  (t) => [
+    index("whatsapp_handoff_outbox_due_idx").on(t.status, t.dueAt),
+    index("whatsapp_handoff_outbox_handoff_idx").on(t.handoffId),
+  ],
+);

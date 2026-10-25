@@ -29,8 +29,8 @@ export type Connection = NonNullable<
 
 export const DEFAULT_ESCALATION_KEYWORDS =
   "human, agent, manager, real person, speak to someone, call me, complaint, refund, cancel, angry, useless, scam, lawyer, legal, urgent, asap";
-export const DEFAULT_HANDOFF_MESSAGE =
-  "Thanks for that — I'm assigning your case to the right team here. Someone will come back to you within 24 hours.";
+const DEFAULT_HANDOFF_MESSAGE =
+  "I've saved your request for a person to review. I'll pause automated replies here so the team can take over.";
 
 export type AssistantSettings = Omit<
   AssistantSettingsRow,
@@ -52,6 +52,7 @@ function withDefaults(row: AssistantSettingsRow | null): AssistantSettings {
     address: row?.address ?? null,
     escalationKeywords: row?.escalationKeywords ?? DEFAULT_ESCALATION_KEYWORDS,
     handoffMessage: row?.handoffMessage ?? DEFAULT_HANDOFF_MESSAGE,
+    handoffContentSid: row?.handoffContentSid ?? null,
     persona: row?.persona ?? null,
     businessFacts: row?.businessFacts ?? null,
     updatedAt: row?.updatedAt ?? null,

@@ -72,7 +72,14 @@ const tools = [
       "Flag the chat when a customer requests a person, is upset, or needs unavailable information.",
     input_schema: {
       type: "object",
-      properties: { reason: { type: "string" } },
+      properties: {
+        reason: { type: "string" },
+        summary: {
+          type: "string",
+          description:
+            "Short customer summary with the order or book involved. No callback or deadline promises.",
+        },
+      },
       required: ["reason"],
     },
   },
@@ -188,14 +195,8 @@ function systemPrompt(input: {
     canLookup
       ? "When a customer sends an image, use it to identify what they are asking about. An image is not proof of current stock or price; use lookup_products for catalogue facts. If the image is unclear, ask one clarifying question."
       : "When a customer sends an image, use it to understand their question. Do not infer current stock or price from an image; ask the team to confirm unavailable facts.",
-    // This used to claim the opposite, while the code returned early on a
-    // flagged conversation — so the assistant would sign off mid-thought and
-    // the customer got silence.
-    "Flagging a conversation hands it to a person and ends your part in it, so say something complete before you flag: what you have understood, and that a colleague is taking over.",
-    // The persona a business configures may itself promise a response time —
-    // the drafted default promises 24 hours — so the rule is against inventing
-    // one, not against saying the one it was given.
-    "Do not invent a callback time, deadline, price or commitment on the team's behalf. Only state one that is in your persona or the trusted business context.",
+    "Whenever a person needs to take over, or you would say the team will follow up or confirm something, call flag_for_team with a reason and short customer summary. The server saves the handoff, sends one acknowledgement, and switches the chat to Manual. Do not claim the team was notified, add another handoff message, or promise a callback time or response deadline.",
+    "Do not invent a price or commitment on the team's behalf. Only quote confirmed business facts from trusted context or tool results.",
     input.canReadClientData
       ? "This client is verified, so their own SEO data is available to you through lookup_client_data. Use it before saying you cannot see something, and quote its numbers exactly. If it says nothing has been recorded, say that plainly and offer to have the team look, rather than guessing or flagging."
       : "",

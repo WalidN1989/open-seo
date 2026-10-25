@@ -1,3 +1,4 @@
+import { cancelStaleWhatsappReplies } from "./cancelStaleWhatsappReplies";
 import { optOutChange } from "../outreachRules";
 import { whatsappPerformance } from "@/server/features/performance/repositories/operations";
 /* oxlint-disable max-lines */
@@ -29,7 +30,6 @@ import {
   whatsappConnections,
   whatsappConversations,
   whatsappMessages,
-  whatsappReplyJobs,
   whatsappContactProfiles,
   whatsappTags,
   whatsappContactTagAssignments,
@@ -330,21 +330,6 @@ async function getWhatsappConversationHistory(
     .orderBy(desc(whatsappMessages.createdAt))
     .limit(24);
   return rows.toReversed();
-}
-
-async function flagWhatsappConversationForTeam(
-  organizationId: string,
-  conversationId: string,
-) {
-  return db
-    .update(whatsappConversations)
-    .set({ status: "pending" })
-    .where(
-      and(
-        eq(whatsappConversations.organizationId, organizationId),
-        eq(whatsappConversations.id, conversationId),
-      ),
-    );
 }
 
 async function getIntegrationByProvider(
@@ -785,30 +770,7 @@ async function updateWhatsappConversation(
         ),
       ),
     ...(input.replyMode
-      ? [
-          tx
-            .delete(whatsappReplyJobs)
-            .where(
-              and(
-                eq(whatsappReplyJobs.organizationId, organizationId),
-                eq(whatsappReplyJobs.conversationId, conversationId),
-                sql`(${whatsappReplyJobs.replyRevision} <> (select reply_revision from whatsapp_conversations where id = ${conversationId} and organization_id = ${organizationId}) or (select reply_mode from whatsapp_conversations where id = ${conversationId} and organization_id = ${organizationId}) = 'manual')`,
-              ),
-            ),
-          // Failed unsent rows stay out of outreach/model-history calculations.
-          tx
-            .update(whatsappMessages)
-            .set({ status: "failed" })
-            .where(
-              and(
-                eq(whatsappMessages.organizationId, organizationId),
-                eq(whatsappMessages.conversationId, conversationId),
-                eq(whatsappMessages.status, "queued"),
-                isNotNull(whatsappMessages.autoReplyRevision),
-                sql`(${whatsappMessages.autoReplyRevision} <> (select reply_revision from whatsapp_conversations where id = ${conversationId} and organization_id = ${organizationId}) or (select reply_mode from whatsapp_conversations where id = ${conversationId} and organization_id = ${organizationId}) = 'manual')`,
-              ),
-            ),
-        ]
+      ? cancelStaleWhatsappReplies(tx, organizationId, conversationId)
       : []),
   ]);
   const [row] = await db
@@ -1531,7 +1493,6 @@ export const CommunicationsRepository = {
   endVoiceConversation,
   deleteVoiceConversations,
   listVoiceConversationIds,
-  flagWhatsappConversationForTeam,
   getIntegrationsWorkspace,
   findWhatsappConnectionByPhoneNumberId,
   getIntegrationByProvider,

@@ -1,4 +1,4 @@
-import { and, asc, eq, ne } from "drizzle-orm";
+import { and, asc, eq, ne, isNotNull } from "drizzle-orm";
 import { db } from "@/db";
 import { crmCompanies, crmLeads, crmReminders } from "@/db/schema";
 
@@ -7,7 +7,11 @@ function now() {
 }
 
 /** A member's reminders with the lead's company, for the bell and popup. */
-async function listForMember(organizationId: string, memberId: string) {
+async function listForMember(
+  organizationId: string,
+  memberId: string,
+  whatsappOnly = false,
+) {
   return db
     .select({
       reminder: crmReminders,
@@ -33,6 +37,9 @@ async function listForMember(organizationId: string, memberId: string) {
       and(
         eq(crmReminders.organizationId, organizationId),
         eq(crmReminders.memberId, memberId),
+        whatsappOnly
+          ? isNotNull(crmReminders.whatsappConversationId)
+          : undefined,
       ),
     )
     .orderBy(asc(crmReminders.remindAt))
