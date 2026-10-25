@@ -222,6 +222,7 @@ describe("the module registry", () => {
     );
     expect(surfaces.toSorted()).toEqual([
       "callSurface",
+      "caseSurface",
       "commerceSurface",
       "crmSurface",
       "emailSurface",
@@ -250,5 +251,13 @@ describe("the module registry", () => {
       expect(withheld).toContain("action:");
       expect(withheld).toContain("because:");
     }
+  });
+});
+
+describe("the external case MCP surface", () => {
+  it("exposes only the requested storage and read tools", () => {
+    expect(declaredToolNames(source("tools/case-tools.ts")).toSorted()).toEqual(
+      ["create_case", "get_attention_list", "list_cases", "update_case"],
+    );
   });
 });

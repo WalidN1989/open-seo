@@ -161,12 +161,13 @@ product content under Open SEO's own name.
 
 ### Voice calls — organization-scoped, read-only
 
-`list_calls(organizationId?, sinceHours?, limit?)` and
+`list_calls(organizationId?, sinceHours?, limit?, direction?)` and
 `get_call(callId, organizationId?)` reuse the stored phone-call data and check
 workspace membership plus the voice module's view permission on every read.
 Start times include the UTC offset (`Z`) and an explicit `timezone: "UTC"`;
 durations are in seconds. Responses include caller/called numbers, CRM contact
-and lead, direction, outcome, voice-agent summary and the full transcript.
+and lead, direction, callee name, linked case and voice-agent summary. Full
+transcripts, captured fields and recording lookup remain in `get_call`.
 Lists order by call start time, default to 20 records, and accept at most 50.
 `sinceHours` filters by start time, using creation time only if start is absent.
 
@@ -182,3 +183,17 @@ No dialing, send or voice-configuration tools are exposed.
 project's existing domain, allowing callers to map projects to workspaces.
 Quotes continue to require the invoicing entitlement and member permission;
 there is no MCP-specific permission bypass.
+
+### External assistant cases — organization-scoped storage
+
+`get_attention_list`, `create_case`, `update_case` and `list_cases` add the external
+assistant's case workflow. Reads require Voice view access; writes require Voice
+manage permission and validate explicit links in their own modules/workspace.
+Attention checks additionally restrict WhatsApp/SMS data to accessible modules.
+No dialing, scheduling, escalation, model execution, policy-editing or deletion
+capability is exposed. Existing WhatsApp and SMS tools are unchanged.
+
+The attention cursor returns current changes and closed/resolved clears with
+bounded previews; read tools never persist cursors or acknowledge records.
+See [VOICE_CASES_MCP.md](VOICE_CASES_MCP.md) for the contract, stored policy,
+webhook setup and migration/rollback notes.

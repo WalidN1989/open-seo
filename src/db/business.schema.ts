@@ -1126,6 +1126,7 @@ export const voicePhoneCalls = sqliteTable(
     durationSeconds: integer("duration_seconds"),
     summary: text("summary"),
     callSuccessful: text("call_successful"),
+    recordingUrl: text("recording_url"),
     // What the agent was configured to capture, as {field: value}.
     capturedJson: text("captured_json").notNull().default("{}"),
     transcriptJson: text("transcript_json").notNull().default("[]"),
@@ -2613,3 +2614,136 @@ export const voiceBookLinkSettings = sqliteTable("voice_book_link_settings", {
   enabled: integer("enabled", { mode: "boolean" }).notNull().default(false),
   startedAt: text("started_at"),
 });
+
+/** Data owned by an external assistant; no calling or scheduling lives here. */
+export const voiceCases = sqliteTable(
+  "voice_cases",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    customerName: text("customer_name").notNull(),
+    customerNumber: text("customer_number"),
+    contactId: text("contact_id").references(() => crmContacts.id, {
+      onDelete: "set null",
+    }),
+    leadId: text("lead_id").references(() => crmLeads.id, {
+      onDelete: "set null",
+    }),
+    sourceCallId: text("source_call_id").references(() => voicePhoneCalls.id, {
+      onDelete: "set null",
+    }),
+    whatsappConversationId: text("whatsapp_conversation_id").references(
+      () => whatsappConversations.id,
+      { onDelete: "set null" },
+    ),
+    smsConversationId: text("sms_conversation_id").references(
+      () => smsConversations.id,
+      { onDelete: "set null" },
+    ),
+    orderId: text("order_id").references(() => commerceOrders.id, {
+      onDelete: "set null",
+    }),
+    orderOrTrackingNumber: text("order_or_tracking_number"),
+    reason: text("reason").notNull(),
+    status: text("status", {
+      enum: [
+        "open",
+        "umi_called",
+        "umi_agreed",
+        "waiting_crm_update",
+        "closed",
+      ],
+    })
+      .notNull()
+      .default("open"),
+    callAttempts: integer("call_attempts").notNull().default(0),
+    reminderCount: integer("reminder_count").notNull().default(0),
+    lastContactTime: text("last_contact_time"),
+    lastOutcome: text("last_outcome"),
+    notes: text("notes"),
+    readyToClose: integer("ready_to_close", { mode: "boolean" })
+      .notNull()
+      .default(false),
+    readyReason: text("ready_reason"),
+    createdAt: createdAt(),
+    updatedAt: text("updated_at")
+      .notNull()
+      .default(sql`(current_timestamp)`),
+    closedAt: text("closed_at"),
+  },
+  (t) => [
+    index("voice_cases_org_status_idx").on(t.organizationId, t.status),
+    index("voice_cases_org_updated_idx").on(t.organizationId, t.updatedAt),
+  ],
+);
+
+export const voiceCaseCalls = sqliteTable(
+  "voice_case_calls",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    caseId: text("case_id")
+      .notNull()
+      .references(() => voiceCases.id, { onDelete: "cascade" }),
+    externalConversationId: text("external_conversation_id").notNull(),
+  },
+  (t) => [
+    uniqueIndex("voice_case_calls_org_external_idx").on(
+      t.organizationId,
+      t.externalConversationId,
+    ),
+    index("voice_case_calls_case_idx").on(t.organizationId, t.caseId),
+  ],
+);
+
+export const voiceOutboundPolicies = sqliteTable("voice_outbound_policies", {
+  organizationId: text("organization_id")
+    .primaryKey()
+    .references(() => organization.id, { onDelete: "cascade" }),
+  calleeName: text("callee_name").notNull().default("Umi"),
+  timezone: text("timezone").notNull().default("Asia/Colombo"),
+  windowStart: text("window_start").notNull().default("08:00"),
+  windowEnd: text("window_end").notNull().default("22:00"),
+  customerGapHours: integer("customer_gap_hours").notNull().default(4),
+  dailyCallLimit: integer("daily_call_limit").notNull().default(5),
+  noAnswerRetryMinutes: integer("no_answer_retry_minutes")
+    .notNull()
+    .default(30),
+  noAnswerRetries: integer("no_answer_retries").notNull().default(1),
+  maxReminders: integer("max_reminders").notNull().default(3),
+});
+
+/** One current revision per source, not an ever-growing in-memory cursor map. */
+export const attentionHeads = sqliteTable("attention_heads", {
+  organizationId: text("organization_id")
+    .primaryKey()
+    .references(() => organization.id, { onDelete: "cascade" }),
+  revision: integer("revision").notNull().default(0),
+});
+export const attentionSources = sqliteTable(
+  "attention_sources",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    kind: text("kind", { enum: ["call", "whatsapp", "sms", "case"] }).notNull(),
+    entityId: text("entity_id").notNull(),
+    revision: integer("revision").notNull(),
+  },
+  (t) => [
+    uniqueIndex("attention_sources_org_kind_entity_idx").on(
+      t.organizationId,
+      t.kind,
+      t.entityId,
+    ),
+    index("attention_sources_org_revision_idx").on(
+      t.organizationId,
+      t.revision,
+    ),
+  ],
+);

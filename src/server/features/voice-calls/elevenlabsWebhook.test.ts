@@ -6,6 +6,7 @@ import {
   shortNeed,
   normalisePhone,
   readPostCall,
+  readOutboundFailure,
   verifyElevenLabsSignature,
 } from "./elevenlabsWebhook";
 
@@ -277,4 +278,60 @@ describe("readPostCall", () => {
       readPostCall({ type: "post_call_audio", data: { conversation_id: "c" } }),
     ).toBeNull();
   });
+});
+
+it("reads exact outbound callee, case dynamic variable and supplied recording metadata", async () => {
+  const report = readPostCall(
+    {
+      type: "post_call_transcription",
+      data: {
+        conversation_id: "outbound-test",
+        recording_url: "https://recordings.example.test/audio.mp3",
+        conversation_initiation_client_data: {
+          dynamic_variables: { case_id: "explicit-case" },
+        },
+        metadata: {
+          phone_call: {
+            direction: "outbound",
+            external_number: "0777995267",
+            agent_number: "+94110000000",
+          },
+        },
+      },
+    },
+    "LK",
+  );
+  expect(report).toMatchObject({
+    direction: "outbound",
+    calledNumber: "+94777995267",
+    callerNumber: "+94110000000",
+    caseId: "explicit-case",
+    recordingUrl: "https://recordings.example.test/audio.mp3",
+  });
+});
+
+it("stores provider no-answer failure without inferring a case or successful callback", () => {
+  expect(
+    readOutboundFailure(
+      {
+        type: "call_initiation_failure",
+        data: {
+          conversation_id: "failed-call",
+          agent_id: "test-agent",
+          failure_reason: "no-answer",
+          metadata: { body: { To: "+94779990000", From: "+94110000000" } },
+        },
+      },
+      "LK",
+    ),
+  ).toMatchObject({
+    direction: "outbound",
+    conversationId: "failed-call",
+    caseId: null,
+    calledNumber: "+94779990000",
+    callSuccessful: "no-answer",
+    durationSeconds: 0,
+    transcript: [],
+  });
+  expect(readOutboundFailure({ type: "post_call_audio" }, "LK")).toBeNull();
 });

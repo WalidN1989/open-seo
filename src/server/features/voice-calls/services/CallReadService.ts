@@ -80,31 +80,38 @@ async function list(
   organizationId: string,
   userId: string,
   baseUrl: string,
-  options: { sinceHours?: number; limit?: number },
+  options: {
+    sinceHours?: number;
+    limit?: number;
+    direction?: "inbound" | "outbound";
+  },
 ) {
   const rows = await PhoneCallService.listCalls(organizationId, userId, {
     limit: options.limit ?? 20,
+    ...(options.direction ? { direction: options.direction } : {}),
     since:
       options.sinceHours === undefined
         ? undefined
         : new Date(Date.now() - options.sinceHours * 3_600_000).toISOString(),
   });
-  // Bound provider concurrency while leaving transcripts available if audio lookup fails.
-  const calls = [];
-  for (let index = 0; index < rows.length; index += 10) {
-    calls.push(
-      ...(await Promise.all(
-        rows.slice(index, index + 10).map(async (call) => ({
-          ...call,
-          organizationId,
-          timezone: "UTC",
-          outcome: call.callSuccessful,
-          ...(await recordingInfo(organizationId, call.id, baseUrl)),
-        })),
-      )),
-    );
-  }
-  return calls;
+  return rows.map((call) => ({
+    id: call.id,
+    organizationId,
+    provider: call.provider,
+    externalConversationId: call.externalConversationId,
+    direction: call.direction,
+    calleeName: call.calleeName,
+    caseId: call.caseId,
+    callerNumber: call.callerNumber,
+    calledNumber: call.calledNumber,
+    startedAt: call.startedAt,
+    timezone: "UTC",
+    durationSeconds: call.durationSeconds,
+    outcome: call.callSuccessful,
+    summary: call.summary?.slice(0, 240) ?? null,
+    contact: call.contact,
+    lead: call.lead,
+  }));
 }
 
 async function detail(

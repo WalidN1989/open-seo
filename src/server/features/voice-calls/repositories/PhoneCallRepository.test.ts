@@ -16,6 +16,7 @@ beforeAll(async () => {
   state.db = drizzle(client);
   for (const table of [
     schema.voicePhoneCalls,
+    schema.voiceCaseCalls,
     schema.whatsappMessages,
     schema.crmContacts,
     schema.crmLeads,
@@ -105,4 +106,28 @@ it("shows live message delivery status only for a message in the same workspace"
       (row) => row.call.id === "fallback",
     )?.bookLinkMessage?.status,
   ).toBe("read");
+});
+
+it("keeps inbound conflicts fatal, while outbound storage can safely deduplicate", async () => {
+  await client.execute(
+    "CREATE UNIQUE INDEX fixture_phone_org_conv ON voice_phone_calls(organization_id, external_conversation_id)",
+  );
+  const row = {
+    id: "insert-once",
+    organizationId: "org-a",
+    externalConversationId: "insert-test",
+    provider: "elevenlabs",
+  };
+  await PhoneCallRepository.insertCall(row);
+  await expect(
+    PhoneCallRepository.insertCall({ ...row, id: "second-inbound" }),
+  ).rejects.toThrow();
+  expect(
+    (
+      await PhoneCallRepository.insertCall(
+        { ...row, id: "second-outbound" },
+        { deduplicate: true },
+      )
+    ).id,
+  ).toBe("insert-once");
 });

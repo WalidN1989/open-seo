@@ -39,7 +39,13 @@ function fieldLabel(key: string) {
     .replace(/^\w/, (c) => c.toUpperCase());
 }
 
-export function PhoneCallsSection() {
+export function PhoneCallsSection({
+  direction,
+  onCase,
+}: {
+  direction?: "outbound";
+  onCase?: (id: string) => void;
+}) {
   const client = useQueryClient();
   const send = useMutation({
     mutationFn: (callId: string) => sendCallBookLink({ data: { callId } }),
@@ -50,8 +56,8 @@ export function PhoneCallsSection() {
     onError: (e) => toast.error(getStandardErrorMessage(e)),
   });
   const query = useQuery({
-    queryKey: ["voice", "phone-calls"],
-    queryFn: () => listPhoneCalls(),
+    queryKey: ["voice", "phone-calls", direction],
+    queryFn: () => listPhoneCalls({ data: { direction } }),
   });
   const [open, setOpen] = useState<string | null>(null);
   const calls = (query.data ?? []).filter(
@@ -125,13 +131,19 @@ export function PhoneCallsSection() {
                     className={`badge badge-sm badge-outline ${from.badge}`}
                     title={`${from.channel} call`}
                   >
-                    {from.agent} · {from.channel}
+                    {from.agent} ·{" "}
+                    {call.direction === "outbound" ? "Outbound" : "Inbound"}
                   </span>
                   <span className="font-medium">
-                    {call.contact?.name ?? "Unknown caller"}
+                    {call.contact?.name ??
+                      (call.direction === "outbound"
+                        ? "Unknown callee"
+                        : "Unknown caller")}
                   </span>
                   <span className="text-sm text-base-content/60">
-                    {call.callerNumber ?? "no number"}
+                    {(call.direction === "outbound"
+                      ? call.calledNumber
+                      : call.callerNumber) ?? "no number"}
                   </span>
                   {call.captured.service_interest ? (
                     <span className="voice-call-interest badge badge-ghost badge-sm">
@@ -145,6 +157,22 @@ export function PhoneCallsSection() {
                     className={`size-4 shrink-0 ${expanded ? "rotate-180" : ""}`}
                   />
                 </button>
+                {call.direction === "outbound" ? (
+                  call.caseId ? (
+                    <button
+                      className="link mt-2 text-sm"
+                      onClick={() => {
+                        if (call.caseId) onCase?.(call.caseId);
+                      }}
+                    >
+                      View linked case
+                    </button>
+                  ) : (
+                    <p className="mt-2 text-xs opacity-60">
+                      No case linked yet
+                    </p>
+                  )
+                ) : null}
                 {call.summary ? (
                   <p
                     className={`voice-call-summary mt-3 text-sm text-base-content/75 ${expanded ? "" : "line-clamp-2"}`}

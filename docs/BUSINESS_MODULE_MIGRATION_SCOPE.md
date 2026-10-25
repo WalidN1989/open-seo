@@ -2413,3 +2413,42 @@ approval redirects fail closed and message requests use the supported mode.
 No production image, activation cutoff, customer message or OTP action changed
 while preparing this correction. Include the compatibility fix in the reviewed
 release; do not deploy/activate the earlier unsupported request mode.
+
+### 2026-10-25 — external assistant cases and outbound logging (release pending)
+
+Owner approved a database/MCP workflow for an external assistant to run routines
+and outbound calls. No new app-side schedules, calling, retries, escalation or
+model requests are added. Existing inbound processing, WhatsApp replies, order
+sync and provider configuration remain independent and unchanged.
+
+The signed ElevenLabs post-call receiver now stores outbound calls without
+inbound welcome/book-link/recap/quote effects. It matches the actual callee and
+links only explicit case/provider-conversation IDs, supporting either webhook or
+assistant-update arrival order. Voice activity gains direction badges, Outbound
+and Cases views; list/get calls include outbound identity/case information. Number
+redaction was explicitly withdrawn by the owner for both existing and new paths.
+
+New tools are get_attention_list, create_case, update_case and list_cases. The
+attention check uses bounded previews and transactional per-organization source
+revisions; no full transcripts, provider/model calls, cursor writes or growing
+memory map. Database-only helpers flag explicit chat/CRM/order human activity as
+ready to close, but only the assistant explicitly closes the case. The agreed
+Sri Lanka calling policy is stored for the external assistant, not enforced by
+an app dialing system. See VOICE_CASES_MCP.md for the exact contract and setup.
+
+Additive SQLite 0113 / Postgres 0092 migrations seed source references and policy
+defaults without replaying business records or sending messages. Code rollback
+can leave these tables and triggers in place; preserve case data. Local tests,
+MCP protocol and migration checks use synthetic data only. No merge, deployment,
+provider configuration change, production migration or customer send is authorized
+by this implementation checkpoint. A production backup/restore drill, owner
+release approval, and long-running runtime stability check remain release gates.
+
+Validation includes real local MCP discovery/create/update/list/cursor checks,
+desktop and 390px browser navigation with synthetic outbound-to-case links,
+SQLite readiness/delta regressions, full PostgreSQL migration preservation and
+transaction visibility, twelve concurrent inserts and twenty mixed mode/case
+updates. An independent first-time MCP consumer completed the synthetic workflow
+without source access. Routine responses stayed small; the pre-existing global
+MCP tool catalogue is still large and was not removed or narrowed in this work.
+No long-running runtime stability pass is claimed by these bounded checks.

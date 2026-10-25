@@ -14,6 +14,7 @@ const organizationId = z
   );
 const listInput = {
   organizationId,
+  direction: z.enum(["inbound", "outbound"]).optional(),
   sinceHours: z
     .number()
     .positive()
@@ -52,6 +53,8 @@ const callOutputSchema = z
     timezone: z.literal("UTC"),
     durationSeconds: z.number().nullable(),
     direction: z.string().nullable(),
+    calleeName: z.string().nullable(),
+    caseId: z.string().nullable(),
     outcome: z.string().nullable(),
     summary: z.string().nullable(),
     transcript: z.array(
@@ -85,10 +88,16 @@ export const listCallsTool = {
   config: {
     title: "List voice agent calls",
     description:
-      "Read stored voice agent calls with caller number, CRM contact/lead, start time in UTC, duration in seconds, direction, outcome, summary and full transcript. Includes a recording URL when provider audio exists; playback requires signing into Digital Urgency with voice access in this workspace. recordingStatus explains missing audio. Uses no research credits.",
+      "Read compact inbound/outbound call summaries, direction, callee name and case ID. Full transcripts and recording details stay in get_call. No provider or model requests; uses no research credits.",
     inputSchema: listInput,
     outputSchema: {
-      calls: z.array(callOutputSchema),
+      calls: z.array(
+        callOutputSchema.omit({
+          transcript: true,
+          recordingUrl: true,
+          recordingStatus: true,
+        }),
+      ),
       ...optionalMetaOutputSchema,
     },
     annotations,
@@ -106,7 +115,7 @@ export const listCallsTool = {
           ? calls
               .map(
                 (call) =>
-                  `${call.id} · ${call.startedAt} UTC · ${call.contact?.name ?? call.callerNumber ?? "Unknown caller"} · ${call.durationSeconds ?? "unknown"}s · ${call.direction ?? "unknown direction"} · ${call.outcome ?? "unknown outcome"} · ${call.summary ?? "No summary"} · recording: ${call.recordingUrl ?? call.recordingStatus}`,
+                  `${call.id} · ${call.startedAt} UTC · ${call.direction === "outbound" ? (call.calleeName ?? call.calledNumber ?? "Unknown callee") : (call.contact?.name ?? call.callerNumber ?? "Unknown caller")} · ${call.durationSeconds ?? "unknown"}s · ${call.direction ?? "unknown direction"} · ${call.outcome ?? "unknown outcome"} · ${call.summary ?? "No summary"} · case ${call.caseId ?? "unlinked"} · conversation ${call.externalConversationId}`,
               )
               .join("\n")
           : "No calls match this time range.",
@@ -137,7 +146,7 @@ export const getCallTool = {
         context.baseUrl,
       );
       return mcpResponse({
-        text: `${call.id} · ${call.startedAt} UTC · ${call.contact?.name ?? call.callerNumber ?? "Unknown caller"} · ${call.durationSeconds ?? "unknown"}s · ${call.direction ?? "unknown direction"} · ${call.outcome ?? "unknown outcome"}\n${call.summary ?? "No summary"}\nRecording: ${call.recordingUrl ?? call.recordingStatus}\n${call.transcript.map((turn) => `${turn.role}: ${turn.message}`).join("\n")}`,
+        text: `${call.id} · ${call.startedAt} UTC · ${call.direction === "outbound" ? (call.calleeName ?? call.calledNumber ?? "Unknown callee") : (call.contact?.name ?? call.callerNumber ?? "Unknown caller")} · ${call.durationSeconds ?? "unknown"}s · ${call.direction ?? "unknown direction"} · ${call.outcome ?? "unknown outcome"}\n${call.summary ?? "No summary"}\nRecording: ${call.recordingUrl ?? call.recordingStatus}\n${call.transcript.map((turn) => `${turn.role}: ${turn.message}`).join("\n")}`,
         structuredContent: { call },
       });
     },

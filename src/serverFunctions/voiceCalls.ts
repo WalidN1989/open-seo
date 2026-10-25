@@ -8,8 +8,13 @@ import { requireAuthenticatedContext } from "./middleware";
 /** Calls answered by the business's hosted voice agent, newest first. */
 export const listPhoneCalls = createServerFn({ method: "GET" })
   .middleware(requireAuthenticatedContext)
-  .handler(({ context }) =>
-    PhoneCallService.listCalls(context.organizationId, context.userId),
+  .validator(
+    z
+      .object({ direction: z.enum(["inbound", "outbound"]).optional() })
+      .optional(),
+  )
+  .handler(({ context, data }) =>
+    PhoneCallService.listCalls(context.organizationId, context.userId, data),
   );
 
 export const getCallBookLinkSettings = createServerFn({ method: "GET" })
