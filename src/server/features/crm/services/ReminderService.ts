@@ -29,9 +29,20 @@ async function hasLeads(organizationId: string, userId: string) {
 }
 
 async function list(organizationId: string, userId: string) {
-  if (!(await hasLeads(organizationId, userId))) return [];
+  const leads = await hasLeads(organizationId, userId);
+  if (!leads) {
+    try {
+      await BusinessModuleService.requireAccess(
+        organizationId,
+        userId,
+        "whatsapp",
+      );
+    } catch {
+      return [];
+    }
+  }
   const memberId = await memberFor(organizationId, userId);
-  const rows = await Repo.listForMember(organizationId, memberId);
+  const rows = await Repo.listForMember(organizationId, memberId, !leads);
   return rows.map((row) => ({
     ...row.reminder,
     label: row.companyName ?? row.leadTitle ?? null,

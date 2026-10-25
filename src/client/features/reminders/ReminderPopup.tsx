@@ -38,6 +38,8 @@ export function ReminderPopup() {
   }, []);
 
   useEffect(() => {
+    for (const id of popped)
+      if (!reminders.some((reminder) => reminder.id === id)) popped.delete(id);
     if (current) return;
     const next = reminders.find(
       (reminder) => isDue(reminder, now) && !popped.has(reminder.id),
@@ -74,7 +76,13 @@ export function ReminderPopup() {
     close();
   };
   const open = () => {
-    if (current.leadId) {
+    if (current.whatsappConversationId) {
+      void navigate({
+        to: "/p/$projectId/modules/$moduleKey",
+        params: { projectId: workspaceProjectAddress, moduleKey: "whatsapp" },
+        search: { conversation: current.whatsappConversationId },
+      });
+    } else if (current.leadId) {
       void navigate({
         to: "/p/$projectId/modules/leads/$leadId",
         params: { projectId: workspaceProjectAddress, leadId: current.leadId },

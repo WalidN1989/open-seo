@@ -1,3 +1,4 @@
+import { HandoffSettings } from "./HandoffSettings";
 import { useState } from "react";
 import { Sparkles } from "lucide-react";
 import {
@@ -39,11 +40,14 @@ export function AssistantConfigSection({
   }
   if (!query.data) return null;
   return (
-    <ConfigForm
-      key={query.data.settings.updatedAt ?? "defaults"}
-      config={query.data}
-      channel={channel}
-    />
+    <div className="grid gap-5">
+      <ConfigForm
+        key={query.data.settings.updatedAt ?? "defaults"}
+        config={query.data}
+        channel={channel}
+      />
+      {channel === "whatsapp" ? <HandoffSettings /> : null}
+    </div>
   );
 }
 
@@ -308,16 +312,25 @@ function ConfigForm({
           }
         />
       </Field>
-      <Field
-        label="Hand-off message"
-        hint="Sent once when an escalation keyword matches."
-      >
-        <input
-          className={input}
-          value={form.handoffMessage}
-          onChange={(event) => set("handoffMessage", event.currentTarget.value)}
-        />
-      </Field>
+      {channel === "email" ? (
+        <Field
+          label="Hand-off message"
+          hint="Sent once when an escalation keyword matches."
+        >
+          <input
+            className={input}
+            value={form.handoffMessage}
+            onChange={(event) =>
+              set("handoffMessage", event.currentTarget.value)
+            }
+          />
+        </Field>
+      ) : (
+        <p className="text-sm text-base-content/60">
+          On handoff, one acknowledgement confirms that the request is saved.
+          Automated replies then pause while a person reviews it.
+        </p>
+      )}
 
       <section className="rounded-xl border border-base-300 p-4">
         <div className="mb-2 flex items-center gap-2">

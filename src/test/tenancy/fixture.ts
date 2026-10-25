@@ -85,11 +85,11 @@ export async function createTenancyFixture() {
     await client.execute(statement);
   }
   const db = drizzle(client);
-  await seed(db);
+  await seedTenancyFixture(db);
   return { db, client };
 }
 
-async function seed(db: TestDb) {
+export async function seedTenancyFixture(db: TestDb) {
   await db
     .insert(schema.user)
     .values([

@@ -1,3 +1,4 @@
+import type * as HandoffModule from "@/server/features/communications/services/WhatsappHandoffService";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { eq } from "drizzle-orm";
 import {
@@ -28,10 +29,10 @@ const mockEnv = vi.hoisted(
 vi.mock("cloudflare:workers", () => ({ env: mockEnv }));
 
 const envMocks = vi.hoisted(() => ({
-  values: { BETTER_AUTH_SECRET: "a-test-signing-secret" } as Record<
-    string,
-    string
-  >,
+  values: {
+    BETTER_AUTH_SECRET: "a-test-signing-secret",
+    BETTER_AUTH_URL: "https://du.example",
+  } as Record<string, string>,
 }));
 vi.mock("@/server/lib/runtime-env", () => ({
   getOptionalEnvValue: (name: string) => Promise.resolve(envMocks.values[name]),
@@ -80,6 +81,7 @@ let connection: NonNullable<
     >
   >
 >;
+let handoff: typeof HandoffModule.WhatsappHandoffService;
 let counter = 0;
 
 async function inbound(body: string, sender = "+61400000099") {
@@ -101,6 +103,7 @@ async function inbound(body: string, sender = "+61400000099") {
     ingestion.conversationId,
     message,
   );
+  await handoff.runDue(ingestion.conversationId);
   return { handled, conversationId: ingestion.conversationId };
 }
 
@@ -120,6 +123,8 @@ beforeAll(async () => {
     await import("@/server/features/clients/services/ClientVerificationService"));
   ({ WhatsappAssistantRepository: Repo } =
     await import("@/server/features/communications/repositories/WhatsappAssistantRepository"));
+  ({ WhatsappHandoffService: handoff } =
+    await import("@/server/features/communications/services/WhatsappHandoffService"));
   schema = await import("@/db/schema");
   await db.insert(schema.organizationModuleEntitlements).values({
     id: "clients_access_a",
@@ -172,8 +177,8 @@ describe("escalation and human takeover", () => {
     const first = await inbound("I want to speak to a HUMAN", "+61400000002");
     expect(first.handled).toBe(true);
     expect(sent.calls).toHaveLength(1);
-    // The default hand-off promises a reply, not a specific wording.
-    expect(sent.calls[0]?.body).toContain("24 hours");
+    // The durable acknowledgement makes no callback or deadline promise.
+    expect(sent.calls[0]?.body).toContain("pause automated replies");
     const [conversation] = await db
       .select({ status: schema.whatsappConversations.status })
       .from(schema.whatsappConversations)
@@ -211,11 +216,11 @@ async function registerClient() {
 }
 
 describe("a client proving who they are", () => {
-  it("verifies a code sent after the chat was handed to a person", async () => {
+  it("stays silent for verification messages while the handoff is Manual", async () => {
     await registerClient();
     const sender = "+61400000010";
 
-    // Escalate first: this is the case that used to fail silently.
+    // A handoff owns the Manual revision; verification must not bypass it.
     const first = await inbound("can I speak to a human please", sender);
     expect(sent.calls).toHaveLength(1);
     const [escalated] = await db
@@ -226,20 +231,18 @@ describe("a client proving who they are", () => {
 
     const { handled } = await inbound("/verify K7MN-4PQR", sender);
     expect(handled).toBe(true);
-    expect(sent.calls).toHaveLength(2);
-    expect(sent.calls[1]?.body).toContain("Beta");
+    expect(sent.calls).toHaveLength(1);
 
     const contacts = await db
       .select()
       .from(schema.clientContacts)
       .where(eq(schema.clientContacts.identifier, sender));
-    expect(contacts).toHaveLength(1);
-    expect(contacts[0]?.clientAccountId).toBe("client_beta");
+    expect(contacts).toHaveLength(0);
 
-    // Verifying does not take the chat back off the person handling it.
+    // A new message also leaves Manual untouched.
     const after = await inbound("so about my order", sender);
     expect(after.handled).toBe(true);
-    expect(sent.calls).toHaveLength(2);
+    expect(sent.calls).toHaveLength(1);
   });
 
   it("turns a wrong code away with the attempts left, and never reaches the model", async () => {
@@ -306,6 +309,7 @@ describe("handing a flagged chat back to the assistant", () => {
     await CommunicationsRepository.updateWhatsappConversation(ORG_A, {
       conversationId: flagged.conversationId,
       status: "open",
+      replyMode: "auto",
     });
 
     await inbound("what are your opening hours", sender);

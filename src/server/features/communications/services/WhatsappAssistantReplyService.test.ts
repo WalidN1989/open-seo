@@ -22,11 +22,13 @@ const mocks = vi.hoisted(() => ({
   flag: vi.fn(),
   order: vi.fn(),
 }));
+vi.mock("./WhatsappHandoffService", () => ({
+  WhatsappHandoffService: { start: mocks.flag },
+}));
 vi.mock("../repositories/WhatsappReplyControlRepository", () => ({
   WhatsappReplyControlRepository: {
     isCurrent: mocks.isCurrent,
     claimDispatch: mocks.claim,
-    flagForTeam: mocks.flag,
     createOrder: mocks.order,
   },
 }));

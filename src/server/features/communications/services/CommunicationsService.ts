@@ -1,3 +1,4 @@
+import { WhatsappHandoffOutboxRepository } from "../repositories/WhatsappHandoffOutboxRepository";
 /* oxlint-disable max-lines, max-depth, max-params */
 import { waitUntil } from "cloudflare:workers";
 import { wakeWhatsappReply } from "./WhatsappReplyWakeupService";
@@ -1526,6 +1527,12 @@ async function ingestWhatsappGroup(
   }
   for (const update of parsed.statuses) {
     await CommunicationsRepository.updateWhatsappDelivery(connection, update);
+    await WhatsappHandoffOutboxRepository.updateDelivery(
+      connection.organizationId,
+      connection.id,
+      update.externalMessageId,
+      update.status,
+    );
   }
   await CommunicationsRepository.markWhatsappConnectionConnected(connection.id);
 }
