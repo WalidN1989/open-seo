@@ -1,3 +1,4 @@
+import { usePendingHandoffs, HandoffStatus } from "./whatsapp/HandoffPending";
 /* oxlint-disable max-lines, max-lines-per-function, complexity */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
@@ -220,6 +221,7 @@ function isConversationStatusFilter(
 export function WhatsappWorkspace({
   initialConversationId,
 }: { initialConversationId?: string } = {}) {
+  const handoffs = usePendingHandoffs();
   const client = useQueryClient();
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [mobileConversationOpen, setMobileConversationOpen] = useState(
@@ -967,7 +969,13 @@ export function WhatsappWorkspace({
                                 </span>
                               </div>
                               <p className="truncate text-xs text-base-content/60">
-                                {lastMessage?.body || "No messages yet"}
+                                {handoffs.data?.some(
+                                  (row) =>
+                                    row.handoff.conversationId ===
+                                      conversation.id && row.status !== "sent",
+                                )
+                                  ? "Handoff · alert failed or queued"
+                                  : lastMessage?.body || "No messages yet"}
                               </p>
                             </div>
                           </button>
@@ -977,6 +985,12 @@ export function WhatsappWorkspace({
                   </aside>
 
                   <div className="wa-chat">
+                    {selectedConversation ? (
+                      <HandoffStatus
+                        rows={handoffs.data ?? []}
+                        conversationId={selectedConversation.id}
+                      />
+                    ) : null}
                     <header className="wa-chat-header">
                       <button
                         className="btn btn-ghost btn-square btn-sm wa-mobile-back"

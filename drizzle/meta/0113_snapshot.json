@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "22d84897-4320-4ae9-89f0-0bbeead37600",
+  "id": "c0455f07-3bc1-4d9e-8346-9f3a1e1f81f2",
   "prevId": "6dc263ac-e102-4024-9e51-e0752c975284",
   "tables": {
     "backlink_snapshots": {
@@ -4903,122 +4903,6 @@
       "uniqueConstraints": {},
       "checkConstraints": {}
     },
-    "attention_heads": {
-      "name": "attention_heads",
-      "columns": {
-        "organization_id": {
-          "name": "organization_id",
-          "type": "text",
-          "primaryKey": true,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "revision": {
-          "name": "revision",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": 0
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "attention_heads_organization_id_organization_id_fk": {
-          "name": "attention_heads_organization_id_organization_id_fk",
-          "tableFrom": "attention_heads",
-          "tableTo": "organization",
-          "columnsFrom": [
-            "organization_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "checkConstraints": {}
-    },
-    "attention_sources": {
-      "name": "attention_sources",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "text",
-          "primaryKey": true,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "organization_id": {
-          "name": "organization_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "kind": {
-          "name": "kind",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "entity_id": {
-          "name": "entity_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "revision": {
-          "name": "revision",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        }
-      },
-      "indexes": {
-        "attention_sources_org_kind_entity_idx": {
-          "name": "attention_sources_org_kind_entity_idx",
-          "columns": [
-            "organization_id",
-            "kind",
-            "entity_id"
-          ],
-          "isUnique": true
-        },
-        "attention_sources_org_revision_idx": {
-          "name": "attention_sources_org_revision_idx",
-          "columns": [
-            "organization_id",
-            "revision"
-          ],
-          "isUnique": false
-        }
-      },
-      "foreignKeys": {
-        "attention_sources_organization_id_organization_id_fk": {
-          "name": "attention_sources_organization_id_organization_id_fk",
-          "tableFrom": "attention_sources",
-          "tableTo": "organization",
-          "columnsFrom": [
-            "organization_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "checkConstraints": {}
-    },
     "business_audit_events": {
       "name": "business_audit_events",
       "columns": {
@@ -9010,6 +8894,13 @@
           "notNull": false,
           "autoincrement": false
         },
+        "whatsapp_conversation_id": {
+          "name": "whatsapp_conversation_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
         "title": {
           "name": "title",
           "type": "text",
@@ -9107,6 +8998,19 @@
           "tableTo": "crm_leads",
           "columnsFrom": [
             "lead_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "crm_reminders_whatsapp_conversation_id_whatsapp_conversations_id_fk": {
+          "name": "crm_reminders_whatsapp_conversation_id_whatsapp_conversations_id_fk",
+          "tableFrom": "crm_reminders",
+          "tableTo": "whatsapp_conversations",
+          "columnsFrom": [
+            "whatsapp_conversation_id"
           ],
           "columnsTo": [
             "id"
@@ -12599,374 +12503,6 @@
       "uniqueConstraints": {},
       "checkConstraints": {}
     },
-    "voice_case_calls": {
-      "name": "voice_case_calls",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "text",
-          "primaryKey": true,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "organization_id": {
-          "name": "organization_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "case_id": {
-          "name": "case_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "external_conversation_id": {
-          "name": "external_conversation_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        }
-      },
-      "indexes": {
-        "voice_case_calls_org_external_idx": {
-          "name": "voice_case_calls_org_external_idx",
-          "columns": [
-            "organization_id",
-            "external_conversation_id"
-          ],
-          "isUnique": true
-        },
-        "voice_case_calls_case_idx": {
-          "name": "voice_case_calls_case_idx",
-          "columns": [
-            "organization_id",
-            "case_id"
-          ],
-          "isUnique": false
-        }
-      },
-      "foreignKeys": {
-        "voice_case_calls_organization_id_organization_id_fk": {
-          "name": "voice_case_calls_organization_id_organization_id_fk",
-          "tableFrom": "voice_case_calls",
-          "tableTo": "organization",
-          "columnsFrom": [
-            "organization_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "voice_case_calls_case_id_voice_cases_id_fk": {
-          "name": "voice_case_calls_case_id_voice_cases_id_fk",
-          "tableFrom": "voice_case_calls",
-          "tableTo": "voice_cases",
-          "columnsFrom": [
-            "case_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "checkConstraints": {}
-    },
-    "voice_cases": {
-      "name": "voice_cases",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "text",
-          "primaryKey": true,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "organization_id": {
-          "name": "organization_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "customer_name": {
-          "name": "customer_name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "customer_number": {
-          "name": "customer_number",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "contact_id": {
-          "name": "contact_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "lead_id": {
-          "name": "lead_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "source_call_id": {
-          "name": "source_call_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "whatsapp_conversation_id": {
-          "name": "whatsapp_conversation_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "sms_conversation_id": {
-          "name": "sms_conversation_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "order_id": {
-          "name": "order_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "order_or_tracking_number": {
-          "name": "order_or_tracking_number",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "reason": {
-          "name": "reason",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "status": {
-          "name": "status",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": "'open'"
-        },
-        "call_attempts": {
-          "name": "call_attempts",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": 0
-        },
-        "reminder_count": {
-          "name": "reminder_count",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": 0
-        },
-        "last_contact_time": {
-          "name": "last_contact_time",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "last_outcome": {
-          "name": "last_outcome",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "notes": {
-          "name": "notes",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "ready_to_close": {
-          "name": "ready_to_close",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": false
-        },
-        "ready_reason": {
-          "name": "ready_reason",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": "(current_timestamp)"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": "(current_timestamp)"
-        },
-        "closed_at": {
-          "name": "closed_at",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        }
-      },
-      "indexes": {
-        "voice_cases_org_status_idx": {
-          "name": "voice_cases_org_status_idx",
-          "columns": [
-            "organization_id",
-            "status"
-          ],
-          "isUnique": false
-        },
-        "voice_cases_org_updated_idx": {
-          "name": "voice_cases_org_updated_idx",
-          "columns": [
-            "organization_id",
-            "updated_at"
-          ],
-          "isUnique": false
-        }
-      },
-      "foreignKeys": {
-        "voice_cases_organization_id_organization_id_fk": {
-          "name": "voice_cases_organization_id_organization_id_fk",
-          "tableFrom": "voice_cases",
-          "tableTo": "organization",
-          "columnsFrom": [
-            "organization_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "voice_cases_contact_id_crm_contacts_id_fk": {
-          "name": "voice_cases_contact_id_crm_contacts_id_fk",
-          "tableFrom": "voice_cases",
-          "tableTo": "crm_contacts",
-          "columnsFrom": [
-            "contact_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "set null",
-          "onUpdate": "no action"
-        },
-        "voice_cases_lead_id_crm_leads_id_fk": {
-          "name": "voice_cases_lead_id_crm_leads_id_fk",
-          "tableFrom": "voice_cases",
-          "tableTo": "crm_leads",
-          "columnsFrom": [
-            "lead_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "set null",
-          "onUpdate": "no action"
-        },
-        "voice_cases_source_call_id_voice_phone_calls_id_fk": {
-          "name": "voice_cases_source_call_id_voice_phone_calls_id_fk",
-          "tableFrom": "voice_cases",
-          "tableTo": "voice_phone_calls",
-          "columnsFrom": [
-            "source_call_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "set null",
-          "onUpdate": "no action"
-        },
-        "voice_cases_whatsapp_conversation_id_whatsapp_conversations_id_fk": {
-          "name": "voice_cases_whatsapp_conversation_id_whatsapp_conversations_id_fk",
-          "tableFrom": "voice_cases",
-          "tableTo": "whatsapp_conversations",
-          "columnsFrom": [
-            "whatsapp_conversation_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "set null",
-          "onUpdate": "no action"
-        },
-        "voice_cases_sms_conversation_id_sms_conversations_id_fk": {
-          "name": "voice_cases_sms_conversation_id_sms_conversations_id_fk",
-          "tableFrom": "voice_cases",
-          "tableTo": "sms_conversations",
-          "columnsFrom": [
-            "sms_conversation_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "set null",
-          "onUpdate": "no action"
-        },
-        "voice_cases_order_id_commerce_orders_id_fk": {
-          "name": "voice_cases_order_id_commerce_orders_id_fk",
-          "tableFrom": "voice_cases",
-          "tableTo": "commerce_orders",
-          "columnsFrom": [
-            "order_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "set null",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "checkConstraints": {}
-    },
     "voice_conversation_messages": {
       "name": "voice_conversation_messages",
       "columns": {
@@ -13188,109 +12724,6 @@
       "uniqueConstraints": {},
       "checkConstraints": {}
     },
-    "voice_outbound_policies": {
-      "name": "voice_outbound_policies",
-      "columns": {
-        "organization_id": {
-          "name": "organization_id",
-          "type": "text",
-          "primaryKey": true,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "callee_name": {
-          "name": "callee_name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": "'Umi'"
-        },
-        "timezone": {
-          "name": "timezone",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": "'Asia/Colombo'"
-        },
-        "window_start": {
-          "name": "window_start",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": "'08:00'"
-        },
-        "window_end": {
-          "name": "window_end",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": "'22:00'"
-        },
-        "customer_gap_hours": {
-          "name": "customer_gap_hours",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": 4
-        },
-        "daily_call_limit": {
-          "name": "daily_call_limit",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": 5
-        },
-        "no_answer_retry_minutes": {
-          "name": "no_answer_retry_minutes",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": 30
-        },
-        "no_answer_retries": {
-          "name": "no_answer_retries",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": 1
-        },
-        "max_reminders": {
-          "name": "max_reminders",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": 3
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "voice_outbound_policies_organization_id_organization_id_fk": {
-          "name": "voice_outbound_policies_organization_id_organization_id_fk",
-          "tableFrom": "voice_outbound_policies",
-          "tableTo": "organization",
-          "columnsFrom": [
-            "organization_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "checkConstraints": {}
-    },
     "voice_phone_calls": {
       "name": "voice_phone_calls",
       "columns": {
@@ -13387,13 +12820,6 @@
         },
         "call_successful": {
           "name": "call_successful",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "recording_url": {
-          "name": "recording_url",
           "type": "text",
           "primaryKey": false,
           "notNull": false,
@@ -14083,6 +13509,13 @@
         },
         "handoff_message": {
           "name": "handoff_message",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "handoff_content_sid": {
+          "name": "handoff_content_sid",
           "type": "text",
           "primaryKey": false,
           "notNull": false,
@@ -14995,6 +14428,351 @@
             "id"
           ],
           "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "whatsapp_handoff_contacts": {
+      "name": "whatsapp_handoff_contacts",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "organization_id": {
+          "name": "organization_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "phone": {
+          "name": "phone",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "enabled": {
+          "name": "enabled",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": true
+        }
+      },
+      "indexes": {
+        "whatsapp_handoff_contact_org_phone_idx": {
+          "name": "whatsapp_handoff_contact_org_phone_idx",
+          "columns": [
+            "organization_id",
+            "phone"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {
+        "whatsapp_handoff_contacts_organization_id_organization_id_fk": {
+          "name": "whatsapp_handoff_contacts_organization_id_organization_id_fk",
+          "tableFrom": "whatsapp_handoff_contacts",
+          "tableTo": "organization",
+          "columnsFrom": [
+            "organization_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "whatsapp_handoff_outbox": {
+      "name": "whatsapp_handoff_outbox",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "organization_id": {
+          "name": "organization_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "handoff_id": {
+          "name": "handoff_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "conversation_id": {
+          "name": "conversation_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "contact_id": {
+          "name": "contact_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "kind": {
+          "name": "kind",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'pending'"
+        },
+        "attempts": {
+          "name": "attempts",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "due_at": {
+          "name": "due_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "claim_expires_at": {
+          "name": "claim_expires_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "claim_token": {
+          "name": "claim_token",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "external_message_id": {
+          "name": "external_message_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "error": {
+          "name": "error",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "whatsapp_handoff_outbox_due_idx": {
+          "name": "whatsapp_handoff_outbox_due_idx",
+          "columns": [
+            "status",
+            "due_at"
+          ],
+          "isUnique": false
+        },
+        "whatsapp_handoff_outbox_handoff_idx": {
+          "name": "whatsapp_handoff_outbox_handoff_idx",
+          "columns": [
+            "handoff_id"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "whatsapp_handoff_outbox_organization_id_organization_id_fk": {
+          "name": "whatsapp_handoff_outbox_organization_id_organization_id_fk",
+          "tableFrom": "whatsapp_handoff_outbox",
+          "tableTo": "organization",
+          "columnsFrom": [
+            "organization_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "whatsapp_handoff_outbox_handoff_id_whatsapp_handoffs_id_fk": {
+          "name": "whatsapp_handoff_outbox_handoff_id_whatsapp_handoffs_id_fk",
+          "tableFrom": "whatsapp_handoff_outbox",
+          "tableTo": "whatsapp_handoffs",
+          "columnsFrom": [
+            "handoff_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "whatsapp_handoff_outbox_conversation_id_whatsapp_conversations_id_fk": {
+          "name": "whatsapp_handoff_outbox_conversation_id_whatsapp_conversations_id_fk",
+          "tableFrom": "whatsapp_handoff_outbox",
+          "tableTo": "whatsapp_conversations",
+          "columnsFrom": [
+            "conversation_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "whatsapp_handoff_outbox_contact_id_whatsapp_handoff_contacts_id_fk": {
+          "name": "whatsapp_handoff_outbox_contact_id_whatsapp_handoff_contacts_id_fk",
+          "tableFrom": "whatsapp_handoff_outbox",
+          "tableTo": "whatsapp_handoff_contacts",
+          "columnsFrom": [
+            "contact_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "whatsapp_handoffs": {
+      "name": "whatsapp_handoffs",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "organization_id": {
+          "name": "organization_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "conversation_id": {
+          "name": "conversation_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "reply_revision": {
+          "name": "reply_revision",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "reason": {
+          "name": "reason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "summary": {
+          "name": "summary",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(current_timestamp)"
+        }
+      },
+      "indexes": {
+        "whatsapp_handoff_revision_idx": {
+          "name": "whatsapp_handoff_revision_idx",
+          "columns": [
+            "conversation_id",
+            "reply_revision"
+          ],
+          "isUnique": true
+        },
+        "whatsapp_handoff_org_idx": {
+          "name": "whatsapp_handoff_org_idx",
+          "columns": [
+            "organization_id",
+            "created_at"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "whatsapp_handoffs_organization_id_organization_id_fk": {
+          "name": "whatsapp_handoffs_organization_id_organization_id_fk",
+          "tableFrom": "whatsapp_handoffs",
+          "tableTo": "organization",
+          "columnsFrom": [
+            "organization_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "whatsapp_handoffs_conversation_id_whatsapp_conversations_id_fk": {
+          "name": "whatsapp_handoffs_conversation_id_whatsapp_conversations_id_fk",
+          "tableFrom": "whatsapp_handoffs",
+          "tableTo": "whatsapp_conversations",
+          "columnsFrom": [
+            "conversation_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
           "onUpdate": "no action"
         }
       },

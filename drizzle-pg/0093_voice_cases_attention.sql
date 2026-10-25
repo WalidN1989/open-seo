@@ -77,7 +77,7 @@ CREATE INDEX "voice_case_calls_case_idx" ON "voice_case_calls" USING btree ("org
 CREATE INDEX "voice_cases_org_status_idx" ON "voice_cases" USING btree ("organization_id","status");--> statement-breakpoint
 CREATE INDEX "voice_cases_org_updated_idx" ON "voice_cases" USING btree ("organization_id","updated_at");
 --> statement-breakpoint
-INSERT INTO attention_sources (id,organization_id,kind,entity_id,revision) SELECT kind || ':' || entity_id,organization_id,kind,entity_id,row_number() OVER (PARTITION BY organization_id ORDER BY kind,entity_id) FROM (SELECT organization_id,'call' AS kind,id AS entity_id FROM voice_phone_calls UNION ALL SELECT organization_id,'whatsapp' AS kind,id AS entity_id FROM whatsapp_conversations UNION ALL SELECT organization_id,'sms' AS kind,id AS entity_id FROM sms_conversations UNION ALL SELECT organization_id,'case' AS kind,id AS entity_id FROM voice_cases) seed;
+INSERT INTO attention_sources (id,organization_id,kind,entity_id,revision) SELECT organization_id || ':' || kind || ':' || entity_id,organization_id,kind,entity_id,row_number() OVER (PARTITION BY organization_id ORDER BY kind,entity_id) FROM (SELECT organization_id,'call' AS kind,id AS entity_id FROM voice_phone_calls UNION ALL SELECT organization_id,'whatsapp' AS kind,id AS entity_id FROM whatsapp_conversations UNION ALL SELECT organization_id,'sms' AS kind,id AS entity_id FROM sms_conversations UNION ALL SELECT organization_id,'case' AS kind,id AS entity_id FROM voice_cases) seed;
 --> statement-breakpoint
 INSERT INTO attention_heads (organization_id,revision) SELECT organization_id,max(revision) FROM attention_sources GROUP BY organization_id;
 --> statement-breakpoint
@@ -87,7 +87,7 @@ CREATE FUNCTION attention_call_fn() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN
 INSERT INTO attention_heads (organization_id,revision) VALUES (NEW.organization_id,1)
 ON CONFLICT (organization_id) DO UPDATE SET revision=attention_heads.revision+1;
 INSERT INTO attention_sources (id,organization_id,kind,entity_id,revision)
-VALUES ('call:' || NEW.id,NEW.organization_id,'call',NEW.id,(SELECT revision FROM attention_heads WHERE organization_id=NEW.organization_id))
+VALUES (NEW.organization_id || ':call:' || NEW.id,NEW.organization_id,'call',NEW.id,(SELECT revision FROM attention_heads WHERE organization_id=NEW.organization_id))
 ON CONFLICT (organization_id,kind,entity_id) DO UPDATE SET revision=excluded.revision;
 RETURN NEW; END; $$;
 --> statement-breakpoint
@@ -97,7 +97,7 @@ CREATE FUNCTION attention_whatsapp_fn() RETURNS trigger LANGUAGE plpgsql AS $$ B
 INSERT INTO attention_heads (organization_id,revision) VALUES (NEW.organization_id,1)
 ON CONFLICT (organization_id) DO UPDATE SET revision=attention_heads.revision+1;
 INSERT INTO attention_sources (id,organization_id,kind,entity_id,revision)
-VALUES ('whatsapp:' || NEW.id,NEW.organization_id,'whatsapp',NEW.id,(SELECT revision FROM attention_heads WHERE organization_id=NEW.organization_id))
+VALUES (NEW.organization_id || ':whatsapp:' || NEW.id,NEW.organization_id,'whatsapp',NEW.id,(SELECT revision FROM attention_heads WHERE organization_id=NEW.organization_id))
 ON CONFLICT (organization_id,kind,entity_id) DO UPDATE SET revision=excluded.revision;
 RETURN NEW; END; $$;
 --> statement-breakpoint
@@ -107,7 +107,7 @@ CREATE FUNCTION attention_sms_fn() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN
 INSERT INTO attention_heads (organization_id,revision) VALUES (NEW.organization_id,1)
 ON CONFLICT (organization_id) DO UPDATE SET revision=attention_heads.revision+1;
 INSERT INTO attention_sources (id,organization_id,kind,entity_id,revision)
-VALUES ('sms:' || NEW.id,NEW.organization_id,'sms',NEW.id,(SELECT revision FROM attention_heads WHERE organization_id=NEW.organization_id))
+VALUES (NEW.organization_id || ':sms:' || NEW.id,NEW.organization_id,'sms',NEW.id,(SELECT revision FROM attention_heads WHERE organization_id=NEW.organization_id))
 ON CONFLICT (organization_id,kind,entity_id) DO UPDATE SET revision=excluded.revision;
 RETURN NEW; END; $$;
 --> statement-breakpoint
@@ -117,7 +117,7 @@ CREATE FUNCTION attention_case_fn() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN
 INSERT INTO attention_heads (organization_id,revision) VALUES (NEW.organization_id,1)
 ON CONFLICT (organization_id) DO UPDATE SET revision=attention_heads.revision+1;
 INSERT INTO attention_sources (id,organization_id,kind,entity_id,revision)
-VALUES ('case:' || NEW.id,NEW.organization_id,'case',NEW.id,(SELECT revision FROM attention_heads WHERE organization_id=NEW.organization_id))
+VALUES (NEW.organization_id || ':case:' || NEW.id,NEW.organization_id,'case',NEW.id,(SELECT revision FROM attention_heads WHERE organization_id=NEW.organization_id))
 ON CONFLICT (organization_id,kind,entity_id) DO UPDATE SET revision=excluded.revision;
 RETURN NEW; END; $$;
 --> statement-breakpoint
@@ -127,7 +127,7 @@ CREATE FUNCTION attention_whatsapp_message_fn() RETURNS trigger LANGUAGE plpgsql
 INSERT INTO attention_heads (organization_id,revision) VALUES (NEW.organization_id,1)
 ON CONFLICT (organization_id) DO UPDATE SET revision=attention_heads.revision+1;
 INSERT INTO attention_sources (id,organization_id,kind,entity_id,revision)
-VALUES ('whatsapp:' || NEW.conversation_id,NEW.organization_id,'whatsapp',NEW.conversation_id,(SELECT revision FROM attention_heads WHERE organization_id=NEW.organization_id))
+VALUES (NEW.organization_id || ':whatsapp:' || NEW.conversation_id,NEW.organization_id,'whatsapp',NEW.conversation_id,(SELECT revision FROM attention_heads WHERE organization_id=NEW.organization_id))
 ON CONFLICT (organization_id,kind,entity_id) DO UPDATE SET revision=excluded.revision;
 RETURN NEW; END; $$;
 --> statement-breakpoint
@@ -137,7 +137,7 @@ CREATE FUNCTION attention_sms_message_fn() RETURNS trigger LANGUAGE plpgsql AS $
 INSERT INTO attention_heads (organization_id,revision) VALUES (NEW.organization_id,1)
 ON CONFLICT (organization_id) DO UPDATE SET revision=attention_heads.revision+1;
 INSERT INTO attention_sources (id,organization_id,kind,entity_id,revision)
-VALUES ('sms:' || NEW.conversation_id,NEW.organization_id,'sms',NEW.conversation_id,(SELECT revision FROM attention_heads WHERE organization_id=NEW.organization_id))
+VALUES (NEW.organization_id || ':sms:' || NEW.conversation_id,NEW.organization_id,'sms',NEW.conversation_id,(SELECT revision FROM attention_heads WHERE organization_id=NEW.organization_id))
 ON CONFLICT (organization_id,kind,entity_id) DO UPDATE SET revision=excluded.revision;
 RETURN NEW; END; $$;
 --> statement-breakpoint

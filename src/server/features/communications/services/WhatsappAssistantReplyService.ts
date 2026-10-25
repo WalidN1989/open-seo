@@ -1,3 +1,4 @@
+import { WhatsappHandoffService } from "./WhatsappHandoffService";
 import { sendAutomaticWhatsappReply } from "./WhatsappAutomaticReplyService";
 import { WhatsappReplyControlRepository as Control } from "../repositories/WhatsappReplyControlRepository";
 import { OrderService } from "@/server/features/commerce/services/OrderService";
@@ -30,7 +31,6 @@ import {
 } from "@/server/features/clients/clientDataTopics";
 import { type InboundWhatsappMessage } from "../providers/whatsapp";
 import {
-  DEFAULT_HANDOFF_MESSAGE,
   WhatsappAssistantService,
   priceTokens,
   resolveAiKey,
@@ -103,10 +103,7 @@ async function applyActions(
       !(await Control.isCurrent(organizationId, conversationId, revision, true))
     )
       return;
-    if (action.name === "flag_for_team") {
-      await Control.flagForTeam(organizationId, conversationId, revision);
-      continue;
-    }
+    if (action.name === "flag_for_team") continue;
     const rawAmount = Number(action.input.amount_cents || 0);
     await Control.createOrder(
       organizationId,
@@ -118,6 +115,35 @@ async function applyActions(
       Number.isSafeInteger(rawAmount) && rawAmount >= 0 ? rawAmount : 0,
     );
   }
+}
+
+async function handoffFromActions(
+  organizationId: string,
+  conversationId: string,
+  revision: number,
+  actions: NonNullable<
+    Awaited<ReturnType<typeof generateWhatsappAiReply>>
+  >["actions"],
+  body: string,
+) {
+  const handoff = actions.find((action) => action.name === "flag_for_team");
+  if (!handoff) return false;
+  const reason =
+    typeof handoff.input.reason === "string"
+      ? handoff.input.reason.trim().slice(0, 300)
+      : "Customer needs assistance";
+  const summary =
+    typeof handoff.input.summary === "string"
+      ? handoff.input.summary.trim().slice(0, 600)
+      : body.slice(0, 600);
+  await WhatsappHandoffService.start(
+    organizationId,
+    conversationId,
+    revision,
+    reason || "Customer needs assistance",
+    summary || "Customer needs assistance",
+  );
+  return true;
 }
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -268,8 +294,13 @@ export async function replyToInbound(
     parseKeywords(settings.escalationKeywords),
   );
   if (keyword) {
-    await Control.flagForTeam(organizationId, conversationId, revision);
-    await sendReply(settings.handoffMessage ?? DEFAULT_HANDOFF_MESSAGE);
+    await WhatsappHandoffService.start(
+      organizationId,
+      conversationId,
+      revision,
+      `Customer requested a person (${keyword})`.slice(0, 300),
+      body.slice(0, 600),
+    );
     return true;
   }
 
@@ -405,6 +436,16 @@ export async function replyToInbound(
       revision,
       result.actions,
     );
+    if (
+      await handoffFromActions(
+        organizationId,
+        conversationId,
+        revision,
+        result.actions,
+        body,
+      )
+    )
+      return true;
     if (!result.reply) return false;
     await sendReply(toWhatsappText(result.reply));
     return true;

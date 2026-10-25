@@ -290,3 +290,64 @@ describe("call book-link approval", () => {
     delete process.env.TEST_TW_AUTH_TOKEN;
   });
 });
+
+describe("handoff utility templates", () => {
+  it("accepts only approved text utility content with the three handoff slots", async () => {
+    const { fetchHandoffTemplate } = await import("./twilioContent");
+    process.env.TEST_TW_AUTH_TOKEN = "test-token";
+    const sid = "HX" + "3".repeat(32);
+    const body =
+      "BooXworm: {{1}} needs a person. Reason: {{2}}. Customer window closes {{3}}. Open DU to review.";
+    const fetcher =
+      (
+        types: Record<string, unknown>,
+        status = "approved",
+        category = "UTILITY",
+      ): typeof fetch =>
+      async (input) =>
+        Response.json(
+          urlOf(input).endsWith("ApprovalRequests")
+            ? { whatsapp: { status, category } }
+            : { sid, language: "en", types },
+        );
+    expect(
+      await fetchHandoffTemplate(
+        connection,
+        sid,
+        fetcher({ "twilio/text": { body } }),
+      ),
+    ).toMatchObject({ body, externalTemplateId: sid });
+    for (const [status, category] of [
+      ["pending", "UTILITY"],
+      ["paused", "UTILITY"],
+      ["approved", "MARKETING"],
+    ])
+      await expect(
+        fetchHandoffTemplate(
+          connection,
+          sid,
+          fetcher({ "twilio/text": { body } }, status, category),
+        ),
+      ).rejects.toThrow("approved utility");
+    await expect(
+      fetchHandoffTemplate(
+        connection,
+        sid,
+        fetcher({
+          "twilio/call-to-action": {
+            body,
+            actions: [{ type: "PHONE_NUMBER", phone: "+61400000999" }],
+          },
+        }),
+      ),
+    ).rejects.toThrow();
+    await expect(
+      fetchHandoffTemplate(
+        connection,
+        sid,
+        fetcher({ "twilio/text": { body: "{{1}} {{2}}" } }),
+      ),
+    ).rejects.toThrow("slots");
+    delete process.env.TEST_TW_AUTH_TOKEN;
+  });
+});

@@ -77,7 +77,7 @@ CREATE TABLE `voice_outbound_policies` (
 --> statement-breakpoint
 ALTER TABLE `voice_phone_calls` ADD `recording_url` text;
 --> statement-breakpoint
-INSERT INTO attention_sources (id,organization_id,kind,entity_id,revision) SELECT kind || ':' || entity_id,organization_id,kind,entity_id,row_number() OVER (PARTITION BY organization_id ORDER BY kind,entity_id) FROM (SELECT organization_id,'call' AS kind,id AS entity_id FROM voice_phone_calls UNION ALL SELECT organization_id,'whatsapp' AS kind,id AS entity_id FROM whatsapp_conversations UNION ALL SELECT organization_id,'sms' AS kind,id AS entity_id FROM sms_conversations UNION ALL SELECT organization_id,'case' AS kind,id AS entity_id FROM voice_cases) seed;
+INSERT INTO attention_sources (id,organization_id,kind,entity_id,revision) SELECT organization_id || ':' || kind || ':' || entity_id,organization_id,kind,entity_id,row_number() OVER (PARTITION BY organization_id ORDER BY kind,entity_id) FROM (SELECT organization_id,'call' AS kind,id AS entity_id FROM voice_phone_calls UNION ALL SELECT organization_id,'whatsapp' AS kind,id AS entity_id FROM whatsapp_conversations UNION ALL SELECT organization_id,'sms' AS kind,id AS entity_id FROM sms_conversations UNION ALL SELECT organization_id,'case' AS kind,id AS entity_id FROM voice_cases) seed;
 --> statement-breakpoint
 INSERT INTO attention_heads (organization_id,revision) SELECT organization_id,max(revision) FROM attention_sources GROUP BY organization_id;
 --> statement-breakpoint
@@ -87,7 +87,7 @@ CREATE TRIGGER attention_call_insert AFTER INSERT ON voice_phone_calls FOR EACH 
 INSERT INTO attention_heads (organization_id,revision) VALUES (NEW.organization_id,1)
 ON CONFLICT (organization_id) DO UPDATE SET revision=attention_heads.revision+1;
 INSERT INTO attention_sources (id,organization_id,kind,entity_id,revision)
-VALUES ('call:' || NEW.id,NEW.organization_id,'call',NEW.id,(SELECT revision FROM attention_heads WHERE organization_id=NEW.organization_id))
+VALUES (NEW.organization_id || ':call:' || NEW.id,NEW.organization_id,'call',NEW.id,(SELECT revision FROM attention_heads WHERE organization_id=NEW.organization_id))
 ON CONFLICT (organization_id,kind,entity_id) DO UPDATE SET revision=excluded.revision;
 END;
 --> statement-breakpoint
@@ -95,7 +95,7 @@ CREATE TRIGGER attention_call_update AFTER UPDATE ON voice_phone_calls FOR EACH 
 INSERT INTO attention_heads (organization_id,revision) VALUES (NEW.organization_id,1)
 ON CONFLICT (organization_id) DO UPDATE SET revision=attention_heads.revision+1;
 INSERT INTO attention_sources (id,organization_id,kind,entity_id,revision)
-VALUES ('call:' || NEW.id,NEW.organization_id,'call',NEW.id,(SELECT revision FROM attention_heads WHERE organization_id=NEW.organization_id))
+VALUES (NEW.organization_id || ':call:' || NEW.id,NEW.organization_id,'call',NEW.id,(SELECT revision FROM attention_heads WHERE organization_id=NEW.organization_id))
 ON CONFLICT (organization_id,kind,entity_id) DO UPDATE SET revision=excluded.revision;
 END;
 --> statement-breakpoint
@@ -103,7 +103,7 @@ CREATE TRIGGER attention_whatsapp_insert AFTER INSERT ON whatsapp_conversations 
 INSERT INTO attention_heads (organization_id,revision) VALUES (NEW.organization_id,1)
 ON CONFLICT (organization_id) DO UPDATE SET revision=attention_heads.revision+1;
 INSERT INTO attention_sources (id,organization_id,kind,entity_id,revision)
-VALUES ('whatsapp:' || NEW.id,NEW.organization_id,'whatsapp',NEW.id,(SELECT revision FROM attention_heads WHERE organization_id=NEW.organization_id))
+VALUES (NEW.organization_id || ':whatsapp:' || NEW.id,NEW.organization_id,'whatsapp',NEW.id,(SELECT revision FROM attention_heads WHERE organization_id=NEW.organization_id))
 ON CONFLICT (organization_id,kind,entity_id) DO UPDATE SET revision=excluded.revision;
 END;
 --> statement-breakpoint
@@ -111,7 +111,7 @@ CREATE TRIGGER attention_whatsapp_update AFTER UPDATE ON whatsapp_conversations 
 INSERT INTO attention_heads (organization_id,revision) VALUES (NEW.organization_id,1)
 ON CONFLICT (organization_id) DO UPDATE SET revision=attention_heads.revision+1;
 INSERT INTO attention_sources (id,organization_id,kind,entity_id,revision)
-VALUES ('whatsapp:' || NEW.id,NEW.organization_id,'whatsapp',NEW.id,(SELECT revision FROM attention_heads WHERE organization_id=NEW.organization_id))
+VALUES (NEW.organization_id || ':whatsapp:' || NEW.id,NEW.organization_id,'whatsapp',NEW.id,(SELECT revision FROM attention_heads WHERE organization_id=NEW.organization_id))
 ON CONFLICT (organization_id,kind,entity_id) DO UPDATE SET revision=excluded.revision;
 END;
 --> statement-breakpoint
@@ -119,7 +119,7 @@ CREATE TRIGGER attention_sms_insert AFTER INSERT ON sms_conversations FOR EACH R
 INSERT INTO attention_heads (organization_id,revision) VALUES (NEW.organization_id,1)
 ON CONFLICT (organization_id) DO UPDATE SET revision=attention_heads.revision+1;
 INSERT INTO attention_sources (id,organization_id,kind,entity_id,revision)
-VALUES ('sms:' || NEW.id,NEW.organization_id,'sms',NEW.id,(SELECT revision FROM attention_heads WHERE organization_id=NEW.organization_id))
+VALUES (NEW.organization_id || ':sms:' || NEW.id,NEW.organization_id,'sms',NEW.id,(SELECT revision FROM attention_heads WHERE organization_id=NEW.organization_id))
 ON CONFLICT (organization_id,kind,entity_id) DO UPDATE SET revision=excluded.revision;
 END;
 --> statement-breakpoint
@@ -127,7 +127,7 @@ CREATE TRIGGER attention_sms_update AFTER UPDATE ON sms_conversations FOR EACH R
 INSERT INTO attention_heads (organization_id,revision) VALUES (NEW.organization_id,1)
 ON CONFLICT (organization_id) DO UPDATE SET revision=attention_heads.revision+1;
 INSERT INTO attention_sources (id,organization_id,kind,entity_id,revision)
-VALUES ('sms:' || NEW.id,NEW.organization_id,'sms',NEW.id,(SELECT revision FROM attention_heads WHERE organization_id=NEW.organization_id))
+VALUES (NEW.organization_id || ':sms:' || NEW.id,NEW.organization_id,'sms',NEW.id,(SELECT revision FROM attention_heads WHERE organization_id=NEW.organization_id))
 ON CONFLICT (organization_id,kind,entity_id) DO UPDATE SET revision=excluded.revision;
 END;
 --> statement-breakpoint
@@ -135,7 +135,7 @@ CREATE TRIGGER attention_case_insert AFTER INSERT ON voice_cases FOR EACH ROW BE
 INSERT INTO attention_heads (organization_id,revision) VALUES (NEW.organization_id,1)
 ON CONFLICT (organization_id) DO UPDATE SET revision=attention_heads.revision+1;
 INSERT INTO attention_sources (id,organization_id,kind,entity_id,revision)
-VALUES ('case:' || NEW.id,NEW.organization_id,'case',NEW.id,(SELECT revision FROM attention_heads WHERE organization_id=NEW.organization_id))
+VALUES (NEW.organization_id || ':case:' || NEW.id,NEW.organization_id,'case',NEW.id,(SELECT revision FROM attention_heads WHERE organization_id=NEW.organization_id))
 ON CONFLICT (organization_id,kind,entity_id) DO UPDATE SET revision=excluded.revision;
 END;
 --> statement-breakpoint
@@ -143,7 +143,7 @@ CREATE TRIGGER attention_case_update AFTER UPDATE ON voice_cases FOR EACH ROW BE
 INSERT INTO attention_heads (organization_id,revision) VALUES (NEW.organization_id,1)
 ON CONFLICT (organization_id) DO UPDATE SET revision=attention_heads.revision+1;
 INSERT INTO attention_sources (id,organization_id,kind,entity_id,revision)
-VALUES ('case:' || NEW.id,NEW.organization_id,'case',NEW.id,(SELECT revision FROM attention_heads WHERE organization_id=NEW.organization_id))
+VALUES (NEW.organization_id || ':case:' || NEW.id,NEW.organization_id,'case',NEW.id,(SELECT revision FROM attention_heads WHERE organization_id=NEW.organization_id))
 ON CONFLICT (organization_id,kind,entity_id) DO UPDATE SET revision=excluded.revision;
 END;
 --> statement-breakpoint
@@ -151,7 +151,7 @@ CREATE TRIGGER attention_whatsapp_message_insert AFTER INSERT ON whatsapp_messag
 INSERT INTO attention_heads (organization_id,revision) VALUES (NEW.organization_id,1)
 ON CONFLICT (organization_id) DO UPDATE SET revision=attention_heads.revision+1;
 INSERT INTO attention_sources (id,organization_id,kind,entity_id,revision)
-VALUES ('whatsapp:' || NEW.conversation_id,NEW.organization_id,'whatsapp',NEW.conversation_id,(SELECT revision FROM attention_heads WHERE organization_id=NEW.organization_id))
+VALUES (NEW.organization_id || ':whatsapp:' || NEW.conversation_id,NEW.organization_id,'whatsapp',NEW.conversation_id,(SELECT revision FROM attention_heads WHERE organization_id=NEW.organization_id))
 ON CONFLICT (organization_id,kind,entity_id) DO UPDATE SET revision=excluded.revision;
 END;
 --> statement-breakpoint
@@ -159,7 +159,7 @@ CREATE TRIGGER attention_whatsapp_message_update AFTER UPDATE ON whatsapp_messag
 INSERT INTO attention_heads (organization_id,revision) VALUES (NEW.organization_id,1)
 ON CONFLICT (organization_id) DO UPDATE SET revision=attention_heads.revision+1;
 INSERT INTO attention_sources (id,organization_id,kind,entity_id,revision)
-VALUES ('whatsapp:' || NEW.conversation_id,NEW.organization_id,'whatsapp',NEW.conversation_id,(SELECT revision FROM attention_heads WHERE organization_id=NEW.organization_id))
+VALUES (NEW.organization_id || ':whatsapp:' || NEW.conversation_id,NEW.organization_id,'whatsapp',NEW.conversation_id,(SELECT revision FROM attention_heads WHERE organization_id=NEW.organization_id))
 ON CONFLICT (organization_id,kind,entity_id) DO UPDATE SET revision=excluded.revision;
 END;
 --> statement-breakpoint
@@ -167,7 +167,7 @@ CREATE TRIGGER attention_sms_message_insert AFTER INSERT ON sms_messages FOR EAC
 INSERT INTO attention_heads (organization_id,revision) VALUES (NEW.organization_id,1)
 ON CONFLICT (organization_id) DO UPDATE SET revision=attention_heads.revision+1;
 INSERT INTO attention_sources (id,organization_id,kind,entity_id,revision)
-VALUES ('sms:' || NEW.conversation_id,NEW.organization_id,'sms',NEW.conversation_id,(SELECT revision FROM attention_heads WHERE organization_id=NEW.organization_id))
+VALUES (NEW.organization_id || ':sms:' || NEW.conversation_id,NEW.organization_id,'sms',NEW.conversation_id,(SELECT revision FROM attention_heads WHERE organization_id=NEW.organization_id))
 ON CONFLICT (organization_id,kind,entity_id) DO UPDATE SET revision=excluded.revision;
 END;
 --> statement-breakpoint
@@ -175,7 +175,7 @@ CREATE TRIGGER attention_sms_message_update AFTER UPDATE ON sms_messages FOR EAC
 INSERT INTO attention_heads (organization_id,revision) VALUES (NEW.organization_id,1)
 ON CONFLICT (organization_id) DO UPDATE SET revision=attention_heads.revision+1;
 INSERT INTO attention_sources (id,organization_id,kind,entity_id,revision)
-VALUES ('sms:' || NEW.conversation_id,NEW.organization_id,'sms',NEW.conversation_id,(SELECT revision FROM attention_heads WHERE organization_id=NEW.organization_id))
+VALUES (NEW.organization_id || ':sms:' || NEW.conversation_id,NEW.organization_id,'sms',NEW.conversation_id,(SELECT revision FROM attention_heads WHERE organization_id=NEW.organization_id))
 ON CONFLICT (organization_id,kind,entity_id) DO UPDATE SET revision=excluded.revision;
 END;
 --> statement-breakpoint

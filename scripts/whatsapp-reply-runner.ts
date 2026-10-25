@@ -58,12 +58,15 @@ async function run(conversationId: string) {
       return;
     }
     if (attempt < 3) for (const job of pending) schedule(job);
-    else
+    else {
+      attempts.delete(conversationId);
       console.error(
         "[reply-runner] Reply remains queued after three attempts; manual retry required",
       );
+    }
   } catch (error) {
     console.error("[reply-runner] Processing failed", error);
+    if (attempt >= 3) attempts.delete(conversationId);
     if (attempt < 3 && !timers.has(conversationId)) {
       schedule({
         conversationId,

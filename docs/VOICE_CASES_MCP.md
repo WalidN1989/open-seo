@@ -109,7 +109,7 @@ calling enforcement mechanism. The app exposes no outbound dialing capability.
 
 ## Release and rollback
 
-SQLite migration 0113 and Postgres migration 0092 add five normalized tables, a
+SQLite migration 0114 and Postgres migration 0093 add five normalized tables, a
 nullable recording metadata column, indexes and database-only change/readiness
 triggers. Existing records are not replayed and no provider action runs during
 migration. Existing organizations receive stored policy defaults; new ones receive

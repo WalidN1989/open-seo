@@ -2436,7 +2436,7 @@ ready to close, but only the assistant explicitly closes the case. The agreed
 Sri Lanka calling policy is stored for the external assistant, not enforced by
 an app dialing system. See VOICE_CASES_MCP.md for the exact contract and setup.
 
-Additive SQLite 0113 / Postgres 0092 migrations seed source references and policy
+Additive SQLite 0114 / Postgres 0093 migrations seed source references and policy
 defaults without replaying business records or sending messages. Code rollback
 can leave these tables and triggers in place; preserve case data. Local tests,
 MCP protocol and migration checks use synthetic data only. No merge, deployment,

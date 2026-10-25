@@ -40,13 +40,21 @@ export function ReminderBell({ onNavigate }: { onNavigate?: () => void }) {
     .toReversed();
 
   const go = (reminder: Reminder) => {
-    if (!reminder.leadId) return;
+    if (!reminder.leadId && !reminder.whatsappConversationId) return;
     setOpen(false);
     onNavigate?.();
-    void navigate({
-      to: "/p/$projectId/modules/leads/$leadId",
-      params: { projectId: workspaceProjectAddress, leadId: reminder.leadId },
-    });
+    if (reminder.whatsappConversationId) {
+      void navigate({
+        to: "/p/$projectId/modules/$moduleKey",
+        params: { projectId: workspaceProjectAddress, moduleKey: "whatsapp" },
+        search: { conversation: reminder.whatsappConversationId },
+      });
+    } else if (reminder.leadId) {
+      void navigate({
+        to: "/p/$projectId/modules/leads/$leadId",
+        params: { projectId: workspaceProjectAddress, leadId: reminder.leadId },
+      });
+    }
   };
 
   const groups = [

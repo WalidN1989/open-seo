@@ -1,4 +1,4 @@
-import { rmSync, readFileSync } from "node:fs";
+import { rmSync } from "node:fs";
 import {
   afterAll,
   beforeAll,
@@ -10,8 +10,7 @@ import {
 } from "vitest";
 import { createClient } from "@libsql/client";
 import { drizzle } from "drizzle-orm/libsql";
-import { getTableConfig } from "drizzle-orm/sqlite-core";
-import * as schema from "@/db/business.schema";
+import { createCaseTestDatabase } from "@/test/tenancy/voiceCaseDatabase";
 const state = vi.hoisted(() => ({
   db: null as unknown,
   access: vi.fn(),
@@ -52,33 +51,7 @@ const client = createClient({ url: `file:${databasePath}` });
 const id = "b34abf63-d6ea-4fa2-9b3b-0ef8c85a9ea1";
 beforeAll(async () => {
   state.db = drizzle(client);
-  await client.execute("CREATE TABLE organization (id text primary key)");
-  await client.execute("INSERT INTO organization (id) VALUES ('a'),('b')");
-  for (const table of [
-    schema.voicePhoneCalls,
-    schema.crmContacts,
-    schema.crmLeads,
-    schema.whatsappConversations,
-    schema.whatsappMessages,
-    schema.smsConversations,
-    schema.smsMessages,
-    schema.commerceOrders,
-    schema.businessAuditEvents,
-  ]) {
-    const config = getTableConfig(table);
-    await client.execute(
-      `CREATE TABLE "${config.name}" (${config.columns.map((c) => `"${c.name}" ${c.getSQLType()}${c.name === "id" ? " PRIMARY KEY" : ""}`).join(",")})`,
-    );
-  }
-  const migration = readFileSync(
-    "drizzle/0113_voice_cases_attention.sql",
-    "utf8",
-  );
-  // Baseline call table already has the new nullable metadata column in this fixture.
-  for (const statement of migration.split("--> statement-breakpoint")) {
-    if (/ALTER TABLE `voice_phone_calls`/.test(statement)) continue;
-    await client.execute(statement.trim());
-  }
+  await createCaseTestDatabase(client);
 });
 afterAll(() => {
   client.close();
@@ -182,6 +155,19 @@ describe("cases, database readiness helpers and attention cursors", () => {
       decodeAttentionCursor(next.cursor, "b", "sms,voice,whatsapp"),
     ).toThrow("Invalid cursor");
     expect((await check()).items).toEqual([]);
+    await client.execute(
+      "INSERT INTO whatsapp_conversations(id,organization_id,status) VALUES ('cross-chat','a','pending')",
+    );
+    await client.execute(
+      "INSERT INTO whatsapp_messages(id,organization_id,conversation_id,direction) VALUES ('foreign-row','b','cross-chat','inbound')",
+    );
+    expect(
+      (
+        await client.execute(
+          "SELECT count(*) n FROM attention_sources WHERE entity_id='cross-chat'",
+        )
+      ).rows[0]?.n,
+    ).toBe(2);
   });
   it("pages tied changes and catches updates made while paging", async () => {
     await create();

@@ -1,3 +1,4 @@
+import type * as Handoffs from "@/server/features/communications/repositories/WhatsappHandoffRepository";
 import {
   afterAll,
   beforeAll,
@@ -34,6 +35,7 @@ let db: TestDb;
 let schema: typeof Schema;
 let agent: typeof Service.WhatsappAgentService;
 let control: typeof Controls.WhatsappReplyControlRepository;
+let handoffs: typeof Handoffs.WhatsappHandoffRepository;
 let comms: typeof Comms.CommunicationsRepository;
 let jobs: typeof JobsModule.WhatsappReplyJobRepository;
 let close: () => void;
@@ -46,6 +48,8 @@ beforeAll(async () => {
   vi.doMock("@/db/d1/client", () => ({ d1Db: db }));
   vi.doMock("@/db/pg/client", () => ({ pgDb: null }));
   schema = await import("@/db/schema");
+  ({ WhatsappHandoffRepository: handoffs } =
+    await import("@/server/features/communications/repositories/WhatsappHandoffRepository"));
   ({ WhatsappAgentService: agent } =
     await import("@/server/features/communications/services/WhatsappAgentService"));
   ({ WhatsappReplyControlRepository: control } =
@@ -193,7 +197,13 @@ describe("WhatsApp chat mode", () => {
     expect(await control.isCurrent(ORG_A, chatId, 0)).toBe(false);
     expect(await control.isCurrent(ORG_A, chatId, 2)).toBe(true);
     await control.createOrder(ORG_A, chatId, 0, "stale order", 0);
-    await control.flagForTeam(ORG_A, chatId, 0);
+    await handoffs.create({
+      organizationId: ORG_A,
+      conversationId: chatId,
+      revision: 0,
+      reason: "Needs help",
+      summary: "Customer enquiry",
+    });
     expect(await db.select().from(schema.whatsappOrderRequests)).toEqual([]);
     expect((await state()).status).toBe("open");
     expect(await dispatch(2)).not.toBeNull();
@@ -234,8 +244,14 @@ describe("WhatsApp chat mode", () => {
     );
   });
   it("preserves model action ordering when the same response flags and records an enquiry", async () => {
-    await control.flagForTeam(ORG_A, chatId, 0);
     await control.createOrder(ORG_A, chatId, 0, "Current enquiry", 0);
+    await handoffs.create({
+      organizationId: ORG_A,
+      conversationId: chatId,
+      revision: 0,
+      reason: "Needs help",
+      summary: "Customer enquiry",
+    });
     expect((await state()).status).toBe("pending");
     expect(
       (await db.select().from(schema.whatsappOrderRequests))[0],

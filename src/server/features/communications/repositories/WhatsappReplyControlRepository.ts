@@ -122,18 +122,6 @@ async function claimDispatch(input: {
   return null;
 }
 
-/** Guard the write itself, not just a preceding read that can become stale. */
-async function flagForTeam(
-  organizationId: string,
-  conversationId: string,
-  revision: number,
-) {
-  await db
-    .update(whatsappConversations)
-    .set({ status: "pending" })
-    .where(eligible(organizationId, conversationId, revision));
-}
-
 async function createOrder(
   organizationId: string,
   conversationId: string,
@@ -174,6 +162,5 @@ async function createOrder(
 export const WhatsappReplyControlRepository = {
   isCurrent,
   claimDispatch,
-  flagForTeam,
   createOrder,
 };
