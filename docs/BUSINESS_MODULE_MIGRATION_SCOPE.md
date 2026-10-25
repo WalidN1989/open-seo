@@ -1945,7 +1945,7 @@ destinations match the visible email/phone. Existing message IDs and content are
 preserved; provider IDs are linked to the existing row. Ambiguous, cross-mailbox
 and cross-tenant matches cannot overwrite another message.
 
-### October 21, 2026 — WhatsApp order-request follow-up (pending release)
+### October 21, 2026 — WhatsApp order-request follow-up (released)
 
 The order-request table resolves customer identity through its organization-scoped
 conversation/contact relationships, including older AI-created requests without
@@ -1978,9 +1978,34 @@ Validation: all 2,926 tests, ci:check and the selfhost build passed locally.
 The legacy SQLite migration and isolated PostgreSQL-engine migration/backfill
 tests pass. The actual components were checked with synthetic customers at
 desktop and 390px mobile widths, including search, notification previews,
-template requirements and a mocked send. No production migration, order edit,
-customer send or deployment has occurred. The organization-level review baseline
-was not verified or changed.
+template requirements and a mocked send. These pre-release checks did not change
+production or send customer messages. The organization-level review baseline was
+not verified or changed.
+
+The owner explicitly approved merging and deploying PR #52 on October 21.
+Merged revision `22acc3094ed13ee36515ebecd8bf0e3cbf740415` passed both required
+checks (CI run `39649349175`), and release run `39650143102` published the image.
+Coolify manually deployed the immutable image digest
+`sha256:57309bea0aac40c67c03eb9b970736f43249d8a0fb898bd0755efe948d4f8bb8`.
+The previous known-good revision is `b0dc29c45491c21ec1b0164f22b52c51d721404f`,
+image digest
+`sha256:a9e1e4976947ae3124ef392a0bf3481b145dd04e14a22387741d4139df2d4e2f`.
+
+A fresh private database backup was restored into an isolated database before
+rollout. Applying migration 0085 there preserved all 94 orders and recovered one
+missing customer field. Production startup applied the same migration and passed
+health checks. Post-release verification preserved 5,918 product records and
+prices, 5,196 inventory balances, 94 orders, 47 requests and all 17 organizations.
+Runtime configuration, storage, networks and existing worker controls were
+preserved. There is one mailbox bridge, one event-driven WhatsApp reply runner
+and no internal ticker; automatic Coolify deployments remain disabled.
+
+Authenticated browser checks showed the new table with two Period.lk requests
+and 45 BooXworm requests, with numbers, workspace currency, dates and controls.
+Phone search and opening the matching conversation passed. Existing request
+statuses were preserved; the notification button stays disabled until staff mark
+the item Available. No test customer message was sent. Private backup manifests,
+data comparisons and browser evidence remain outside this public repository.
 
 ### October 20, 2026 — Citypak courier worker and waybill screen (pending release)
 
