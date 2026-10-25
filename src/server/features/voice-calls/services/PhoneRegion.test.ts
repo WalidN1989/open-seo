@@ -1,4 +1,4 @@
-import { rmSync } from "node:fs";
+import { createVoiceCaseTestClient } from "@/test/tenancy/voiceCaseDatabase";
 import {
   afterAll,
   beforeAll,
@@ -8,7 +8,6 @@ import {
   it,
   vi,
 } from "vitest";
-import { createClient } from "@libsql/client";
 import { drizzle } from "drizzle-orm/libsql";
 import { getTableConfig } from "drizzle-orm/sqlite-core";
 import * as schema from "@/db/business.schema";
@@ -73,8 +72,7 @@ vi.mock("@/db/runBatch", () => ({
 import { PhoneCallService } from "./PhoneCallService";
 import { CallerLookupService } from "./CallerLookupService";
 
-const databasePath = `/private/tmp/du-case-test-${crypto.randomUUID()}.sqlite`;
-const client = createClient({ url: `file:${databasePath}` });
+const { client, close } = createVoiceCaseTestClient();
 beforeAll(async () => {
   state.db = drizzle(client);
   for (const table of [
@@ -107,10 +105,7 @@ beforeAll(async () => {
     "insert into integration_connections (id,organization_id,provider_key,status,credentials) values ('lk-line','org-lk','elevenlabs','connected','test'),('au-line','org-au','elevenlabs','connected','test')",
   );
 });
-afterAll(() => {
-  client.close();
-  rmSync(databasePath, { force: true });
-});
+afterAll(close);
 beforeEach(async () => {
   vi.clearAllMocks();
   state.welcome.mockResolvedValue("skipped: test");

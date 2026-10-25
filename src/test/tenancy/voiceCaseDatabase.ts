@@ -1,5 +1,7 @@
-import { readFileSync } from "node:fs";
-import type { Client } from "@libsql/client";
+import { readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { createClient, type Client } from "@libsql/client";
 import { getTableConfig } from "drizzle-orm/sqlite-core";
 import * as schema from "@/db/business.schema";
 
@@ -31,4 +33,19 @@ export async function createCaseTestDatabase(client: Client) {
     if (/ALTER TABLE `voice_phone_calls`/.test(statement)) continue;
     await client.execute(statement.trim());
   }
+}
+
+export function createVoiceCaseTestClient() {
+  const databasePath = join(
+    tmpdir(),
+    `du-case-test-${crypto.randomUUID()}.sqlite`,
+  );
+  const client = createClient({ url: `file:${databasePath}` });
+  return {
+    client,
+    close: () => {
+      client.close();
+      rmSync(databasePath, { force: true });
+    },
+  };
 }

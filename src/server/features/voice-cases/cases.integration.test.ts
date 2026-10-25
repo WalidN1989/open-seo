@@ -1,4 +1,3 @@
-import { rmSync } from "node:fs";
 import {
   afterAll,
   beforeAll,
@@ -8,9 +7,11 @@ import {
   it,
   vi,
 } from "vitest";
-import { createClient } from "@libsql/client";
 import { drizzle } from "drizzle-orm/libsql";
-import { createCaseTestDatabase } from "@/test/tenancy/voiceCaseDatabase";
+import {
+  createCaseTestDatabase,
+  createVoiceCaseTestClient,
+} from "@/test/tenancy/voiceCaseDatabase";
 const state = vi.hoisted(() => ({
   db: null as unknown,
   access: vi.fn(),
@@ -46,17 +47,13 @@ import { CaseService } from "./services/CaseService";
 import { CaseRepository } from "./repositories/CaseRepository";
 import { AttentionService } from "./services/AttentionService";
 import { decodeAttentionCursor } from "./attentionCursor";
-const databasePath = `/private/tmp/du-case-test-${crypto.randomUUID()}.sqlite`;
-const client = createClient({ url: `file:${databasePath}` });
+const { client, close } = createVoiceCaseTestClient();
 const id = "b34abf63-d6ea-4fa2-9b3b-0ef8c85a9ea1";
 beforeAll(async () => {
   state.db = drizzle(client);
   await createCaseTestDatabase(client);
 });
-afterAll(() => {
-  client.close();
-  rmSync(databasePath, { force: true });
-});
+afterAll(close);
 beforeEach(async () => {
   state.access.mockReset().mockResolvedValue(undefined);
   state.modules.mockResolvedValue(
