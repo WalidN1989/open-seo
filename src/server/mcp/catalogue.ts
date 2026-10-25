@@ -74,6 +74,7 @@ import { reportSurface } from "@/server/mcp/tools/report-tools";
 import { researchKeywordsTool } from "@/server/mcp/tools/research-keywords";
 import { runRankTrackerTool } from "@/server/mcp/tools/run-rank-tracker";
 import { saveKeywordsTool } from "@/server/mcp/tools/save-keywords";
+import { caseSurface } from "@/server/mcp/tools/case-tools";
 import { callSurface } from "@/server/mcp/tools/call-tools";
 import { smsSurface } from "@/server/mcp/tools/sms-tools";
 import { whatsappSurface } from "@/server/mcp/tools/whatsapp-tools";
@@ -89,6 +90,7 @@ export const MODULE_SURFACES: readonly McpModuleSurface[] = [
   emailSurface,
   smsSurface,
   callSurface,
+  caseSurface,
   whatsappSurface,
 ];
 

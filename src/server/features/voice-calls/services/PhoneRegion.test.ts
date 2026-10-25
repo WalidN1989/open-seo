@@ -1,3 +1,4 @@
+import { createVoiceCaseTestClient } from "@/test/tenancy/voiceCaseDatabase";
 import {
   afterAll,
   beforeAll,
@@ -7,7 +8,6 @@ import {
   it,
   vi,
 } from "vitest";
-import { createClient } from "@libsql/client";
 import { drizzle } from "drizzle-orm/libsql";
 import { getTableConfig } from "drizzle-orm/sqlite-core";
 import * as schema from "@/db/business.schema";
@@ -58,16 +58,30 @@ vi.mock("./CallRecapService", () => ({
 vi.mock("./CallQuoteService", () => ({
   CallQuoteService: { quoteFromCall: state.quote },
 }));
+vi.mock("@/db/runBatch", () => ({
+  runBatch: async (
+    build: (
+      tx: Pick<ReturnType<typeof drizzle>, "insert" | "update">,
+    ) => readonly Promise<unknown>[],
+  ) => {
+    await drizzle(client).transaction(async (tx) => {
+      for (const statement of build(tx)) await statement;
+    });
+  },
+}));
 import { PhoneCallService } from "./PhoneCallService";
 import { CallerLookupService } from "./CallerLookupService";
 
-const client = createClient({ url: ":memory:" });
+const { client, close } = createVoiceCaseTestClient();
 beforeAll(async () => {
   state.db = drizzle(client);
   for (const table of [
     schema.businessSettings,
     schema.integrationConnections,
     schema.voicePhoneCalls,
+    schema.voiceCaseCalls,
+    schema.attentionHeads,
+    schema.voiceCases,
     schema.whatsappMessages,
     schema.crmContacts,
     schema.crmLeads,
@@ -79,19 +93,28 @@ beforeAll(async () => {
     );
   }
   await client.execute(
+    "CREATE UNIQUE INDEX fixture_attention_org ON attention_heads(organization_id)",
+  );
+  await client.execute(
+    "CREATE UNIQUE INDEX fixture_case_conversation ON voice_case_calls(organization_id,external_conversation_id)",
+  );
+  await client.execute(
     "insert into business_settings (id,organization_id,currency) values ('lk','org-lk','LKR'),('au','org-au','AUD')",
   );
   await client.execute(
     "insert into integration_connections (id,organization_id,provider_key,status,credentials) values ('lk-line','org-lk','elevenlabs','connected','test'),('au-line','org-au','elevenlabs','connected','test')",
   );
 });
-afterAll(() => client.close());
+afterAll(close);
 beforeEach(async () => {
   vi.clearAllMocks();
   state.welcome.mockResolvedValue("skipped: test");
   state.recap.mockResolvedValue("skipped: test");
   state.quote.mockResolvedValue("skipped: test");
   for (const table of [
+    "attention_heads",
+    "voice_case_calls",
+    "voice_cases",
     "voice_phone_calls",
     "crm_contacts",
     "crm_leads",
@@ -105,15 +128,23 @@ async function webhook(
   caller?: string,
   line?: string,
   callback?: string,
-  captured: { customerPhone?: string; consent?: string } = {},
+  captured: {
+    customerPhone?: string;
+    consent?: string;
+    direction?: string;
+    caseId?: string;
+  } = {},
 ) {
   const raw = JSON.stringify({
     type: "post_call_transcription",
     data: {
       conversation_id: "test-conversation",
+      conversation_initiation_client_data: {
+        dynamic_variables: { case_id: captured.caseId },
+      },
       metadata: {
         phone_call: {
-          direction: "inbound",
+          direction: captured.direction ?? "inbound",
           external_number: caller,
           agent_number: line,
         },
@@ -293,5 +324,86 @@ describe("workspace-aware phone calls and CRM", () => {
         .rows[0]?.total,
     ).toBe(0);
     expect(state.welcome).not.toHaveBeenCalled();
+  });
+});
+
+describe("outbound post-call storage", () => {
+  it("matches the callee, links the explicit case, and never executes inbound follow-ups on replay", async () => {
+    await client.execute(
+      "INSERT INTO crm_contacts (id,organization_id,first_name,phone) VALUES ('umi','org-lk','Umi','+94761234567')",
+    );
+    await client.execute(
+      "INSERT INTO voice_cases (id,organization_id,customer_name,reason,status) VALUES ('case','org-lk','Customer','Delivery','open')",
+    );
+    const result = await webhook(
+      "lk-line",
+      "+94761234567",
+      "+94110000000",
+      undefined,
+      { direction: "outbound", caseId: "case", consent: "true" },
+    );
+    expect(result).toEqual({ status: 200, body: "recorded" });
+    const { rows: calls } = await client.execute(
+      "SELECT direction,contact_id,caller_number,called_number FROM voice_phone_calls",
+    );
+    expect(calls[0]).toMatchObject({
+      direction: "outbound",
+      contact_id: "umi",
+      caller_number: "+94110000000",
+      called_number: "+94761234567",
+    });
+    const { rows: links } = await client.execute(
+      "SELECT case_id,external_conversation_id FROM voice_case_calls",
+    );
+    expect(links[0]).toMatchObject({
+      case_id: "case",
+      external_conversation_id: "test-conversation",
+    });
+    await webhook("lk-line", "+94761234567", "+94110000000", undefined, {
+      direction: "outbound",
+      caseId: "case",
+      consent: "true",
+    });
+    for (const effect of [
+      state.welcome,
+      state.recap,
+      state.quote,
+      state.bookLink,
+    ])
+      expect(effect).not.toHaveBeenCalled();
+    expect(
+      (await client.execute("SELECT count(*) AS n FROM crm_leads")).rows[0]?.n,
+    ).toBe(0);
+    const [call] = await PhoneCallService.listCalls("org-lk", "owner", {
+      direction: "outbound",
+    });
+    expect(call).toMatchObject({
+      direction: "outbound",
+      calleeName: "Umi",
+      caseId: "case",
+    });
+  });
+  it("does not link a foreign case or accept an unsigned webhook", async () => {
+    await client.execute(
+      "INSERT INTO voice_cases (id,organization_id) VALUES ('foreign','org-au')",
+    );
+    await expect(
+      webhook("lk-line", "+94761234567", "+94110000000", undefined, {
+        direction: "outbound",
+        caseId: "foreign",
+      }),
+    ).rejects.toThrow("Invalid or conflicting");
+    expect(
+      await PhoneCallService.processElevenLabsWebhook(
+        "lk-line",
+        new Headers(),
+        "{}",
+        true,
+      ),
+    ).toEqual({ status: 401, body: "bad signature" });
+    expect(
+      (await client.execute("SELECT count(*) AS n FROM voice_phone_calls"))
+        .rows[0]?.n,
+    ).toBe(0);
   });
 });

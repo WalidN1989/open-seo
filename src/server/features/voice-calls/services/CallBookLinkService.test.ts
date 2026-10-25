@@ -188,7 +188,7 @@ describe("consented per-call book-link follow-up", () => {
   it("allows a separate consented request on another call by the same customer", async () => {
     await send();
     await client.execute(
-      "INSERT INTO voice_phone_calls SELECT 'call-2',organization_id,integration_id,provider,external_conversation_id,external_agent_id,agent_name,direction,caller_number,called_number,started_at,duration_seconds,summary,call_successful,captured_json,transcript_json,contact_id,lead_id,welcome_status,book_link_status,book_link_message_id,recap_email_status,created_at FROM voice_phone_calls WHERE id='call'",
+      "INSERT INTO voice_phone_calls SELECT 'call-2',organization_id,integration_id,provider,external_conversation_id,external_agent_id,agent_name,direction,caller_number,called_number,started_at,duration_seconds,summary,call_successful,recording_url,captured_json,transcript_json,contact_id,lead_id,welcome_status,book_link_status,book_link_message_id,recap_email_status,created_at FROM voice_phone_calls WHERE id='call'",
     );
     await service.send("org", "voice", "call-2");
     expect(state.send).toHaveBeenCalledTimes(2);

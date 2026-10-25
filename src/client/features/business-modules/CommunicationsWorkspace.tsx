@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { AssistantConfigSection } from "./whatsapp/AssistantConfigSection";
+import { CasesSection } from "./voice/CasesSection";
 import { PhoneCallsSection } from "./voice/PhoneCallsSection";
 import { ContactEditButton } from "./crm/ContactEditButton";
 import {
@@ -1800,6 +1801,8 @@ function ContactToggle({
 }
 
 export function VoiceWorkspace() {
+  const [tab, setTab] = useState<"activity" | "outbound" | "cases">("activity");
+  const [caseId, setCaseId] = useState<string | null>(null);
   return (
     <Workspace
       title="Voice Agent"
@@ -1812,7 +1815,35 @@ export function VoiceWorkspace() {
           transcripts appear below.
         </p>
       </Panel>
-      <PhoneCallsSection />
+      <div role="tablist" className="tabs tabs-border">
+        {(["activity", "outbound", "cases"] as const).map((value) => (
+          <button
+            key={value}
+            role="tab"
+            aria-selected={tab === value}
+            className={`tab ${tab === value ? "tab-active" : ""}`}
+            onClick={() => setTab(value)}
+          >
+            {value === "activity"
+              ? "Call activity"
+              : value === "outbound"
+                ? "Outbound"
+                : "Cases"}
+          </button>
+        ))}
+      </div>
+      {tab === "cases" ? (
+        <CasesSection caseId={caseId} onSelect={setCaseId} />
+      ) : (
+        <PhoneCallsSection
+          key={tab}
+          direction={tab === "outbound" ? "outbound" : undefined}
+          onCase={(id) => {
+            setCaseId(id);
+            setTab("cases");
+          }}
+        />
+      )}
     </Workspace>
   );
 }
