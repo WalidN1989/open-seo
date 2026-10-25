@@ -57,6 +57,23 @@ describe("outreachDecision", () => {
     ).toBe(true);
   });
 
+  it.each(["invalid", "2026-09-15T01:00:00Z"])(
+    "never treats %s as a prompted WhatsApp template",
+    (at) => {
+      expect(
+        outreachDecision(
+          {
+            optedOut: false,
+            lastInboundAt: at,
+            lastOutboundAt: hoursBefore(workday, 1),
+          },
+          { ...whatsapp, freeText: false },
+          workday,
+        ).allowed,
+      ).toBe(false);
+    },
+  );
+
   it("answers a customer who just wrote, even after hours", () => {
     expect(
       outreachDecision(

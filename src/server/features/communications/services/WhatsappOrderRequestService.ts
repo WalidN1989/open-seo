@@ -1,3 +1,4 @@
+import { evaluateWhatsappWindow } from "../whatsappWindow";
 import { BusinessModuleService } from "@/server/features/business-modules/services/BusinessModuleService";
 import { BusinessAuditRepository } from "@/server/features/business-modules/repositories/BusinessAuditRepository";
 import { AppError } from "@/server/lib/errors";
@@ -52,10 +53,7 @@ async function preview(
   );
   return {
     request,
-    windowOpen: Boolean(
-      chat.lastInboundAt &&
-      Date.now() - Date.parse(chat.lastInboundAt) <= 86400000,
-    ),
+    ...evaluateWhatsappWindow(chat.lastInboundAt),
     templates: templates.filter((template) => template.category === "utility"),
   };
 }

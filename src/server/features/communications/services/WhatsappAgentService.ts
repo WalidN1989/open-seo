@@ -1,42 +1,15 @@
 import { BusinessModuleService } from "@/server/features/business-modules/services/BusinessModuleService";
 import { AppError } from "@/server/lib/errors";
-import { outreachDecision, type OutreachState } from "../outreachRules";
+import { evaluateWhatsappWindow } from "../whatsappWindow";
+import { requireWhatsappSendAllowed as requireAllowed } from "./WhatsappSendPolicyService";
 import { sendWhatsappTemplate } from "../providers/whatsapp";
 import { CommunicationsRepository } from "../repositories/CommunicationsRepository";
 import { WhatsappAgentRepository as Repo } from "../repositories/WhatsappAgentRepository";
-import { WhatsappAssistantRepository } from "../repositories/WhatsappAssistantRepository";
 import { CommunicationsService } from "./CommunicationsService";
-
-const DEFAULT_ZONE = "Australia/Brisbane";
-const DAY_MS = 24 * 60 * 60 * 1000;
-
-/**
- * WhatsApp for an agent acting on the business's behalf. Every send passes
- * outreachDecision first, so the 24-hour window, opt-outs, one unanswered
- * follow-up a day and working hours hold whatever the agent was told.
- */
-
-async function timeZoneOf(organizationId: string) {
-  const settings =
-    await WhatsappAssistantRepository.getSettings(organizationId);
-  return settings?.timezone || DEFAULT_ZONE;
-}
-
-function stateOf(chat: {
-  optedOutAt: string | null;
-  lastInboundAt: string | null;
-  lastOutboundAt: string | null;
-}): OutreachState {
-  return {
-    optedOut: Boolean(chat.optedOutAt),
-    lastInboundAt: chat.lastInboundAt,
-    lastOutboundAt: chat.lastOutboundAt,
-  };
-}
 
 async function listChats(organizationId: string, userId: string, limit = 30) {
   await BusinessModuleService.requireAccess(organizationId, userId, "whatsapp");
-  const now = Date.now();
+  const now = new Date();
   const rows = await Repo.listChats(organizationId, limit);
   return rows.map((row) => ({
     id: row.id,
@@ -46,11 +19,8 @@ async function listChats(organizationId: string, userId: string, limit = 30) {
     replyMode: row.replyMode,
     optedOut: Boolean(row.optedOutAt),
     lastMessageAt: row.lastMessageAt,
-    lastInboundAt: row.lastInboundAt,
     lastOutboundAt: row.lastOutboundAt,
-    windowOpen: Boolean(
-      row.lastInboundAt && now - Date.parse(row.lastInboundAt) <= DAY_MS,
-    ),
+    ...evaluateWhatsappWindow(row.lastInboundAt, now),
   }));
 }
 
@@ -66,24 +36,11 @@ async function getChat(
     Repo.listMessages(organizationId, conversationId),
     Repo.listApprovedTemplates(organizationId),
   ]);
-  return { chat, messages, templates };
-}
-
-async function requireAllowed(
-  organizationId: string,
-  conversationId: string,
-  freeText: boolean,
-) {
-  const chat = await Repo.getChat(organizationId, conversationId);
-  if (!chat) throw new AppError("NOT_FOUND", "WhatsApp chat not found.");
-  const decision = outreachDecision(stateOf(chat), {
-    freeText,
-    needsWindow: true,
-    timeZone: await timeZoneOf(organizationId),
-  });
-  if (!decision.allowed)
-    throw new AppError("VALIDATION_ERROR", decision.reason);
-  return chat;
+  return {
+    chat: { ...chat, ...evaluateWhatsappWindow(chat.lastInboundAt) },
+    messages,
+    templates,
+  };
 }
 
 async function sendReply(
@@ -98,10 +55,15 @@ async function sendReply(
     "manage",
   );
   await requireAllowed(organizationId, input.conversationId, true);
-  return CommunicationsService.sendWhatsappMessage(organizationId, userId, {
-    conversationId: input.conversationId,
-    body: input.body,
-  });
+  return CommunicationsService.sendWhatsappMessage(
+    organizationId,
+    userId,
+    {
+      conversationId: input.conversationId,
+      body: input.body,
+    },
+    true,
+  );
 }
 
 async function sendTemplate(
@@ -147,6 +109,9 @@ async function sendTemplate(
     body,
   );
   try {
+    await requireAllowed(organizationId, input.conversationId, false, {
+      excludeOutboundMessageId: queued.id,
+    });
     const result = await sendWhatsappTemplate(context.connection, recipient, {
       name: template.name,
       languageCode: template.languageCode,

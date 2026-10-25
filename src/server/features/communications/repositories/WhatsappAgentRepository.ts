@@ -10,12 +10,17 @@ import {
 /** When a message happened: its send time, or when it was stored. */
 const at = sql`coalesce(${whatsappMessages.sentAt}, ${whatsappMessages.createdAt})`;
 
-function lastAt(direction: "inbound" | "outbound") {
+function lastAt(
+  direction: "inbound" | "outbound",
+  excludeOutboundMessageId?: string,
+) {
   return sql<string | null>`(
     select max(coalesce(m.sent_at, m.created_at)) from whatsapp_messages m
-    where m.conversation_id = ${whatsappConversations.id}
+    where m.conversation_id = ${sql.identifier("whatsapp_conversations")}.${sql.identifier("id")}
+      and m.organization_id = ${sql.identifier("whatsapp_conversations")}.${sql.identifier("organization_id")}
       and m.direction = ${direction}
       and m.status <> 'failed'
+      ${direction === "outbound" && excludeOutboundMessageId ? sql`and m.id <> ${excludeOutboundMessageId}` : sql``}
   )`;
 }
 
@@ -35,13 +40,23 @@ async function listChats(organizationId: string, limit: number) {
       lastName: crmContacts.lastName,
     })
     .from(whatsappConversations)
-    .leftJoin(crmContacts, eq(crmContacts.id, whatsappConversations.contactId))
+    .leftJoin(
+      crmContacts,
+      and(
+        eq(crmContacts.id, whatsappConversations.contactId),
+        eq(crmContacts.organizationId, organizationId),
+      ),
+    )
     .where(eq(whatsappConversations.organizationId, organizationId))
     .orderBy(desc(whatsappConversations.lastMessageAt))
     .limit(limit);
 }
 
-async function getChat(organizationId: string, conversationId: string) {
+async function getChat(
+  organizationId: string,
+  conversationId: string,
+  excludeOutboundMessageId?: string,
+) {
   const [chat] = await db
     .select({
       id: whatsappConversations.id,
@@ -50,7 +65,7 @@ async function getChat(organizationId: string, conversationId: string) {
       replyMode: whatsappConversations.replyMode,
       optedOutAt: whatsappConversations.optedOutAt,
       lastInboundAt: lastAt("inbound"),
-      lastOutboundAt: lastAt("outbound"),
+      lastOutboundAt: lastAt("outbound", excludeOutboundMessageId),
     })
     .from(whatsappConversations)
     .where(

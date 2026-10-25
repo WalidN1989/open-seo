@@ -1,6 +1,7 @@
 import { WhatsappHandoffOutboxRepository } from "../repositories/WhatsappHandoffOutboxRepository";
 /* oxlint-disable max-lines, max-depth, max-params */
 import { waitUntil } from "cloudflare:workers";
+import { requireWhatsappSendAllowed } from "./WhatsappSendPolicyService";
 import { wakeWhatsappReply } from "./WhatsappReplyWakeupService";
 import type { z } from "zod";
 import { BusinessModuleService } from "@/server/features/business-modules/services/BusinessModuleService";
@@ -1705,6 +1706,7 @@ async function sendWhatsappMessage(
   organizationId: string,
   userId: string,
   input: z.infer<typeof sendWhatsappMessageSchema>,
+  enforceOutreach = false,
 ) {
   await BusinessModuleService.requireAccess(
     organizationId,
@@ -1725,6 +1727,12 @@ async function sendWhatsappMessage(
     input.body,
   );
   try {
+    await requireWhatsappSendAllowed(
+      organizationId,
+      input.conversationId,
+      true,
+      { outreach: enforceOutreach, excludeOutboundMessageId: queued.id },
+    );
     const result = await sendWhatsappText(
       context.connection,
       context.conversation.externalConversationId,
