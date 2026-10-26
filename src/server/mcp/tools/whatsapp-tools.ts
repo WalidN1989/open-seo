@@ -185,7 +185,8 @@ const sendWhatsappReplyTool = {
   name: "send_whatsapp_reply",
   config: {
     title: "Reply on WhatsApp",
-    description: `Sends a free-text WhatsApp message from the business's number in an existing chat. ${RULES}`,
+    description:
+      "Sends a customer-care free-text reply from the business's number in an existing chat, using the same policy as the Inbox. Requires WhatsApp manage permission. Never sends to someone who replied STOP; the customer's last inbound must be within 24 hours, otherwise use an approved template. A preceding bot or business reply does not impose a one-unanswered-message limit inside that window. Automated/cold outreach and templates retain their own daily and business-hours limits.",
     inputSchema: replyInput,
     outputSchema: {
       message: looseObjectOutputSchema,
@@ -264,7 +265,7 @@ export const whatsappSurface: McpModuleSurface = {
   key: "whatsapp",
   scope: "organization",
   summary:
-    "Read WhatsApp chats, set per-chat Auto/Manual reply mode, and follow up within WhatsApp's rules: replies inside the 24-hour window, approved templates outside it, opt-outs and daily limits enforced by the app.",
+    "Read WhatsApp chats, set per-chat Auto/Manual reply mode, and send customer-care replies inside the 24-hour window. Approved-template outreach retains opt-out, daily and business-hours limits.",
   tools: [
     listWhatsappChatsTool,
     getWhatsappChatTool,

@@ -54,16 +54,15 @@ async function sendReply(
     "whatsapp",
     "manage",
   );
-  await requireAllowed(organizationId, input.conversationId, true);
-  return CommunicationsService.sendWhatsappMessage(
-    organizationId,
-    userId,
-    {
-      conversationId: input.conversationId,
-      body: input.body,
-    },
-    true,
-  );
+  // Explicit customer-care replies use the Inbox policy. A preceding bot reply
+  // must not turn an open service window into unanswered cold outreach.
+  await requireAllowed(organizationId, input.conversationId, true, {
+    outreach: false,
+  });
+  return CommunicationsService.sendWhatsappMessage(organizationId, userId, {
+    conversationId: input.conversationId,
+    body: input.body,
+  });
 }
 
 async function sendTemplate(

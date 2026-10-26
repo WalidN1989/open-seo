@@ -15,12 +15,14 @@ import {
   ORG_B,
   USER_OWNER_A,
   USER_OWNER_B,
+  USER_STAFF_A,
   WHATSAPP_A,
   type TestDb,
 } from "./fixture";
 import type * as Schema from "@/db/schema";
 import type * as RepoModule from "@/server/features/communications/repositories/WhatsappAgentRepository";
 import type * as CommsModule from "@/server/features/communications/repositories/CommunicationsRepository";
+import type * as ServiceModule from "@/server/features/communications/services/CommunicationsService";
 import type * as AgentModule from "@/server/features/communications/services/WhatsappAgentService";
 vi.mock("cloudflare:workers", () => ({
   env: {
@@ -41,6 +43,7 @@ let s: typeof Schema;
 let repo: typeof RepoModule.WhatsappAgentRepository;
 let comms: typeof CommsModule.CommunicationsRepository;
 let agent: typeof AgentModule.WhatsappAgentService;
+let service: typeof ServiceModule.CommunicationsService;
 let close: () => void | Promise<void>;
 const chat = "window-chat";
 const inbound = "2026-10-24T08:15:31.750Z";
@@ -63,6 +66,8 @@ beforeAll(async () => {
     await import("@/server/features/communications/repositories/WhatsappAgentRepository"));
   ({ CommunicationsRepository: comms } =
     await import("@/server/features/communications/repositories/CommunicationsRepository"));
+  ({ CommunicationsService: service } =
+    await import("@/server/features/communications/services/CommunicationsService"));
   ({ WhatsappAgentService: agent } =
     await import("@/server/features/communications/services/WhatsappAgentService"));
 });
@@ -197,25 +202,107 @@ describe("WhatsApp window query and dispatch parity", () => {
       )?.status,
     ).toBe("failed");
   });
-  it("excludes only its own unsent queue row and preserves the unanswered-message rule", async () => {
+  it("permits multiple customer-care replies but keeps the strict outreach policy", async () => {
     await incoming(inbound);
     await agent.sendReply(ORG_A, USER_OWNER_A, {
       conversationId: chat,
       body: "One reply",
     });
-    await expect(
-      agent.sendReply(ORG_A, USER_OWNER_A, {
-        conversationId: chat,
-        body: "A legitimate extra detail",
-      }),
-    ).rejects.toThrow("haven't answered");
+    await agent.sendReply(ORG_A, USER_OWNER_A, {
+      conversationId: chat,
+      body: "A legitimate extra detail",
+    });
+    await expect(agent.requireAllowed(ORG_A, chat, true)).rejects.toThrow(
+      "haven't answered",
+    );
     vi.setSystemTime(new Date("2026-10-24T10:00:01Z"));
     await incoming("2026-10-24T10:00:00Z");
     await agent.sendReply(ORG_A, USER_OWNER_A, {
       conversationId: chat,
       body: "Reply to the newer inbound",
     });
+    expect(sends.text).toHaveBeenCalledTimes(3);
+  });
+  it("matches Inbox sends after a bot auto-reply, including outside business hours", async () => {
+    await incoming(inbound);
+    await db.insert(s.whatsappMessages).values({
+      id: "bot-auto-reply",
+      organizationId: ORG_A,
+      conversationId: chat,
+      direction: "outbound",
+      status: "sent",
+      autoReplyRevision: 0,
+      body: "Bot answer",
+      sentAt: "2026-10-24T08:16:00.000Z",
+    });
+    // Saturday: customer care is allowed; unsolicited outreach is still blocked.
+    await agent.sendReply(ORG_A, USER_OWNER_A, {
+      conversationId: chat,
+      body: "Owner-approved follow-up",
+    });
+    await service.sendWhatsappMessage(ORG_A, USER_OWNER_A, {
+      conversationId: chat,
+      body: "Inbox follow-up",
+    });
     expect(sends.text).toHaveBeenCalledTimes(2);
+  });
+  it("keeps STOP blocked for both MCP and Inbox paths", async () => {
+    await incoming(inbound);
+    await db
+      .update(s.whatsappConversations)
+      .set({ optedOutAt: send })
+      .where(eq(s.whatsappConversations.id, chat));
+    const input = { conversationId: chat, body: "Must not send" };
+    await expect(agent.sendReply(ORG_A, USER_OWNER_A, input)).rejects.toThrow(
+      "opted out",
+    );
+    await expect(
+      service.sendWhatsappMessage(ORG_A, USER_OWNER_A, input),
+    ).rejects.toThrow("opted out");
+    expect(sends.text).not.toHaveBeenCalled();
+  });
+  it("does not bypass WhatsApp manage permission", async () => {
+    await incoming(inbound);
+    await db.insert(s.memberModulePermissions).values({
+      id: "window-viewer",
+      organizationId: ORG_A,
+      memberId: "member_staff_a",
+      moduleKey: "whatsapp",
+      permission: "view",
+    });
+    await expect(
+      agent.sendReply(ORG_A, USER_STAFF_A, {
+        conversationId: chat,
+        body: "No manage access",
+      }),
+    ).rejects.toThrow("FORBIDDEN");
+    expect(sends.text).not.toHaveBeenCalled();
+  });
+  it("rechecks STOP after queuing a customer-care reply", async () => {
+    await incoming(inbound);
+    const create = comms.createQueuedWhatsappMessage;
+    vi.spyOn(comms, "createQueuedWhatsappMessage").mockImplementationOnce(
+      async (...args) => {
+        const row = await create(...args);
+        await db
+          .update(s.whatsappConversations)
+          .set({ optedOutAt: send })
+          .where(eq(s.whatsappConversations.id, chat));
+        return row;
+      },
+    );
+    await expect(
+      agent.sendReply(ORG_A, USER_OWNER_A, {
+        conversationId: chat,
+        body: "Must not send",
+      }),
+    ).rejects.toThrow("opted out");
+    expect(sends.text).not.toHaveBeenCalled();
+    expect(
+      (await db.select().from(s.whatsappMessages)).find(
+        (row) => row.direction === "outbound",
+      )?.status,
+    ).toBe("failed");
   });
   it.each(["bad timestamp", "2026-10-24T10:00:00Z"])(
     "does not let %s authorize a paid template",
