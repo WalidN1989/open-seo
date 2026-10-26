@@ -1,3 +1,5 @@
+import { WhatsappAgentRepository } from "@/server/features/communications/repositories/WhatsappAgentRepository";
+import { requireWhatsappSendAllowed } from "@/server/features/communications/services/WhatsappSendPolicyService";
 import {
   isWhatsappSandbox,
   sendWhatsappTemplate,
@@ -17,6 +19,7 @@ import { PhoneCallRepository as Repo } from "../repositories/PhoneCallRepository
 async function sendWelcome(input: {
   organizationId: string;
   template: string | undefined;
+  enforceRules?: boolean;
   recipient: string | null;
   contactId: string;
   variables: Record<string, string>;
@@ -26,6 +29,19 @@ async function sendWelcome(input: {
   if (!recipient) return "skipped: no caller number";
   const connection = await Repo.connectedWhatsapp(input.organizationId);
   if (!connection) return "skipped: no connected WhatsApp sender";
+  if (input.enforceRules) {
+    const chats = await WhatsappAgentRepository.chatsForPhone(
+      input.organizationId,
+      recipient,
+    );
+    for (const chat of chats) {
+      await requireWhatsappSendAllowed(
+        input.organizationId,
+        chat.id,
+        isWhatsappSandbox(connection),
+      );
+    }
+  }
   const value = input.template.trim();
   // Twilio sends by Content SID (HX…); Meta sends by template name.
   const isContentSid = /^HX[0-9a-f]{32}$/i.test(value);
@@ -74,7 +90,7 @@ async function sendWelcome(input: {
     } catch (error) {
       // A template without placeholders can refuse the name and service;
       // the plain template is still the right message.
-      if (!isContentSid) throw error;
+      if (!isContentSid || input.enforceRules) throw error;
       usedVariables = false;
       sent = await send(false);
     }
@@ -104,6 +120,8 @@ async function sendWelcome(input: {
   } catch (error) {
     // It went to the customer; a failure to mirror it must not say otherwise.
     console.error("call welcome: could not add to the WhatsApp inbox", error);
+    if (input.enforceRules)
+      return "attention: provider accepted WhatsApp, but inbox recording failed; do not resend";
   }
   return "sent";
 }

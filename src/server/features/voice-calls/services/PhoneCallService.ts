@@ -1,6 +1,7 @@
+import { finishInbound } from "./InboundFollowupService";
+import { isSouthsideWorkflow } from "@/server/features/customer-workflow/policy";
 import { CaseRepository } from "@/server/features/voice-cases/repositories/CaseRepository";
 import { CallBookLinkService } from "./CallBookLinkService";
-import { BusinessAuditRepository } from "@/server/features/business-modules/repositories/BusinessAuditRepository";
 import { CrmService } from "@/server/features/crm/services/CrmService";
 import { decryptCredentials } from "@/server/lib/connection-secrets";
 import {
@@ -14,12 +15,9 @@ import {
   type PhoneCallReport,
   type PhoneRegion,
 } from "../elevenlabsWebhook";
-import { activityNotes, duration, inSentence, splitName } from "../callNotes";
+import { activityNotes, duration, splitName } from "../callNotes";
 import { PhoneCallRepository as Repo } from "../repositories/PhoneCallRepository";
 import { listCalls } from "./storedCalls";
-import { CallQuoteService } from "./CallQuoteService";
-import { CallWelcomeService } from "./CallWelcomeService";
-import { CallRecapService } from "./CallRecapService";
 
 /**
  * Where a call came from: the phone line answered by an ElevenLabs agent, or
@@ -29,7 +27,7 @@ import { CallRecapService } from "./CallRecapService";
 type CallProvider = "elevenlabs" | "deepgram";
 
 /** Who took the call, for which business, and how to follow it up. */
-type CallSource = {
+export type CallSource = {
   provider: CallProvider;
   organizationId: string;
   integrationId: string;
@@ -45,41 +43,6 @@ export type WebhookResult = { status: number; body: string };
  * whether they went out is visible on the lead rather than buried in the
  * call record. Skips are left out; a failure is worth seeing.
  */
-async function journalOutreach(input: {
-  organizationId: string;
-  leadId: string;
-  contactId: string;
-  welcome: string;
-  recapEmail: string;
-}) {
-  const occurredAt = new Date().toISOString();
-  const entries = [
-    {
-      activityType: "whatsapp" as const,
-      status: input.welcome,
-      label: "WhatsApp thank-you",
-    },
-    {
-      activityType: "email" as const,
-      status: input.recapEmail,
-      label: "Recap email",
-    },
-  ].filter((entry) => !entry.status.startsWith("skipped"));
-  for (const entry of entries) {
-    const sent = entry.status.startsWith("sent");
-    await Repo.insertCallActivity({
-      organizationId: input.organizationId,
-      leadId: input.leadId,
-      contactId: input.contactId,
-      activityType: entry.activityType,
-      subject: `${entry.label} ${sent ? "sent" : "failed"}`,
-      notes: entry.status,
-      outcome: sent ? "sent" : "failed",
-      occurredAt,
-    });
-  }
-}
-
 /** The call log row; `links` is what the pipeline decided about the caller. */
 function callRow(
   provider: CallProvider,
@@ -115,13 +78,6 @@ function callRow(
   };
 }
 
-function handlesBookLink(provider: CallProvider, report: PhoneCallReport) {
-  return (
-    provider === "elevenlabs" &&
-    Object.hasOwn(report.captured, "whatsapp_link_consent")
-  );
-}
-
 /** Outbound callbacks are storage only: no lead, welcome, quote or AI recap. */
 async function recordOutbound(source: CallSource, report: PhoneCallReport) {
   const { organizationId, integrationId, provider } = source;
@@ -136,7 +92,14 @@ async function recordOutbound(source: CallSource, report: PhoneCallReport) {
     throw new Error("Invalid or conflicting case reference.");
   }
   const existing = await Repo.findCall(organizationId, report.conversationId);
-  if (existing) return { callId: existing.id, duplicate: true };
+  if (existing) {
+    if (await isSouthsideWorkflow(organizationId)) {
+      const { CallbackService } =
+        await import("@/server/features/customer-workflow/services/CallbackService");
+      await CallbackService.complete(organizationId, report);
+    }
+    return { callId: existing.id, duplicate: true };
+  }
   const contact = report.calledNumber
     ? await Repo.findCalleeByPhone(organizationId, report.calledNumber)
     : null;
@@ -150,6 +113,11 @@ async function recordOutbound(source: CallSource, report: PhoneCallReport) {
     }),
     { deduplicate: true },
   );
+  if (await isSouthsideWorkflow(organizationId)) {
+    const { CallbackService } =
+      await import("@/server/features/customer-workflow/services/CallbackService");
+    await CallbackService.complete(organizationId, report);
+  }
   return { callId: call.id, duplicate: false };
 }
 
@@ -163,6 +131,19 @@ async function recordInbound(source: CallSource, report: PhoneCallReport) {
   const { provider, organizationId, integrationId, welcomeTemplate } = source;
   const existing = await Repo.findCall(organizationId, report.conversationId);
   if (existing) {
+    if (await isSouthsideWorkflow(organizationId)) {
+      const { PostCallFollowupService } =
+        await import("@/server/features/customer-workflow/services/PostCallFollowupService");
+      await PostCallFollowupService.run({
+        organizationId,
+        callId: existing.id,
+        leadId: existing.leadId,
+        contactId: existing.contactId,
+        report,
+        welcomeTemplate,
+      });
+      return { callId: existing.id, duplicate: true };
+    }
     await CallBookLinkService.send(organizationId, integrationId, existing.id);
     return { callId: existing.id, duplicate: true };
   }
@@ -281,76 +262,19 @@ async function recordInbound(source: CallSource, report: PhoneCallReport) {
     }),
   );
 
-  await CallBookLinkService.send(organizationId, integrationId, call.id);
-
-  // The number the caller read out is the one they asked us to use; the line
-  // they rang from can be a landline or a phone without WhatsApp.
-  const whatsappTo =
-    phoneFromText(report.captured.callback_details, region) ?? phone;
-  // Anyone who has not had the thank-you yet gets it, so a caller whose
-  // first call came before a template was set up is not left out.
-  const welcomeOwed = !(await Repo.welcomeSentTo(organizationId, contact.id));
-  const welcome = handlesBookLink(provider, report)
-    ? "skipped: book-link follow-up handled separately"
-    : welcomeOwed
-      ? await CallWelcomeService.sendWelcome({
-          organizationId,
-          template: welcomeTemplate,
-          recipient: whatsappTo,
-          contactId: contact.id,
-          // Template: "Hi {{1}}, thanks for calling … about {{2}} …"
-          variables: {
-            "1": knownName || "there",
-            "2": report.captured.service_interest
-              ? inSentence(shortNeed(report.captured.service_interest))
-              : "our services",
-          },
-        })
-      : "skipped: already welcomed";
-  await Repo.setWelcomeStatus(call.id, welcome);
-  const recapEmail = await CallRecapService.sendCallRecap({
-    organizationId,
-    email: recapTo,
-    firstName: knownName,
+  return finishInbound({
+    source,
     report,
+    callId: call.id,
+    lead,
+    contact,
+    firstTimeCaller,
+    businessName,
+    knownName,
+    recapTo,
+    region,
+    phone,
   });
-  await Repo.setRecapEmailStatus(call.id, recapEmail);
-  const quote = await CallQuoteService.quoteFromCall({
-    organizationId,
-    leadId: lead.id,
-    contactId: contact.id,
-    clientName:
-      businessName ||
-      [knownName, contact.lastName].filter(Boolean).join(" ") ||
-      "Caller",
-    email: recapTo,
-    report,
-  });
-  await journalOutreach({
-    organizationId,
-    leadId: lead.id,
-    contactId: contact.id,
-    welcome,
-    recapEmail,
-  });
-
-  await BusinessAuditRepository.record({
-    organizationId,
-    // No member acts on a webhook; the provider is the actor.
-    actorUserId: `system:${provider}`,
-    action: "voice.phone_call.recorded",
-    targetType: "lead",
-    targetId: lead.id,
-    metadata: {
-      callId: call.id,
-      provider,
-      firstTimeCaller,
-      welcome,
-      recapEmail,
-      quote,
-    },
-  });
-  return { callId: call.id, duplicate: false };
 }
 
 /**

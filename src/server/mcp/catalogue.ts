@@ -1,3 +1,4 @@
+import { customerWorkflowSurface } from "@/server/mcp/tools/customer-workflow-tools";
 /**
  * Every tool the MCP server offers, in one list.
  *
@@ -81,6 +82,7 @@ import { whatsappSurface } from "@/server/mcp/tools/whatsapp-tools";
 import { whoamiTool } from "@/server/mcp/tools/whoami";
 
 export const MODULE_SURFACES: readonly McpModuleSurface[] = [
+  customerWorkflowSurface,
   optimizationsSurface,
   invoiceSurface,
   quoteSurface,

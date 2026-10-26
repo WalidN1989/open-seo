@@ -197,3 +197,15 @@ The attention cursor returns current changes and closed/resolved clears with
 bounded previews; read tools never persist cursors or acknowledge records.
 See [VOICE_CASES_MCP.md](VOICE_CASES_MCP.md) for the contract, stored policy,
 webhook setup and migration/rollback notes.
+
+### Selected-workspace communications workflow
+
+The owner-requested Southside rollout adds `get_communications_report`,
+`request_customer_action`, `execute_approved_customer_action`, `send_quote`
+and `update_lead_contact`. These are disabled unless a private runtime setting
+selects the caller's workspace. `send_quote` only prepares a draft request.
+Customer sends and stage changes require a single-use owner approval of the
+exact saved action. Approval itself is withheld from MCP. Existing direct
+email/WhatsApp/SMS tools also prepare approval requests in that workspace.
+Other workspaces retain their existing surfaces and behavior. See
+[SOUTHSIDE_WORKFLOW.md](./SOUTHSIDE_WORKFLOW.md) for parameters and limitations.

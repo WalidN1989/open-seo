@@ -37,7 +37,12 @@ type OutreachDecision =
 
 export function outreachDecision(
   state: OutreachState,
-  input: { freeText: boolean; needsWindow: boolean; timeZone: string },
+  input: {
+    freeText: boolean;
+    needsWindow: boolean;
+    timeZone: string;
+    allowAnyHour?: boolean;
+  },
   now = new Date(),
 ): OutreachDecision {
   if (state.optedOut) {
@@ -78,7 +83,7 @@ export function outreachDecision(
         "They haven't answered the last message, sent less than 24 hours ago. Wait before following up again.",
     };
   }
-  if (!inWorkingHours(now, input.timeZone)) {
+  if (!input.allowAnyHour && !inWorkingHours(now, input.timeZone)) {
     return {
       allowed: false,
       reason:

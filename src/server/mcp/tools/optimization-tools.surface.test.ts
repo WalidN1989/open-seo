@@ -225,6 +225,7 @@ describe("the module registry", () => {
       "caseSurface",
       "commerceSurface",
       "crmSurface",
+      "customerWorkflowSurface",
       "emailSurface",
       "invoiceSurface",
       "optimizationsSurface",

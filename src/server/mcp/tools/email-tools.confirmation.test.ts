@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   send: vi.fn(),
   reply: vi.fn(),
   decrypt: vi.fn(),
+  request: vi.fn(),
 }));
 vi.mock("@/server/auth/repositories/AuthRepository", () => ({
   AuthRepository: { listOrganizationIdsForUser: mocks.memberships },
@@ -22,6 +23,12 @@ vi.mock("@/server/features/email/services/EmailDraftService", () => ({
 vi.mock("@/server/lib/connection-secrets", () => ({
   decryptCredentials: mocks.decrypt,
 }));
+vi.mock(
+  "@/server/features/customer-workflow/services/CustomerActionService",
+  () => ({
+    CustomerActionService: { request: mocks.request },
+  }),
+);
 import { emailSurface } from "./email-tools";
 
 async function call(name: string, args: Record<string, unknown>) {
@@ -33,6 +40,7 @@ async function call(name: string, args: Record<string, unknown>) {
 describe("MCP mail confirmation boundary", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.stubEnv("SOUTHSIDE_WORKFLOW_ORGANIZATION_ID", "");
     mocks.memberships.mockResolvedValue([
       "manual-workspace",
       "existing-workspace",
@@ -93,6 +101,29 @@ describe("MCP mail confirmation boundary", () => {
       );
     });
   }
+  it("selected-workspace sends always save a draft, regardless of the watcher confirmation flag", async () => {
+    vi.stubEnv("SOUTHSIDE_WORKFLOW_ORGANIZATION_ID", "manual-workspace");
+    mocks.request.mockResolvedValue({
+      status: "needs_approval",
+      approvalRequestId: "TEST-request",
+      message: "Nothing sent.",
+    });
+    for (const name of ["send_email", "reply_to_email_thread"]) {
+      for (const confirmed of [false, true]) {
+        await call(name, {
+          organizationId: "manual-workspace",
+          threadId: "TEST-thread",
+          to: "test@example.invalid",
+          subject: "TEST",
+          text: "TEST",
+          confirmed,
+        });
+      }
+    }
+    expect(mocks.request).toHaveBeenCalledTimes(4);
+    expect(mocks.send).not.toHaveBeenCalled();
+    expect(mocks.reply).not.toHaveBeenCalled();
+  });
   it("keeps existing workspaces' send contract and refuses foreign workspaces", async () => {
     await call("send_email", {
       organizationId: "existing-workspace",

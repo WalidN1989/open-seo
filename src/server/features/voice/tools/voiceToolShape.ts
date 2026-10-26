@@ -20,6 +20,7 @@ type Catalogued = {
  */
 export const NEVER_BY_VOICE = new Set([
   "send_email",
+  "execute_approved_customer_action",
   "reply_to_email_thread",
   "send_sms",
   "send_whatsapp_reply",

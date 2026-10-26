@@ -1,3 +1,4 @@
+import { isSouthsideWorkflow } from "@/server/features/customer-workflow/policy";
 import { BusinessAuditRepository } from "@/server/features/business-modules/repositories/BusinessAuditRepository";
 import { BusinessModuleRepository } from "@/server/features/business-modules/repositories/BusinessModuleRepository";
 import { CommerceRepository } from "@/server/features/commerce/repositories/CommerceRepository";
@@ -132,10 +133,16 @@ async function quoteFromCall(input: QuoteInput): Promise<string> {
       return "needs a person: no catalogue match";
     }
     const quote = await saveDraft(input, owner.userId, found);
-    if (!found.confident || !input.email) {
-      const why = !input.email
-        ? "No email address was captured."
-        : found.reason || "The package wasn't certain.";
+    if (
+      (await isSouthsideWorkflow(input.organizationId)) ||
+      !found.confident ||
+      !input.email
+    ) {
+      const why = (await isSouthsideWorkflow(input.organizationId))
+        ? "Awaiting Walid’s approval before sending to the customer."
+        : !input.email
+          ? "No email address was captured."
+          : found.reason || "The package wasn't certain.";
       await handToOwner(
         input,
         owner.id,

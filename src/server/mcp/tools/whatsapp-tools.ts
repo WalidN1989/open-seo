@@ -1,3 +1,4 @@
+import { isSouthsideWorkflow } from "@/server/features/customer-workflow/policy";
 import { z } from "zod";
 import { WhatsappAgentService } from "@/server/features/communications/services/WhatsappAgentService";
 import { mcpResponse } from "@/server/mcp/formatters";
@@ -185,10 +186,12 @@ const sendWhatsappReplyTool = {
   name: "send_whatsapp_reply",
   config: {
     title: "Reply on WhatsApp",
-    description: `Sends a free-text WhatsApp message from the business's number in an existing chat. ${RULES}`,
+    description: `Sends a free-text WhatsApp message from the business's number in an existing chat. ${RULES} In the selected Southside workflow this saves a needs_approval draft; sending requires the owner review screen.`,
     inputSchema: replyInput,
     outputSchema: {
-      message: looseObjectOutputSchema,
+      message: looseObjectOutputSchema.optional(),
+      status: z.string().optional(),
+      approvalRequestId: z.string().optional(),
       ...optionalMetaOutputSchema,
     },
     annotations: {
@@ -199,6 +202,23 @@ const sendWhatsappReplyTool = {
   },
   handler: withMcpOrganizationAuth(
     async (args: z.infer<z.ZodObject<typeof replyInput>>, context) => {
+      if (await isSouthsideWorkflow(context.organizationId)) {
+        const { CustomerActionService } =
+          await import("@/server/features/customer-workflow/services/CustomerActionService");
+        const request = await CustomerActionService.request(
+          context.organizationId,
+          context.auth.userId,
+          {
+            kind: "whatsapp",
+            conversationId: args.conversationId,
+            body: args.body,
+          },
+        );
+        return mcpResponse({
+          text: request.message,
+          structuredContent: request,
+        });
+      }
       const message = await WhatsappAgentService.sendReply(
         context.organizationId,
         context.auth.userId,
@@ -229,10 +249,12 @@ const sendWhatsappTemplateTool = {
   name: "send_whatsapp_template",
   config: {
     title: "Send an approved WhatsApp template",
-    description: `Sends one of the workspace's approved templates in an existing chat; the way to reach a customer whose 24-hour window has closed. ${RULES}`,
+    description: `Sends one of the workspace's approved templates in an existing chat; the way to reach a customer whose 24-hour window has closed. ${RULES} In the selected Southside workflow this saves a needs_approval draft; sending requires the owner review screen.`,
     inputSchema: templateInput,
     outputSchema: {
-      message: looseObjectOutputSchema,
+      message: looseObjectOutputSchema.optional(),
+      status: z.string().optional(),
+      approvalRequestId: z.string().optional(),
       ...optionalMetaOutputSchema,
     },
     annotations: {
@@ -243,6 +265,24 @@ const sendWhatsappTemplateTool = {
   },
   handler: withMcpOrganizationAuth(
     async (args: z.infer<z.ZodObject<typeof templateInput>>, context) => {
+      if (await isSouthsideWorkflow(context.organizationId)) {
+        const { CustomerActionService } =
+          await import("@/server/features/customer-workflow/services/CustomerActionService");
+        const request = await CustomerActionService.request(
+          context.organizationId,
+          context.auth.userId,
+          {
+            kind: "whatsapp_template",
+            conversationId: args.conversationId,
+            templateId: args.templateId,
+            variables: args.variables,
+          },
+        );
+        return mcpResponse({
+          text: request.message,
+          structuredContent: request,
+        });
+      }
       const message = await WhatsappAgentService.sendTemplate(
         context.organizationId,
         context.auth.userId,

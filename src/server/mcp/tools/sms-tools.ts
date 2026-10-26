@@ -1,3 +1,4 @@
+import { isSouthsideWorkflow } from "@/server/features/customer-workflow/policy";
 import { z } from "zod";
 import { SmsService } from "@/server/features/sms/services/SmsService";
 import { mcpResponse } from "@/server/mcp/formatters";
@@ -125,10 +126,12 @@ const sendSmsTool = {
   config: {
     title: "Text a customer back",
     description:
-      "Sends an SMS from the business's number in an existing conversation. Rules the app enforces: never to someone who replied STOP; at most one text a day they haven't answered; a text they didn't prompt only Monday to Friday 9am-5pm business time. A refused send returns the reason.",
+      "Sends an SMS from the business's number in an existing conversation. Rules the app enforces: never to someone who replied STOP; at most one text a day they haven't answered; a text they didn't prompt only Monday to Friday 9am-5pm business time. A refused send returns the reason. In the selected Southside workflow this only saves a needs_approval draft; sending requires the owner review screen.",
     inputSchema: sendInput,
     outputSchema: {
-      message: looseObjectOutputSchema,
+      message: looseObjectOutputSchema.optional(),
+      status: z.string().optional(),
+      approvalRequestId: z.string().optional(),
       ...optionalMetaOutputSchema,
     },
     annotations: {
@@ -139,6 +142,19 @@ const sendSmsTool = {
   },
   handler: withMcpOrganizationAuth(
     async (args: z.infer<z.ZodObject<typeof sendInput>>, context) => {
+      if (await isSouthsideWorkflow(context.organizationId)) {
+        const { CustomerActionService } =
+          await import("@/server/features/customer-workflow/services/CustomerActionService");
+        const request = await CustomerActionService.request(
+          context.organizationId,
+          context.auth.userId,
+          { kind: "sms", conversationId: args.conversationId, body: args.body },
+        );
+        return mcpResponse({
+          text: request.message,
+          structuredContent: request,
+        });
+      }
       const message = await SmsService.agentSend(
         context.organizationId,
         context.auth.userId,

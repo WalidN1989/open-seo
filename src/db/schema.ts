@@ -211,6 +211,7 @@ export const {
   attentionHeads,
   attentionSources,
   voicePhoneCalls,
+  customerActionRequests,
   voiceBookLinkSettings,
   clientAccounts,
   clientContacts,

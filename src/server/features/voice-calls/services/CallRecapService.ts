@@ -1,9 +1,10 @@
+import { isSouthsideWorkflow } from "@/server/features/customer-workflow/policy";
 import { EmailRepository } from "@/server/features/email/repositories/EmailRepository";
 import { EmailSendService } from "@/server/features/email/services/EmailSendService";
 import { CommunicationsRepository } from "@/server/features/communications/repositories/CommunicationsRepository";
 import { resolveAiKey } from "@/server/features/communications/services/WhatsappAssistantService";
 import { getOptionalEnvValue } from "@/server/lib/runtime-env";
-import { draftRecap, withSignature } from "../callRecap";
+import { draftRecap, plainRecap, withSignature } from "../callRecap";
 import type { PhoneCallReport } from "../elevenlabsWebhook";
 
 /** Marks the recap as the app's own writing in the Email module. */
@@ -46,6 +47,28 @@ async function sendCallRecap(input: {
       return "skipped: no connected mailbox";
     }
     const businessName = account.displayName?.trim() || "our";
+    if (await isSouthsideWorkflow(input.organizationId)) {
+      const recap = plainRecap({
+        report: input.report,
+        firstName: input.firstName,
+        businessName,
+      });
+      const sent = await EmailSendService.sendFromConnectedMailbox(
+        input.organizationId,
+        {
+          to: input.email,
+          subject: recap.subject,
+          text: withSignature(
+            `${recap.body}\n\nIs this what we agreed? Would you like a quotation? Reply to let us know.`,
+            businessName,
+          ),
+          authoredBy: AUTHOR,
+        },
+      );
+      return sent
+        ? "sent (plain confirmation)"
+        : "skipped: no connected mailbox";
+    }
     const apiKey = await resolveAnthropicKey(input.organizationId);
     const draftInput = {
       report: input.report,
