@@ -93,9 +93,15 @@ async function ingestOne(
 ) {
   const own = account.address.toLowerCase();
   const fromSelf = bareAddress(message.from) === own;
-  // Something we sent shows up in the inbox only when we mailed ourselves;
-  // the Sent folder is where our own messages belong.
-  if (folder === "inbox" && fromSelf) return null;
+  // Websites also send order notifications from the business's own address.
+  // Preserve those in a manual-only inbox; Message-ID deduplication below
+  // still prevents a second copy if the same mail is also in Sent.
+  if (
+    folder === "inbox" &&
+    fromSelf &&
+    !(await mailboxPreferences(account)).manualOnly
+  )
+    return null;
   const externalMessageId =
     normalizeMessageId(message.messageId) ?? `uid:${message.uid}`;
   if (await Repo.findMessageByExternalId(account.id, externalMessageId)) {
@@ -166,7 +172,12 @@ async function ingest(input: BridgeIngestRequest) {
     accepted += 1;
     // History is for reading. A draft reply to a three-week-old newsletter
     // would be noise, and answering it would be worse.
-    if (input.backfill || input.folder !== "inbox") continue;
+    if (
+      input.backfill ||
+      input.folder !== "inbox" ||
+      bareAddress(message.from) === account.address.toLowerCase()
+    )
+      continue;
     try {
       await EmailAssistantService.onInbound(
         account,
