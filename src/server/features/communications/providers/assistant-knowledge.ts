@@ -124,6 +124,7 @@ export function buildBusinessContext(input: {
   publishedAnswers: ReadonlyArray<{ question: string; url: string }>;
   projectContext?: string | null;
   now?: Date;
+  includeReplyGuidance?: boolean;
 }): string {
   const { settings } = input;
   const parts: string[] = [];
@@ -165,12 +166,16 @@ export function buildBusinessContext(input: {
   }
   parts.push(
     settings.bookingLink?.trim()
-      ? `## Booking\nWhen someone wants a call or meeting, offer this link: ${settings.bookingLink.trim()}`
-      : "## Booking\nNo booking link is configured. Do not invent one or promise a callback.",
+      ? input.includeReplyGuidance === false
+        ? `## Booking\nBooking link: ${settings.bookingLink.trim()}`
+        : `## Booking\nWhen someone wants a call or meeting, offer this link: ${settings.bookingLink.trim()}`
+      : input.includeReplyGuidance === false
+        ? "## Booking\nNo booking link is configured. Do not invent one or promise a callback."
+        : "## Booking\nNo booking link is configured. Do not invent one; offer that the team will call them back instead.",
   );
   if (input.publishedAnswers.length) {
     parts.push(
-      `## Published answers (give a short answer, then link to the page)\n${input.publishedAnswers
+      `## Published answers${input.includeReplyGuidance === false ? "" : " (give a short answer, then link to the page)"}\n${input.publishedAnswers
         .map((a) => `- ${a.question}: ${a.url}`)
         .join("\n")}`,
     );
@@ -199,8 +204,11 @@ export function formatCatalogueMatches(
   query: string,
   rows: readonly CatalogueMatch[],
   currency: string,
+  includeReplyGuidance = true,
 ): string {
   if (!rows.length) {
+    if (!includeReplyGuidance)
+      return `No catalogue item matches "${query}". No price or availability is confirmed.`;
     return `No catalogue item matches "${query}". Tell the customer it is not in the catalogue right now, offer to note a pre-order so the team can source it, and record it with create_order_request if they agree. Do not invent a price.`;
   }
   const lines = rows
@@ -212,7 +220,9 @@ export function formatCatalogueMatches(
         detail.push(
           row.quantityOnHand > 0
             ? `in stock (${row.quantityOnHand})`
-            : "out of stock — offer a pre-order via create_order_request",
+            : includeReplyGuidance
+              ? "out of stock — offer a pre-order via create_order_request"
+              : "out of stock",
         );
       }
       if (row.productUrl) detail.push(`link: ${row.productUrl}`);
@@ -232,20 +242,6 @@ const HEADINGS = /^#{1,6}[ \t]+/gm;
 const BOLD_ITALIC = /\*\*\*(\S(?:[^*\n]*\S)?)\*\*\*/g;
 const BOLD = /\*\*(\S(?:[^*\n]*\S)?)\*\*/g;
 const UNDERSCORE_BOLD = /__(\S(?:[^_\n]*\S)?)__/g;
-
-/**
- * WhatsApp has its own emphasis marks — *bold*, _italic_ — and shows the
- * markdown a model writes, **like this**, as literal asterisks. Convert
- * rather than strip, so the emphasis the assistant intended survives.
- */
-export function toWhatsappText(text: string): string {
-  return text
-    .replace(HEADINGS, "")
-    .replace(BOLD_ITALIC, "*$1*")
-    .replace(BOLD, "*$1*")
-    .replace(UNDERSCORE_BOLD, "_$1_")
-    .trim();
-}
 
 /** An email body is plain text; emphasis marks are just noise in it. */
 export function toPlainText(text: string): string {

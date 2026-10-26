@@ -62,7 +62,9 @@ New verification messages carry an internal verification message type so history
 filtering does not depend on their configurable wording. Legacy verification
 phrases remain recognized only for historical filtering, never generated as a
 fixed reply. AI text and configured instant answers are no longer rewritten by
-an unconditional presentation normalizer. Profile drafts use configured writing
+an unconditional presentation normalizer. The old staff-name-specific history
+rewrite is removed; configured greeting instructions now control responses,
+and historical identity answers remain intact. Profile drafts use configured writing
 style and do not force a 24-hour response promise.
 
 ## Migration and release

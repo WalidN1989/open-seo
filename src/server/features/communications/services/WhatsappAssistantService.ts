@@ -218,26 +218,16 @@ async function updateSettings(
     }).filter(([, value]) => value !== undefined),
   );
   const before = await Repo.getSettings(organizationId);
+  const after = { ...before, ...values };
   const event = await WhatsappAiSettingsRepository.change({
     organizationId,
     actorUserId: userId,
     before: whatsappWritingSnapshot(before),
-    after: whatsappWritingSnapshot({
-      persona: input.persona !== undefined ? input.persona : before?.persona,
-      handoffMessage:
-        input.handoffMessage !== undefined
-          ? input.handoffMessage
-          : before?.handoffMessage,
-      replyStyle:
-        input.replyStyle !== undefined ? input.replyStyle : before?.replyStyle,
-      responseMessagesJson: responseMessages
-        ? JSON.stringify(responseMessages)
-        : before?.responseMessagesJson,
-    }),
+    after: whatsappWritingSnapshot(after),
     operation: "update",
     expectedResponseMessagesJson: before?.responseMessagesJson ?? null,
     extraValues: values,
-    settingsBackup: { before, after: { ...before, ...values } },
+    settingsBackup: { before, after },
   });
   if (!event)
     throw new AppError(

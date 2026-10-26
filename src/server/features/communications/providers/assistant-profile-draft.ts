@@ -140,7 +140,7 @@ const SYSTEM_PROMPT = [
   "",
   "- business_hours_start and business_hours_end: opening and closing time as HH:MM in 24-hour form, only if the source states opening hours. Use null for both otherwise.",
   "",
-  "- handoff_message: a customer acknowledgement in the configured writing style, sent when a conversation is handed to the team. Do not mention internal automation, promise a response deadline or invent a callback time; include contact details only when the source supports them.",
+  "- handoff_message: a customer acknowledgement in the configured writing style, sent when a conversation is handed to the team. Do not promise a response deadline or invent a callback time; include contact details only when the source supports them.",
   "",
   "Make no claims the source does not support. Return JSON only, with no commentary around it.",
 ].join("\n");

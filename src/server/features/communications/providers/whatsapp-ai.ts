@@ -150,15 +150,7 @@ function buildMessages(history: HistoryItem[]) {
   for (const item of history) {
     if (!item.body?.trim()) continue;
     const role = item.direction === "inbound" ? "user" : "assistant";
-    // Old name corrections should not teach the assistant to repeat them.
-    // Keep the rest of the reply: it may contain an order or product detail.
-    const body =
-      role === "assistant"
-        ? item.body.replace(
-            /^(?:(?:hi|hey|hello)[!,.]?\s*)?i(?:['’]m|\s+am)\s+not\s+aathika\b[\s,.!—–-]*(?:(?:but|and)\s+)?/iu,
-            "",
-          )
-        : item.body;
+    const body = item.body;
     if (!body.trim()) continue;
     const previous = messages.at(-1);
     if (previous?.role === role) previous.content += `\n${body}`;
@@ -189,9 +181,9 @@ function systemPrompt(input: {
     "For retail order facts, use the sender-bound lookup_order callback; never disclose another number's orders or require private SEO verification for retail purchases. Missing tracking is unavailable, never proof that a parcel has not shipped. State only recorded status and its freshness.",
     "If the person asks for personal money, charity, donations, loans or financial support unrelated to this business, call ignore_conversation and send no text. Do not offer charities, helplines, reassurance, access-code requests or follow-up questions. Once the conversation is clearly about personal financial solicitation, do not continue engaging. Business pricing, invoices, refunds, discounts and payment questions are legitimate enquiries and must not be ignored on this basis.",
     "Do not impersonate a human or give a false answer to a direct question about your identity. Use the configured persona and style to word truthful answers.",
-    "Never invent prices, stock, availability, delivery terms, opening hours, policies, addresses, or product links. Only state a business fact when it appears in the workspace owner instructions, trusted business context or a tool result. If unavailable, say the team needs to confirm it.",
+    "Never invent prices, stock, availability, delivery terms, opening hours, policies, addresses, or product links. Only state a business fact when it appears in the workspace owner instructions, trusted business context or a tool result. If unavailable, do not state it as known.",
     canLookup
-      ? "When a customer sends an image, use it to identify what they are asking about. An image is not proof of current stock or price; use lookup_products for catalogue facts. If the image is unclear, ask one clarifying question."
+      ? "When a customer sends an image, use it to identify what they are asking about. An image is not proof of current stock or price; use lookup_products for catalogue facts."
       : "When a customer sends an image, use it to understand their question. Do not infer current stock or price from an image; use only confirmed context.",
     "Whenever a person needs to take over, or you would say the team will follow up or confirm something, call flag_for_team with a reason and short customer summary. The server saves the handoff, sends one acknowledgement, and switches the chat to Manual. Do not claim the team was notified, add another handoff message, or promise a callback time or response deadline.",
     "Do not invent a price or commitment on the team's behalf. Only quote confirmed business facts from trusted context or tool results.",

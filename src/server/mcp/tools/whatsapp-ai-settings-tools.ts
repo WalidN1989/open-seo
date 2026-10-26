@@ -118,7 +118,7 @@ const updateWhatsappAiSettingsTool = {
   config: {
     title: "Edit WhatsApp auto-reply instructions",
     description:
-      "Requires WhatsApp manage permission and a fresh expectedRevision. Append a rule OR replace instructions. Edit handoffMessage, replyStyle or responseMessages to change actual runtime wording. All visible defaults can be overridden. Returns workspace, before/after text and versionId. Every change atomically backs up the previous text with the caller's identity. No settings or history deletion. Does not change autopilot, chat modes, templates, webhooks or sending code; sends nothing. Existing Email/Social use the same fields.",
+      "Requires WhatsApp manage permission and a fresh expectedRevision. Append a rule OR replace instructions. Edit handoffMessage, replyStyle or responseMessages to change actual runtime wording. All visible defaults can be overridden. Returns workspace, before/after text and versionId. Every change atomically backs up the previous text with the caller's identity. No settings or history deletion. Does not change autopilot, chat modes, templates, webhooks or sending code; sends nothing. Persona and handoff are shared with Email/Social; style and canned messages are WhatsApp-specific.",
     inputSchema: updateWhatsappAiSettingsSchema.safeExtend({ organizationId }),
     outputSchema: changedOutput,
     annotations: write,
@@ -143,7 +143,7 @@ const listWhatsappAiSettingsHistoryTool = {
   config: {
     title: "Read WhatsApp settings versions",
     description:
-      "Requires WhatsApp manage permission. Lists changes made by these settings MCP tools, newest first, with actor and timestamp. Use nextOffset to paginate; use versionId for before/after text. Existing UI edits are not retroactively versioned. Returns the workspace. Read-only, no model calls.",
+      "Requires WhatsApp manage permission. Lists changes made through MCP or AI configuration, newest first, with actor and timestamp. Use nextOffset to paginate; use versionId for before/after text. Existing UI edits are not retroactively versioned. Returns the workspace. Read-only, no model calls.",
     inputSchema: historyInput,
     outputSchema: historyOutput,
     annotations: read,

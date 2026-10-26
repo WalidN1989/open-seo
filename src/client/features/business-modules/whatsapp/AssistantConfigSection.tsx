@@ -235,7 +235,7 @@ function ConfigForm({
         ) : null}
         <Field
           label="Booking link"
-          hint="Calendly or similar. Until one is set the assistant offers a call-back instead of inventing a link."
+          hint="Calendly or a similar booking URL. Missing links are never invented; reply wording comes from configuration."
         >
           <input
             className={input}

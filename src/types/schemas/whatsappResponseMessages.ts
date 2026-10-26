@@ -3,11 +3,21 @@ import { z } from "zod";
 const text = z.string().trim().min(1).max(2000);
 export const whatsappResponseMessagesSchema = z
   .object({
-    verificationLocked: text,
-    verificationRejected: text,
-    verificationSuccess: text,
-    imageUnavailable: text,
-    teamAlert: text,
+    verificationLocked: text.describe(
+      "Locked verification reply. No placeholders.",
+    ),
+    verificationRejected: text.describe(
+      "Rejected verification reply. Allowed placeholder: {{remaining}}.",
+    ),
+    verificationSuccess: text.describe(
+      "Successful verification reply. Allowed placeholder: {{displayName}}.",
+    ),
+    imageUnavailable: text.describe(
+      "Image-read failure reply. No placeholders.",
+    ),
+    teamAlert: text.describe(
+      "Staff alert. Allowed placeholders: {{customer}}, {{reason}}, {{expiresAt}}.",
+    ),
   })
   .strict()
   .superRefine((messages, context) => {

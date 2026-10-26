@@ -2497,7 +2497,11 @@ and dispatch guards remain enforced. No calls, routines or provider sends are
 introduced. Additive SQLite0115 / PG0094 columns preserve all existing rows.
 
 This work is separate from the MCP customer-care send-limit PR74, whose required
-checks pass and which remains unmerged/undeployed. PR73's expanded migration,
-UI, MCP, runtime, backup and multi-axis review checks must pass before release.
+checks pass and which remains unmerged/undeployed. PR73 passed local ci:check,
+3,235 tests (two opt-in tests skipped there and passed in a separate 10-test
+Postgres run), self-host build, UI save/MCP readback/history restoration, and
+multi-axis review with verified fixes. The old named-staff history rewrite was
+removed; greeting wording now comes from configuration. No long runtime stability
+observation or real-provider delivery is claimed by these bounded checks.
 The requested workspace-specific append is still pending the reviewed release;
 no production settings, webhook, messages, deployment or restart changed here.

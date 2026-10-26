@@ -1,3 +1,8 @@
+import {
+  businessContext,
+  lookupProducts,
+} from "./WhatsappAssistantContextService";
+export { businessContext, lookupProducts };
 import { renderWhatsappResponse } from "@/shared/whatsapp-ai-configuration";
 import { WhatsappHandoffService } from "./WhatsappHandoffService";
 import { sendAutomaticWhatsappReply } from "./WhatsappAutomaticReplyService";
@@ -5,13 +10,10 @@ import { WhatsappReplyControlRepository as Control } from "../repositories/Whats
 import { OrderService } from "@/server/features/commerce/services/OrderService";
 import { loadWhatsappImage } from "../providers/whatsapp-media";
 import { getOptionalEnvValue } from "@/server/lib/runtime-env";
-import { ProjectContextService } from "@/server/features/project-context/services/ProjectContextService";
 import { CommunicationsRepository } from "../repositories/CommunicationsRepository";
 import { WhatsappAssistantRepository as Repo } from "../repositories/WhatsappAssistantRepository";
 import {
   applyPriceTokens,
-  buildBusinessContext,
-  formatCatalogueMatches,
   looksLikeQuestion,
   matchesEscalation,
   normalizeQuestion,
@@ -34,7 +36,6 @@ import {
   WhatsappAssistantService,
   priceTokens,
   resolveAiKey,
-  type AssistantSettings,
   type Connection,
 } from "./WhatsappAssistantService";
 
@@ -43,51 +44,6 @@ import { isPersonalMoneyRequest } from "../providers/whatsapp-reply-policy";
 const { withDefaults } = WhatsappAssistantService;
 const VERIFICATION_REPLY =
   /^(That code does not match any account\.|That is too many attempts\.|Thanks — you are verified as )/;
-
-/** Everything the model may treat as fact about this business. */
-export async function businessContext(
-  organizationId: string,
-  settings: AssistantSettings,
-) {
-  const [prices, published, projectId] = await Promise.all([
-    priceTokens(organizationId),
-    Repo.listPublishedAnswers(organizationId),
-    Repo.projectIdForOrganization(organizationId),
-  ]);
-  let projectContext: string | null = null;
-  if (projectId) {
-    try {
-      const context = await ProjectContextService.getProjectContext(projectId);
-      projectContext = ProjectContextService.renderProjectContextMarkdown(
-        context,
-      ).slice(0, 6000);
-    } catch {
-      projectContext = null;
-    }
-  }
-  return buildBusinessContext({
-    settings,
-    // A bookshop's whole catalogue does not belong in every prompt; the
-    // instant-answer tokens still resolve against the full list.
-    prices: prices.slice(0, 120),
-    publishedAnswers: published.flatMap((item) =>
-      item.blogUrl ? [{ question: item.question, url: item.blogUrl }] : [],
-    ),
-    projectContext,
-  });
-}
-
-/**
- * What the model sees when it asks about the catalogue: the matching items
- * with their live prices, or a clear "nothing matched" so it does not guess.
- */
-export async function lookupProducts(organizationId: string, query: string) {
-  const [rows, currency] = await Promise.all([
-    Repo.searchPricedProducts(organizationId, query),
-    Repo.currencyFor(organizationId),
-  ]);
-  return formatCatalogueMatches(query, rows, currency);
-}
 
 async function applyActions(
   organizationId: string,
@@ -343,7 +299,7 @@ export async function replyToInbound(
         organizationId,
         conversationId,
       ),
-      businessContext(organizationId, settings),
+      businessContext(organizationId, settings, false),
       resolveAiKey(aiConnection),
     ]);
     const lastOutbound = history.findLastIndex(
@@ -402,7 +358,7 @@ export async function replyToInbound(
       persona: settings.persona,
       replyStyle: settings.replyStyle,
       accessNote: accessNote(access),
-      lookupProducts: (query) => lookupProducts(organizationId, query),
+      lookupProducts: (query) => lookupProducts(organizationId, query, false),
       lookupOrder: (orderId) =>
         OrderService.lookupCustomerOrder(
           organizationId,
