@@ -1,3 +1,5 @@
+import { requireMcpSendConfirmation } from "@/server/features/email/mailboxPreferences";
+import { EmailRepository } from "@/server/features/email/repositories/EmailRepository";
 import { z } from "zod";
 import { EmailService } from "@/server/features/email/services/EmailService";
 import { mcpResponse } from "@/server/mcp/formatters";
@@ -194,7 +196,15 @@ const getEmailThreadTool = {
   }),
 };
 
+const confirmationInput = z
+  .boolean()
+  .optional()
+  .describe(
+    "Set true only after the user has approved the recipients, subject and exact message body. Required for mailboxes with manual approval enabled; otherwise save a draft.",
+  );
+
 const replyInput = {
+  confirmed: confirmationInput,
   organizationId: organizationIdSchema,
   threadId: z.string().min(1).describe("From list_email_threads."),
   text: z
@@ -234,6 +244,10 @@ const replyToEmailThreadTool = {
     z.infer<z.ZodObject<typeof replyInput>>,
     ReturnType<typeof mcpResponse>
   >(async (args, context) => {
+    await requireMcpSendConfirmation(
+      await EmailRepository.getAccount(context.organizationId),
+      args.confirmed,
+    );
     const sent = await EmailService.sendReply(
       context.organizationId,
       context.auth.userId,
@@ -247,6 +261,7 @@ const replyToEmailThreadTool = {
 };
 
 const composeInput = {
+  confirmed: confirmationInput,
   organizationId: organizationIdSchema,
   to: z.string().email().max(320),
   subject: z.string().min(1).max(200),
@@ -291,6 +306,10 @@ const sendEmailTool = {
     z.infer<z.ZodObject<typeof composeInput>>,
     ReturnType<typeof mcpResponse>
   >(async (args, context) => {
+    await requireMcpSendConfirmation(
+      await EmailRepository.getAccount(context.organizationId),
+      args.confirmed,
+    );
     const sent = await EmailService.compose(
       context.organizationId,
       context.auth.userId,

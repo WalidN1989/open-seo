@@ -1,3 +1,4 @@
+import { MailboxPreferences } from "./MailboxPreferences";
 import { useState } from "react";
 import { Bot, Mail } from "lucide-react";
 import {
@@ -83,22 +84,30 @@ function ConnectedAccount({
         </div>
       </section>
 
+      {account.provider === "mailbox" ? (
+        <MailboxPreferences key={account.updatedAt} account={account} />
+      ) : null}
+
       {account.provider !== "microsoft" ? (
         <label className="flex cursor-pointer items-center justify-between gap-4 rounded-xl border border-base-300 p-4">
           <span>
             <span className="block font-medium">Autopilot</span>
             <span className="text-sm text-base-content/60">
-              Off: the assistant writes a draft for every customer email and a
-              person approves it under Drafts. On: it replies on its own. Either
-              way it uses the persona, facts, prices and contact details from
-              the Assistant tab, which this business shares with WhatsApp.
+              When manual approval is enabled above, every reply requires a
+              person. Otherwise, the assistant may reply to recognized customers
+              automatically. Autopilot off writes drafts for other senders, and
+              a person approves it under Drafts. On: it replies on its own.
+              Either way it uses the persona, facts, prices and contact details
+              from the Assistant tab, which this business shares with WhatsApp.
             </span>
           </span>
           <input
             type="checkbox"
             className="toggle toggle-primary"
             checked={account.autopilot}
-            disabled={autopilot.isPending}
+            disabled={
+              autopilot.isPending || account.mailboxPreferences.manualOnly
+            }
             onChange={(event) => autopilot.mutate(event.currentTarget.checked)}
           />
         </label>

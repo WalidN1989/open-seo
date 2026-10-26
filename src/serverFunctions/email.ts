@@ -1,3 +1,4 @@
+import { mailboxPreferencesSchema } from "@/server/features/email/mailboxPreferences";
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import { z } from "zod";
@@ -141,4 +142,15 @@ export const setEmailThreadStatus = createServerFn({ method: "POST" })
   .validator(setEmailThreadStatusSchema)
   .handler(({ context, data }) =>
     EmailService.setThreadStatus(context.organizationId, context.userId, data),
+  );
+
+export const setMailboxPreferences = createServerFn({ method: "POST" })
+  .middleware(requireAuthenticatedContext)
+  .validator(mailboxPreferencesSchema)
+  .handler(({ context, data }) =>
+    EmailAccountService.setMailboxPreferences(
+      context.organizationId,
+      context.userId,
+      data,
+    ),
   );

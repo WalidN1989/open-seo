@@ -188,7 +188,11 @@ class Watcher {
   }
 
   get key() {
-    return JSON.stringify([this.account.address, this.account.credentials]);
+    return JSON.stringify([
+      this.account.address,
+      this.account.credentials,
+      this.account.pollIntervalMs,
+    ]);
   }
 
   private get label() {
@@ -244,12 +248,20 @@ class Watcher {
     log(`${this.label}: watching from UID ${this.cursor + 1}`);
     client.on("exists", () => void this.catchUp());
     await this.catchUp();
-    // imapflow idles by itself whenever no command is running; the promise
-    // below settles only when the host or the network ends the session.
-    await new Promise<void>((resolve, reject) => {
-      client.once("close", () => resolve());
-      client.once("error", (error: Error) => reject(error));
-    });
+    // Live IDLE updates remain immediate; an opted-in mailbox also checks
+    // every five minutes if a server misses its notification.
+    const poll = this.account.pollIntervalMs
+      ? setInterval(() => void this.catchUp(), this.account.pollIntervalMs)
+      : undefined;
+    try {
+      await new Promise<void>((resolve, reject) => {
+        client.once("close", () => resolve());
+        client.once("error", (error: Error) => reject(error));
+      });
+    } finally {
+      if (poll) clearInterval(poll);
+      await client.logout().catch(() => undefined);
+    }
     this.client = null;
   }
 

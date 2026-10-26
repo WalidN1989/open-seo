@@ -1,6 +1,13 @@
+import {
+  mailboxPreferences,
+  mailboxPreferencesSchema,
+} from "../mailboxPreferences";
 import type { z } from "zod";
 import { AppError } from "@/server/lib/errors";
-import { encryptCredentials } from "@/server/lib/connection-secrets";
+import {
+  encryptCredentials,
+  mergeCredentials,
+} from "@/server/lib/connection-secrets";
 import { getRequiredEnvValue } from "@/server/lib/runtime-env";
 import { BusinessAuditRepository } from "@/server/features/business-modules/repositories/BusinessAuditRepository";
 import { BusinessModuleService } from "@/server/features/business-modules/services/BusinessModuleService";
@@ -45,7 +52,7 @@ export async function audit(
 }
 
 /** The account as the browser may see it: everything but the secrets. */
-export function publicAccount(account: EmailAccountRow | null) {
+export async function publicAccount(account: EmailAccountRow | null) {
   if (!account) return null;
   const { credentials, syncCursor, ...rest } = account;
   let historyImport: "idle" | "running" | "complete" = "idle";
@@ -65,7 +72,12 @@ export function publicAccount(account: EmailAccountRow | null) {
       // The account still appears connected; the sync job reports cursor errors.
     }
   }
-  return { ...rest, historyImport, hasCredentials: Boolean(credentials) };
+  return {
+    ...rest,
+    historyImport,
+    hasCredentials: Boolean(credentials),
+    mailboxPreferences: await mailboxPreferences(account),
+  };
 }
 
 export function providerFailure(error: unknown): never {
@@ -390,6 +402,12 @@ async function setAutopilot(
   );
   const account = await Repo.getAccount(organizationId);
   if (!account) throw new AppError("NOT_FOUND", "No email account.");
+  if (autopilot && (await mailboxPreferences(account)).manualOnly) {
+    throw new AppError(
+      "VALIDATION_ERROR",
+      "Manual approval is required for this mailbox.",
+    );
+  }
   const updated = await Repo.updateAccount(account.id, { autopilot });
   await audit(organizationId, userId, "email.autopilot.changed", account.id, {
     autopilot,
@@ -397,7 +415,34 @@ async function setAutopilot(
   return publicAccount(updated);
 }
 
+async function setMailboxPreferences(
+  organizationId: string,
+  userId: string,
+  input: z.infer<typeof mailboxPreferencesSchema>,
+) {
+  await BusinessModuleService.requireAccess(
+    organizationId,
+    userId,
+    MODULE,
+    "admin",
+  );
+  const account = await Repo.getAccount(organizationId);
+  if (!account || account.provider !== "mailbox" || !account.credentials)
+    throw new AppError("VALIDATION_ERROR", "Connect your mailbox first.");
+  const preferences = mailboxPreferencesSchema.parse(input);
+  const updated = await Repo.updateAccount(account.id, {
+    credentials: await mergeCredentials(account.credentials, {
+      MAILBOX_PREFERENCES: JSON.stringify(preferences),
+    }),
+    ...(preferences.manualOnly ? { autopilot: false } : {}),
+  });
+  await audit(organizationId, userId, "email.mailbox.preferences", account.id);
+  await pokeBridgeReload();
+  return publicAccount(updated);
+}
+
 export const EmailAccountService = {
+  setMailboxPreferences,
   connectAgentmail,
   connectMailbox,
   disconnect,

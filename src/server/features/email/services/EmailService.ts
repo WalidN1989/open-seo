@@ -1,3 +1,4 @@
+import { signedEmailText } from "../mailboxPreferences";
 import type { z } from "zod";
 import { AppError } from "@/server/lib/errors";
 import { BusinessModuleService } from "@/server/features/business-modules/services/BusinessModuleService";
@@ -40,12 +41,15 @@ export function copiesFor(
   return { cc, bcc };
 }
 
-export async function requireConnectedAccount(organizationId: string) {
+export async function requireConnectedAccount(
+  organizationId: string,
+  humanApproved = false,
+) {
   const account = await Repo.getAccount(organizationId);
   if (!account || account.status !== "connected") {
     throw new AppError("VALIDATION_ERROR", "Connect an email account first.");
   }
-  return { account, outbound: await outboundFor(account) };
+  return { account, outbound: await outboundFor(account, humanApproved) };
 }
 
 async function workspace(organizationId: string, userId: string) {
@@ -56,7 +60,7 @@ async function workspace(organizationId: string, userId: string) {
     Repo.listDrafts(organizationId),
   ]);
   return {
-    account: publicAccount(account),
+    account: await publicAccount(account),
     threads: threads.map((thread) => ({
       ...thread,
       senders: parseList(thread.senders),
@@ -169,7 +173,10 @@ async function sendReply(
     MODULE,
     "manage",
   );
-  const { account, outbound } = await requireConnectedAccount(organizationId);
+  const { account, outbound } = await requireConnectedAccount(
+    organizationId,
+    true,
+  );
   const threadRow = await Repo.getThread(organizationId, input.threadId);
   if (!threadRow) throw new AppError("NOT_FOUND", "Thread not found.");
   const last = await Repo.lastInboundMessage(threadRow.id);
@@ -179,6 +186,7 @@ async function sendReply(
       "Nothing to reply to in this thread yet.",
     );
   }
+  input = { ...input, text: await signedEmailText(account, input.text) };
   const copies = copiesFor(account.address, [last.fromAddress], input);
   const sent = await outbound
     .reply({ thread: threadRow, last, text: input.text, ...copies })
@@ -205,7 +213,11 @@ async function compose(
     MODULE,
     "manage",
   );
-  const { account, outbound } = await requireConnectedAccount(organizationId);
+  const { account, outbound } = await requireConnectedAccount(
+    organizationId,
+    true,
+  );
+  input = { ...input, text: await signedEmailText(account, input.text) };
   const copies = copiesFor(account.address, [input.to], input);
   const sent = await outbound
     .compose({
@@ -263,10 +275,14 @@ async function approveDraft(
   if (!draft || draft.direction !== "draft") {
     throw new AppError("NOT_FOUND", "Draft not found.");
   }
-  const text = input.text ?? draft.textBody ?? "";
+  let text = input.text ?? draft.textBody ?? "";
   if (!text.trim())
     throw new AppError("VALIDATION_ERROR", "The draft is empty.");
-  const { account, outbound } = await requireConnectedAccount(organizationId);
+  const { account, outbound } = await requireConnectedAccount(
+    organizationId,
+    true,
+  );
+  text = await signedEmailText(account, text);
   const threadRow = await Repo.getThread(organizationId, draft.threadId);
   if (!threadRow) throw new AppError("NOT_FOUND", "Thread not found.");
   const last = await Repo.lastInboundMessage(draft.threadId);

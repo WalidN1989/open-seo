@@ -99,3 +99,28 @@ Humans can also read an AgentMail inbox in any mail client over IMAP:
   cc/bcc), `draft_reply_to_email_thread`, `draft_email` (draft-only),
   `reply_to_email_thread`, `send_email` (send-only; the description tells the
   agent to get the user's yes first). Connect/autopilot/approve stay in the UI.
+
+## Optional mailbox approval and signature settings
+
+An IMAP/SMTP account's Email Settings can enable manual approval, a plain-text
+signature, and a five-minute fallback check alongside live IMAP updates. These
+preferences are stored with that account's encrypted configuration, using the
+existing key; there is no schema migration and no change to other accounts.
+The first import remains 90 days, capped at 300 messages per folder.
+
+With manual approval enabled, inbound email can produce drafts but does not
+journal into CRM. Automatic outbound paths are rejected, including the special
+recognized-customer reply path that otherwise operates independently of Autopilot.
+Autopilot cannot be enabled while this policy is on. The MCP send/reply tools
+require `confirmed: true`; their caller must show the recipients, subject and
+exact text and obtain the person's approval first. This flag records the caller's
+assertion of approval; it cannot independently verify a conversation with a human.
+Draft tools do not send and remain the default until approval. Interactive UI
+send/approve actions continue through the authorized user's existing send path.
+Signatures are added to saved agent drafts and interactive/MCP sends without
+adding a second identical trailing signature. Existing CC/BCC, Message-ID reply
+headers and Sent-folder copying are retained.
+
+Before rolling back to an older image, pause any manual-only mailbox first:
+older code does not enforce this policy. Retain its encrypted credentials and
+messages; resume only when the enforcing image and settings are verified.
