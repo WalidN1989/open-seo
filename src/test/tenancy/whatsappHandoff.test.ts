@@ -144,9 +144,7 @@ describe("durable team handoffs", () => {
     expect(
       provider.text.mock.calls.filter((call) => call[1] === customer),
     ).toHaveLength(1); // acknowledgement only
-    expect(provider.text.mock.calls[0]?.[2]).toContain(
-      "pause automated replies",
-    );
+    expect(provider.text.mock.calls[0]?.[2]).toContain("Our team will review");
     expect(
       provider.text.mock.calls.some((call) => call[1] === otherStaff),
     ).toBe(false);

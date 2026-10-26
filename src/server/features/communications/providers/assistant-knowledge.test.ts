@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import {
   applyPriceTokens,
   toPlainText,
-  toWhatsappText,
   buildBusinessContext,
   formatCatalogueMatches,
   formatMinor,
@@ -178,19 +177,6 @@ describe("channel formatting", () => {
     "Order at https://example.com/a*b",
   ].join("\n");
 
-  it("turns a model's markdown into the emphasis WhatsApp understands", () => {
-    const text = toWhatsappText(reply);
-    expect(text).toContain("*Email:* sales@example.com");
-    expect(text).toContain("1. *SEO* – boost your rankings");
-    expect(text).toContain("2. _Web development_ – build your site");
-    expect(text).toContain("*Everything* is fixed price.");
-    expect(text.startsWith("Our details")).toBe(true);
-    // Never leaves a double asterisk for the customer to read.
-    expect(text).not.toContain("**");
-    // A bare URL is left exactly as it was written.
-    expect(text).toContain("https://example.com/a*b");
-  });
-
   it("leaves an email body plain", () => {
     const text = toPlainText(reply);
     expect(text).toContain("Email: sales@example.com");
@@ -201,7 +187,44 @@ describe("channel formatting", () => {
   });
 
   it("leaves ordinary text with a stray asterisk alone", () => {
-    expect(toWhatsappText("2 * 3 is 6")).toBe("2 * 3 is 6");
     expect(toPlainText("a * b")).toBe("a * b");
+  });
+});
+
+describe("WhatsApp fact-only context", () => {
+  it("omits fixed brevity and pre-order guidance while preserving other callers", () => {
+    const context = {
+      settings: {},
+      prices: [],
+      publishedAnswers: [
+        { question: "Returns?", url: "https://example.test/returns" },
+      ],
+    };
+    expect(
+      buildBusinessContext({ ...context, includeReplyGuidance: false }),
+    ).not.toContain("short answer");
+    expect(
+      buildBusinessContext({ ...context, includeReplyGuidance: false }),
+    ).toContain("https://example.test/returns");
+    expect(buildBusinessContext(context)).toContain("short answer");
+    const item = {
+      name: "Test",
+      sku: "SKU",
+      salePriceMinor: 100,
+      productUrl: "https://example.test/item",
+      quantityOnHand: 0,
+    };
+    expect(formatCatalogueMatches("Test", [item], "USD", false)).toContain(
+      "out of stock",
+    );
+    expect(formatCatalogueMatches("Test", [item], "USD", false)).not.toContain(
+      "offer a pre-order",
+    );
+    expect(formatCatalogueMatches("Missing", [], "USD", false)).not.toContain(
+      "pre-order",
+    );
+    expect(formatCatalogueMatches("Test", [item], "USD")).toContain(
+      "offer a pre-order",
+    );
   });
 });

@@ -77,6 +77,7 @@ import { saveKeywordsTool } from "@/server/mcp/tools/save-keywords";
 import { caseSurface } from "@/server/mcp/tools/case-tools";
 import { callSurface } from "@/server/mcp/tools/call-tools";
 import { smsSurface } from "@/server/mcp/tools/sms-tools";
+import { whatsappAiSettingsSurface } from "@/server/mcp/tools/whatsapp-ai-settings-tools";
 import { whatsappSurface } from "@/server/mcp/tools/whatsapp-tools";
 import { whoamiTool } from "@/server/mcp/tools/whoami";
 
@@ -92,6 +93,7 @@ export const MODULE_SURFACES: readonly McpModuleSurface[] = [
   callSurface,
   caseSurface,
   whatsappSurface,
+  whatsappAiSettingsSurface,
 ];
 
 export const ALL_MCP_TOOLS: readonly McpToolLike[] = [

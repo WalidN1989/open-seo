@@ -1664,6 +1664,8 @@ export const whatsappAssistantSettings = sqliteTable(
     handoffContentSid: text("handoff_content_sid"),
     persona: text("persona"),
     businessFacts: text("business_facts"),
+    replyStyle: text("reply_style"),
+    responseMessagesJson: text("response_messages_json"),
     createdAt: createdAt(),
     updatedAt: text("updated_at")
       .notNull()

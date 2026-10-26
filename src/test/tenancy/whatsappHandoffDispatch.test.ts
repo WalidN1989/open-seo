@@ -1,3 +1,4 @@
+import { DEFAULT_WHATSAPP_RESPONSES } from "@/shared/whatsapp-ai-configuration";
 vi.mock("cloudflare:workers", () => ({
   env: {
     DATABASE_PROVIDER: process.env.DU_TEST_POSTGRES_URL ? "postgres" : "d1",
@@ -22,6 +23,35 @@ import {
   staffWindow,
 } from "./whatsappHandoffFixture";
 describe("handoff dispatch guards", () => {
+  it("sends configured customer and staff wording without hardcoded style", async () => {
+    await db.insert(s.whatsappAssistantSettings).values({
+      organizationId: ORG_A,
+      handoffMessage: "Your custom team acknowledgement.",
+      responseMessagesJson: JSON.stringify({
+        ...DEFAULT_WHATSAPP_RESPONSES,
+        teamAlert: "Review {{customer}}: {{reason}} ({{expiresAt}})",
+      }),
+    });
+    await staffWindow();
+    await start();
+    await service.runDue(chat);
+    const bodies: unknown[] = provider.text.mock.calls.map(
+      (call): unknown => call[2],
+    );
+    expect(bodies).toContain("Your custom team acknowledgement.");
+    expect(
+      bodies.some(
+        (body) =>
+          typeof body === "string" && body.startsWith(`Review ${customer}:`),
+      ),
+    ).toBe(true);
+    expect(
+      bodies.every(
+        (body) =>
+          typeof body === "string" && !body.includes("automated replies"),
+      ),
+    ).toBe(true);
+  });
   it("revalidates staff revocation during template preflight at the atomic dispatch boundary", async () => {
     await db.insert(s.whatsappAssistantSettings).values({
       organizationId: ORG_A,

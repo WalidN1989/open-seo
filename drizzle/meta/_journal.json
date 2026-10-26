@@ -806,6 +806,13 @@
       "when": 1792919611217,
       "tag": "0114_voice_cases_attention",
       "breakpoints": true
+    },
+    {
+      "idx": 115,
+      "version": "6",
+      "when": 1793003168411,
+      "tag": "0115_whatsapp_ai_response_configuration",
+      "breakpoints": true
     }
   ]
 }

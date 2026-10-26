@@ -1,3 +1,4 @@
+import { DEFAULT_WHATSAPP_STYLE } from "@/shared/whatsapp-ai-configuration";
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
 import { generateWhatsappAiReply } from "./whatsapp-ai";
@@ -25,20 +26,19 @@ describe("WhatsApp team greetings", () => {
           .parse(JSON.parse(typeof init?.body === "string" ? init.body : "{}"));
         expect(request.messages).toEqual([{ role: "user", content: greeting }]);
         expect(request.system).toContain(
-          "greet them warmly on behalf of the business's team in their language",
+          "greet them warmly on behalf of the team",
         );
         expect(request.system).toContain(
-          "Do not correct the name, deny being that person, or claim to be them",
+          "without correcting their greeting or claiming to be that person",
         );
-        expect(request.system).toContain(
-          "answer honestly as the business's automated assistant",
-        );
+        expect(request.system).toContain("Do not impersonate a human");
         expect(request.system).not.toContain("Never say you are an AI");
         return Response.json({ content: [] });
       };
       await generateWhatsappAiReply({
         history: [{ direction: "inbound", body: greeting }],
         persona: "You represent BooXworm.lk. Do not volunteer a personal name.",
+        replyStyle: DEFAULT_WHATSAPP_STYLE,
         apiKey: "unit-test-key",
         fetcher,
       });
@@ -51,7 +51,7 @@ describe("WhatsApp team greetings", () => {
     "Hello, I’m not Aathika. I'm here to help. Order SHOP-123 is in transit.",
     "I am not Aathika, but I'm here to help. Order SHOP-123 is in transit.",
   ])(
-    "removes a previous name denial while preserving business details: %s",
+    "preserves historical wording rather than applying a staff-name rewrite: %s",
     async (denial) => {
       const history: Array<{
         direction: "inbound" | "outbound";
@@ -79,7 +79,7 @@ describe("WhatsApp team greetings", () => {
             { role: "user", content: "Hi Aathika" },
             {
               role: "assistant",
-              content: "I'm here to help. Order SHOP-123 is in transit.",
+              content: denial,
             },
             { role: "user", content: "When will it arrive?" },
           ]);
@@ -90,7 +90,7 @@ describe("WhatsApp team greetings", () => {
     },
   );
 
-  it("omits denial-only replies, preserves customer identity questions and unrelated assistant replies", async () => {
+  it("preserves direct identity answers and customer messages without staff-name rules", async () => {
     await generateWhatsappAiReply({
       history: [
         { direction: "inbound", body: "Are you Aathika?" },
@@ -115,7 +115,9 @@ describe("WhatsApp team greetings", () => {
           })
           .parse(JSON.parse(typeof init?.body === "string" ? init.body : "{}"));
         expect(request.messages).toEqual([
-          { role: "user", content: "Are you Aathika?\nAre you automated?" },
+          { role: "user", content: "Are you Aathika?" },
+          { role: "assistant", content: "I'm not Aathika." },
+          { role: "user", content: "Are you automated?" },
           {
             role: "assistant",
             content: "Yes, I'm BooXworm's automated assistant.",

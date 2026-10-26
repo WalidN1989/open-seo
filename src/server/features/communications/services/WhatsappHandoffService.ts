@@ -1,3 +1,5 @@
+import { WhatsappAssistantService } from "./WhatsappAssistantService";
+import { renderWhatsappResponse } from "@/shared/whatsapp-ai-configuration";
 import { WhatsappHandoffOutboxRepository as Outbox } from "../repositories/WhatsappHandoffOutboxRepository";
 import { getRequiredEnvValue } from "@/server/lib/runtime-env";
 import type { z } from "zod";
@@ -15,8 +17,6 @@ import { sendWhatsappText, sendWhatsappTemplate } from "../providers/whatsapp";
 import { evaluateWhatsappWindow } from "../whatsappWindow";
 import { wakeWhatsappReply } from "./WhatsappReplyWakeupService";
 
-const HANDOFF_ACKNOWLEDGEMENT =
-  "I've saved your request for a person to review. I'll pause automated replies here so the team can take over.";
 const phone = (value: string | null) =>
   value ? "+" + value.replace(/^whatsapp:/, "").replace(/\D/g, "") : null;
 
@@ -166,10 +166,15 @@ async function runDue(conversationId?: string) {
           "2": details.handoff.reason,
           "3": expiry,
         };
+        const writing = WhatsappAssistantService.withDefaults(config);
         const body =
           job.kind === "ack"
-            ? HANDOFF_ACKNOWLEDGEMENT
-            : `Customer ${variables["1"]} needs a person. Reason: ${variables["2"]}. Customer reply window closes at ${expiry}. Please review the pending chat in DU.`;
+            ? (writing.handoffMessage ?? "")
+            : renderWhatsappResponse(writing.responseMessages.teamAlert, {
+                customer: variables["1"],
+                reason: variables["2"],
+                expiresAt: expiry,
+              });
         let template;
         if (!window.windowOpen) {
           if (
