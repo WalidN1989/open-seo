@@ -1,3 +1,4 @@
+import { isSouthsideWorkflow } from "@/server/features/customer-workflow/policy";
 import { AppError } from "@/server/lib/errors";
 import { outreachDecision } from "../outreachRules";
 import { evaluateWhatsappWindow } from "../whatsappWindow";
@@ -46,7 +47,12 @@ export async function requireWhatsappSendAllowed(
         lastInboundAt: chat.lastInboundAt,
         lastOutboundAt: chat.lastOutboundAt,
       },
-      { freeText, needsWindow: true, timeZone },
+      {
+        freeText,
+        needsWindow: true,
+        timeZone,
+        allowAnyHour: await isSouthsideWorkflow(organizationId),
+      },
       now,
     );
     if (!decision.allowed)

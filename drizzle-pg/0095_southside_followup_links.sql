@@ -1,0 +1,3 @@
+ALTER TABLE "customer_action_requests" ADD COLUMN "call_id" text;--> statement-breakpoint
+ALTER TABLE "customer_action_requests" ADD COLUMN "provider_conversation_id" text;--> statement-breakpoint
+ALTER TABLE "customer_action_requests" ADD CONSTRAINT "customer_action_requests_call_id_voice_phone_calls_id_fk" FOREIGN KEY ("call_id") REFERENCES "public"."voice_phone_calls"("id") ON DELETE set null ON UPDATE no action;

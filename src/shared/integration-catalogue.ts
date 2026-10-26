@@ -403,6 +403,20 @@ export const integrationCatalogue: readonly IntegrationCatalogueEntry[] = [
         generate: true,
         help: "Click Generate, then copy it into ElevenLabs as the x-openseo-secret header of the conversation initiation webhook, so returning callers are greeted by name. This one is yours to choose — unlike the webhook secret above, which ElevenLabs issues.",
       },
+      {
+        key: "CALLBACK_AGENT_ID",
+        label: "Email-correction callback agent (optional)",
+        type: "text",
+        required: false,
+        help: "South Side Fencing only: dedicated agent used after owner approval to confirm a corrected email. Leave blank to disable callbacks.",
+      },
+      {
+        key: "OUTBOUND_PHONE_NUMBER_ID",
+        label: "ElevenLabs outbound phone number ID (optional)",
+        type: "text",
+        required: false,
+        help: "The Southside phone line ID in ElevenLabs. Callbacks require an API key with outbound-call permission.",
+      },
     ],
     capabilities: [
       "post-call transcripts",

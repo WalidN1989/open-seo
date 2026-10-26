@@ -1,3 +1,5 @@
+import { CommunicationsReport } from "./voice/CommunicationsReport";
+import { getCustomerWorkflowAvailability } from "@/serverFunctions/customer-workflow";
 import { usePendingHandoffs, HandoffStatus } from "./whatsapp/HandoffPending";
 /* oxlint-disable max-lines, max-lines-per-function, complexity */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -1801,8 +1803,15 @@ function ContactToggle({
 }
 
 export function VoiceWorkspace() {
-  const [tab, setTab] = useState<"activity" | "outbound" | "cases">("activity");
+  const [tab, setTab] = useState<
+    "activity" | "outbound" | "cases" | "reporting"
+  >("activity");
   const [caseId, setCaseId] = useState<string | null>(null);
+  const workflow = useQuery({
+    queryKey: ["voice", "southside", "workflow-availability"],
+    queryFn: () => getCustomerWorkflowAvailability(),
+    staleTime: 60000,
+  });
   return (
     <Workspace
       title="Voice Agent"
@@ -1816,7 +1825,14 @@ export function VoiceWorkspace() {
         </p>
       </Panel>
       <div role="tablist" className="tabs tabs-border">
-        {(["activity", "outbound", "cases"] as const).map((value) => (
+        {(
+          [
+            "activity",
+            "outbound",
+            "cases",
+            ...(workflow.data?.enabled ? ["reporting" as const] : []),
+          ] as const
+        ).map((value) => (
           <button
             key={value}
             role="tab"
@@ -1828,11 +1844,15 @@ export function VoiceWorkspace() {
               ? "Call activity"
               : value === "outbound"
                 ? "Outbound"
-                : "Cases"}
+                : value === "reporting"
+                  ? "Reporting"
+                  : "Cases"}
           </button>
         ))}
       </div>
-      {tab === "cases" ? (
+      {tab === "reporting" ? (
+        <CommunicationsReport />
+      ) : tab === "cases" ? (
         <CasesSection caseId={caseId} onSelect={setCaseId} />
       ) : (
         <PhoneCallsSection

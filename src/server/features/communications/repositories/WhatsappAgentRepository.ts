@@ -1,4 +1,4 @@
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { db } from "@/db";
 import {
   crmContacts,
@@ -117,7 +117,22 @@ async function listApprovedTemplates(organizationId: string) {
     );
 }
 
+async function chatsForPhone(organizationId: string, phone: string) {
+  return db
+    .select({ id: whatsappConversations.id })
+    .from(whatsappConversations)
+    .where(
+      and(
+        eq(whatsappConversations.organizationId, organizationId),
+        inArray(whatsappConversations.externalConversationId, [
+          phone,
+          phone.replace(/^\+/, ""),
+        ]),
+      ),
+    );
+}
 export const WhatsappAgentRepository = {
+  chatsForPhone,
   listChats,
   getChat,
   listMessages,

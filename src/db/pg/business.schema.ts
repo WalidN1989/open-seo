@@ -2727,3 +2727,54 @@ export const attentionSources = pgTable(
     ),
   ],
 );
+
+/** One human approval covers one immutable action; uncertain sends never auto-retry. */
+export const customerActionRequests = pgTable(
+  "customer_action_requests",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    callId: text("call_id").references(() => voicePhoneCalls.id, {
+      onDelete: "set null",
+    }),
+    providerConversationId: text("provider_conversation_id"),
+    kind: text("kind").notNull(),
+    status: text("status").notNull().default("needs_approval"),
+    leadId: text("lead_id").references(() => crmLeads.id, {
+      onDelete: "set null",
+    }),
+    quoteId: text("quote_id").references(() => quotes.id, {
+      onDelete: "set null",
+    }),
+    emailThreadId: text("email_thread_id").references(() => emailThreads.id, {
+      onDelete: "set null",
+    }),
+    whatsappConversationId: text("whatsapp_conversation_id").references(
+      () => whatsappConversations.id,
+      { onDelete: "set null" },
+    ),
+    smsConversationId: text("sms_conversation_id").references(
+      () => smsConversations.id,
+      { onDelete: "set null" },
+    ),
+    /** Immutable reviewed command, including message text/copies or quote content snapshot. */
+    requestJson: text("request_json").notNull(),
+    requestedByUserId: text("requested_by_user_id").notNull(),
+    approvedByUserId: text("approved_by_user_id"),
+    approvedAt: text("approved_at"),
+    expiresAt: text("expires_at").notNull(),
+    resultJson: text("result_json"),
+    error: text("error"),
+    createdAt: createdAt(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (table) => [
+    index("customer_actions_org_status_idx").on(
+      table.organizationId,
+      table.status,
+      table.createdAt,
+    ),
+  ],
+);

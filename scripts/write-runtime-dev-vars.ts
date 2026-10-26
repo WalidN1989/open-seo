@@ -3,6 +3,7 @@ import { dirname } from "node:path";
 
 const runtimeVariableNames = [
   "AUTH_MODE",
+  "SOUTHSIDE_WORKFLOW_ORGANIZATION_ID",
   "ANTHROPIC_API_KEY",
   "AUTUMN_SECRET_KEY",
   "AUTUMN_WEBHOOK_SECRET",

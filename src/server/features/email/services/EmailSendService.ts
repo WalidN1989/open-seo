@@ -1,3 +1,4 @@
+import { isSouthsideWorkflow } from "@/server/features/customer-workflow/policy";
 import type { MailAttachment } from "@/shared/mail-bridge";
 import { EmailRepository as Repo } from "../repositories/EmailRepository";
 import { requireConnectedAccount } from "./EmailService";
@@ -21,10 +22,20 @@ async function sendFromConnectedMailbox(
     authoredBy: string | null;
     attachments?: MailAttachment[];
   },
+  options: { humanApproved?: boolean } = {},
 ) {
   const account = await Repo.getAccount(organizationId);
   if (!account || account.status !== "connected") return null;
-  const { outbound } = await requireConnectedAccount(organizationId);
+  const standingConfirmation =
+    (await isSouthsideWorkflow(organizationId)) &&
+    ["assistant:voice-recap", "system:post-call-summary"].includes(
+      input.authoredBy ?? "",
+    );
+  const { outbound } = await requireConnectedAccount(
+    organizationId,
+    (await isSouthsideWorkflow(organizationId)) &&
+      (options.humanApproved === true || standingConfirmation),
+  );
   const sent = await outbound.compose(input);
   const occurredAt = new Date().toISOString();
   const threadRow = await Repo.upsertThread(account, {

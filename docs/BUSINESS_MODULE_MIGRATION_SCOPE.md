@@ -2452,3 +2452,15 @@ updates. An independent first-time MCP consumer completed the synthetic workflow
 without source access. Routine responses stayed small; the pre-existing global
 MCP tool catalogue is still large and was not removed or narrowed in this work.
 No long-running runtime stability pass is claimed by these bounded checks.
+
+## 2026-10-26 — Southside call workflow prepared, not released
+
+An isolated feature branch prepares a privately selected single-workspace
+rollout: authenticated live catalogue queries for the voice agent, durable
+post-call effects, a shared communications report, contact correction and
+owner-approved sends/callbacks. No scheduler was added. No real customer was
+contacted in tests. The voice-agent changes remain on a zero-traffic branch;
+the dedicated callback agent is inactive. Production image and data remain
+unchanged. See [SOUTHSIDE_WORKFLOW.md](./SOUTHSIDE_WORKFLOW.md) for tools,
+approval semantics, remaining provider setup and additive migration rollback.
+Owner review and exact release approval remain required before merge/deploy.
