@@ -21,6 +21,14 @@ const savedSchema = z.object({
         clientEmail: z.string().nullish(),
         totalMinor: z.number(),
         currency: z.string(),
+        title: z.string().nullish(),
+        clientAddressLines: z.string().nullish(),
+        issueDate: z.string().optional(),
+        validUntil: z.string().optional(),
+        notes: z.string().nullish(),
+        terms: z.string().nullish(),
+        taxLabel: z.string().nullish(),
+        taxMinor: z.number().optional(),
       }),
       lines: z.array(
         z.object({
@@ -107,6 +115,16 @@ function RequestCard({ request }: { request: Report["requests"][number] }) {
             Quote {quote.quote.number} for {quote.quote.clientName} ·{" "}
             {quote.quote.clientEmail}
           </p>
+          {quote.quote.title ? <p>{quote.quote.title}</p> : null}
+          {quote.quote.clientAddressLines ? (
+            <p className="whitespace-pre-wrap">
+              {quote.quote.clientAddressLines}
+            </p>
+          ) : null}
+          <p>
+            Issued {quote.quote.issueDate ?? "—"} · Valid until{" "}
+            {quote.quote.validUntil ?? "—"}
+          </p>
           <ul className="list-disc pl-5">
             {quote.lines.map((line, i) => (
               <li key={i}>
@@ -115,6 +133,18 @@ function RequestCard({ request }: { request: Report["requests"][number] }) {
               </li>
             ))}
           </ul>
+          {quote.quote.taxMinor !== undefined ? (
+            <p>
+              {quote.quote.taxLabel || "Tax"}:{" "}
+              {formatMoney(quote.quote.taxMinor, quote.quote.currency)}
+            </p>
+          ) : null}
+          {quote.quote.notes ? (
+            <p className="whitespace-pre-wrap">{quote.quote.notes}</p>
+          ) : null}
+          {quote.quote.terms ? (
+            <p className="whitespace-pre-wrap">Terms: {quote.quote.terms}</p>
+          ) : null}
           <strong>
             Total: {formatMoney(quote.quote.totalMinor, quote.quote.currency)}
           </strong>
