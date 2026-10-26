@@ -2452,3 +2452,25 @@ updates. An independent first-time MCP consumer completed the synthetic workflow
 without source access. Routine responses stayed small; the pre-existing global
 MCP tool catalogue is still large and was not removed or narrowed in this work.
 No long-running runtime stability pass is claimed by these bounded checks.
+
+### 2026-10-26 — MCP customer-care reply limit (pending review/release)
+
+Owner requested review followed by a standalone correction after handoff #6 and
+window #1. Both prerequisites are already on main as PR #70 then #71. Review
+confirmed the daily unanswered-message rule lives in communications/outreachRules;
+the Inbox disables outreach checks while retaining STOP/window validation, but
+MCP enabled the daily restriction at both preflight and dispatch.
+
+MCP free-text customer-care replies now reuse the Inbox's existing internal
+outreach flag. Prior bot/business replies no longer block them inside an open
+customer-service window. STOP, strict expiry, invalid/future timestamps, tenant
+scope, manage permission and dispatch re-reads remain. Template/cold outreach,
+SMS, automatic paths, rates and business-hours rules are unchanged. No new
+helper, migration, provider setting or growing in-memory state is introduced.
+The table-qualifier bug is already fixed by #71 and is regression-tested rather
+than reimplemented. See WHATSAPP_MCP_CARE_REPLY_REVIEW.md for the source review.
+
+Only synthetic local data and mocked delivery are used for verification. No
+production message, merge, deployment or restart is performed. Required checks
+and owner diff/release approval remain ahead; real-chat MCP verification belongs
+to the owner's post-release check and is not claimed as passed.

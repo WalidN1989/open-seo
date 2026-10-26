@@ -3,6 +3,7 @@ import { createMcpHandler } from "agents/mcp/server";
 import { createWorkersOAuthMcpProps } from "@/server/mcp/context";
 const mocks = vi.hoisted(() => ({
   mode: vi.fn(),
+  reply: vi.fn(),
   list: vi.fn(),
   get: vi.fn(),
   memberships: vi.fn(),
@@ -16,6 +17,7 @@ vi.mock(
   () => ({
     WhatsappAgentService: {
       setChatMode: mocks.mode,
+      sendReply: mocks.reply,
       listChats: mocks.list,
       getChat: mocks.get,
     },
@@ -76,6 +78,7 @@ beforeEach(() => {
       replyMode: input.mode,
     }),
   );
+  mocks.reply.mockResolvedValue({ id: "reply-id", status: "sent" });
   mocks.list.mockResolvedValue([
     {
       id: "chat",
@@ -97,6 +100,18 @@ describe("WhatsApp MCP protocol", () => {
     expect(result).toContain("set_whatsapp_chat_mode");
     expect(result).toContain('"auto","manual"');
     expect(result).toContain("Manual persists");
+  });
+  it("routes customer-care replies to the scoped service and documents Inbox parity", async () => {
+    expect(await rpc("tools/list")).toContain("same policy as the Inbox");
+    const result = await rpc("tools/call", {
+      name: "send_whatsapp_reply",
+      arguments: { conversationId: "chat", body: "Approved extra detail" },
+    });
+    expect(mocks.reply).toHaveBeenCalledWith("workspace", "operator", {
+      conversationId: "chat",
+      body: "Approved extra detail",
+    });
+    expect(result).toContain('"status":"sent"');
   });
   it("validates input before mutation", async () => {
     expect(await call({ conversationId: "chat", mode: "sometimes" })).toContain(
