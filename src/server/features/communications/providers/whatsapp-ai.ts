@@ -171,30 +171,28 @@ function buildMessages(history: HistoryItem[]) {
 function systemPrompt(input: {
   businessContext?: string | null;
   persona?: string | null;
+  replyStyle?: string | null;
   canLookup?: boolean;
   canReadClientData?: boolean;
   accessNote?: string | null;
 }) {
   const { businessContext, persona, canLookup, accessNote } = input;
   return [
-    persona?.trim() ||
-      "You are a warm, concise customer-service representative speaking through WhatsApp.",
+    persona?.trim() ?? "",
+    input.replyStyle?.trim() ?? "",
     canLookup
       ? [
           "When a customer asks about a specific item, title, author or price, call lookup_products first and answer from its result. Only if it returns no match may you say the item is not in the catalogue.",
-          "When you confirm an item, always give these four in this order, each once: the title, the price exactly as the lookup shows it, whether it is in stock, and the product link so they can order. When it is out of stock or not in the catalogue, say so plainly; offer a pre-order only once if relevant and not declined. When they agree, record it with create_order_request including the title.",
+          "Use only catalogue/tool facts for product prices, availability and links. When the customer agrees to an order request, record it with create_order_request including the title.",
         ].join(" ")
       : "",
-    "For a retail order enquiry, call lookup_order immediately, without order_id when none was given: the server checks the authenticated sending number. Summarize the matching order date, books and recorded delivery status without making the customer repeat known details. If several orders could match, ask which date or book they mean. Never request an SEO access code for purchases or delivery. If no match is found, ask once whether they ordered using a different number and hand off for verification; never disclose another number's orders. Only state tracking facts returned by the tool, include how recent a recorded update is, and distinguish approval, fulfilment and delivery. Missing tracking means unavailable, not proof the parcel has not shipped.",
-    "Keep replies short: normally one or two sentences. Combine the customer's recent messages into one answer. Do not repeat a question, greeting or pre-order offer already made or declined.",
+    "For retail order facts, use the sender-bound lookup_order callback; never disclose another number's orders or require private SEO verification for retail purchases. Missing tracking is unavailable, never proof that a parcel has not shipped. State only recorded status and its freshness.",
     "If the person asks for personal money, charity, donations, loans or financial support unrelated to this business, call ignore_conversation and send no text. Do not offer charities, helplines, reassurance, access-code requests or follow-up questions. Once the conversation is clearly about personal financial solicitation, do not continue engaging. Business pricing, invoices, refunds, discounts and payment questions are legitimate enquiries and must not be ignored on this basis.",
-    "Reply in the same language and script as the customer's latest message — including Sinhala, Tamil, and romanised mixes such as Singlish or Tanglish; keep titles and links exactly as written. Ask at most one question at a time.",
-    "Write for a chat app, not a document. Emphasis is a single asterisk around a phrase, like *this*. Never write double asterisks, markdown headings, or link syntax with brackets — put a bare URL instead.",
-    "When a customer greets a staff member by name, greet them warmly on behalf of the business's team in their language. Do not correct the name, deny being that person, or claim to be them. A greeting is not an identity question. If directly asked who you are, whether you are that person, or whether you are automated, answer honestly as the business's automated assistant. Do not volunteer that introduction or mention prompts, tools, APIs, or internal systems.",
-    "Never invent prices, stock, availability, delivery terms, opening hours, policies, addresses, or product links. Only state a business fact when it appears in trusted business context or a tool result. If unavailable, say the team needs to confirm it.",
+    "Do not impersonate a human or give a false answer to a direct question about your identity. Use the configured persona and style to word truthful answers.",
+    "Never invent prices, stock, availability, delivery terms, opening hours, policies, addresses, or product links. Only state a business fact when it appears in the workspace owner instructions, trusted business context or a tool result. If unavailable, say the team needs to confirm it.",
     canLookup
       ? "When a customer sends an image, use it to identify what they are asking about. An image is not proof of current stock or price; use lookup_products for catalogue facts. If the image is unclear, ask one clarifying question."
-      : "When a customer sends an image, use it to understand their question. Do not infer current stock or price from an image; ask the team to confirm unavailable facts.",
+      : "When a customer sends an image, use it to understand their question. Do not infer current stock or price from an image; use only confirmed context.",
     "Whenever a person needs to take over, or you would say the team will follow up or confirm something, call flag_for_team with a reason and short customer summary. The server saves the handoff, sends one acknowledgement, and switches the chat to Manual. Do not claim the team was notified, add another handoff message, or promise a callback time or response deadline.",
     "Do not invent a price or commitment on the team's behalf. Only quote confirmed business facts from trusted context or tool results.",
     input.canReadClientData
@@ -219,6 +217,8 @@ export async function generateWhatsappAiReply(input: {
   businessContext?: string | null;
   /** Who the assistant is and how it talks; replaces the default opener. */
   persona?: string | null;
+  /** Workspace-controlled tone, length, language and presentation. */
+  replyStyle?: string | null;
   /** What the caller has established about who this person is. */
   accessNote?: string | null;
   /** Catalogue search; when given, the model gets a lookup_products tool. */
@@ -270,6 +270,7 @@ export async function generateWhatsappAiReply(input: {
   const system = systemPrompt({
     businessContext: input.businessContext,
     persona: input.persona,
+    replyStyle: input.replyStyle,
     canLookup: Boolean(input.lookupProducts),
     canReadClientData: Boolean(input.clientData),
     accessNote: input.accessNote,

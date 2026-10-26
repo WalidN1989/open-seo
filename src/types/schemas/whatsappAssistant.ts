@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { whatsappResponseMessagesSchema } from "./whatsappResponseMessages";
 
 const optionalText = (max: number) =>
   z
@@ -49,6 +50,8 @@ export const updateAssistantSettingsSchema = z.object({
   escalationKeywords: optionalText(2000),
   handoffMessage: optionalText(1000),
   persona: optionalText(6000),
+  replyStyle: z.string().max(6000).nullable().optional(),
+  responseMessages: whatsappResponseMessagesSchema.optional(),
   businessFacts: optionalText(12000),
 });
 

@@ -1,3 +1,4 @@
+import { DEFAULT_WHATSAPP_RESPONSES } from "@/shared/whatsapp-ai-configuration";
 import {
   afterAll,
   beforeAll,
@@ -147,9 +148,7 @@ describe("WhatsApp settings MCP and atomic versions", () => {
       workspaceReplyMode: "auto",
       newChatReplyMode: "auto",
     });
-    expect(settings.effectiveHandoffMessage).toContain(
-      "pause automated replies",
-    );
+    expect(settings.effectiveHandoffMessage).toContain("Our team");
     expect(await count("whatsapp_assistant_settings")).toBe(0);
     expect(await count("business_audit_events")).toBe(0);
     const result = await call("get_whatsapp_ai_settings");
@@ -202,6 +201,12 @@ describe("WhatsApp settings MCP and atomic versions", () => {
     const first = await Service.update("a", "operator", {
       expectedRevision: (await get()).revision,
       instructions: "Original\nKeep whitespace.\n",
+      handoffMessage: "The team will help.",
+      replyStyle: "Use a detailed warm tone.",
+      responseMessages: {
+        ...DEFAULT_WHATSAPP_RESPONSES,
+        imageUnavailable: "Please describe the picture.",
+      },
     });
     const second = await Service.update("a", "editor", {
       expectedRevision: first.revision,
@@ -211,7 +216,12 @@ describe("WhatsApp settings MCP and atomic versions", () => {
       "Original\nKeep whitespace.\n\n\nA new rule.",
     );
     expect(second.before).toEqual(first.after);
-    expect(second.after.handoffMessage).toBeNull();
+    expect(second.after.handoffMessage).toBe("The team will help.");
+    expect((await get()).effectiveHandoffMessage).toBe("The team will help.");
+    expect((await get()).effectiveReplyStyle).toBe("Use a detailed warm tone.");
+    expect((await get()).effectiveResponseMessages.imageUnavailable).toBe(
+      "Please describe the picture.",
+    );
     expect(second.versionId).not.toBeNull();
     const history = await Service.history("a", "operator", {
       versionId: second.versionId ?? "",
@@ -236,30 +246,8 @@ describe("WhatsApp settings MCP and atomic versions", () => {
       side: "before",
     });
     expect((await get()).instructions).toBeNull();
-    expect((await get()).effectiveHandoffMessage).toContain(
-      "pause automated replies",
-    );
+    expect((await get()).effectiveHandoffMessage).toContain("Our team");
     expect(await count("business_audit_events")).toBe(4);
-  });
-  it("reports the actual fixed acknowledgement and rejects ineffective handoff edits", async () => {
-    await client.execute(
-      "INSERT INTO whatsapp_assistant_settings(organization_id,handoff_message) VALUES ('a','Legacy stored line')",
-    );
-    const settings = await get();
-    expect(settings.handoffMessage).toBe("Legacy stored line");
-    expect(settings.fixedHandoffMessageEditable).toBe(false);
-    expect(settings.effectiveHandoffMessage).toContain(
-      "pause automated replies",
-    );
-    await expect(
-      Service.update("a", "operator", {
-        expectedRevision: settings.revision,
-        appendRule: "Do not apply",
-        handoffMessage: "Different",
-      }),
-    ).rejects.toThrow("hardcoded in sending code");
-    expect((await get()).instructions).toBeNull();
-    expect(await count("business_audit_events")).toBe(0);
   });
   it("refuses foreign versions, stale writes and stale restores", async () => {
     const original = await get();
@@ -324,7 +312,7 @@ describe("WhatsApp settings MCP and atomic versions", () => {
     ).rejects.toThrow();
     expect(await count("business_audit_events")).toBe(1);
   });
-  it("keeps a later stored handoff edit when restoring instructions", async () => {
+  it("backs up a later handoff edit before restoring all versioned writing fields", async () => {
     const changed = await Service.update("a", "operator", {
       expectedRevision: (await get()).revision,
       instructions: "New instructions",
@@ -339,8 +327,11 @@ describe("WhatsApp settings MCP and atomic versions", () => {
     });
     expect(restored.after).toEqual({
       instructions: null,
-      handoffMessage: "Later stored value",
+      handoffMessage: null,
+      replyStyle: null,
+      responseMessages: null,
     });
+    expect(restored.before.handoffMessage).toBe("Later stored value");
   });
   it("rolls back settings and initialization if the backup audit fails", async () => {
     await client.execute(
@@ -356,7 +347,12 @@ describe("WhatsApp settings MCP and atomic versions", () => {
     expect(await count("business_audit_events")).toBe(0);
   });
   it("rejects a competing write inside the repository and creates no misleading version", async () => {
-    const original = { instructions: null, handoffMessage: null };
+    const original = {
+      instructions: null,
+      handoffMessage: null,
+      replyStyle: null,
+      responseMessages: null,
+    };
     await Service.update("a", "operator", {
       expectedRevision: (await get()).revision,
       instructions: "Winning edit",
@@ -368,6 +364,7 @@ describe("WhatsApp settings MCP and atomic versions", () => {
         before: original,
         after: { ...original, instructions: "Losing edit" },
         operation: "update",
+        expectedResponseMessagesJson: null,
       }),
     ).toBeNull();
     expect((await get()).instructions).toBe("Winning edit");

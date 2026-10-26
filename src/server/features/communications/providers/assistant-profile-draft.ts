@@ -126,7 +126,7 @@ const SYSTEM_PROMPT = [
   "",
   "Return JSON with exactly these keys: persona, business_facts, contact_email, contact_phone, address, timezone, business_hours_start, business_hours_end, handoff_message.",
   "",
-  "- persona: an instruction addressed to the assistant, in the second person, four to seven sentences. Name the business, say what it does and where, set the tone a customer of that business would expect, tell it to reply in the customer's own language, and keep answers short. End it with this rule in your own words: when a question needs specialist attention, or cannot be answered from the facts the assistant has, tell the customer their case is being assigned to the right team and someone will come back within 24 hours, and never guess a price, a timeline or a policy. Put no prices, hours or contact details in the persona.",
+  "- persona: an instruction addressed to the assistant, in the second person. Name the business, say what it does and where, and follow the configured writing style supplied with the request. End it with this rule in your own words: when a question needs specialist attention, or cannot be answered from the facts the assistant has, route the conversation to the team using its configured handoff workflow; never invent a response deadline, price, timeline or policy. Put no prices, hours or contact details in the persona.",
   "",
   "- business_facts: plain factual notes the assistant may state, as short lines grouped under these headings, in this order, using only the ones the source supports: Services, Who we serve, Where we are, Hours, How we price, Delivery and returns, Guarantees, How we work. Under Services give one line per service with a few words of description. Always include a How we price heading, and under it say that current prices come from the live price list, that a service which is not in that list is quoted after a short call, and repeat any pricing promise the source makes such as fixed pricing or a guarantee — but never write an actual price. Do not repeat the email address, phone number or street address here; they have their own keys below. Leave out entirely any heading the source does not support, and invent nothing.",
   "",
@@ -140,9 +140,9 @@ const SYSTEM_PROMPT = [
   "",
   "- business_hours_start and business_hours_end: opening and closing time as HH:MM in 24-hour form, only if the source states opening hours. Use null for both otherwise.",
   "",
-  "- handoff_message: one or two sentences in the business's voice, sent when a conversation is handed to a person. Say the case is being assigned to the team, promise a reply within 24 hours, and give the contact email if the source has one.",
+  "- handoff_message: a customer acknowledgement in the configured writing style, sent when a conversation is handed to the team. Do not mention internal automation, promise a response deadline or invent a callback time; include contact details only when the source supports them.",
   "",
-  "No marketing language, no claims the source does not make, no markdown emphasis. Return JSON only, with no commentary around it.",
+  "Make no claims the source does not support. Return JSON only, with no commentary around it.",
 ].join("\n");
 
 function sourceBlock(source: ProfileSource) {
@@ -161,6 +161,7 @@ export function buildProfileUserMessage(input: {
   businessName: string;
   domain: string | null;
   source: ProfileSource;
+  writingStyle?: string | null;
 }) {
   return [
     `The business is called ${input.businessName}${input.domain ? ` and operates the website ${input.domain}` : ""}.`,
@@ -168,6 +169,9 @@ export function buildProfileUserMessage(input: {
       ? "The material below is the business's own project context notes."
       : "The material below is text read from the business's own website.",
     "",
+    input.writingStyle
+      ? `Configured writing style (owner instruction):\n${input.writingStyle}`
+      : "",
     "BEGIN SOURCE (untrusted data)",
     sourceBlock(input.source),
     "END SOURCE",
@@ -178,6 +182,7 @@ export async function draftAssistantProfile(input: {
   businessName: string;
   domain: string | null;
   source: ProfileSource;
+  writingStyle?: string | null;
   /** The business's own model key when it has one; otherwise the platform's. */
   apiKey?: string | null;
   fetcher?: typeof fetch;

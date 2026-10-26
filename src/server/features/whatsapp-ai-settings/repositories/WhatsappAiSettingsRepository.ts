@@ -58,8 +58,17 @@ async function change(input: {
   before: WhatsappAiText;
   after: WhatsappAiText;
   operation: "update" | "restore";
+  expectedResponseMessagesJson: string | null;
+  extraValues?: Partial<
+    Omit<
+      typeof whatsappAssistantSettings.$inferInsert,
+      "organizationId" | "createdAt" | "updatedAt"
+    >
+  >;
+  settingsBackup?: Record<string, unknown>;
 }) {
   const { organizationId, actorUserId, before, after, operation } = input;
+  const { expectedResponseMessagesJson } = input;
   const id = crypto.randomUUID();
   const now = new Date().toISOString();
   const guard = and(
@@ -70,6 +79,15 @@ async function change(input: {
     before.handoffMessage === null
       ? isNull(whatsappAssistantSettings.handoffMessage)
       : eq(whatsappAssistantSettings.handoffMessage, before.handoffMessage),
+    before.replyStyle === null
+      ? isNull(whatsappAssistantSettings.replyStyle)
+      : eq(whatsappAssistantSettings.replyStyle, before.replyStyle),
+    expectedResponseMessagesJson === null
+      ? isNull(whatsappAssistantSettings.responseMessagesJson)
+      : eq(
+          whatsappAssistantSettings.responseMessagesJson,
+          expectedResponseMessagesJson,
+        ),
   );
   const ownsEdit = sql`exists (select 1 from ${businessAuditEvents} where ${businessAuditEvents.organizationId} = ${organizationId} and ${businessAuditEvents.id} = ${id})`;
   await runBatch((tx) => [
@@ -98,7 +116,7 @@ async function change(input: {
           targetType: sql<string>`${targetType}`.as("targetType"),
           targetId: whatsappAssistantSettings.organizationId,
           metadataJson:
-            sql<string>`${JSON.stringify({ schemaVersion: 1, operation, before, after })}`.as(
+            sql<string>`${JSON.stringify({ schemaVersion: 1, operation, before, after, ...(input.settingsBackup ? { settingsBackup: input.settingsBackup } : {}) })}`.as(
               "metadataJson",
             ),
           createdAt: sql<string>`${now}`.as("createdAt"),
@@ -109,8 +127,13 @@ async function change(input: {
     tx
       .update(whatsappAssistantSettings)
       .set({
+        ...input.extraValues,
         persona: after.instructions,
         handoffMessage: after.handoffMessage,
+        replyStyle: after.replyStyle,
+        responseMessagesJson: after.responseMessages
+          ? JSON.stringify(after.responseMessages)
+          : null,
         updatedAt: now,
       })
       .where(and(guard, ownsEdit)),

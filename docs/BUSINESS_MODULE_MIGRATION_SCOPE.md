@@ -2477,3 +2477,27 @@ writes and rollback when backup insertion fails. Production settings changes
 requested by the owner are deferred until this reviewed release is deployed and
 the new audited update tool can be used. No production write, deployment, message,
 webhook change or provider setting change is performed in this implementation.
+
+### 2026-10-26 — AI configuration scope expanded by owner (PR73 pending)
+
+Owner explicitly approved reading saved handoff text at dispatch, then requested
+removing hardcoded WhatsApp style/response wording. This supersedes the earlier
+read-only handoff limitation. AI configuration and the four MCP tools now expose
+and edit persona/instructions, writing style, customer handoff text, verification
+replies, image-error text and staff-alert wording. Runtime consumes these values;
+visible defaults can be overridden. Generated profile drafts no longer force a
+24-hour promise, and AI/instant-answer text is not restyled after generation.
+
+UI and MCP writes atomically retain before/after backups and actor identity.
+WhatsApp-specific UI fields require WhatsApp manage, preserving shared Email
+configuration access for shared fields. New verification messages are tagged for
+history filtering independently of wording; legacy phrase matching remains only
+for old history. STOP, window, membership, verification outcomes, factual grounding
+and dispatch guards remain enforced. No calls, routines or provider sends are
+introduced. Additive SQLite0115 / PG0094 columns preserve all existing rows.
+
+This work is separate from the MCP customer-care send-limit PR74, whose required
+checks pass and which remains unmerged/undeployed. PR73's expanded migration,
+UI, MCP, runtime, backup and multi-axis review checks must pass before release.
+The requested workspace-specific append is still pending the reviewed release;
+no production settings, webhook, messages, deployment or restart changed here.

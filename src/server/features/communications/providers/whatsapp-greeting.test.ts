@@ -1,3 +1,4 @@
+import { DEFAULT_WHATSAPP_STYLE } from "@/shared/whatsapp-ai-configuration";
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
 import { generateWhatsappAiReply } from "./whatsapp-ai";
@@ -25,20 +26,19 @@ describe("WhatsApp team greetings", () => {
           .parse(JSON.parse(typeof init?.body === "string" ? init.body : "{}"));
         expect(request.messages).toEqual([{ role: "user", content: greeting }]);
         expect(request.system).toContain(
-          "greet them warmly on behalf of the business's team in their language",
+          "greet them warmly on behalf of the team",
         );
         expect(request.system).toContain(
-          "Do not correct the name, deny being that person, or claim to be them",
+          "without correcting their greeting or claiming to be that person",
         );
-        expect(request.system).toContain(
-          "answer honestly as the business's automated assistant",
-        );
+        expect(request.system).toContain("Do not impersonate a human");
         expect(request.system).not.toContain("Never say you are an AI");
         return Response.json({ content: [] });
       };
       await generateWhatsappAiReply({
         history: [{ direction: "inbound", body: greeting }],
         persona: "You represent BooXworm.lk. Do not volunteer a personal name.",
+        replyStyle: DEFAULT_WHATSAPP_STYLE,
         apiKey: "unit-test-key",
         fetcher,
       });

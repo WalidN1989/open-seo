@@ -659,6 +659,13 @@
       "when": 1792919612223,
       "tag": "0093_voice_cases_attention",
       "breakpoints": true
+    },
+    {
+      "idx": 94,
+      "version": "7",
+      "when": 1793003169250,
+      "tag": "0094_whatsapp_ai_response_configuration",
+      "breakpoints": true
     }
   ]
 }

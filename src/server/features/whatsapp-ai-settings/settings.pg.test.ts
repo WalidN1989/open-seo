@@ -41,7 +41,12 @@ const client = postgres(url ?? "postgres://localhost:55439/unused", {
   max: 15,
   connection: { search_path: schema },
 });
-const before = { instructions: null, handoffMessage: null };
+const before = {
+  instructions: null,
+  handoffMessage: null,
+  replyStyle: null,
+  responseMessages: null,
+};
 const change = (text: string) =>
   Repo.change({
     organizationId: "a",
@@ -49,6 +54,7 @@ const change = (text: string) =>
     before,
     after: { ...before, instructions: text },
     operation: "update",
+    expectedResponseMessagesJson: null,
   });
 
 describe.skipIf(!url)("WhatsApp settings real Postgres transactions", () => {
@@ -91,7 +97,7 @@ describe.skipIf(!url)("WhatsApp settings real Postgres transactions", () => {
       schemaVersion: 1,
       operation: "update",
       before,
-      after: { instructions: settings[0]?.persona, handoffMessage: null },
+      after: { ...before, instructions: settings[0]?.persona },
     });
     expect(settings[0]?.autopilot).toBe(true);
     expect(await Repo.getVersion("b", winner[0]?.id ?? "")).toBeNull();

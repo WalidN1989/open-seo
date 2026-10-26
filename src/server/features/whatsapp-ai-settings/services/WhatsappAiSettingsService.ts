@@ -1,3 +1,4 @@
+import { whatsappWritingSnapshot } from "@/shared/whatsapp-ai-configuration";
 import type { z } from "zod";
 import { BusinessModuleService } from "@/server/features/business-modules/services/BusinessModuleService";
 import { WhatsappAssistantRepository } from "@/server/features/communications/repositories/WhatsappAssistantRepository";
@@ -39,10 +40,7 @@ async function current(organizationId: string) {
   const row = await WhatsappAssistantRepository.getSettings(organizationId);
   return {
     row,
-    text: {
-      instructions: row?.persona ?? null,
-      handoffMessage: row?.handoffMessage ?? null,
-    },
+    text: whatsappWritingSnapshot(row),
   };
 }
 
@@ -60,16 +58,18 @@ async function get(organizationId: string, userId: string) {
     revision: await revision(text),
     ...text,
     businessFacts: effective.businessFacts,
-    effectiveHandoffMessage:
-      WhatsappAssistantService.withDefaults(null).handoffMessage,
-    fixedHandoffMessageEditable: false,
+    effectiveHandoffMessage: effective.handoffMessage,
+    effectiveInstructions: effective.persona,
+    effectiveReplyStyle: effective.replyStyle,
+    effectiveResponseMessages: effective.responseMessages,
+    fixedHandoffMessageEditable: true,
     handoffContentSid: effective.handoffContentSid,
     escalationKeywords: effective.escalationKeywords,
     autopilot: effective.autopilot,
     workspaceReplyMode: effective.autopilot ? "auto" : "manual",
     newChatReplyMode: "auto",
     scopeNote:
-      "Instructions are the configurable persona, not the full system prompt. These fields are shared with Email/Social. The active WhatsApp handoff acknowledgement is hardcoded and ignores the stored handoffMessage. It is read-only here. Built-in rules, other automatic messages and approved templates are unchanged. Workspace autopilot gates auto-replies; each chat has its own Auto/Manual mode (new chats default to Auto).",
+      "Instructions/persona and handoff text are shared with Email/Social. Writing style and canned messages are WhatsApp-specific. All effective defaults are returned and editable; protocol, factual grounding, access and send protections remain enforced. Workspace autopilot gates auto-replies; each chat has its own Auto/Manual mode (new chats default to Auto).",
   };
 }
 
@@ -81,13 +81,11 @@ async function save(
     before: WhatsappAiText;
     after: WhatsappAiText;
     operation: "update" | "restore";
+    expectedResponseMessagesJson: string | null;
   },
 ) {
-  const { before, after, operation } = change;
-  if (
-    before.instructions === after.instructions &&
-    before.handoffMessage === after.handoffMessage
-  ) {
+  const { before, after, operation, expectedResponseMessagesJson } = change;
+  if (JSON.stringify(before) === JSON.stringify(after)) {
     return {
       workspace,
       changed: false,
@@ -103,6 +101,7 @@ async function save(
     before,
     after,
     operation,
+    expectedResponseMessagesJson,
   }).catch(() => {
     // Database errors may include SQL parameters containing private prompt text.
     // Do not send those parameters to MCP telemetry or the assistant.
@@ -141,18 +140,16 @@ async function update(
 ) {
   const workspace = await authorize(organizationId, userId);
   const values = updateWhatsappAiSettingsSchema.parse(input);
-  const { text: before } = await current(organizationId);
+  const { row: currentRow, text: before } = await current(organizationId);
   checkRevision(values.expectedRevision, await revision(before));
-  if (
-    values.handoffMessage !== undefined &&
-    values.handoffMessage !== before.handoffMessage
-  ) {
-    throw new AppError(
-      "VALIDATION_ERROR",
-      "The active WhatsApp handoff message is hardcoded in sending code. It cannot be edited under the current tools-only scope; no settings changed.",
-    );
-  }
   const after = whatsappAiTextSchema.parse({
+    ...before,
+    replyStyle:
+      values.replyStyle !== undefined ? values.replyStyle : before.replyStyle,
+    responseMessages:
+      values.responseMessages !== undefined
+        ? values.responseMessages
+        : before.responseMessages,
     instructions:
       values.appendRule !== undefined
         ? [before.instructions, values.appendRule]
@@ -170,6 +167,7 @@ async function update(
     before,
     after,
     operation: "update",
+    expectedResponseMessagesJson: currentRow?.responseMessagesJson ?? null,
   });
 }
 
@@ -230,15 +228,13 @@ async function restore(
       "NOT_FOUND",
       "Settings version not found in this workspace.",
     );
-  const { text: before } = await current(organizationId);
+  const { row: currentRow, text: before } = await current(organizationId);
   checkRevision(values.expectedRevision, await revision(before));
   return save(organizationId, userId, workspace, {
     before,
-    after: {
-      ...parseVersion(row.metadataJson)[values.side],
-      handoffMessage: before.handoffMessage,
-    },
+    after: parseVersion(row.metadataJson)[values.side],
     operation: "restore",
+    expectedResponseMessagesJson: currentRow?.responseMessagesJson ?? null,
   });
 }
 

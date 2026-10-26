@@ -1,8 +1,11 @@
 import { z } from "zod";
+import { whatsappResponseMessagesSchema } from "./whatsappResponseMessages";
 
 export const whatsappAiTextSchema = z.object({
   instructions: z.string().max(6000).nullable(),
   handoffMessage: z.string().max(1000).nullable(),
+  replyStyle: z.string().max(6000).nullable().default(null),
+  responseMessages: whatsappResponseMessagesSchema.nullable().default(null),
 });
 export type WhatsappAiText = z.infer<typeof whatsappAiTextSchema>;
 
@@ -35,11 +38,27 @@ export const updateWhatsappAiSettingsSchema = z
       ),
     handoffMessage: z
       .string()
+      .trim()
+      .min(1)
       .max(1000)
       .nullable()
       .optional()
       .describe(
-        "The active WhatsApp acknowledgement is hardcoded and read-only. Changing this field is rejected; omit it. Existing stored text is returned and backed up for inspection.",
+        "Replace the handoff acknowledgement actually sent to the customer. null restores the visible default; the previous text is backed up.",
+      ),
+    replyStyle: z
+      .string()
+      .max(6000)
+      .nullable()
+      .optional()
+      .describe(
+        "Replace writing-style guidance (tone, length, language and presentation); null restores the visible default.",
+      ),
+    responseMessages: whatsappResponseMessagesSchema
+      .nullable()
+      .optional()
+      .describe(
+        "Replace configurable verification, image-error and staff-alert templates. Read current templates first; null restores visible defaults.",
       ),
   })
   .strict()
@@ -54,9 +73,12 @@ export const updateWhatsappAiSettingsSchema = z
     (input) =>
       input.appendRule !== undefined ||
       input.instructions !== undefined ||
-      input.handoffMessage !== undefined,
+      input.handoffMessage !== undefined ||
+      input.replyStyle !== undefined ||
+      input.responseMessages !== undefined,
     {
-      message: "Supply appendRule, instructions or handoffMessage.",
+      message:
+        "Supply appendRule, instructions, handoffMessage, replyStyle or responseMessages.",
     },
   );
 

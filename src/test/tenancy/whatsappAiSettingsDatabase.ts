@@ -30,6 +30,8 @@ export async function createWhatsappAiSettingsDatabase(
     "contact_phone",
     "address",
     "handoff_content_sid",
+    "reply_style",
+    "response_messages_json",
   ]) {
     await execute(
       `ALTER TABLE whatsapp_assistant_settings ADD COLUMN ${column} text`,

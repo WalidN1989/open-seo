@@ -166,7 +166,7 @@ export function buildBusinessContext(input: {
   parts.push(
     settings.bookingLink?.trim()
       ? `## Booking\nWhen someone wants a call or meeting, offer this link: ${settings.bookingLink.trim()}`
-      : "## Booking\nNo booking link is configured. Do not invent one; offer that the team will call them back instead.",
+      : "## Booking\nNo booking link is configured. Do not invent one or promise a callback.",
   );
   if (input.publishedAnswers.length) {
     parts.push(

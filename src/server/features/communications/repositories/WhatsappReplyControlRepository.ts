@@ -48,6 +48,7 @@ async function claimDispatch(input: {
   messageId: string;
   body: string;
   allowPending?: boolean;
+  messageType?: "text" | "verification";
 }) {
   const { organizationId, conversationId, revision, body, allowPending } =
     input;
@@ -60,7 +61,7 @@ async function claimDispatch(input: {
       conversationId,
       body,
       direction: "outbound",
-      messageType: "text",
+      messageType: input.messageType ?? "text",
       autoReplyRevision: revision,
       status: "queued",
     })

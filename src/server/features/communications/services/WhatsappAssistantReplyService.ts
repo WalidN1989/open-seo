@@ -1,3 +1,4 @@
+import { renderWhatsappResponse } from "@/shared/whatsapp-ai-configuration";
 import { WhatsappHandoffService } from "./WhatsappHandoffService";
 import { sendAutomaticWhatsappReply } from "./WhatsappAutomaticReplyService";
 import { WhatsappReplyControlRepository as Control } from "../repositories/WhatsappReplyControlRepository";
@@ -10,7 +11,6 @@ import { WhatsappAssistantRepository as Repo } from "../repositories/WhatsappAss
 import {
   applyPriceTokens,
   buildBusinessContext,
-  toWhatsappText,
   formatCatalogueMatches,
   looksLikeQuestion,
   matchesEscalation,
@@ -41,7 +41,6 @@ import {
 import { isPersonalMoneyRequest } from "../providers/whatsapp-reply-policy";
 
 const { withDefaults } = WhatsappAssistantService;
-const PROMPT_PRICE_LIMIT = 120;
 const VERIFICATION_REPLY =
   /^(That code does not match any account\.|That is too many attempts\.|Thanks — you are verified as )/;
 
@@ -70,7 +69,7 @@ export async function businessContext(
     settings,
     // A bookshop's whole catalogue does not belong in every prompt; the
     // instant-answer tokens still resolve against the full list.
-    prices: prices.slice(0, PROMPT_PRICE_LIMIT),
+    prices: prices.slice(0, 120),
     publishedAnswers: published.flatMap((item) =>
       item.blogUrl ? [{ question: item.question, url: item.blogUrl }] : [],
     ),
@@ -220,13 +219,17 @@ export async function replyToInbound(
   const revision = conversation.replyRevision;
   const current = (allowPending = false) =>
     Control.isCurrent(organizationId, conversationId, revision, allowPending);
-  const sendReply = (replyBody: string) =>
+  const sendReply = (
+    replyBody: string,
+    messageType: "text" | "verification" = "text",
+  ) =>
     sendAutomaticWhatsappReply(connection, {
       conversationId,
       revision,
       messageId: message.externalMessageId,
       recipient: message.sender,
       body: replyBody,
+      messageType,
       allowPending: true,
     });
   if (isPersonalMoneyRequest(body)) {
@@ -267,22 +270,22 @@ export async function replyToInbound(
     return { kind: "unavailable" };
   });
 
-  if (access.kind === "locked") {
-    await sendReply(
-      "That is too many attempts. For security this number is paused for a few minutes — please try again shortly, or contact us and we will help.",
-    );
-    return true;
-  }
-  if (access.kind === "rejected") {
-    await sendReply(
-      `That code does not match any account. Send /verify followed by your code to try again — it is eight characters in two groups of four. ${access.remaining} attempt${access.remaining === 1 ? "" : "s"} left.`,
-    );
-    return true;
-  }
-  if (access.kind === "just_verified") {
-    await sendReply(
-      `Thanks — you are verified as ${access.displayName}. You will not need that code again from this number. What would you like to know?`,
-    );
+  const verificationReply =
+    access.kind === "locked"
+      ? settings.responseMessages.verificationLocked
+      : access.kind === "rejected"
+        ? renderWhatsappResponse(
+            settings.responseMessages.verificationRejected,
+            { remaining: access.remaining },
+          )
+        : access.kind === "just_verified"
+          ? renderWhatsappResponse(
+              settings.responseMessages.verificationSuccess,
+              { displayName: access.displayName },
+            )
+          : null;
+  if (verificationReply !== null) {
+    await sendReply(verificationReply, "verification");
     return true;
   }
 
@@ -311,9 +314,7 @@ export async function replyToInbound(
     );
     if (instant) {
       await sendReply(
-        toWhatsappText(
-          applyPriceTokens(instant.answer, await priceTokens(organizationId)),
-        ),
+        applyPriceTokens(instant.answer, await priceTokens(organizationId)),
       );
       return true;
     }
@@ -372,9 +373,7 @@ export async function replyToInbound(
         conversationId,
       );
       if (latest && latest !== message.externalMessageId) return true;
-      await sendReply(
-        "I received your image, but I can't view it right now. Could you describe what you'd like us to check?",
-      );
+      await sendReply(settings.responseMessages.imageUnavailable);
       return true;
     }
     if (!(await current())) return true;
@@ -384,7 +383,8 @@ export async function replyToInbound(
           (item) =>
             access.kind !== "unavailable" ||
             item.direction !== "outbound" ||
-            !VERIFICATION_REPLY.test(item.body ?? ""),
+            (item.messageType !== "verification" &&
+              !VERIFICATION_REPLY.test(item.body ?? "")),
         )
         .map((item) => ({
           ...item,
@@ -400,6 +400,7 @@ export async function replyToInbound(
       model: settings.model ?? (await getOptionalEnvValue("WHATSAPP_AI_MODEL")),
       businessContext: context,
       persona: settings.persona,
+      replyStyle: settings.replyStyle,
       accessNote: accessNote(access),
       lookupProducts: (query) => lookupProducts(organizationId, query),
       lookupOrder: (orderId) =>
@@ -447,7 +448,7 @@ export async function replyToInbound(
     )
       return true;
     if (!result.reply) return false;
-    await sendReply(toWhatsappText(result.reply));
+    await sendReply(result.reply);
     return true;
   } catch (error) {
     console.error("WhatsApp assistant failed; using rule fallback", error);

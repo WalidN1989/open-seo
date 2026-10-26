@@ -1,3 +1,12 @@
+import { WhatsappAiSettingsRepository } from "@/server/features/whatsapp-ai-settings/repositories/WhatsappAiSettingsRepository";
+import {
+  DEFAULT_ASSISTANT_PERSONA,
+  DEFAULT_HANDOFF_MESSAGE,
+  DEFAULT_WHATSAPP_STYLE,
+  parseWhatsappResponses,
+  whatsappWritingSnapshot,
+} from "@/shared/whatsapp-ai-configuration";
+import type { WhatsappResponseMessages } from "@/types/schemas/whatsappResponseMessages";
 import type { z } from "zod";
 import { AppError } from "@/server/lib/errors";
 import { isUniqueViolation } from "@/server/lib/db-errors";
@@ -29,13 +38,10 @@ export type Connection = NonNullable<
 
 export const DEFAULT_ESCALATION_KEYWORDS =
   "human, agent, manager, real person, speak to someone, call me, complaint, refund, cancel, angry, useless, scam, lawyer, legal, urgent, asap";
-const DEFAULT_HANDOFF_MESSAGE =
-  "I've saved your request for a person to review. I'll pause automated replies here so the team can take over.";
-
 export type AssistantSettings = Omit<
   AssistantSettingsRow,
-  "organizationId" | "createdAt" | "updatedAt"
-> & { updatedAt: string | null };
+  "organizationId" | "createdAt" | "updatedAt" | "responseMessagesJson"
+> & { updatedAt: string | null; responseMessages: WhatsappResponseMessages };
 
 /** The settings as the assistant runs them: a missing row means these. */
 function withDefaults(row: AssistantSettingsRow | null): AssistantSettings {
@@ -51,9 +57,11 @@ function withDefaults(row: AssistantSettingsRow | null): AssistantSettings {
     contactPhone: row?.contactPhone ?? null,
     address: row?.address ?? null,
     escalationKeywords: row?.escalationKeywords ?? DEFAULT_ESCALATION_KEYWORDS,
-    handoffMessage: row?.handoffMessage ?? DEFAULT_HANDOFF_MESSAGE,
+    handoffMessage: row?.handoffMessage?.trim() || DEFAULT_HANDOFF_MESSAGE,
     handoffContentSid: row?.handoffContentSid ?? null,
-    persona: row?.persona ?? null,
+    persona: row?.persona ?? DEFAULT_ASSISTANT_PERSONA,
+    replyStyle: row?.replyStyle ?? DEFAULT_WHATSAPP_STYLE,
+    responseMessages: parseWhatsappResponses(row?.responseMessagesJson),
     businessFacts: row?.businessFacts ?? null,
     updatedAt: row?.updatedAt ?? null,
   };
@@ -192,10 +200,51 @@ async function updateSettings(
   input: z.infer<typeof updateAssistantSettingsSchema>,
 ) {
   await requireAssistantAccess(organizationId, userId, "admin");
+  if (input.replyStyle !== undefined || input.responseMessages !== undefined) {
+    await BusinessModuleService.requireAccess(
+      organizationId,
+      userId,
+      "whatsapp",
+      "manage",
+    );
+  }
+  const { responseMessages, ...fields } = input;
   const values = Object.fromEntries(
-    Object.entries(input).filter(([, value]) => value !== undefined),
+    Object.entries({
+      ...fields,
+      ...(responseMessages
+        ? { responseMessagesJson: JSON.stringify(responseMessages) }
+        : {}),
+    }).filter(([, value]) => value !== undefined),
   );
-  const row = await Repo.upsertSettings(organizationId, values);
+  const before = await Repo.getSettings(organizationId);
+  const event = await WhatsappAiSettingsRepository.change({
+    organizationId,
+    actorUserId: userId,
+    before: whatsappWritingSnapshot(before),
+    after: whatsappWritingSnapshot({
+      persona: input.persona !== undefined ? input.persona : before?.persona,
+      handoffMessage:
+        input.handoffMessage !== undefined
+          ? input.handoffMessage
+          : before?.handoffMessage,
+      replyStyle:
+        input.replyStyle !== undefined ? input.replyStyle : before?.replyStyle,
+      responseMessagesJson: responseMessages
+        ? JSON.stringify(responseMessages)
+        : before?.responseMessagesJson,
+    }),
+    operation: "update",
+    expectedResponseMessagesJson: before?.responseMessagesJson ?? null,
+    extraValues: values,
+    settingsBackup: { before, after: { ...before, ...values } },
+  });
+  if (!event)
+    throw new AppError(
+      "CONFLICT",
+      "Assistant settings changed while saving. Reload configuration and try again.",
+    );
+  const row = await Repo.getSettings(organizationId);
   await audit(
     organizationId,
     userId,

@@ -276,14 +276,12 @@ describe("the WhatsApp AI configuration MCP surface", () => {
       "update_whatsapp_ai_settings",
     ]);
   });
-  it("keeps the reported fixed handoff text aligned with the unchanged sender", () => {
-    const active = /const HANDOFF_ACKNOWLEDGEMENT =\s*"([^"\n]+)"/.exec(
-      source("../features/communications/services/WhatsappHandoffService.ts"),
-    )?.[1];
-    const fallback = /const DEFAULT_HANDOFF_MESSAGE =\s*"([^"\n]+)"/.exec(
-      source("../features/communications/services/WhatsappAssistantService.ts"),
-    )?.[1];
-    expect(active).toBeTypeOf("string");
-    expect(fallback).toBe(active);
+  it("uses workspace handoff text instead of a hardcoded customer acknowledgement", () => {
+    const sender = source(
+      "../features/communications/services/WhatsappHandoffService.ts",
+    );
+    expect(sender).toContain("WhatsappAssistantService.withDefaults(config)");
+    expect(sender).toContain("writing.handoffMessage");
+    expect(sender).not.toContain("HANDOFF_ACKNOWLEDGEMENT");
   });
 });

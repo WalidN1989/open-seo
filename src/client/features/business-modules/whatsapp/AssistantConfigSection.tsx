@@ -1,3 +1,4 @@
+import { AssistantWritingFields } from "./AssistantWritingFields";
 import { HandoffSettings } from "./HandoffSettings";
 import { useState } from "react";
 import { Sparkles } from "lucide-react";
@@ -95,12 +96,20 @@ function ConfigForm({
     escalationKeywords: settings.escalationKeywords ?? "",
     handoffMessage: settings.handoffMessage ?? "",
     persona: settings.persona ?? "",
+    replyStyle: settings.replyStyle ?? "",
+    responseMessages: settings.responseMessages,
     businessFacts: settings.businessFacts ?? "",
   });
-  const save = useAssistantMutation(
-    (input: typeof form) => updateWhatsappAssistantSettings({ data: input }),
-    "Assistant config saved",
-  );
+  const save = useAssistantMutation((input: typeof form) => {
+    const {
+      replyStyle: _style,
+      responseMessages: _responses,
+      ...shared
+    } = input;
+    return updateWhatsappAssistantSettings({
+      data: channel === "whatsapp" ? input : shared,
+    });
+  }, "Assistant config saved");
   const set = <K extends keyof typeof form>(key: K, value: (typeof form)[K]) =>
     setForm((current) => ({ ...current, [key]: value }));
   const draft = useMutation({
@@ -312,25 +321,25 @@ function ConfigForm({
           }
         />
       </Field>
-      {channel === "email" ? (
-        <Field
-          label="Hand-off message"
-          hint="Sent once when an escalation keyword matches."
-        >
-          <input
-            className={input}
-            value={form.handoffMessage}
-            onChange={(event) =>
-              set("handoffMessage", event.currentTarget.value)
-            }
-          />
-        </Field>
-      ) : (
-        <p className="text-sm text-base-content/60">
-          On handoff, one acknowledgement confirms that the request is saved.
-          Automated replies then pause while a person reviews it.
-        </p>
-      )}
+      <Field
+        label="Hand-off message"
+        hint="The acknowledgement sent when a conversation is handed to the team. A blank value restores the visible default."
+      >
+        <textarea
+          className={textarea}
+          rows={3}
+          value={form.handoffMessage}
+          onChange={(event) => set("handoffMessage", event.currentTarget.value)}
+        />
+      </Field>
+      {channel === "whatsapp" ? (
+        <AssistantWritingFields
+          style={form.replyStyle}
+          messages={form.responseMessages}
+          onStyle={(value) => set("replyStyle", value)}
+          onMessages={(value) => set("responseMessages", value)}
+        />
+      ) : null}
 
       <section className="rounded-xl border border-base-300 p-4">
         <div className="mb-2 flex items-center gap-2">
@@ -361,12 +370,12 @@ function ConfigForm({
 
       <Field
         label="Persona & identity"
-        hint="Who the assistant is and how it talks. Replaces the default opening instruction; the guard-rails against inventing facts always apply."
+        hint="Workspace identity and instructions. WhatsApp writing style and fixed replies are configured above; factual grounding and access protections still apply."
       >
         <textarea
           className={textarea}
           rows={7}
-          placeholder="You are the assistant for Digital Urgency, a Brisbane web and SEO agency. Reply in the customer's language, keep it short, and get real interest onto a call with the team…"
+          placeholder="Describe your team, its role and the instructions it should follow…"
           value={form.persona}
           onChange={(event) => set("persona", event.currentTarget.value)}
         />

@@ -1,3 +1,4 @@
+import { DEFAULT_WHATSAPP_RESPONSES } from "@/shared/whatsapp-ai-configuration";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
@@ -116,7 +117,11 @@ beforeEach(() => {
   mocks.published.mockResolvedValue([]);
   mocks.project.mockResolvedValue(null);
   mocks.instant.mockResolvedValue(null);
-  mocks.defaults.mockReturnValue({ autopilot: true, replyDelaySeconds: 0 });
+  mocks.defaults.mockReturnValue({
+    autopilot: true,
+    replyDelaySeconds: 0,
+    responseMessages: DEFAULT_WHATSAPP_RESPONSES,
+  });
   mocks.key.mockResolvedValue("key");
   mocks.getConversationReplyState.mockResolvedValue({
     status: "open",
@@ -137,6 +142,31 @@ beforeEach(() => {
 });
 
 describe("automatic reply controls", () => {
+  it("sends configured verification text and marks it independently of its wording", async () => {
+    mocks.defaults.mockReturnValueOnce({
+      autopilot: true,
+      responseMessages: {
+        ...DEFAULT_WHATSAPP_RESPONSES,
+        verificationRejected: "Please retry. {{remaining}} remaining.",
+      },
+    });
+    mocks.verify.mockResolvedValueOnce({ kind: "rejected", remaining: 2 });
+    await replyToInbound(connection, "chat", message("/verify invalid"));
+    expect(mocks.send.mock.calls[0]?.[2]).toBe("Please retry. 2 remaining.");
+    expect(mocks.claim).toHaveBeenCalledWith(
+      expect.objectContaining({ messageType: "verification" }),
+    );
+    expect(mocks.generate).not.toHaveBeenCalled();
+  });
+  it("preserves model formatting rather than forcing a hardcoded presentation", async () => {
+    mocks.generate.mockResolvedValueOnce({
+      reply: "**A configured response**",
+      actions: [],
+      ignore: false,
+    });
+    await replyToInbound(connection, "chat", message("A normal question"));
+    expect(mocks.send.mock.calls[0]?.[2]).toBe("**A configured response**");
+  });
   it("Manual suppresses verification, model and rule fallback", async () => {
     mocks.getConversationReplyState.mockResolvedValue({
       status: "open",
@@ -273,6 +303,11 @@ describe("retail verification isolation", () => {
         body: "That is too many attempts. Please wait.",
       },
       { direction: "outbound", body: "Thanks — you are verified as Alpha." },
+      {
+        direction: "outbound",
+        messageType: "verification",
+        body: "A custom verification message",
+      },
       { direction: "inbound", body: "Where is SHOP-6603?" },
     ]);
     await replyToInbound(connection, "chat", message("I need it by next week"));

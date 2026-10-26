@@ -14,6 +14,7 @@ export async function sendAutomaticWhatsappReply(
     recipient: string;
     body: string;
     allowPending?: boolean;
+    messageType?: "text" | "verification";
   },
 ) {
   const queued = await WhatsappReplyControlRepository.claimDispatch({

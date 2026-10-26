@@ -12,6 +12,7 @@ import {
   type ProfileSource,
 } from "../providers/assistant-profile-draft";
 import {
+  WhatsappAssistantService,
   requireAssistantAccess,
   resolveAiKey,
 } from "./WhatsappAssistantService";
@@ -75,6 +76,9 @@ async function draftProfile(organizationId: string, userId: string) {
     businessName: project.name,
     domain,
     source,
+    writingStyle: WhatsappAssistantService.withDefaults(
+      await Repo.getSettings(organizationId),
+    ).replyStyle,
     apiKey,
   });
   await BusinessAuditRepository.record({

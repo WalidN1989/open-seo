@@ -178,7 +178,7 @@ describe("escalation and human takeover", () => {
     expect(first.handled).toBe(true);
     expect(sent.calls).toHaveLength(1);
     // The durable acknowledgement makes no callback or deadline promise.
-    expect(sent.calls[0]?.body).toContain("pause automated replies");
+    expect(sent.calls[0]?.body).toContain("Our team will review");
     const [conversation] = await db
       .select({ status: schema.whatsappConversations.status })
       .from(schema.whatsappConversations)
@@ -251,7 +251,7 @@ describe("a client proving who they are", () => {
     expect(handled).toBe(true);
     expect(sent.calls).toHaveLength(1);
     expect(sent.calls[0]?.body).toContain("does not match");
-    expect(sent.calls[0]?.body).toContain("4 attempts left");
+    expect(sent.calls[0]?.body).toContain("4 attempts remaining");
   });
 
   it("locks the number after five wrong codes", async () => {
@@ -263,7 +263,7 @@ describe("a client proving who they are", () => {
     sent.calls.length = 0;
     const { handled } = await inbound("/verify K7MN-4PQQ", sender);
     expect(handled).toBe(true);
-    expect(sent.calls[0]?.body).toContain("paused");
+    expect(sent.calls[0]?.body).toContain("too many verification attempts");
   });
 
   it("does not refuse or count an ordinary word that fits the alphabet", async () => {
