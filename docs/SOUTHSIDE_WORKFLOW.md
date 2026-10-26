@@ -1,12 +1,12 @@
 # Southside communications workflow
 
-Prepared implementation, awaiting reviewed release and live verification. No real customer sends or calls were used during testing.
+Released on 2026-10-26 after owner approval of PR #77. Production source revision: `48586ae02b44054372ee8a5ba3ce53d492d4a1cf`. No real customer sends or calls were used during verification.
 
 ## Scope and activation
 
 `SOUTHSIDE_WORKFLOW_ORGANIZATION_ID` is a private runtime setting selecting exactly one workspace. Unset means disabled everywhere. Never commit its value. Module permissions and membership still apply. Other workspaces retain their existing behavior.
 
-The inbound ElevenLabs catalogue tool and prompt changes are prepared on a branch with zero live traffic. Activate that branch only alongside the reviewed application release and selected workspace setting. Existing authenticated catalogue-query endpoint is reused; connection credentials determine the workspace. Searches preserve product variants, return saved positive prices, and return null for unpriced items. The agent uses “Our representative will get in touch with you.” It must not describe an unpriced product as free or discuss missing prices. Supply-only, starting-price and availability terms accompany prices.
+The inbound ElevenLabs catalogue tool and prompt changes are active on Main, following deployment of the matching application release and selected-workspace setting. Existing authenticated catalogue-query endpoint is reused; connection credentials determine the workspace. Searches preserve product variants, return saved positive prices, and return null for unpriced items. The agent uses “Our representative will get in touch with you.” It must not describe an unpriced product as free or discuss missing prices. Supply-only, starting-price and availability terms accompany prices.
 
 ## Automatic call follow-up
 
@@ -47,7 +47,7 @@ The owner reviews exact recipients, content and quote lines under Voice Agent �
 
 Approvals expire after 24 hours. One approval covers one immutable action. Changed quote contents, reply targets, template bodies or recipient numbers invalidate it. Atomic claims prevent parallel/repeated execution. An uncertain provider outcome is marked unknown and requires provider-history inspection before a new request. Editing a quote requires a new send approval.
 
-The callback uses a dedicated email-correction agent. Configure its signed post-call webhook and dynamic-variable placeholders, then privately set the integration's `CALLBACK_AGENT_ID` and `OUTBOUND_PHONE_NUMBER_ID`. An owner approves the exact destination number and reason. Only a matching approved provider conversation and destination with explicitly confirmed email can correct its linked contact. A resend requires separate approval. Callback activation and a controlled live provider smoke remain pending release.
+The callback uses a dedicated email-correction agent. Configure its signed post-call webhook and dynamic-variable placeholders, then privately set the integration's `CALLBACK_AGENT_ID` and `OUTBOUND_PHONE_NUMBER_ID`. An owner approves the exact destination number and reason. Only a matching approved provider conversation and destination with explicitly confirmed email can correct its linked contact. A resend requires separate approval. The callback webhook, dynamic variables and integration references are configured. The existing provider key and phone line were verified read-only; an actual approved outbound call and resulting resend have not been exercised.
 
 ## Reporting limits
 
@@ -59,9 +59,9 @@ Microsoft NDR inspection reads Inbox, Junk and Deleted Items, up to 100 messages
 
 The isolated TEST webhook test uses migrated SQLite and mocked providers. It checks lead creation, customer email, WhatsApp confirmation, quote prompt/draft, owner summary, replay prevention and visible failures. Approval tests cover blocked sends, forged flags, owner identity, expiry, tenant isolation, parallel execution, changed recipients/templates/quotes and unknown outcomes. Product matching covers spoken dimensions and prevents substituting another length. ElevenLabs branch simulations passed lookup, priced and unpriced cases (3/3); these validate agent behavior against mocked tool results, not deployed endpoint connectivity.
 
-Both SQLite and PostgreSQL migrations are additive: a new action ledger plus explicit record links. Before release, back up and restore-check the production database privately, apply migrations in an isolated PostgreSQL restore, then deploy the owner-approved image. Roll back application image and unset the rollout setting if necessary; keep the additive ledger and approval history. Never drop it to roll back or replay pending/unknown sends. No production migrations or application deployment have occurred during preparation.
+Both SQLite and PostgreSQL migrations are additive: a new action ledger plus explicit record links. Before release, back up and restore-check the production database privately, apply migrations in an isolated PostgreSQL restore, then deploy the owner-approved image. Roll back application image and unset the rollout setting if necessary; keep the additive ledger and approval history. Never drop it to roll back or replay pending/unknown sends. The production migrations and image deployment completed after owner approval. The encrypted private backup restored successfully to an isolated database; both PostgreSQL migrations preserved its existing records. The live application is healthy on the approved revision, and a signed-in owner opened Reporting with live data. Live authenticated catalogue queries returned the saved AUD 19.90 steel-post price and null plus the approved representative wording for an unpriced item. Missing authentication returned 401. The new action ledger remained empty, confirming no historical follow-ups were replayed by deployment.
 
 MCP JSON-RPC discovery, report output and draft creation were also exercised
 through the real HTTP transport with a synthetic service fixture. The separate
 headless Claude consumer probe was unavailable because that CLI is not
-installed; a deployed Grok connection smoke remains a release check.
+installed; the Grok client itself has not been driven during release verification. Its reporting tool uses the same live service verified in the owner dashboard.

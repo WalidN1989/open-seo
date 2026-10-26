@@ -2464,3 +2464,30 @@ the dedicated callback agent is inactive. Production image and data remain
 unchanged. See [SOUTHSIDE_WORKFLOW.md](./SOUTHSIDE_WORKFLOW.md) for tools,
 approval semantics, remaining provider setup and additive migration rollback.
 Owner review and exact release approval remain required before merge/deploy.
+
+## 2026-10-26 — Southside call workflow deployed (PR #77)
+
+The owner explicitly requested deployment after reviewing PR #77. The approved
+revision merged as `48586ae02b44054372ee8a5ba3ce53d492d4a1cf`; both required
+checks passed on that exact main revision. The protected production image build
+completed, and Coolify deployed the immutable image
+`ghcr.io/walidn1989/digital-urgency@sha256:a5ed88fa849a8bd3e0f873cf17db69b2756b1e33aa749b1be7771bcd82b966c7`.
+The running container label matches the approved source and is healthy; the old
+container stopped. The rollout setting selects only the requested workspace.
+No global scheduler or other client rollout was enabled.
+
+Before cutover, an encrypted private database export restored successfully in
+an isolated database. Both additive PostgreSQL migrations preserved existing
+records. The previous image and configuration remain privately retained. This
+is a tested VPS-local recovery point, not proof of an independent off-site
+backup schedule.
+
+Live authenticated catalogue queries verified saved priced and unpriced items
+and rejected missing credentials. The tested ElevenLabs catalogue branch
+merged into Main; the callback agent's signed webhook and dynamic variables
+are configured, and the existing key/phone inventory was verified. Reporting
+loaded live data in the signed-in owner session. No customer was messaged or
+called for verification, and no historical follow-ups were replayed. Actual
+post-release call delivery, approved outbound callbacks/resends and the Grok
+client itself still need operational testing; answered/missed telephony events
+and automatic NDR-to-message correlation remain outside this release.
