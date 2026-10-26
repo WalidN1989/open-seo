@@ -91,7 +91,12 @@ async function read(organizationId: string, userId: string, days: number) {
             ? "unknown"
             : r.status,
         detail: r.error ?? `Customer action ${r.status}`,
-        tone: statusTone(r.status),
+        tone: statusTone(
+          r.status === "sending" &&
+            Date.parse(r.updatedAt) < Date.now() - 300000
+            ? "unknown"
+            : r.status,
+        ),
       })),
     ...data.recentCalls
       .filter(
