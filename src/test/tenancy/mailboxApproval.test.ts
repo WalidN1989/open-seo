@@ -234,4 +234,83 @@ describe("mailbox approval preferences", () => {
         ?.direction,
     ).toBe("outbound");
   });
+  it("keeps self-addressed website notifications without replying or duplicating Sent", async () => {
+    const { MailboxIngestService } =
+      await import("@/server/features/email/services/MailboxIngestService");
+    const message = {
+      uid: 2,
+      messageId: "<website-order@example.test>",
+      inReplyTo: null,
+      references: [],
+      from: "Test shop <care@example.test>",
+      to: ["care@example.test"],
+      cc: [],
+      subject: "Website order 123",
+      text: "An order was placed.",
+      html: null,
+      date: new Date().toISOString(),
+      attachments: [],
+    };
+    const before = requests.length;
+    expect(
+      await MailboxIngestService.ingest({
+        accountId,
+        folder: "inbox",
+        backfill: false,
+        messages: [message],
+      }),
+    ).toMatchObject({ accepted: 1 });
+    expect(
+      await MailboxIngestService.ingest({
+        accountId,
+        folder: "sent",
+        backfill: true,
+        messages: [message],
+      }),
+    ).toMatchObject({ accepted: 0 });
+    expect(
+      await MailboxIngestService.ingest({
+        accountId,
+        folder: "inbox",
+        backfill: true,
+        messages: [message],
+      }),
+    ).toMatchObject({ accepted: 0 });
+    const { EmailService } =
+      await import("@/server/features/email/services/EmailService");
+    const workspace = await EmailService.workspace(ORG_A, USER_OWNER_A);
+    const notification = workspace.threads.find(
+      (thread) => thread.subject === message.subject,
+    );
+    expect(notification).toMatchObject({
+      lastDirection: "inbound",
+      messageCount: 1,
+    });
+    const detail = await EmailService.thread(
+      ORG_A,
+      USER_OWNER_A,
+      notification?.id ?? "",
+    );
+    expect(detail.messages).toHaveLength(1);
+    expect(detail.messages[0]).toMatchObject({
+      direction: "inbound",
+      status: "received",
+    });
+    expect(requests).toHaveLength(before);
+    const other = await repo.getAccount(ORG_B);
+    expect(
+      await MailboxIngestService.ingest({
+        accountId: other.id,
+        folder: "inbox",
+        backfill: false,
+        messages: [
+          {
+            ...message,
+            from: "other@example.test",
+            to: ["other@example.test"],
+          },
+        ],
+      }),
+    ).toMatchObject({ accepted: 0 });
+  });
 });
