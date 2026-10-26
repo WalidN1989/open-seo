@@ -1,3 +1,4 @@
+import { mailboxPreferences } from "../mailboxPreferences";
 import { decryptCredentials } from "@/server/lib/connection-secrets";
 import type {
   BridgeAccount,
@@ -33,6 +34,9 @@ async function accountsForBridge(): Promise<BridgeAccount[]> {
       address: row.address,
       credentials,
       syncCursor: row.syncCursor,
+      ...((await mailboxPreferences(row)).pollEveryFiveMinutes
+        ? { pollIntervalMs: 300_000 }
+        : {}),
     });
   }
   return out;

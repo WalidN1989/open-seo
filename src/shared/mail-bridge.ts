@@ -50,6 +50,7 @@ export type BridgeAccount = {
    * A missing folder means "never seen": recent history is imported first.
    */
   syncCursor: string | null;
+  pollIntervalMs?: number;
 };
 
 export type BridgeIngestRequest = {

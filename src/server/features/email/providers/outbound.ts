@@ -1,3 +1,4 @@
+import { preferencesFrom } from "../mailboxPreferences";
 import { AppError } from "@/server/lib/errors";
 import { decryptCredentials } from "@/server/lib/connection-secrets";
 import { getResendConfig } from "@/server/email/resend";
@@ -211,10 +212,19 @@ function resendKeyFor(address: string) {
 }
 
 /** The sender for this account, whichever provider it is on. */
-export async function outboundFor(account: EmailAccountRow): Promise<Outbound> {
+export async function outboundFor(
+  account: EmailAccountRow,
+  humanApproved = false,
+): Promise<Outbound> {
   if (account.provider === "microsoft") return microsoftOutbound(account);
   const creds = await decryptCredentials(account.credentials);
   if (account.provider === "mailbox") {
+    if (preferencesFrom(creds).manualOnly && !humanApproved) {
+      throw new AppError(
+        "VALIDATION_ERROR",
+        "This mailbox requires a person to approve every send.",
+      );
+    }
     const credentials = mailboxCredentialsFrom(creds);
     if (!credentials) {
       throw new AppError(
