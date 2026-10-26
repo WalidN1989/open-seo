@@ -2452,3 +2452,28 @@ updates. An independent first-time MCP consumer completed the synthetic workflow
 without source access. Routine responses stayed small; the pre-existing global
 MCP tool catalogue is still large and was not removed or narrowed in this work.
 No long-running runtime stability pass is claimed by these bounded checks.
+
+### 2026-10-26 — WhatsApp AI configuration MCP tools (pending review/release)
+
+Owner requested additive read/update/history/restore tools for the existing
+workspace instructions and fixed handoff text. The active acknowledgement was
+found to be hardcoded in sending code, ignoring the legacy stored handoff field.
+It is exposed as read-only and handoff edits are refused while the owner
+clarifies whether a minimal sender change is permitted. All four require current
+membership plus WhatsApp manage permission and identify the workspace in their
+response. The original MCP tools, webhook, generation, sending, autopilot and
+per-chat mode behavior remain untouched. Shared Email/Social use of the existing
+fields is disclosed; built-in system rules and provider templates are not edited.
+
+The existing business audit table stores actor-attributed before/after versions,
+atomically with a guarded settings update. Stale writes are rejected; restoration
+backs up current text and retains earlier history. No migration, settings
+backfill, deletion capability or growing in-memory state is added. Read operations
+create no settings/version rows. See WHATSAPP_AI_SETTINGS_MCP.md for the contract.
+
+Synthetic SQLite/MCP and real local PostgreSQL validation cover manage permission,
+workspace isolation, version restoration, unchanged unrelated fields, competing
+writes and rollback when backup insertion fails. Production settings changes
+requested by the owner are deferred until this reviewed release is deployed and
+the new audited update tool can be used. No production write, deployment, message,
+webhook change or provider setting change is performed in this implementation.

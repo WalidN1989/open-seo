@@ -231,6 +231,7 @@ describe("the module registry", () => {
       "quoteSurface",
       "reportSurface",
       "smsSurface",
+      "whatsappAiSettingsSurface",
       "whatsappSurface",
     ]);
   });
@@ -259,5 +260,30 @@ describe("the external case MCP surface", () => {
     expect(declaredToolNames(source("tools/case-tools.ts")).toSorted()).toEqual(
       ["create_case", "get_attention_list", "list_cases", "update_case"],
     );
+  });
+});
+
+describe("the WhatsApp AI configuration MCP surface", () => {
+  it("adds only the requested backed-up configuration tools", () => {
+    expect(
+      declaredToolNames(
+        source("tools/whatsapp-ai-settings-tools.ts"),
+      ).toSorted(),
+    ).toEqual([
+      "get_whatsapp_ai_settings",
+      "list_whatsapp_ai_settings_history",
+      "restore_whatsapp_ai_settings_version",
+      "update_whatsapp_ai_settings",
+    ]);
+  });
+  it("keeps the reported fixed handoff text aligned with the unchanged sender", () => {
+    const active = /const HANDOFF_ACKNOWLEDGEMENT =\s*"([^"\n]+)"/.exec(
+      source("../features/communications/services/WhatsappHandoffService.ts"),
+    )?.[1];
+    const fallback = /const DEFAULT_HANDOFF_MESSAGE =\s*"([^"\n]+)"/.exec(
+      source("../features/communications/services/WhatsappAssistantService.ts"),
+    )?.[1];
+    expect(active).toBeTypeOf("string");
+    expect(fallback).toBe(active);
   });
 });
