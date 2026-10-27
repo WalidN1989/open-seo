@@ -49,8 +49,8 @@ export function getModuleNavGroups(moduleKey: string, projectId: string) {
         }),
         linkOptions({
           params: { projectId },
-          to: "/p/$projectId/modules/crm/sources",
-          label: "Sources",
+          to: "/p/$projectId/modules/crm/prospects",
+          label: "Prospects",
           icon: Radar,
         }),
         linkOptions({

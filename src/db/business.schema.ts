@@ -221,6 +221,7 @@ export const crmSourceRuns = sqliteTable(
       .references(() => organization.id, { onDelete: "cascade" }),
     // Which adapter produced these candidates, and what was asked of it.
     provider: text("provider").notNull(),
+    providerRunId: text("provider_run_id"),
     query: text("query").notNull(),
     location: text("location"),
     status: text("status", {

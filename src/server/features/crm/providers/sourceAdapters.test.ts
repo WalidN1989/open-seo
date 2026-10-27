@@ -103,3 +103,27 @@ describe("a batch from one response", () => {
     expect(toCandidates("apify", records, 4)).toHaveLength(4);
   });
 });
+
+describe("Maps website evidence", () => {
+  it("never treats the Maps listing URL as an owned website", () => {
+    const draft = toCandidate(
+      "apify",
+      { title: "Swinton", url: "https://maps.google.com/place/one" },
+      0,
+    );
+    expect(draft?.website).toBeNull();
+    expect(draft?.profileUrl).toBe("https://maps.google.com/place/one");
+  });
+  it("preserves the business address in research notes", () => {
+    expect(
+      toCandidate("apify", { title: "Swinton", address: "Oxley QLD 4075" }, 0)
+        ?.notes,
+    ).toBe("Oxley QLD 4075");
+  });
+  it("ignores unsafe website links", () => {
+    expect(
+      toCandidate("apify", { title: "X", website: "javascript:alert(1)" }, 0)
+        ?.website,
+    ).toBeNull();
+  });
+});
