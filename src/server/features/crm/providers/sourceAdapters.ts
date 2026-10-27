@@ -1,11 +1,8 @@
-import type { z } from "zod";
 import type { CandidateDraft } from "../repositories/SourceRepository";
 import type { startSourceRunSchema } from "@/types/schemas/sources";
 import { CommunicationsRepository } from "@/server/features/communications/repositories/CommunicationsRepository";
-import {
-  runApifyActor,
-  scrapeWithFirecrawl,
-} from "@/server/features/communications/providers/integrations";
+import { scrapeWithFirecrawl } from "@/server/features/communications/providers/integrations";
+import { z } from "zod";
 
 /**
  * How much to trust a record, 0-100.
@@ -86,7 +83,9 @@ export function toCandidate(
 
   const email = text(record, "email", "contactEmail");
   const phone = text(record, "phone", "phoneNumber", "telephone");
-  const website = text(record, "website", "domain", "url");
+  // A Google Maps listing URL is evidence, never the business's own website.
+  const websiteValue = text(record, "website", "domain");
+  const website = safeWebsite(websiteValue);
   const rating = numeric(record, "rating", "stars", "score");
   const reviewCount = numeric(record, "reviewCount", "reviewsCount", "reviews");
 
@@ -111,7 +110,10 @@ export function toCandidate(
       reviewCount,
     }),
     profileUrl: text(record, "profileUrl", "link", "url"),
-    notes: text(record, "description", "snippet", "about"),
+    notes:
+      [text(record, "address"), text(record, "description", "snippet", "about")]
+        .filter(Boolean)
+        .join("\n") || null,
   };
 }
 
@@ -146,7 +148,7 @@ function recordsFrom(raw: unknown): unknown[] {
   return [];
 }
 
-async function connectionFor(organizationId: string, provider: string) {
+export async function connectionFor(organizationId: string, provider: string) {
   const connection = await CommunicationsRepository.getIntegrationByProvider(
     organizationId,
     provider,
@@ -168,17 +170,28 @@ export async function runSourceSearch(
   if (input.provider === "manual") return [];
 
   const connection = await connectionFor(organizationId, input.provider);
-  const raw: unknown =
-    input.provider === "apify"
-      ? await runApifyActor(connection, {
-          actorId: "compass~crawler-google-places",
-          inputJson: JSON.stringify({
-            searchStringsArray: [input.query],
-            locationQuery: input.location,
-            maxCrawledPlacesPerSearch: input.limit,
-          }),
-        })
-      : await scrapeWithFirecrawl(connection, { url: input.query });
+  if (input.provider === "apify")
+    throw new Error("Start a Maps run, then import its completed dataset.");
+  const raw: unknown = await scrapeWithFirecrawl(connection, {
+    url: input.query,
+  });
 
   return toCandidates(input.provider, recordsFrom(raw), input.limit);
+}
+
+function safeWebsite(value: string | null): string | null {
+  if (!value) return null;
+  const parsed = z
+    .url()
+    .safeParse(/^https?:\/\//i.test(value) ? value : `https://${value}`);
+  if (!parsed.success) return null;
+  const url = new URL(parsed.data);
+  if (!["https:", "http:"].includes(url.protocol)) return null;
+  if (
+    ["maps.app.goo.gl", "maps.google.com"].includes(url.hostname) ||
+    ((url.hostname === "google.com" || url.hostname === "www.google.com") &&
+      url.pathname.startsWith("/maps"))
+  )
+    return null;
+  return parsed.data;
 }

@@ -1,4 +1,6 @@
 import { Check, ExternalLink, X } from "lucide-react";
+import { useProjectAddress } from "@/client/lib/use-project-address";
+import { Link } from "@tanstack/react-router";
 
 export type Candidate = {
   id: string;
@@ -14,6 +16,9 @@ export type Candidate = {
   evidenceScore: number;
   status: string;
   leadId: string | null;
+  provider: string;
+  profileUrl: string | null;
+  notes: string | null;
 };
 
 function evidenceTone(score: number): string {
@@ -33,6 +38,7 @@ export function CandidateRow({
   onPromote: () => void;
   onReject: () => void;
 }) {
+  const projectId = useProjectAddress();
   const decided =
     candidate.status === "promoted" || candidate.status === "rejected";
 
@@ -40,6 +46,28 @@ export function CandidateRow({
     <tr className="hover">
       <td>
         <span className="font-medium">{candidate.companyName}</span>
+        <div className="mt-1 text-xs text-base-content/50">
+          {candidate.provider === "apify"
+            ? "Google Maps via Apify"
+            : "Manual research"}
+          {candidate.profileUrl &&
+          /^https?:\/\//i.test(candidate.profileUrl) ? (
+            <a
+              className="ml-2 text-primary hover:underline"
+              href={candidate.profileUrl}
+              target="_blank"
+              rel="noreferrer"
+            >
+              Source ↗
+            </a>
+          ) : null}
+        </div>
+        {candidate.notes ? (
+          <details className="mt-1 max-w-sm text-xs text-base-content/60">
+            <summary className="cursor-pointer">Research notes</summary>
+            <p className="whitespace-pre-wrap py-2">{candidate.notes}</p>
+          </details>
+        ) : null}
         {candidate.country ? (
           <span className="ml-2 text-xs text-base-content/40">
             {candidate.country}
@@ -52,7 +80,9 @@ export function CandidateRow({
         )}
         {candidate.email || candidate.phone ? (
           <div className="text-base-content/50">
-            {candidate.email ?? candidate.phone}
+            {candidate.email}
+            <br />
+            {candidate.phone}
           </div>
         ) : null}
       </td>
@@ -60,7 +90,7 @@ export function CandidateRow({
         {candidate.category ?? <span className="text-base-content/25">—</span>}
       </td>
       <td className="text-xs">
-        {candidate.website ? (
+        {candidate.website && /^https?:\/\//i.test(candidate.website) ? (
           <a
             href={
               candidate.website.startsWith("http")
@@ -75,7 +105,7 @@ export function CandidateRow({
             <ExternalLink className="size-3" />
           </a>
         ) : (
-          <span className="text-base-content/25">—</span>
+          <span className="text-base-content/50">Not recorded</span>
         )}
       </td>
       <td className="text-xs">
@@ -98,7 +128,17 @@ export function CandidateRow({
       </td>
       <td className="text-right">
         {decided ? (
-          <span className="badge badge-ghost badge-sm">{candidate.status}</span>
+          candidate.leadId ? (
+            <Link
+              className="text-xs text-primary hover:underline"
+              to="/p/$projectId/modules/leads/$leadId"
+              params={{ projectId, leadId: candidate.leadId }}
+            >
+              View lead ↗
+            </Link>
+          ) : (
+            <span className="badge badge-ghost badge-sm">Dismissed</span>
+          )
         ) : (
           <div className="join">
             <button
@@ -106,7 +146,7 @@ export function CandidateRow({
               disabled={busy}
               onClick={onPromote}
             >
-              <Check className="size-3" /> Add to leads
+              <Check className="size-3" /> Convert to lead
             </button>
             <button
               className="btn btn-ghost btn-xs join-item"

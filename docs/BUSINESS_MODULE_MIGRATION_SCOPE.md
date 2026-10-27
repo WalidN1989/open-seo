@@ -1,5 +1,44 @@
 # OpenSEO business module migration scope
 
+### 2026-10-27 — CRM Prospects release preparation
+
+Owner approved the first Prospects preview and explicitly requested deployment
+to the live VPS CRM, importing nine researched Australian businesses and a small
+Apify Google Maps test. Do not convert prospects or contact businesses during
+release verification. The initial prototype was built in the historical iCloud
+checkout; this release ports only its Prospects changes onto current main in an
+isolated VPS-workspace worktree. Existing voice, email, WhatsApp and CRM changes
+are preserved. Railway and Neon are not deployment or recovery dependencies.
+
+CRM now exposes **Prospects** at the project-scoped crm/prospects route; existing
+crm/sources links continue working. Supports manual entry, source links, notes,
+website filtering and explicit conversion to a Qualified lead. A missing website
+field means not recorded, not proof the business has no website. Examples are
+kept in private release material, not seeded into all organizations or public Git.
+
+Apify searches start asynchronously, persist the external run ID, and import
+completed dataset items through Check results without starting another actor.
+Maps profile URLs are not treated as owned websites. Credential-bearing calls
+stay server-side using the organization's existing encrypted connection. No new
+scheduler, global polling or outreach path is introduced.
+
+Conversion claims only new candidates and commits company/contact/lead/source
+state atomically through the existing dual-provider batch helper. Stage and owner
+relations are organization-validated; browser-supplied reviewer IDs are removed.
+Database inserts are chunked within D1 parameter limits. Additive migrations are
+SQLite 0117_prospect_apify_runs and Postgres 0096_prospect_apify_runs, adding only
+a nullable provider_run_id. Code rollback retains this column and prospect data.
+A current encrypted VPS backup and isolated restore/migration check are required
+before release. Preserve the current image digest, runtime settings and workers.
+
+Local selfhost build and ci:check pass. Full suite: 3,274 passed in the sandbox;
+the remaining reply-runner test requires a localhost listener and is rerun with
+that capability. Exact final-revision GitHub ci/docker-build checks must pass
+before merge, followed by the approved immutable image release through Coolify.
+The owner's release consent is recorded here; agents share the owner's GitHub
+identity, so this is not independent maintainer review. No review-control files
+were changed. The org-enforced Greptile baseline remains unverified.
+
 ### 2026-10-18 — BooXworm voice/WhatsApp CRM lookup prepared
 
 The owner requested CRM stock and price answers, sender-number-first order
