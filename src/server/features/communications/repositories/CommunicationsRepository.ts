@@ -1,5 +1,6 @@
 import { cancelStaleWhatsappReplies } from "./cancelStaleWhatsappReplies";
 import { optOutChange } from "../outreachRules";
+import { parseWhatsappTimestamp } from "@/shared/whatsapp-time";
 import { whatsappPerformance } from "@/server/features/performance/repositories/operations";
 /* oxlint-disable max-lines */
 import {
@@ -495,6 +496,21 @@ async function completeWhatsappMessage(
       ),
     )
     .returning();
+  const timestamp = parseWhatsappTimestamp(row?.sentAt ?? row?.createdAt);
+  if (row && timestamp !== null) {
+    const at = new Date(timestamp).toISOString();
+    // A slower send must not move a chat behind a newer incoming message.
+    await db
+      .update(whatsappConversations)
+      .set({ lastMessageAt: at })
+      .where(
+        and(
+          eq(whatsappConversations.organizationId, organizationId),
+          eq(whatsappConversations.id, row.conversationId),
+          sql`coalesce(replace(${whatsappConversations.lastMessageAt}, ' ', 'T'), '') < ${at}`,
+        ),
+      );
+  }
   return row;
 }
 
@@ -559,10 +575,44 @@ async function getWhatsappWorkspace(organizationId: string) {
       .orderBy(whatsappInternalNotes.createdAt),
   ]);
 
+  // Existing replies predate the activity-field fix. Derive their real activity
+  // from the tenant-scoped messages already needed by this inbox; no backfill.
+  const orderedMessages = messages.toSorted(
+    (a, b) =>
+      (parseWhatsappTimestamp(a.sentAt ?? a.createdAt) ?? 0) -
+        (parseWhatsappTimestamp(b.sentAt ?? b.createdAt) ?? 0) ||
+      a.id.localeCompare(b.id),
+  );
+  const activity = new Map<string, string>();
+  for (const message of orderedMessages) {
+    const at = parseWhatsappTimestamp(message.sentAt ?? message.createdAt);
+    if (at !== null)
+      activity.set(message.conversationId, new Date(at).toISOString());
+  }
+  const orderedConversations = conversations
+    .map((conversation) => {
+      const latest = activity.get(conversation.id);
+      const actual = parseWhatsappTimestamp(latest);
+      const previous = parseWhatsappTimestamp(conversation.lastMessageAt);
+      return {
+        ...conversation,
+        lastMessageAt:
+          latest && actual !== null && (previous === null || actual >= previous)
+            ? latest
+            : conversation.lastMessageAt,
+      };
+    })
+    .toSorted(
+      (a, b) =>
+        (parseWhatsappTimestamp(b.lastMessageAt) ?? 0) -
+          (parseWhatsappTimestamp(a.lastMessageAt) ?? 0) ||
+        a.id.localeCompare(b.id),
+    );
+
   return {
     connections,
-    conversations,
-    messages,
+    conversations: orderedConversations,
+    messages: orderedMessages,
     contacts,
     contactProfiles,
     tags,
