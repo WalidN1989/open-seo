@@ -2083,7 +2083,7 @@ browser fixture confirms the new label opens review without an approval request.
 Live Citypak creation is enabled and confirmations/invoice automation are disabled;
 those settings were inspected only. Owner release approval is still required.
 
-### October 21, 2026 — WhatsApp inbox activity and dates (pending release)
+### October 21, 2026 — WhatsApp inbox activity and dates (released October 31)
 
 Outgoing message completion now advances the conversation's stored activity time,
 scoped to its organization and without overwriting newer activity when an older
@@ -2547,7 +2547,43 @@ provider setting change is required; rollback retains all saved messages and
 conversation records and restores the prior immutable image. Production release
 verification remains pending until the exact-head hosted checks and deployment.
 
-### October 31, 2026 — availability notification defaults and preflight (prepared)
+### October 31, 2026 — WhatsApp inbox deployed and verified
+
+Owner explicitly requested both the fix and deployment. PR55 merged as
+`b8cecf0629c8e54c0cf9e127b73a78b7cae60aa2`, after exact-head CI 41214307834
+and the selfhost Docker check passed. The local gate passed 3,280 tests across
+354 files, ci:check and selfhost build. Synthetic browser tests confirmed outgoing
+replies move older chats first, incoming activity reorders on the visible interval,
+selection remains stable and refresh stops outside Inbox. The owner-authorized
+15-second foreground Inbox refresh is the narrow exception to October 8's
+no-polling preference; it enables no general scheduler or provider automation.
+
+Merged-main CI 41214727407 passed both required checks. Production workflow
+41215130837 published the approved immutable image
+`ghcr.io/walidn1989/digital-urgency@sha256:b911b4805007931d474d1db382512aa041589e43ef498e84063ffb8f8df35090`.
+Native Coolify finished healthy on that exact revision. A syntax error in the
+initial private deployment command was corrected and parse-checked before any
+rollout was queued; the prior healthy app remained available. No release gate
+was bypassed. The owner authorization is not an independent peer review.
+
+A fresh private database/configuration backup passed an isolated restore. A
+second cutover backup, previous image and recovery configuration are retained
+privately. Post-release checks verified public health, exact image/revision,
+all existing record IDs, unchanged runtime values, storage and networks, and the
+same single mail bridge and WhatsApp reply process. The global ticker remains
+off; database migration marker is unchanged. No test customer message, database
+backfill or provider configuration change occurred. The disposable restore test
+database was removed after verification.
+
+The live BooXworm inbox visibly shows dates with times in previews and incoming
+and outgoing bubbles. Its 234 preview timestamps are newest first. The open page
+was reloaded to verify the newly deployed assets; other already-open tabs need
+one refresh to load them. Private evidence includes the live screenshot and
+release verification. Rollback restores the previous immutable image while
+preserving messages, conversations and current runtime settings. Org-enforced
+Greptile baseline was not verified or changed.
+
+### October 31, 2026 — availability notification defaults and preflight (released)
 
 Owner requested Notify customer automatically select the approved availability
 utility template and fill the saved requested item, with a review before sending.
@@ -2643,3 +2679,33 @@ needed for the reported SIP line; the backend fix awaits the approved release.
 
 With the SIP normalization correction included, final local validation passes:
 3,297 tests across 356 files, the complete ci:check gate and selfhost build.
+
+### October 31, 2026 — availability notification autofill released
+
+Owner explicitly approved merging/deploying PR82 after checks pass, with existing
+follow-up hours unchanged. The fix was reconciled with the already released staff
+alert changes. All 3,301 tests across356files, ci:check and selfhost build passed;
+exact-head CI 41219640550 and merged-main CI 41220016045 passed both required checks.
+Merged revision `d100aac0589b85b66eec1f930478fe7b4ee543cf` was published by production
+workflow 41220444165 as the immutable image
+`ghcr.io/walidn1989/digital-urgency@sha256:739f8413c7bca060e7dc3002dc24c5431dd031656bfd41d6ec0f44908ea9ffe1`.
+Native Coolify completed healthy on that exact image. The owner's authorization
+is the release approval, not an independent second-person review.
+
+A fresh private database/configuration backup passed an isolated restore before
+cutover; a second cutover dump and previous image/configuration were retained.
+Verification preserved all existing message, conversation, order, product,
+inventory, request, template, sender, connection and effect IDs, as well as runtime
+values, storage and networks. Migration marker and the single mail bridge/reply
+process counts are unchanged; the global ticker remains off. The disposable
+restore database was removed after successful verification. Rollback uses the
+prior image while retaining templates, notifications and current runtime settings.
+
+Live Period.lk verification opened Notify customer for an existing Available
+request: the approved availability template was selected automatically and the
+saved item name was filled without typing. The existing Saturday follow-up-hours
+block was visibly explained and Send disabled. The modal was cancelled. A scoped
+read confirmed no notification claim; no customer message or retry was submitted.
+Private evidence contains the live screenshot, template reference and verification.
+Already-open app tabs need one reload for the new assets. No business-hours,
+provider-approval, opt-out or duplicate-send protection was bypassed or changed.
