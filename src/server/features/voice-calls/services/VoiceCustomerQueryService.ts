@@ -8,7 +8,7 @@ import { WhatsappAssistantRepository } from "@/server/features/communications/re
 import { OrderService } from "@/server/features/commerce/services/OrderService";
 import { orderPhone } from "@/server/features/commerce/providers/shopifyOrders";
 import { PhoneCallRepository } from "../repositories/PhoneCallRepository";
-import { timingSafeEqual } from "../elevenlabsWebhook";
+import { normalisePhone, timingSafeEqual } from "../elevenlabsWebhook";
 
 const requestSchema = z
   .object({
@@ -123,7 +123,8 @@ async function query(connectionId: string, headers: Headers, rawBody: string) {
   }
   // Do not turn a spoken number, a query or a website-supplied variable into
   // authorization. A telephony caller id is injected by ElevenLabs as a header.
-  const caller = orderPhone(headers.get("x-caller-id"));
+  const region = await PhoneCallRepository.defaultPhoneRegion(organizationId);
+  const caller = orderPhone(normalisePhone(headers.get("x-caller-id"), region));
   if (!caller)
     return {
       status: 200,

@@ -6,12 +6,16 @@ const mocks = vi.hoisted(() => ({
   southsideProducts: vi.fn(),
   entitlements: vi.fn(),
   orders: vi.fn(),
+  region: vi.fn(),
 }));
 vi.mock("@/server/lib/connection-secrets", () => ({
   decryptCredentials: async () => ({ CALLER_LOOKUP_SECRET: "test-secret" }),
 }));
 vi.mock("../repositories/PhoneCallRepository", () => ({
-  PhoneCallRepository: { getIntegrationById: mocks.connection },
+  PhoneCallRepository: {
+    getIntegrationById: mocks.connection,
+    defaultPhoneRegion: mocks.region,
+  },
 }));
 vi.mock(
   "@/server/features/business-modules/repositories/BusinessModuleRepository",
@@ -43,6 +47,7 @@ const headers = () =>
     "x-caller-id": "+94771111111",
   });
 beforeEach(() => {
+  mocks.region.mockResolvedValue("LK");
   vi.stubEnv("SOUTHSIDE_WORKFLOW_ORGANIZATION_ID", "test-southside-workspace");
   mocks.connection.mockResolvedValue({
     providerKey: "elevenlabs",
@@ -116,6 +121,37 @@ describe("ElevenLabs live CRM query", () => {
   it("uses the runtime caller header and searches orders without an order ID", async () => {
     await service.query("connection", headers(), '{"action":"search_orders"}');
     expect(mocks.orders).toHaveBeenCalledWith("org-a", "+94771111111", "");
+  });
+  it.each(["0771111111", "771111111", "0094771111111"])(
+    "normalizes SIP caller ID %s in the connection workspace's region",
+    async (caller) => {
+      const h = headers();
+      h.set("x-caller-id", caller);
+      await service.query("connection", h, '{"action":"search_orders"}');
+      expect(mocks.region).toHaveBeenCalledWith("org-a");
+      expect(mocks.orders).toHaveBeenCalledWith("org-a", "+94771111111", "");
+    },
+  );
+  it("preserves international callers and the existing Australian workspace fallback", async () => {
+    const h = headers();
+    h.set("x-caller-id", "+971500000001");
+    await service.query("connection", h, '{"action":"search_orders"}');
+    expect(mocks.orders).toHaveBeenLastCalledWith("org-a", "+971500000001", "");
+    mocks.region.mockResolvedValue("AU");
+    h.set("x-caller-id", "0412000001");
+    await service.query("connection", h, '{"action":"search_orders"}');
+    expect(mocks.orders).toHaveBeenLastCalledWith("org-a", "+61412000001", "");
+  });
+  it("still refuses an unresolved provider placeholder instead of trusting a spoken number", async () => {
+    const h = headers();
+    h.set("x-caller-id", "{{system__caller_id}}");
+    const result = await service.query(
+      "connection",
+      h,
+      '{"action":"search_orders","query":"+94772222222"}',
+    );
+    expect(result.body).toMatchObject({ found: false });
+    expect(mocks.orders).not.toHaveBeenCalled();
   });
   it("does not accept a model-selected phone or organization", async () => {
     expect(

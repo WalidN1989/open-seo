@@ -2598,3 +2598,15 @@ both TypeScript projects, type-aware lint and skill sync), and the selfhost
 production build passed. ElevenLabs response tests and persisted header/config
 reads passed. The staff utility template reference is saved, with provider
 approval checked again by the dispatch code before any out-of-window send.
+
+Final order-path review found a second cause: SIP supplies national caller IDs,
+but the query service accepted only international E.164 numbers. It now uses the
+existing workspace phone-region normalization before the strict order-phone
+validator. Five added regressions cover Sri Lankan local/trunkless/00-prefixed
+numbers, preservation of international/Australian numbers, and rejection of an
+unresolved provider placeholder. Phone numbers spoken to the model remain
+unauthorized. Both the configuration correction and this application fix are
+needed for the reported SIP line; the backend fix awaits the approved release.
+
+With the SIP normalization correction included, final local validation passes:
+3,297 tests across 356 files, the complete ci:check gate and selfhost build.
