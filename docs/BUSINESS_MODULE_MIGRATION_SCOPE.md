@@ -2583,7 +2583,7 @@ release verification. Rollback restores the previous immutable image while
 preserving messages, conversations and current runtime settings. Org-enforced
 Greptile baseline was not verified or changed.
 
-### October 31, 2026 — availability notification defaults and preflight (prepared)
+### October 31, 2026 — availability notification defaults and preflight (released)
 
 Owner requested Notify customer automatically select the approved availability
 utility template and fill the saved requested item, with a review before sending.
@@ -2679,3 +2679,33 @@ needed for the reported SIP line; the backend fix awaits the approved release.
 
 With the SIP normalization correction included, final local validation passes:
 3,297 tests across 356 files, the complete ci:check gate and selfhost build.
+
+### October 31, 2026 — availability notification autofill released
+
+Owner explicitly approved merging/deploying PR82 after checks pass, with existing
+follow-up hours unchanged. The fix was reconciled with the already released staff
+alert changes. All 3,301 tests across356files, ci:check and selfhost build passed;
+exact-head CI 41219640550 and merged-main CI 41220016045 passed both required checks.
+Merged revision `d100aac0589b85b66eec1f930478fe7b4ee543cf` was published by production
+workflow 41220444165 as the immutable image
+`ghcr.io/walidn1989/digital-urgency@sha256:739f8413c7bca060e7dc3002dc24c5431dd031656bfd41d6ec0f44908ea9ffe1`.
+Native Coolify completed healthy on that exact image. The owner's authorization
+is the release approval, not an independent second-person review.
+
+A fresh private database/configuration backup passed an isolated restore before
+cutover; a second cutover dump and previous image/configuration were retained.
+Verification preserved all existing message, conversation, order, product,
+inventory, request, template, sender, connection and effect IDs, as well as runtime
+values, storage and networks. Migration marker and the single mail bridge/reply
+process counts are unchanged; the global ticker remains off. The disposable
+restore database was removed after successful verification. Rollback uses the
+prior image while retaining templates, notifications and current runtime settings.
+
+Live Period.lk verification opened Notify customer for an existing Available
+request: the approved availability template was selected automatically and the
+saved item name was filled without typing. The existing Saturday follow-up-hours
+block was visibly explained and Send disabled. The modal was cancelled. A scoped
+read confirmed no notification claim; no customer message or retry was submitted.
+Private evidence contains the live screenshot, template reference and verification.
+Already-open app tabs need one reload for the new assets. No business-hours,
+provider-approval, opt-out or duplicate-send protection was bypassed or changed.
