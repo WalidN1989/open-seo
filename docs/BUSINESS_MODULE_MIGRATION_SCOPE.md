@@ -2083,7 +2083,7 @@ browser fixture confirms the new label opens review without an approval request.
 Live Citypak creation is enabled and confirmations/invoice automation are disabled;
 those settings were inspected only. Owner release approval is still required.
 
-### October 21, 2026 — WhatsApp inbox activity and dates (pending release)
+### October 21, 2026 — WhatsApp inbox activity and dates (released October 31)
 
 Outgoing message completion now advances the conversation's stored activity time,
 scoped to its organization and without overwriting newer activity when an older
@@ -2546,3 +2546,39 @@ All 3,280 tests across 354 files, ci:check and selfhost build pass. No migration
 provider setting change is required; rollback retains all saved messages and
 conversation records and restores the prior immutable image. Production release
 verification remains pending until the exact-head hosted checks and deployment.
+
+### October 31, 2026 — WhatsApp inbox deployed and verified
+
+Owner explicitly requested both the fix and deployment. PR55 merged as
+`b8cecf0629c8e54c0cf9e127b73a78b7cae60aa2`, after exact-head CI 41214307834
+and the selfhost Docker check passed. The local gate passed 3,280 tests across
+354 files, ci:check and selfhost build. Synthetic browser tests confirmed outgoing
+replies move older chats first, incoming activity reorders on the visible interval,
+selection remains stable and refresh stops outside Inbox. The owner-authorized
+15-second foreground Inbox refresh is the narrow exception to October 8's
+no-polling preference; it enables no general scheduler or provider automation.
+
+Merged-main CI 41214727407 passed both required checks. Production workflow
+41215130837 published the approved immutable image
+`ghcr.io/walidn1989/digital-urgency@sha256:b911b4805007931d474d1db382512aa041589e43ef498e84063ffb8f8df35090`.
+Native Coolify finished healthy on that exact revision. A syntax error in the
+initial private deployment command was corrected and parse-checked before any
+rollout was queued; the prior healthy app remained available. No release gate
+was bypassed. The owner authorization is not an independent peer review.
+
+A fresh private database/configuration backup passed an isolated restore. A
+second cutover backup, previous image and recovery configuration are retained
+privately. Post-release checks verified public health, exact image/revision,
+all existing record IDs, unchanged runtime values, storage and networks, and the
+same single mail bridge and WhatsApp reply process. The global ticker remains
+off; database migration marker is unchanged. No test customer message, database
+backfill or provider configuration change occurred. The disposable restore test
+database was removed after verification.
+
+The live BooXworm inbox visibly shows dates with times in previews and incoming
+and outgoing bubbles. Its 234 preview timestamps are newest first. The open page
+was reloaded to verify the newly deployed assets; other already-open tabs need
+one refresh to load them. Private evidence includes the live screenshot and
+release verification. Rollback restores the previous immutable image while
+preserving messages, conversations and current runtime settings. Org-enforced
+Greptile baseline was not verified or changed.
