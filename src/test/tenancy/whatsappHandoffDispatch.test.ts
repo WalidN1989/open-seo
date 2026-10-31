@@ -83,7 +83,7 @@ describe("handoff dispatch guards", () => {
     expect(provider.template).toHaveBeenCalledTimes(1);
     expect(provider.template.mock.calls[0]?.[1]).toBe(staff);
     expect(provider.template.mock.calls[0]?.[2]).toMatchObject({
-      variables: { "1": customer, "2": input.reason },
+      variables: { "1": customer, "2": `${input.reason}: ${input.summary}` },
       statusCallbackUrl: `https://du.example/api/whatsapp/${WHATSAPP_A}`,
     });
     expect(provider.text.mock.calls[0]?.[4]).toEqual({
