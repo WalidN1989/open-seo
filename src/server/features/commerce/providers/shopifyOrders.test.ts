@@ -59,4 +59,89 @@ describe("Shopify payment method", () => {
       shopifyOrderValues(shopifyOrderSchema.parse(raw)).paymentMethod,
     ).toBeNull();
   });
+  it.each([
+    {
+      code: "Pickup From Warehouse (Demetagoda) FREE",
+      title: "Pickup From Warehouse (Demetagoda) FREE",
+    },
+    { code: "custom-collection", title: "  Local pickup  " },
+    { code: "pickup", title: "Collect at warehouse" },
+    { code: "pick_up", title: "Collect at warehouse" },
+  ])(
+    "recognizes Shopify pickup shipping methods without requiring a delivery address: $code",
+    (shipping) => {
+      const order = shopifyOrderValues(
+        shopifyOrderSchema.parse({
+          ...raw,
+          shipping_lines: [shipping],
+          shipping_address: null,
+        }),
+      );
+      expect(order.pickup).toBe(true);
+      expect(order.shippingAddress).toBeNull();
+    },
+  );
+  it.each([
+    "Standard delivery",
+    "Delivery (pickup unavailable)",
+    "Pickuptruck courier service",
+  ])("does not mistake delivery for pickup: %s", (title) => {
+    expect(
+      shopifyOrderValues(
+        shopifyOrderSchema.parse({
+          ...raw,
+          shipping_lines: [{ code: "delivery", title }],
+        }),
+      ).pickup,
+    ).toBe(false);
+  });
+  it("normalizes the shipping address phone only when its country is explicitly Sri Lanka", () => {
+    const values = shopifyOrderValues(
+      shopifyOrderSchema.parse({
+        ...raw,
+        phone: "invalid",
+        shipping_address: { phone: "077 123 4567", country_code: "LK" },
+      }),
+    );
+    expect(values.customerPhone).toBe("+94771234567");
+    for (const country_code of [undefined, "AU", "US"]) {
+      expect(
+        shopifyOrderValues(
+          shopifyOrderSchema.parse({
+            ...raw,
+            shipping_address: { phone: "0771234567", country_code },
+          }),
+        ).customerPhone,
+      ).toBeNull();
+    }
+    expect(orderPhone("0771234567")).toBeNull();
+  });
+  it("skips an invalid earlier field, preserves international numbers and uses billing's own country", () => {
+    expect(
+      shopifyOrderValues(
+        shopifyOrderSchema.parse({
+          ...raw,
+          phone: "not a number",
+          shipping_address: { phone: "+94771234567" },
+        }),
+      ).customerPhone,
+    ).toBe("+94771234567");
+    expect(
+      shopifyOrderValues(
+        shopifyOrderSchema.parse({
+          ...raw,
+          billing_address: { phone: "0771234567", country_code: "LK" },
+        }),
+      ).customerPhone,
+    ).toBe("+94771234567");
+    expect(
+      shopifyOrderValues(
+        shopifyOrderSchema.parse({
+          ...raw,
+          phone: "0771234567",
+          shipping_address: { country_code: "LK" },
+        }),
+      ).customerPhone,
+    ).toBeNull();
+  });
 });

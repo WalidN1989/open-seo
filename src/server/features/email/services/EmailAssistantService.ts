@@ -1,3 +1,4 @@
+import { mailboxPreferences, signedEmailText } from "../mailboxPreferences";
 import { BusinessModuleRepository } from "@/server/features/business-modules/repositories/BusinessModuleRepository";
 import { toPlainText } from "@/server/features/communications/providers/assistant-knowledge";
 import { generateWhatsappAiReply } from "@/server/features/communications/providers/whatsapp-ai";
@@ -228,7 +229,7 @@ async function replyWithAssistant(
   }
   // An email is plain text; markdown emphasis would reach the reader as
   // asterisks around the words it was meant to lift.
-  const body = toPlainText(result.reply);
+  const body = await signedEmailText(account, toPlainText(result.reply));
   const flag = result.actions.find((action) => action.name === "flag_for_team");
   const flagReason =
     flag && typeof flag.input.reason === "string" ? flag.input.reason : null;
@@ -239,7 +240,9 @@ async function replyWithAssistant(
         ? "The assistant has already replied twice today without a person stepping in."
         : null
     : null;
-  const sendNow = customer ? !holdReason : account.autopilot && !automated;
+  const sendNow =
+    !(await mailboxPreferences(account)).manualOnly &&
+    (customer ? !holdReason : account.autopilot && !automated);
 
   if (sendNow) {
     const sent = await (
@@ -295,6 +298,11 @@ async function onInbound(
   inbound: EmailMessageRow,
   attachments: readonly InboundAttachment[],
 ) {
+  if ((await mailboxPreferences(account)).manualOnly) {
+    // This mailbox drafts only; do not journal email activity into CRM.
+    await replyWithAssistant(account, threadRow, inbound, null);
+    return;
+  }
   const notes = await readInbound(account, inbound, attachments);
   const customer = await customerFor(account.organizationId, inbound, notes);
   if (customer) {

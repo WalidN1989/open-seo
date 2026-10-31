@@ -20,11 +20,15 @@ beforeAll(async () => {
   client = createClient({ url: "file::memory:" });
   const testDb = drizzle(client);
   vi.doMock("@/db", () => ({ db: testDb }));
+  vi.doMock("@/db/d1/client", () => ({ d1Db: testDb }));
+  vi.doMock("@/db/pg/client", () => ({ pgDb: null }));
   await client.executeMultiple(`
+    CREATE TABLE whatsapp_conversations (id TEXT PRIMARY KEY, organization_id TEXT, reply_mode TEXT DEFAULT 'auto', reply_revision INTEGER DEFAULT 0);
     CREATE TABLE whatsapp_reply_jobs (
       conversation_id TEXT PRIMARY KEY NOT NULL,
       organization_id TEXT NOT NULL,
       latest_message_id TEXT NOT NULL,
+      reply_revision INTEGER NOT NULL DEFAULT 0,
       due_at TEXT NOT NULL,
       status TEXT NOT NULL DEFAULT 'pending',
       claim_expires_at TEXT,
@@ -42,14 +46,18 @@ afterAll(() => {
 
 beforeEach(async () => {
   await client.execute("DELETE FROM whatsapp_reply_jobs");
+  await client.execute("DELETE FROM whatsapp_conversations");
+  await client.execute(
+    "INSERT INTO whatsapp_conversations (id,organization_id) VALUES ('chat','org'),('first-chat','org'),('second-chat','other-org')",
+  );
   vi.useFakeTimers();
   vi.setSystemTime(new Date("2026-10-04T10:00:00.000Z"));
 });
 
 describe("WhatsApp delayed reply jobs", () => {
   it("recovers pending deadlines and leased jobs without claiming them early", async () => {
-    await Jobs.schedule("org", "first-chat", "first", 30);
-    await Jobs.schedule("other-org", "second-chat", "second", 60);
+    await Jobs.schedule("org", "first-chat", "first", 30, 0);
+    await Jobs.schedule("other-org", "second-chat", "second", 60, 0);
     expect(await Jobs.pendingWakeups("first-chat")).toEqual([
       { conversationId: "first-chat", dueAt: "2026-10-04T10:00:30.000Z" },
     ]);
@@ -66,14 +74,14 @@ describe("WhatsApp delayed reply jobs", () => {
         (row) => row.conversationId,
       ),
     ).toEqual(["second-chat"]);
-    await Jobs.finish("first-chat", "first");
+    await Jobs.finish("first-chat", "first", 0);
     expect(await Jobs.pendingWakeups("first-chat")).toEqual([]);
   });
 
   it("answers only after the latest message has been quiet for 30 seconds", async () => {
-    await Jobs.schedule("org", "chat", "first", 30);
+    await Jobs.schedule("org", "chat", "first", 30, 0);
     vi.setSystemTime(new Date("2026-10-04T10:00:20.000Z"));
-    await Jobs.schedule("org", "chat", "second", 30);
+    await Jobs.schedule("org", "chat", "second", 30, 0);
 
     expect(await Jobs.claimDue(new Date("2026-10-04T10:00:31.000Z"))).toEqual(
       [],
@@ -87,13 +95,13 @@ describe("WhatsApp delayed reply jobs", () => {
   });
 
   it("does not delete a newer reply when an older claimed reply finishes", async () => {
-    await Jobs.schedule("org", "chat", "first", 30);
+    await Jobs.schedule("org", "chat", "first", 30, 0);
     const claimed = await Jobs.claimDue(new Date("2026-10-04T10:00:31.000Z"));
     expect(claimed).toHaveLength(1);
 
     vi.setSystemTime(new Date("2026-10-04T10:00:32.000Z"));
-    await Jobs.schedule("org", "chat", "second", 30);
-    await Jobs.finish("chat", "first");
+    await Jobs.schedule("org", "chat", "second", 30, 0);
+    await Jobs.finish("chat", "first", 0);
 
     const next = await Jobs.claimDue(new Date("2026-10-04T10:01:03.000Z"));
     expect(next).toHaveLength(1);

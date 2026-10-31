@@ -48,7 +48,7 @@ export function OrderReviewLine({
           </p>
         </div>
         <p className="text-sm">
-          Shopify unit price{" "}
+          Store unit price{" "}
           <strong>{formatMoney(line.unitPriceMinor, currency)}</strong>
         </p>
       </div>
@@ -82,7 +82,7 @@ export function OrderReviewLine({
           <p role="alert" className="flex items-start gap-2 text-sm text-error">
             <AlertTriangle className="mt-0.5 size-4 shrink-0" />
             Price mismatch — catalogue{" "}
-            {formatMoney(selected.salePriceMinor, catalogueCurrency)}; Shopify{" "}
+            {formatMoney(selected.salePriceMinor, catalogueCurrency)}; store{" "}
             {formatMoney(line.unitPriceMinor, currency)}. Approval is blocked
             until they match.
           </p>
@@ -98,7 +98,7 @@ export function OrderReviewLine({
       ) : (
         <p className="flex items-center gap-2 text-xs text-success">
           <CheckCircle2 className="size-4" />
-          Catalogue price matches Shopify.
+          Catalogue price matches the store.
         </p>
       )}
     </section>
@@ -167,8 +167,8 @@ function CataloguePriceEditor({
         </button>
       </div>
       <p className="text-xs text-base-content/60">
-        This updates the CRM product's selling price for future orders.
-        Shopify's received prices and this order's total stay unchanged.
+        This updates the CRM product's selling price for future orders. The
+        store's received prices and this order's total stay unchanged.
       </p>
       {save.isError ? (
         <p role="alert" className="text-sm text-error">

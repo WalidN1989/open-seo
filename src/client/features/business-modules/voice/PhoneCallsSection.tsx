@@ -1,8 +1,10 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { PhoneIncoming, Clock, ChevronDown } from "lucide-react";
 import "./calls.css";
-import { listPhoneCalls } from "@/serverFunctions/voiceCalls";
+import { toast } from "sonner";
+import { getStandardErrorMessage } from "@/client/lib/error-messages";
+import { listPhoneCalls, sendCallBookLink } from "@/serverFunctions/voiceCalls";
 
 function when(value: string) {
   const date = new Date(value);
@@ -37,10 +39,25 @@ function fieldLabel(key: string) {
     .replace(/^\w/, (c) => c.toUpperCase());
 }
 
-export function PhoneCallsSection() {
+export function PhoneCallsSection({
+  direction,
+  onCase,
+}: {
+  direction?: "outbound";
+  onCase?: (id: string) => void;
+}) {
+  const client = useQueryClient();
+  const send = useMutation({
+    mutationFn: (callId: string) => sendCallBookLink({ data: { callId } }),
+    onSuccess: async (status) => {
+      await client.invalidateQueries({ queryKey: ["voice", "phone-calls"] });
+      toast.info(`Book link: ${status}`);
+    },
+    onError: (e) => toast.error(getStandardErrorMessage(e)),
+  });
   const query = useQuery({
-    queryKey: ["voice", "phone-calls"],
-    queryFn: () => listPhoneCalls(),
+    queryKey: ["voice", "phone-calls", direction],
+    queryFn: () => listPhoneCalls({ data: { direction } }),
   });
   const [open, setOpen] = useState<string | null>(null);
   const calls = (query.data ?? []).filter(
@@ -114,13 +131,19 @@ export function PhoneCallsSection() {
                     className={`badge badge-sm badge-outline ${from.badge}`}
                     title={`${from.channel} call`}
                   >
-                    {from.agent} · {from.channel}
+                    {from.agent} ·{" "}
+                    {call.direction === "outbound" ? "Outbound" : "Inbound"}
                   </span>
                   <span className="font-medium">
-                    {call.contact?.name ?? "Unknown caller"}
+                    {call.contact?.name ??
+                      (call.direction === "outbound"
+                        ? "Unknown callee"
+                        : "Unknown caller")}
                   </span>
                   <span className="text-sm text-base-content/60">
-                    {call.callerNumber ?? "no number"}
+                    {(call.direction === "outbound"
+                      ? call.calledNumber
+                      : call.callerNumber) ?? "no number"}
                   </span>
                   {call.captured.service_interest ? (
                     <span className="voice-call-interest badge badge-ghost badge-sm">
@@ -134,6 +157,22 @@ export function PhoneCallsSection() {
                     className={`size-4 shrink-0 ${expanded ? "rotate-180" : ""}`}
                   />
                 </button>
+                {call.direction === "outbound" ? (
+                  call.caseId ? (
+                    <button
+                      className="link mt-2 text-sm"
+                      onClick={() => {
+                        if (call.caseId) onCase?.(call.caseId);
+                      }}
+                    >
+                      View linked case
+                    </button>
+                  ) : (
+                    <p className="mt-2 text-xs opacity-60">
+                      No case linked yet
+                    </p>
+                  )
+                ) : null}
                 {call.summary ? (
                   <p
                     className={`voice-call-summary mt-3 text-sm text-base-content/75 ${expanded ? "" : "line-clamp-2"}`}
@@ -164,8 +203,27 @@ export function PhoneCallsSection() {
                         </dd>
                       </div>
                       <div className="grid grid-cols-[7rem_1fr] gap-2">
-                        <dt className="text-base-content/55">WhatsApp</dt>
+                        <dt className="text-base-content/55">Welcome</dt>
                         <dd>{call.welcomeStatus ?? "not attempted"}</dd>
+                      </div>
+                      <div className="grid grid-cols-[7rem_1fr] gap-2">
+                        <dt className="text-base-content/55">
+                          WhatsApp book link
+                        </dt>
+                        <dd>
+                          {call.bookLinkStatus ?? "not attempted"}
+                          {call.captured.whatsapp_link_consent === "true" &&
+                          call.captured.requested_product_url &&
+                          !call.bookLinkAttempted ? (
+                            <button
+                              className="btn btn-outline btn-xs mt-2"
+                              disabled={send.isPending}
+                              onClick={() => send.mutate(call.id)}
+                            >
+                              Send requested book link
+                            </button>
+                          ) : null}
+                        </dd>
                       </div>
                       <div className="grid grid-cols-[7rem_1fr] gap-2">
                         <dt className="text-base-content/55">Recap email</dt>

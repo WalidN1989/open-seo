@@ -1,4 +1,7 @@
+import { isSouthsideWorkflow } from "@/server/features/customer-workflow/policy";
+import { CommerceRepository } from "@/server/features/commerce/repositories/CommerceRepository";
 import { z } from "zod";
+import { catalogueMatches } from "./voiceCatalogue";
 import { decryptCredentials } from "@/server/lib/connection-secrets";
 import { BusinessModuleRepository } from "@/server/features/business-modules/repositories/BusinessModuleRepository";
 import { WhatsappAssistantRepository } from "@/server/features/communications/repositories/WhatsappAssistantRepository";
@@ -56,8 +59,40 @@ async function query(connectionId: string, headers: Headers, rawBody: string) {
     if (!input.query)
       return {
         status: 400,
-        body: { error: "Supply a book title, author, SKU or ISBN" },
+        body: { error: "Supply a product name, SKU or ISBN" },
       };
+    if (await isSouthsideWorkflow(organizationId)) {
+      const [result, currency] = await Promise.all([
+        CommerceRepository.listProducts(organizationId, {
+          status: "active",
+          limit: 500,
+          offset: 0,
+        }),
+        WhatsappAssistantRepository.currencyFor(organizationId),
+      ]);
+      return {
+        status: 200,
+        body: {
+          source: "Digital Urgency catalogue",
+          currency,
+          products: catalogueMatches(result.products, input.query).map((p) => ({
+            name: p.name,
+            sku: p.sku,
+            description: p.description,
+            price: p.salePriceMinor > 0 ? p.salePriceMinor / 100 : null,
+            pricingBasis: /gate.*frame/i.test(p.name)
+              ? "starting price, supply only, GST included"
+              : "supply only, GST included; installation quoted separately",
+            availability:
+              "Ordered after confirmation and payment; supplier availability and lead times require confirmation.",
+            product_url: p.productUrl,
+          })),
+          fallback: "Our representative will get in touch with you.",
+          catalogueMayBeTruncated: result.total > result.products.length,
+          retrievedAt: new Date().toISOString(),
+        },
+      };
+    }
     const [products, currency] = await Promise.all([
       WhatsappAssistantRepository.searchPricedProducts(
         organizationId,

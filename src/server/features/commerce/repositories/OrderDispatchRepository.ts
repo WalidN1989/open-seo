@@ -7,6 +7,7 @@ import {
   organizationModuleEntitlements,
   commerceOrderEffects,
   whatsappConversations,
+  commerceOrderShipments,
 } from "@/db/schema";
 type Kind = typeof commerceOrderEffects.$inferInsert.kind;
 export function orderDispatchGuard(
@@ -15,7 +16,9 @@ export function orderDispatchGuard(
   kind: Kind,
   revision?: string,
 ) {
-  const messaging = kind === "confirmation" || kind === "cancellation";
+  const shipmentMessage = kind === "waybill" || kind === "delivery_estimate";
+  const messaging =
+    shipmentMessage || kind === "confirmation" || kind === "cancellation";
   const modules = [
     "crm",
     "integrations",
@@ -49,13 +52,30 @@ export function orderDispatchGuard(
         revision ? eq(commerceOrders.updatedAt, revision) : undefined,
         eq(commerceOrderSync.enabled, true),
         eq(integrationConnections.status, "connected"),
-        messaging
-          ? sql`${commerceOrderSync.confirmationStartedAt} is not null`
-          : and(
-              sql`${commerceOrderSync.operationsStartedAt} is not null`,
+        shipmentMessage
+          ? and(
               eq(commerceOrders.approvalStatus, "approved"),
-              eq(commerceOrders.currency, "LKR"),
-            ),
+              sql`${commerceOrderSync.shipmentMessagesStartedAt} is not null`,
+              sql`exists ${db
+                .select({ id: commerceOrderShipments.id })
+                .from(commerceOrderShipments)
+                .where(
+                  and(
+                    eq(commerceOrderShipments.organizationId, organizationId),
+                    eq(commerceOrderShipments.orderId, orderId),
+                    eq(commerceOrderShipments.provider, "Citypak"),
+                    sql`${commerceOrderShipments.createdAt} >= ${commerceOrderSync.shipmentMessagesStartedAt}`,
+                    sql`${commerceOrderShipments.status} not in ('DELIVERED','RETURNED','RTM','CANCELLED')`,
+                  ),
+                )}`,
+            )
+          : messaging
+            ? sql`${commerceOrderSync.confirmationStartedAt} is not null`
+            : and(
+                sql`${commerceOrderSync.operationsStartedAt} is not null`,
+                eq(commerceOrders.approvalStatus, "approved"),
+                eq(commerceOrders.currency, "LKR"),
+              ),
         kind === "confirmation"
           ? sql`${commerceOrders.status} in ('draft', 'confirmed')`
           : kind === "cancellation"
@@ -73,7 +93,9 @@ export function orderDispatchGuard(
                   eq(whatsappConversations.organizationId, organizationId),
                   eq(
                     whatsappConversations.connectionId,
-                    commerceOrderSync.confirmationSenderId,
+                    shipmentMessage
+                      ? commerceOrderSync.shipmentSenderId
+                      : commerceOrderSync.confirmationSenderId,
                   ),
                   eq(
                     whatsappConversations.externalConversationId,

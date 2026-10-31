@@ -209,6 +209,7 @@ export const crmSourceRuns = pgTable(
       .references(() => organization.id, { onDelete: "cascade" }),
     // Which adapter produced these candidates, and what was asked of it.
     provider: text("provider").notNull(),
+    providerRunId: text("provider_run_id"),
     query: text("query").notNull(),
     location: text("location"),
     status: text("status", {
@@ -351,6 +352,10 @@ export const crmReminders = pgTable(
     leadId: text("lead_id").references(() => crmLeads.id, {
       onDelete: "cascade",
     }),
+    whatsappConversationId: text("whatsapp_conversation_id").references(
+      () => whatsappConversations.id,
+      { onDelete: "cascade" },
+    ),
     title: text("title").notNull(),
     note: text("note"),
     remindAt: text("remind_at").notNull(),
@@ -568,6 +573,9 @@ export const whatsappConversations = pgTable(
     replyMode: text("reply_mode", { enum: ["auto", "manual"] })
       .notNull()
       .default("auto"),
+    /** Invalidates work captured before an operator changes reply mode. */
+    replyRevision: integer("reply_revision").notNull().default(0),
+    lastAutoReplyKey: text("last_auto_reply_key"),
     lastMessageAt: text("last_message_at"),
     createdAt: createdAt(),
   },
@@ -601,6 +609,8 @@ export const whatsappMessages = pgTable(
     mediaUrl: text("media_url"),
     mediaContentType: text("media_content_type"),
     status: text("status").notNull().default("queued"),
+    /** Null for messages sent explicitly by a teammate or MCP agent. */
+    autoReplyRevision: integer("auto_reply_revision"),
     sentAt: text("sent_at"),
     createdAt: createdAt(),
   },
@@ -626,6 +636,7 @@ export const whatsappReplyJobs = pgTable(
       .notNull()
       .references(() => organization.id, { onDelete: "cascade" }),
     latestMessageId: text("latest_message_id").notNull(),
+    replyRevision: integer("reply_revision").notNull().default(0),
     dueAt: text("due_at").notNull(),
     status: text("status").notNull().default("pending"),
     claimExpiresAt: text("claim_expires_at"),
@@ -1074,6 +1085,7 @@ export const voicePhoneCalls = pgTable(
     durationSeconds: integer("duration_seconds"),
     summary: text("summary"),
     callSuccessful: text("call_successful"),
+    recordingUrl: text("recording_url"),
     // What the agent was configured to capture, as {field: value}.
     capturedJson: text("captured_json").notNull().default("{}"),
     transcriptJson: text("transcript_json").notNull().default("[]"),
@@ -1085,6 +1097,11 @@ export const voicePhoneCalls = pgTable(
     }),
     // What happened to the WhatsApp welcome: sent, skipped:<why>, failed:<why>.
     welcomeStatus: text("welcome_status"),
+    bookLinkStatus: text("book_link_status"),
+    bookLinkMessageId: text("book_link_message_id").references(
+      () => whatsappMessages.id,
+      { onDelete: "set null" },
+    ),
     /** What happened to the recap email: sent, skipped or failed, and why. */
     recapEmailStatus: text("recap_email_status"),
     createdAt: createdAt(),
@@ -1587,6 +1604,7 @@ export const whatsappAssistantSettings = pgTable(
     address: text("address"),
     escalationKeywords: text("escalation_keywords"),
     handoffMessage: text("handoff_message"),
+    handoffContentSid: text("handoff_content_sid"),
     persona: text("persona"),
     businessFacts: text("business_facts"),
     createdAt: createdAt(),
@@ -2253,6 +2271,18 @@ export const commerceOrderSync = pgTable(
     courierCredentials: text("courier_credentials"),
     confirmationStartedAt: text("confirmation_started_at"),
     operationsStartedAt: text("operations_started_at"),
+    shipmentMessagesStartedAt: text("shipment_messages_started_at"),
+    shipmentSenderId: text("shipment_sender_id").references(
+      () => whatsappConnections.id,
+      { onDelete: "set null" },
+    ),
+    waybillTemplateId: text("waybill_template_id").references(
+      () => whatsappTemplates.id,
+      { onDelete: "set null" },
+    ),
+    deliveryEstimateTemplateId: text(
+      "delivery_estimate_template_id",
+    ).references(() => whatsappTemplates.id, { onDelete: "set null" }),
     confirmationSenderId: text("confirmation_sender_id").references(
       () => whatsappConnections.id,
       { onDelete: "set null" },
@@ -2324,7 +2354,14 @@ export const commerceOrderEffects = pgTable(
       .notNull()
       .references(() => commerceOrders.id, { onDelete: "cascade" }),
     kind: text("kind", {
-      enum: ["confirmation", "cancellation", "invoice", "citypak"],
+      enum: [
+        "confirmation",
+        "cancellation",
+        "invoice",
+        "citypak",
+        "waybill",
+        "delivery_estimate",
+      ],
     }).notNull(),
     status: text("status", {
       enum: [
@@ -2438,6 +2475,307 @@ export const commerceOrderGapAnnotations = pgTable(
     uniqueIndex("commerce_order_gap_annotations_org_number_idx").on(
       table.organizationId,
       table.orderNumber,
+    ),
+  ],
+);
+
+// Preparation records only: no approval state or executable schedule.
+export const smsCampaignDrafts = pgTable(
+  "sms_campaign_drafts",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    connectionId: text("connection_id")
+      .notNull()
+      .references(() => integrationConnections.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    kind: text("kind", { enum: ["weekly", "flash"] }).notNull(),
+    senderId: text("sender_id").notNull(),
+    message: text("message").notNull(),
+    audienceDescription: text("audience_description").notNull(),
+    firstSendDate: text("first_send_date").notNull(),
+    sendTime: text("send_time").notNull(),
+    timezone: text("timezone").notNull().default("Asia/Colombo"),
+    createdAt: createdAt(),
+  },
+  (table) => [
+    index("sms_campaign_drafts_org_connection_idx").on(
+      table.organizationId,
+      table.connectionId,
+    ),
+  ],
+);
+
+export const voiceBookLinkSettings = pgTable("voice_book_link_settings", {
+  connectionId: text("connection_id")
+    .primaryKey()
+    .references(() => integrationConnections.id, { onDelete: "cascade" }),
+  organizationId: text("organization_id")
+    .notNull()
+    .references(() => organization.id, { onDelete: "cascade" }),
+  senderId: text("sender_id").references(() => whatsappConnections.id, {
+    onDelete: "set null",
+  }),
+  contentSid: text("content_sid"),
+  enabled: boolean("enabled").notNull().default(false),
+  startedAt: text("started_at"),
+});
+
+/** Trusted staff destinations; customer/model input never supplies an alert recipient. */
+export const whatsappHandoffContacts = pgTable(
+  "whatsapp_handoff_contacts",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    phone: text("phone").notNull(),
+    enabled: boolean("enabled").notNull().default(true),
+  },
+  (t) => [
+    uniqueIndex("whatsapp_handoff_contact_org_phone_idx").on(
+      t.organizationId,
+      t.phone,
+    ),
+  ],
+);
+
+/** One handoff per Auto revision; resuming Auto explicitly permits a later handoff. */
+export const whatsappHandoffs = pgTable(
+  "whatsapp_handoffs",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    conversationId: text("conversation_id")
+      .notNull()
+      .references(() => whatsappConversations.id, { onDelete: "cascade" }),
+    replyRevision: integer("reply_revision").notNull(),
+    reason: text("reason").notNull(),
+    summary: text("summary").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    uniqueIndex("whatsapp_handoff_revision_idx").on(
+      t.conversationId,
+      t.replyRevision,
+    ),
+    index("whatsapp_handoff_org_idx").on(t.organizationId, t.createdAt),
+  ],
+);
+
+/** Durable claims survive restarts. A possibly accepted request is never resent. */
+export const whatsappHandoffOutbox = pgTable(
+  "whatsapp_handoff_outbox",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    handoffId: text("handoff_id")
+      .notNull()
+      .references(() => whatsappHandoffs.id, { onDelete: "cascade" }),
+    conversationId: text("conversation_id")
+      .notNull()
+      .references(() => whatsappConversations.id, { onDelete: "cascade" }),
+    contactId: text("contact_id").references(() => whatsappHandoffContacts.id, {
+      onDelete: "set null",
+    }),
+    kind: text("kind").notNull(),
+    status: text("status").notNull().default("pending"),
+    attempts: integer("attempts").notNull().default(0),
+    dueAt: text("due_at").notNull(),
+    claimExpiresAt: text("claim_expires_at"),
+    claimToken: text("claim_token"),
+    externalMessageId: text("external_message_id"),
+    error: text("error"),
+  },
+  (t) => [
+    index("whatsapp_handoff_outbox_due_idx").on(t.status, t.dueAt),
+    index("whatsapp_handoff_outbox_handoff_idx").on(t.handoffId),
+  ],
+);
+
+/** Data owned by an external assistant; no calling or scheduling lives here. */
+export const voiceCases = pgTable(
+  "voice_cases",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    customerName: text("customer_name").notNull(),
+    customerNumber: text("customer_number"),
+    contactId: text("contact_id").references(() => crmContacts.id, {
+      onDelete: "set null",
+    }),
+    leadId: text("lead_id").references(() => crmLeads.id, {
+      onDelete: "set null",
+    }),
+    sourceCallId: text("source_call_id").references(() => voicePhoneCalls.id, {
+      onDelete: "set null",
+    }),
+    whatsappConversationId: text("whatsapp_conversation_id").references(
+      () => whatsappConversations.id,
+      { onDelete: "set null" },
+    ),
+    smsConversationId: text("sms_conversation_id").references(
+      () => smsConversations.id,
+      { onDelete: "set null" },
+    ),
+    orderId: text("order_id").references(() => commerceOrders.id, {
+      onDelete: "set null",
+    }),
+    orderOrTrackingNumber: text("order_or_tracking_number"),
+    reason: text("reason").notNull(),
+    status: text("status", {
+      enum: [
+        "open",
+        "umi_called",
+        "umi_agreed",
+        "waiting_crm_update",
+        "closed",
+      ],
+    })
+      .notNull()
+      .default("open"),
+    callAttempts: integer("call_attempts").notNull().default(0),
+    reminderCount: integer("reminder_count").notNull().default(0),
+    lastContactTime: text("last_contact_time"),
+    lastOutcome: text("last_outcome"),
+    notes: text("notes"),
+    readyToClose: boolean("ready_to_close").notNull().default(false),
+    readyReason: text("ready_reason"),
+    createdAt: createdAt(),
+    updatedAt: text("updated_at").notNull().default(isoNow),
+    closedAt: text("closed_at"),
+  },
+  (t) => [
+    index("voice_cases_org_status_idx").on(t.organizationId, t.status),
+    index("voice_cases_org_updated_idx").on(t.organizationId, t.updatedAt),
+  ],
+);
+
+export const voiceCaseCalls = pgTable(
+  "voice_case_calls",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    caseId: text("case_id")
+      .notNull()
+      .references(() => voiceCases.id, { onDelete: "cascade" }),
+    externalConversationId: text("external_conversation_id").notNull(),
+  },
+  (t) => [
+    uniqueIndex("voice_case_calls_org_external_idx").on(
+      t.organizationId,
+      t.externalConversationId,
+    ),
+    index("voice_case_calls_case_idx").on(t.organizationId, t.caseId),
+  ],
+);
+
+export const voiceOutboundPolicies = pgTable("voice_outbound_policies", {
+  organizationId: text("organization_id")
+    .primaryKey()
+    .references(() => organization.id, { onDelete: "cascade" }),
+  calleeName: text("callee_name").notNull().default("Umi"),
+  timezone: text("timezone").notNull().default("Asia/Colombo"),
+  windowStart: text("window_start").notNull().default("08:00"),
+  windowEnd: text("window_end").notNull().default("22:00"),
+  customerGapHours: integer("customer_gap_hours").notNull().default(4),
+  dailyCallLimit: integer("daily_call_limit").notNull().default(5),
+  noAnswerRetryMinutes: integer("no_answer_retry_minutes")
+    .notNull()
+    .default(30),
+  noAnswerRetries: integer("no_answer_retries").notNull().default(1),
+  maxReminders: integer("max_reminders").notNull().default(3),
+});
+
+/** One current revision per source, not an ever-growing in-memory cursor map. */
+export const attentionHeads = pgTable("attention_heads", {
+  organizationId: text("organization_id")
+    .primaryKey()
+    .references(() => organization.id, { onDelete: "cascade" }),
+  revision: integer("revision").notNull().default(0),
+});
+export const attentionSources = pgTable(
+  "attention_sources",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    kind: text("kind", { enum: ["call", "whatsapp", "sms", "case"] }).notNull(),
+    entityId: text("entity_id").notNull(),
+    revision: integer("revision").notNull(),
+  },
+  (t) => [
+    uniqueIndex("attention_sources_org_kind_entity_idx").on(
+      t.organizationId,
+      t.kind,
+      t.entityId,
+    ),
+    index("attention_sources_org_revision_idx").on(
+      t.organizationId,
+      t.revision,
+    ),
+  ],
+);
+
+/** One human approval covers one immutable action; uncertain sends never auto-retry. */
+export const customerActionRequests = pgTable(
+  "customer_action_requests",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    callId: text("call_id").references(() => voicePhoneCalls.id, {
+      onDelete: "set null",
+    }),
+    providerConversationId: text("provider_conversation_id"),
+    kind: text("kind").notNull(),
+    status: text("status").notNull().default("needs_approval"),
+    leadId: text("lead_id").references(() => crmLeads.id, {
+      onDelete: "set null",
+    }),
+    quoteId: text("quote_id").references(() => quotes.id, {
+      onDelete: "set null",
+    }),
+    emailThreadId: text("email_thread_id").references(() => emailThreads.id, {
+      onDelete: "set null",
+    }),
+    whatsappConversationId: text("whatsapp_conversation_id").references(
+      () => whatsappConversations.id,
+      { onDelete: "set null" },
+    ),
+    smsConversationId: text("sms_conversation_id").references(
+      () => smsConversations.id,
+      { onDelete: "set null" },
+    ),
+    /** Immutable reviewed command, including message text/copies or quote content snapshot. */
+    requestJson: text("request_json").notNull(),
+    requestedByUserId: text("requested_by_user_id").notNull(),
+    approvedByUserId: text("approved_by_user_id"),
+    approvedAt: text("approved_at"),
+    expiresAt: text("expires_at").notNull(),
+    resultJson: text("result_json"),
+    error: text("error"),
+    createdAt: createdAt(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (table) => [
+    index("customer_actions_org_status_idx").on(
+      table.organizationId,
+      table.status,
+      table.createdAt,
     ),
   ],
 );

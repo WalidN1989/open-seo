@@ -50,6 +50,30 @@ Withheld: approving, publishing, submitting for review, rejecting. See
 [OPTIMIZATIONS_AGENT_BRIEF.md](./OPTIMIZATIONS_AGENT_BRIEF.md) for the field
 shapes and the loop.
 
+### WhatsApp — organization-scoped
+
+`list_whatsapp_chats` and `get_whatsapp_chat` include `replyMode` (`auto` or
+`manual`) in structured output and readable text. Use
+`set_whatsapp_chat_mode({organizationId?, conversationId, mode})` to change one
+chat. The tool requires membership, the WhatsApp entitlement and manage
+permission, and uses the same audited update as the inbox Replies setting.
+
+Manual persists until explicitly switched back, including when the customer
+writes again. A mode change increments a database revision, cancels stale
+queued jobs and marks unsent automatic messages failed. Returning to Auto
+permits future messages; it never replays cancelled work. Existing pending
+handoff status remains independent of reply mode.
+
+Generation, model actions, rule fallback and automatic dispatch use the captured
+revision. Dispatch and mode changes serialize through the conversation row in an
+atomic database batch/transaction. One deterministic outbound record per inbound
+and revision prevents concurrent/retried AI and fallback sends. Once a dispatch
+claim wins, a provider request may already be in progress; Manual cannot recall
+that message. Ambiguous provider failures are not automatically resent.
+Explicit teammate/MCP replies remain available in Manual and use their existing
+outreach rules. This tool does not configure the workspace assistant or send a
+message. No growing process cache or polling loop is added.
+
 ### Invoicing — organization-scoped
 
 | Tool                                      | What it does                                                                                           |
@@ -137,12 +161,13 @@ product content under Open SEO's own name.
 
 ### Voice calls — organization-scoped, read-only
 
-`list_calls(organizationId?, sinceHours?, limit?)` and
+`list_calls(organizationId?, sinceHours?, limit?, direction?)` and
 `get_call(callId, organizationId?)` reuse the stored phone-call data and check
 workspace membership plus the voice module's view permission on every read.
 Start times include the UTC offset (`Z`) and an explicit `timezone: "UTC"`;
 durations are in seconds. Responses include caller/called numbers, CRM contact
-and lead, direction, outcome, voice-agent summary and the full transcript.
+and lead, direction, callee name, linked case and voice-agent summary. Full
+transcripts, captured fields and recording lookup remain in `get_call`.
 Lists order by call start time, default to 20 records, and accept at most 50.
 `sinceHours` filters by start time, using creation time only if start is absent.
 
@@ -158,3 +183,29 @@ No dialing, send or voice-configuration tools are exposed.
 project's existing domain, allowing callers to map projects to workspaces.
 Quotes continue to require the invoicing entitlement and member permission;
 there is no MCP-specific permission bypass.
+
+### External assistant cases — organization-scoped storage
+
+`get_attention_list`, `create_case`, `update_case` and `list_cases` add the external
+assistant's case workflow. Reads require Voice view access; writes require Voice
+manage permission and validate explicit links in their own modules/workspace.
+Attention checks additionally restrict WhatsApp/SMS data to accessible modules.
+No dialing, scheduling, escalation, model execution, policy-editing or deletion
+capability is exposed. Existing WhatsApp and SMS tools are unchanged.
+
+The attention cursor returns current changes and closed/resolved clears with
+bounded previews; read tools never persist cursors or acknowledge records.
+See [VOICE_CASES_MCP.md](VOICE_CASES_MCP.md) for the contract, stored policy,
+webhook setup and migration/rollback notes.
+
+### Selected-workspace communications workflow
+
+The owner-requested Southside rollout adds `get_communications_report`,
+`request_customer_action`, `execute_approved_customer_action`, `send_quote`
+and `update_lead_contact`. These are disabled unless a private runtime setting
+selects the caller's workspace. `send_quote` only prepares a draft request.
+Customer sends and stage changes require a single-use owner approval of the
+exact saved action. Approval itself is withheld from MCP. Existing direct
+email/WhatsApp/SMS tools also prepare approval requests in that workspace.
+Other workspaces retain their existing surfaces and behavior. See
+[SOUTHSIDE_WORKFLOW.md](./SOUTHSIDE_WORKFLOW.md) for parameters and limitations.

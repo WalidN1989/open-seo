@@ -1,3 +1,4 @@
+import { fetchOrderConfirmationTemplate } from "@/server/features/communications/providers/twilioContent";
 import { OrderOperationsRepository as Repo } from "../repositories/OrderOperationsRepository";
 import type { ActionContext } from "./OrderOperationsService";
 export async function dispatchCurrent(context: ActionContext) {
@@ -78,5 +79,35 @@ export async function notificationFor(
     template.connectionId !== sender.id
   )
     return null;
+  if (
+    order.externalSource === "woocommerce" &&
+    !(await currentUtilityTemplate(sender, template))
+  )
+    return null;
   return { sender, template };
+}
+
+export async function currentUtilityTemplate(
+  sender: NonNullable<ActionContext["sender"]>,
+  template: NonNullable<ActionContext["template"]>,
+) {
+  if (
+    sender.provider !== "twilio" ||
+    template.category.toUpperCase() !== "UTILITY" ||
+    !template.externalTemplateId
+  )
+    return false;
+  try {
+    const current = await fetchOrderConfirmationTemplate(
+      sender,
+      template.externalTemplateId,
+    );
+    return (
+      current.status === "approved" &&
+      current.body === template.body &&
+      current.languageCode === template.languageCode
+    );
+  } catch {
+    return false;
+  }
 }

@@ -1,14 +1,41 @@
-import { and, desc, eq, isNull } from "drizzle-orm";
+import { and, desc, eq, isNotNull, isNull } from "drizzle-orm";
 import { db } from "@/db";
 import {
   clientAccessEvents,
   clientAccounts,
   clientContacts,
   organization,
+  organizationModuleEntitlements,
 } from "@/db/schema";
 
 function now() {
   return new Date().toISOString();
+}
+
+/** Only agencies with enabled private-client access and an issued active account. */
+async function verificationEnabled(organizationId: string) {
+  const [row] = await db
+    .select({ id: clientAccounts.id })
+    .from(clientAccounts)
+    .innerJoin(
+      organizationModuleEntitlements,
+      eq(
+        organizationModuleEntitlements.organizationId,
+        clientAccounts.organizationId,
+      ),
+    )
+    .where(
+      and(
+        eq(clientAccounts.organizationId, organizationId),
+        eq(clientAccounts.status, "active"),
+        isNotNull(clientAccounts.codeHash),
+        isNotNull(clientAccounts.codeSalt),
+        eq(organizationModuleEntitlements.moduleKey, "clients"),
+        eq(organizationModuleEntitlements.status, "enabled"),
+      ),
+    )
+    .limit(1);
+  return Boolean(row);
 }
 
 /** Accounts with the client workspace's own name, for the register list. */
@@ -137,6 +164,7 @@ async function recordEvent(values: typeof clientAccessEvents.$inferInsert) {
 }
 
 export const ClientAccountRepository = {
+  verificationEnabled,
   listAccounts,
   getAccount,
   insertAccount,

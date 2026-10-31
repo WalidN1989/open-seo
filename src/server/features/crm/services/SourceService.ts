@@ -1,14 +1,25 @@
 import type { z } from "zod";
 import { BusinessModuleService } from "@/server/features/business-modules/services/BusinessModuleService";
 import { BusinessAuditRepository } from "@/server/features/business-modules/repositories/BusinessAuditRepository";
+import { CrmService } from "./CrmService";
 import { CrmRepository } from "../repositories/CrmRepository";
 import { SourceRepository } from "../repositories/SourceRepository";
-import { runSourceSearch } from "../providers/sourceAdapters";
+import {
+  connectionFor,
+  evidenceScore,
+  runSourceSearch,
+  toCandidates,
+} from "../providers/sourceAdapters";
+import {
+  startApifyMapsSearch,
+  readApifyMapsResults,
+} from "@/server/features/communications/providers/integrations";
 import type {
   listCandidatesSchema,
   promoteCandidateSchema,
   rejectCandidateSchema,
   startSourceRunSchema,
+  createProspectSchema,
 } from "@/types/schemas/sources";
 
 async function audit(
@@ -64,12 +75,22 @@ async function startRun(
     "leads",
     "manage",
   );
+  const providerRun =
+    input.provider === "apify"
+      ? await startApifyMapsSearch(
+          await connectionFor(organizationId, "apify"),
+          input,
+        )
+      : null;
   const run = await SourceRepository.createRun(organizationId, {
     provider: input.provider,
+    providerRunId: providerRun?.id,
     query: input.query,
     location: input.location,
   });
   if (!run) throw new Error("Could not start the search.");
+  if (providerRun)
+    return { runId: run.id, found: 0, inserted: 0, skipped: 0, pending: true };
 
   try {
     const drafts = await runSourceSearch(organizationId, input);
@@ -92,6 +113,83 @@ async function startRun(
     });
     throw error;
   }
+}
+
+async function refreshRun(
+  organizationId: string,
+  userId: string,
+  runId: string,
+) {
+  await BusinessModuleService.requireAccess(
+    organizationId,
+    userId,
+    "leads",
+    "manage",
+  );
+  const run = await SourceRepository.getRun(organizationId, runId);
+  if (!run || run.provider !== "apify" || !run.providerRunId)
+    throw new Error("That Maps search was not found.");
+  if (run.status === "complete")
+    return { pending: false, inserted: 0, skipped: 0 };
+  const result = await readApifyMapsResults(
+    await connectionFor(organizationId, "apify"),
+    run.providerRunId,
+  );
+  if (result.pending) return { pending: true, inserted: 0, skipped: 0 };
+  const counts = await SourceRepository.insertCandidates(
+    organizationId,
+    run.id,
+    toCandidates("apify", result.items, 100),
+  );
+  await SourceRepository.completeRun(organizationId, run.id, {
+    status: "complete",
+    candidateCount: counts.inserted + counts.skipped,
+  });
+  return { pending: false, ...counts };
+}
+
+async function createProspect(
+  organizationId: string,
+  userId: string,
+  input: z.infer<typeof createProspectSchema>,
+) {
+  await BusinessModuleService.requireAccess(
+    organizationId,
+    userId,
+    "leads",
+    "manage",
+  );
+  const run = await SourceRepository.createRun(organizationId, {
+    provider: "manual",
+    query: input.companyName,
+  });
+  if (!run) throw new Error("Could not save this prospect.");
+  // The source link (or business/contact identity) makes a retry deduplicate.
+  const externalId =
+    input.profileUrl ||
+    [
+      input.companyName,
+      input.phone || input.email || input.website || input.country || "",
+    ]
+      .join("|")
+      .toLowerCase();
+  const result = await SourceRepository.insertCandidates(
+    organizationId,
+    run.id,
+    [
+      {
+        ...input,
+        externalId,
+        provider: "manual",
+        evidenceScore: evidenceScore(input),
+      },
+    ],
+  );
+  await SourceRepository.completeRun(organizationId, run.id, {
+    status: "complete",
+    candidateCount: result.inserted,
+  });
+  return result;
 }
 
 /**
@@ -144,65 +242,39 @@ async function promote(
     throw new Error("That candidate could not be promoted.");
   }
 
+  let leadId: string;
   try {
-    const company = await CrmRepository.createCompany(organizationId, {
-      name: claimed.companyName,
-      website: claimed.website ?? undefined,
-      phone: claimed.phone ?? undefined,
-      industry: claimed.industry ?? undefined,
-      country: claimed.country ?? undefined,
-    });
-
-    // A contact is only created when the source actually found a person;
-    // inventing "Unknown" would put a fake name in front of a salesperson.
-    const contact = claimed.contactName
-      ? await CrmRepository.createContact(organizationId, {
-          companyId: company?.id,
-          firstName: claimed.contactName.split(" ")[0] || claimed.contactName,
-          lastName:
-            claimed.contactName.split(" ").slice(1).join(" ") || undefined,
-          email: claimed.email ?? undefined,
-          phone: claimed.phone ?? undefined,
-        })
-      : null;
-
-    const lead = await CrmRepository.createLead(organizationId, {
-      title: claimed.companyName,
-      companyId: company?.id,
-      contactId: contact?.id,
-      stageId: input.stageId,
-      assignedMemberId: input.assignedMemberId,
-      source: claimed.provider,
-      category: claimed.category ?? undefined,
-      priority: "medium",
-      valueCents: 0,
-      leadScore: claimed.evidenceScore,
-      notes: claimed.notes ?? undefined,
-    });
-    if (!lead) throw new Error("Could not create the lead.");
-
-    await SourceRepository.markPromoted(organizationId, input.candidateId, {
-      leadId: lead.id,
-      reviewedByMemberId: input.reviewedByMemberId,
-    });
-    await SourceRepository.bumpPromotedCount(organizationId, claimed.runId);
-    await audit(
+    const stages = await CrmService.ensureStages(organizationId);
+    const relations = {
+      ...input,
+      stageId:
+        input.stageId ??
+        stages.find((stage) => stage.name === "Qualified")?.id ??
+        stages[0]?.id,
+    };
+    if (
+      !(await CrmRepository.validateLeadRelations(organizationId, {
+        stageId: relations.stageId,
+        assignedMemberId: input.assignedMemberId,
+      }))
+    )
+      throw new Error("Invalid lead stage or owner.");
+    const result = await SourceRepository.convertClaimed(
       organizationId,
-      userId,
-      "source.candidate.promoted",
-      claimed.id,
-      {
-        leadId: lead.id,
-        provider: claimed.provider,
-      },
+      claimed,
+      relations,
     );
-    return { leadId: lead.id, alreadyPromoted: false };
+    leadId = result.leadId;
   } catch (error) {
-    // Put it back in the queue rather than leaving it stuck in review with no
-    // lead to show for it.
     await SourceRepository.releaseClaim(organizationId, input.candidateId);
     throw error;
   }
+  // Audit failure must never release a successfully converted prospect.
+  await audit(organizationId, userId, "source.candidate.promoted", claimed.id, {
+    leadId,
+    provider: claimed.provider,
+  });
+  return { leadId, alreadyPromoted: false };
 }
 
 async function reject(
@@ -219,7 +291,7 @@ async function reject(
   const row = await SourceRepository.rejectCandidate(
     organizationId,
     input.candidateId,
-    { reason: input.reason, reviewedByMemberId: input.reviewedByMemberId },
+    { reason: input.reason },
   );
   if (!row) throw new Error("That candidate could not be rejected.");
   await audit(organizationId, userId, "source.candidate.rejected", row.id, {
@@ -229,6 +301,8 @@ async function reject(
 }
 
 export const SourceService = {
+  createProspect,
+  refreshRun,
   getWorkspace,
   listCandidates,
   startRun,

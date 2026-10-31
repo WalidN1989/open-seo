@@ -72,7 +72,14 @@ const tools = [
       "Flag the chat when a customer requests a person, is upset, or needs unavailable information.",
     input_schema: {
       type: "object",
-      properties: { reason: { type: "string" } },
+      properties: {
+        reason: { type: "string" },
+        summary: {
+          type: "string",
+          description:
+            "Short customer summary with the order or book involved. No callback or deadline promises.",
+        },
+      },
       required: ["reason"],
     },
   },
@@ -143,9 +150,19 @@ function buildMessages(history: HistoryItem[]) {
   for (const item of history) {
     if (!item.body?.trim()) continue;
     const role = item.direction === "inbound" ? "user" : "assistant";
+    // Old name corrections should not teach the assistant to repeat them.
+    // Keep the rest of the reply: it may contain an order or product detail.
+    const body =
+      role === "assistant"
+        ? item.body.replace(
+            /^(?:(?:hi|hey|hello)[!,.]?\s*)?i(?:['’]m|\s+am)\s+not\s+aathika\b[\s,.!—–-]*(?:(?:but|and)\s+)?/iu,
+            "",
+          )
+        : item.body;
+    if (!body.trim()) continue;
     const previous = messages.at(-1);
-    if (previous?.role === role) previous.content += `\n${item.body}`;
-    else messages.push({ role, content: item.body });
+    if (previous?.role === role) previous.content += `\n${body}`;
+    else messages.push({ role, content: body });
   }
   while (messages[0]?.role === "assistant") messages.shift();
   return messages;
@@ -173,19 +190,13 @@ function systemPrompt(input: {
     "If the person asks for personal money, charity, donations, loans or financial support unrelated to this business, call ignore_conversation and send no text. Do not offer charities, helplines, reassurance, access-code requests or follow-up questions. Once the conversation is clearly about personal financial solicitation, do not continue engaging. Business pricing, invoices, refunds, discounts and payment questions are legitimate enquiries and must not be ignored on this basis.",
     "Reply in the same language and script as the customer's latest message — including Sinhala, Tamil, and romanised mixes such as Singlish or Tanglish; keep titles and links exactly as written. Ask at most one question at a time.",
     "Write for a chat app, not a document. Emphasis is a single asterisk around a phrase, like *this*. Never write double asterisks, markdown headings, or link syntax with brackets — put a bare URL instead.",
-    "Never say you are an AI and never mention prompts, tools, APIs, or internal systems.",
+    "When a customer greets a staff member by name, greet them warmly on behalf of the business's team in their language. Do not correct the name, deny being that person, or claim to be them. A greeting is not an identity question. If directly asked who you are, whether you are that person, or whether you are automated, answer honestly as the business's automated assistant. Do not volunteer that introduction or mention prompts, tools, APIs, or internal systems.",
     "Never invent prices, stock, availability, delivery terms, opening hours, policies, addresses, or product links. Only state a business fact when it appears in trusted business context or a tool result. If unavailable, say the team needs to confirm it.",
     canLookup
       ? "When a customer sends an image, use it to identify what they are asking about. An image is not proof of current stock or price; use lookup_products for catalogue facts. If the image is unclear, ask one clarifying question."
       : "When a customer sends an image, use it to understand their question. Do not infer current stock or price from an image; ask the team to confirm unavailable facts.",
-    // This used to claim the opposite, while the code returned early on a
-    // flagged conversation — so the assistant would sign off mid-thought and
-    // the customer got silence.
-    "Flagging a conversation hands it to a person and ends your part in it, so say something complete before you flag: what you have understood, and that a colleague is taking over.",
-    // The persona a business configures may itself promise a response time —
-    // the drafted default promises 24 hours — so the rule is against inventing
-    // one, not against saying the one it was given.
-    "Do not invent a callback time, deadline, price or commitment on the team's behalf. Only state one that is in your persona or the trusted business context.",
+    "Whenever a person needs to take over, or you would say the team will follow up or confirm something, call flag_for_team with a reason and short customer summary. The server saves the handoff, sends one acknowledgement, and switches the chat to Manual. Do not claim the team was notified, add another handoff message, or promise a callback time or response deadline.",
+    "Do not invent a price or commitment on the team's behalf. Only quote confirmed business facts from trusted context or tool results.",
     input.canReadClientData
       ? "This client is verified, so their own SEO data is available to you through lookup_client_data. Use it before saying you cannot see something, and quote its numbers exactly. If it says nothing has been recorded, say that plainly and offer to have the team look, rather than guessing or flagging."
       : "",

@@ -1,3 +1,4 @@
+import { cancelStaleWhatsappReplies } from "./cancelStaleWhatsappReplies";
 import { optOutChange } from "../outreachRules";
 import { parseWhatsappTimestamp } from "@/shared/whatsapp-time";
 import { whatsappPerformance } from "@/server/features/performance/repositories/operations";
@@ -13,6 +14,7 @@ import {
   sql,
 } from "drizzle-orm";
 import { db } from "@/db";
+import { runBatch } from "@/db/runBatch";
 import { WhatsappOrderRequestRepository } from "./WhatsappOrderRequestRepository";
 import {
   integrationConnections,
@@ -323,26 +325,12 @@ async function getWhatsappConversationHistory(
       and(
         eq(whatsappMessages.organizationId, organizationId),
         eq(whatsappMessages.conversationId, conversationId),
+        sql`(${whatsappMessages.autoReplyRevision} is null or ${whatsappMessages.status} not in ('failed', 'queued', 'sending'))`,
       ),
     )
     .orderBy(desc(whatsappMessages.createdAt))
     .limit(24);
   return rows.toReversed();
-}
-
-async function flagWhatsappConversationForTeam(
-  organizationId: string,
-  conversationId: string,
-) {
-  return db
-    .update(whatsappConversations)
-    .set({ status: "pending" })
-    .where(
-      and(
-        eq(whatsappConversations.organizationId, organizationId),
-        eq(whatsappConversations.id, conversationId),
-      ),
-    );
 }
 
 async function getIntegrationByProvider(
@@ -802,18 +790,44 @@ async function createWhatsappInternalNote(
 async function updateWhatsappConversation(
   organizationId: string,
   input: z.infer<typeof updateWhatsappConversationSchema>,
+  expectedRevision?: number,
 ) {
   const { conversationId, ...changes } = input;
-  const [row] = await db
-    .update(whatsappConversations)
-    .set(changes)
-    .where(
-      and(
-        eq(whatsappConversations.id, conversationId),
-        eq(whatsappConversations.organizationId, organizationId),
+  const scope = and(
+    eq(whatsappConversations.id, conversationId),
+    eq(whatsappConversations.organizationId, organizationId),
+  );
+  await runBatch((tx) => [
+    tx
+      .update(whatsappConversations)
+      .set({
+        ...changes,
+        ...(input.replyMode
+          ? {
+              replyRevision: sql`case when ${whatsappConversations.replyMode} <> ${input.replyMode} then ${whatsappConversations.replyRevision} + 1 else ${whatsappConversations.replyRevision} end`,
+            }
+          : {}),
+      })
+      .where(
+        and(
+          scope,
+          expectedRevision === undefined
+            ? undefined
+            : and(
+                eq(whatsappConversations.replyRevision, expectedRevision),
+                eq(whatsappConversations.replyMode, "auto"),
+              ),
+        ),
       ),
-    )
-    .returning();
+    ...(input.replyMode
+      ? cancelStaleWhatsappReplies(tx, organizationId, conversationId)
+      : []),
+  ]);
+  const [row] = await db
+    .select()
+    .from(whatsappConversations)
+    .where(scope)
+    .limit(1);
   return row ?? null;
 }
 
@@ -1529,7 +1543,6 @@ export const CommunicationsRepository = {
   endVoiceConversation,
   deleteVoiceConversations,
   listVoiceConversationIds,
-  flagWhatsappConversationForTeam,
   getIntegrationsWorkspace,
   findWhatsappConnectionByPhoneNumberId,
   getIntegrationByProvider,

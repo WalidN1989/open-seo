@@ -1,5 +1,7 @@
-import { BusinessAuditRepository } from "@/server/features/business-modules/repositories/BusinessAuditRepository";
-import { BusinessModuleService } from "@/server/features/business-modules/services/BusinessModuleService";
+import { finishInbound } from "./InboundFollowupService";
+import { isSouthsideWorkflow } from "@/server/features/customer-workflow/policy";
+import { CaseRepository } from "@/server/features/voice-cases/repositories/CaseRepository";
+import { CallBookLinkService } from "./CallBookLinkService";
 import { CrmService } from "@/server/features/crm/services/CrmService";
 import { decryptCredentials } from "@/server/lib/connection-secrets";
 import {
@@ -8,18 +10,14 @@ import {
   phoneRegionOf,
   shortNeed,
   readPostCall,
+  readOutboundFailure,
   verifyElevenLabsSignature,
   type PhoneCallReport,
   type PhoneRegion,
 } from "../elevenlabsWebhook";
-import { activityNotes, duration, inSentence, splitName } from "../callNotes";
-import {
-  PhoneCallRepository as Repo,
-  type CallReadOptions,
-} from "../repositories/PhoneCallRepository";
-import { CallQuoteService } from "./CallQuoteService";
-import { CallWelcomeService } from "./CallWelcomeService";
-import { CallRecapService } from "./CallRecapService";
+import { activityNotes, duration, splitName } from "../callNotes";
+import { PhoneCallRepository as Repo } from "../repositories/PhoneCallRepository";
+import { listCalls } from "./storedCalls";
 
 /**
  * Where a call came from: the phone line answered by an ElevenLabs agent, or
@@ -29,7 +27,7 @@ import { CallRecapService } from "./CallRecapService";
 type CallProvider = "elevenlabs" | "deepgram";
 
 /** Who took the call, for which business, and how to follow it up. */
-type CallSource = {
+export type CallSource = {
   provider: CallProvider;
   organizationId: string;
   integrationId: string;
@@ -45,41 +43,6 @@ export type WebhookResult = { status: number; body: string };
  * whether they went out is visible on the lead rather than buried in the
  * call record. Skips are left out; a failure is worth seeing.
  */
-async function journalOutreach(input: {
-  organizationId: string;
-  leadId: string;
-  contactId: string;
-  welcome: string;
-  recapEmail: string;
-}) {
-  const occurredAt = new Date().toISOString();
-  const entries = [
-    {
-      activityType: "whatsapp" as const,
-      status: input.welcome,
-      label: "WhatsApp thank-you",
-    },
-    {
-      activityType: "email" as const,
-      status: input.recapEmail,
-      label: "Recap email",
-    },
-  ].filter((entry) => !entry.status.startsWith("skipped"));
-  for (const entry of entries) {
-    const sent = entry.status.startsWith("sent");
-    await Repo.insertCallActivity({
-      organizationId: input.organizationId,
-      leadId: input.leadId,
-      contactId: input.contactId,
-      activityType: entry.activityType,
-      subject: `${entry.label} ${sent ? "sent" : "failed"}`,
-      notes: entry.status,
-      outcome: sent ? "sent" : "failed",
-      occurredAt,
-    });
-  }
-}
-
 /** The call log row; `links` is what the pipeline decided about the caller. */
 function callRow(
   provider: CallProvider,
@@ -108,16 +71,82 @@ function callRow(
     durationSeconds: report.durationSeconds,
     summary: report.summary,
     callSuccessful: report.callSuccessful,
+    recordingUrl: report.recordingUrl ?? null,
     capturedJson: JSON.stringify(report.captured),
     transcriptJson: JSON.stringify(report.transcript),
     ...links,
   };
 }
 
+/** Outbound callbacks are storage only: no lead, welcome, quote or AI recap. */
+async function recordOutbound(source: CallSource, report: PhoneCallReport) {
+  const { organizationId, integrationId, provider } = source;
+  if (
+    report.caseId &&
+    !(await CaseRepository.linkCall(
+      organizationId,
+      report.caseId,
+      report.conversationId,
+    ))
+  ) {
+    throw new Error("Invalid or conflicting case reference.");
+  }
+  const existing = await Repo.findCall(organizationId, report.conversationId);
+  if (existing) {
+    if (await isSouthsideWorkflow(organizationId)) {
+      const { CallbackService } =
+        await import("@/server/features/customer-workflow/services/CallbackService");
+      await CallbackService.complete(organizationId, report);
+    }
+    return { callId: existing.id, duplicate: true };
+  }
+  const contact = report.calledNumber
+    ? await Repo.findCalleeByPhone(organizationId, report.calledNumber)
+    : null;
+  const call = await Repo.insertCall(
+    callRow(provider, organizationId, integrationId, report, {
+      callerNumber: report.callerNumber,
+      contactId: contact?.id ?? null,
+      leadId: null,
+      welcomeStatus: "skipped: outbound log only",
+      recapEmailStatus: "skipped: outbound log only",
+    }),
+    { deduplicate: true },
+  );
+  if (await isSouthsideWorkflow(organizationId)) {
+    const { CallbackService } =
+      await import("@/server/features/customer-workflow/services/CallbackService");
+    await CallbackService.complete(organizationId, report);
+  }
+  return { callId: call.id, duplicate: false };
+}
+
 async function recordCall(source: CallSource, report: PhoneCallReport) {
+  return report.direction === "outbound"
+    ? recordOutbound(source, report)
+    : recordInbound(source, report);
+}
+
+async function recordInbound(source: CallSource, report: PhoneCallReport) {
   const { provider, organizationId, integrationId, welcomeTemplate } = source;
   const existing = await Repo.findCall(organizationId, report.conversationId);
-  if (existing) return { callId: existing.id, duplicate: true };
+  if (existing) {
+    if (await isSouthsideWorkflow(organizationId)) {
+      const { PostCallFollowupService } =
+        await import("@/server/features/customer-workflow/services/PostCallFollowupService");
+      await PostCallFollowupService.run({
+        organizationId,
+        callId: existing.id,
+        leadId: existing.leadId,
+        contactId: existing.contactId,
+        report,
+        welcomeTemplate,
+      });
+      return { callId: existing.id, duplicate: true };
+    }
+    await CallBookLinkService.send(organizationId, integrationId, existing.id);
+    return { callId: existing.id, duplicate: true };
+  }
 
   const { firstName, lastName } = splitName(report.captured.caller_name);
   // Prefer the caller's explicit country, then the line they called, then
@@ -233,72 +262,19 @@ async function recordCall(source: CallSource, report: PhoneCallReport) {
     }),
   );
 
-  // The number the caller read out is the one they asked us to use; the line
-  // they rang from can be a landline or a phone without WhatsApp.
-  const whatsappTo =
-    phoneFromText(report.captured.callback_details, region) ?? phone;
-  // Anyone who has not had the thank-you yet gets it, so a caller whose
-  // first call came before a template was set up is not left out.
-  const welcomeOwed = !(await Repo.welcomeSentTo(organizationId, contact.id));
-  const welcome = welcomeOwed
-    ? await CallWelcomeService.sendWelcome({
-        organizationId,
-        template: welcomeTemplate,
-        recipient: whatsappTo,
-        contactId: contact.id,
-        // Template: "Hi {{1}}, thanks for calling … about {{2}} …"
-        variables: {
-          "1": knownName || "there",
-          "2": report.captured.service_interest
-            ? inSentence(shortNeed(report.captured.service_interest))
-            : "our services",
-        },
-      })
-    : "skipped: already welcomed";
-  await Repo.setWelcomeStatus(call.id, welcome);
-  const recapEmail = await CallRecapService.sendCallRecap({
-    organizationId,
-    email: recapTo,
-    firstName: knownName,
+  return finishInbound({
+    source,
     report,
+    callId: call.id,
+    lead,
+    contact,
+    firstTimeCaller,
+    businessName,
+    knownName,
+    recapTo,
+    region,
+    phone,
   });
-  await Repo.setRecapEmailStatus(call.id, recapEmail);
-  const quote = await CallQuoteService.quoteFromCall({
-    organizationId,
-    leadId: lead.id,
-    contactId: contact.id,
-    clientName:
-      businessName ||
-      [knownName, contact.lastName].filter(Boolean).join(" ") ||
-      "Caller",
-    email: recapTo,
-    report,
-  });
-  await journalOutreach({
-    organizationId,
-    leadId: lead.id,
-    contactId: contact.id,
-    welcome,
-    recapEmail,
-  });
-
-  await BusinessAuditRepository.record({
-    organizationId,
-    // No member acts on a webhook; the provider is the actor.
-    actorUserId: `system:${provider}`,
-    action: "voice.phone_call.recorded",
-    targetType: "lead",
-    targetId: lead.id,
-    metadata: {
-      callId: call.id,
-      provider,
-      firstTimeCaller,
-      welcome,
-      recapEmail,
-      quote,
-    },
-  });
-  return { callId: call.id, duplicate: false };
 }
 
 /**
@@ -311,6 +287,7 @@ async function processElevenLabsWebhook(
   connectionId: string,
   headers: Headers,
   rawBody: string,
+  outboundOnly = false,
 ): Promise<WebhookResult> {
   const connection = await Repo.getIntegrationById(connectionId);
   if (
@@ -338,8 +315,11 @@ async function processElevenLabsWebhook(
     return { status: 400, body: "unreadable body" };
   }
   const region = await Repo.defaultPhoneRegion(connection.organizationId);
-  const report = readPostCall(payload, region);
+  const report =
+    readPostCall(payload, region) ?? readOutboundFailure(payload, region);
   if (!report) return { status: 200, body: "ignored" };
+  if (outboundOnly && report.direction !== "outbound")
+    return { status: 400, body: "outbound call required" };
 
   const result = await recordCall(
     {
@@ -352,79 +332,6 @@ async function processElevenLabsWebhook(
     report,
   );
   return { status: 200, body: result.duplicate ? "duplicate" : "recorded" };
-}
-
-async function listCalls(
-  organizationId: string,
-  userId: string,
-  options: CallReadOptions = {},
-) {
-  await BusinessModuleService.requireAccess(organizationId, userId, "voice");
-  const rows = await Repo.listCalls(
-    organizationId,
-    options.limit ?? 100,
-    options,
-  );
-  return rows.map(({ call, contact, lead }) => ({
-    id: call.id,
-    provider: call.provider,
-    agentName: call.agentName,
-    direction: call.direction,
-    callerNumber: call.callerNumber,
-    calledNumber: call.calledNumber,
-    startedAt: call.startedAt ?? call.createdAt,
-    durationSeconds: call.durationSeconds,
-    summary: call.summary,
-    callSuccessful: call.callSuccessful,
-    captured: capturedFrom(call.capturedJson),
-    transcript: transcriptFrom(call.transcriptJson),
-    welcomeStatus: call.welcomeStatus,
-    recapEmailStatus: call.recapEmailStatus,
-    contact: contact
-      ? {
-          id: contact.id,
-          name: [contact.firstName, contact.lastName].filter(Boolean).join(" "),
-        }
-      : null,
-    lead: lead ? { id: lead.id, title: lead.title, status: lead.status } : null,
-  }));
-}
-
-function capturedFrom(json: string): Record<string, string> {
-  try {
-    const parsed: unknown = JSON.parse(json);
-    if (!parsed || typeof parsed !== "object") return {};
-    return Object.fromEntries(
-      Object.entries(parsed).filter(
-        (entry): entry is [string, string] => typeof entry[1] === "string",
-      ),
-    );
-  } catch {
-    return {};
-  }
-}
-
-function transcriptFrom(json: string): PhoneCallReport["transcript"] {
-  try {
-    const parsed: unknown = JSON.parse(json);
-    if (!Array.isArray(parsed)) return [];
-    return parsed.flatMap((turn: unknown) => {
-      if (!turn || typeof turn !== "object") return [];
-      const role = "role" in turn ? turn.role : null;
-      const message = "message" in turn ? turn.message : null;
-      const atSeconds = "atSeconds" in turn ? turn.atSeconds : null;
-      if (typeof role !== "string" || typeof message !== "string") return [];
-      return [
-        {
-          role,
-          message,
-          atSeconds: typeof atSeconds === "number" ? atSeconds : null,
-        },
-      ];
-    });
-  } catch {
-    return [];
-  }
 }
 
 export const PhoneCallService = {

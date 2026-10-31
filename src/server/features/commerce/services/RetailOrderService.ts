@@ -61,7 +61,7 @@ async function approveImportedOrder(
   if (order.note && !input.acknowledgeAdjustments)
     throw new AppError(
       "CONFLICT",
-      "Review Shopify's total adjustments before approving.",
+      "Review the store's total adjustments before approving.",
     );
   const result = await OrderRepository.approveImport(
     organizationId,
@@ -137,7 +137,7 @@ async function lookupCustomerOrder(
         : "No order matched this sending number. Ask once whether they used a different number, then hand off for verification; never look up a model-selected phone.",
     });
   }
-  const match = /^(?:#?SHOP-)?(\d{1,15})$/i.exec(query.trim());
+  const match = /^(?:#?(SHOP|WOO)-)?(\d{1,15})$/i.exec(query.trim());
   const native = /^ORD-(?:[A-F0-9]{32}|\d{1,15})$/i.test(query.trim());
   if (!phone || (!match && !native))
     return JSON.stringify({
@@ -146,7 +146,11 @@ async function lookupCustomerOrder(
     });
   const order = await OrderRepository.customerOrder(
     organizationId,
-    native ? query.trim().toUpperCase() : `SHOP-${match?.[1]}`,
+    native
+      ? query.trim().toUpperCase()
+      : match?.[1]
+        ? `${match[1].toUpperCase()}-${match[2]}`
+        : [`SHOP-${match?.[2]}`, `WOO-${match?.[2]}`],
     phone,
   );
   if (!order)

@@ -1,3 +1,4 @@
+import { evaluateWhatsappWindow } from "./whatsappWindow";
 import { inWorkingHours } from "@/server/lib/working-hours";
 
 /**
@@ -24,7 +25,7 @@ export function optOutChange(body: string | null): "out" | "in" | null {
   return null;
 }
 
-export type OutreachState = {
+type OutreachState = {
   optedOut: boolean;
   lastInboundAt: string | null;
   lastOutboundAt: string | null;
@@ -36,7 +37,12 @@ type OutreachDecision =
 
 export function outreachDecision(
   state: OutreachState,
-  input: { freeText: boolean; needsWindow: boolean; timeZone: string },
+  input: {
+    freeText: boolean;
+    needsWindow: boolean;
+    timeZone: string;
+    allowAnyHour?: boolean;
+  },
   now = new Date(),
 ): OutreachDecision {
   if (state.optedOut) {
@@ -45,15 +51,21 @@ export function outreachDecision(
       reason: "This customer opted out of messages. Do not contact them here.",
     };
   }
+  const window = evaluateWhatsappWindow(state.lastInboundAt, now);
+  if (
+    input.needsWindow &&
+    (window.reason === "invalid_inbound" || window.reason === "future_inbound")
+  )
+    return {
+      allowed: false,
+      reason:
+        "The last inbound timestamp is invalid or in the future. Check the chat before sending.",
+    };
   const inbound = state.lastInboundAt ? Date.parse(state.lastInboundAt) : null;
   const outbound = state.lastOutboundAt
     ? Date.parse(state.lastOutboundAt)
     : null;
-  if (
-    input.needsWindow &&
-    input.freeText &&
-    (inbound === null || now.getTime() - inbound > DAY_MS)
-  ) {
+  if (input.needsWindow && input.freeText && !window.windowOpen) {
     return {
       allowed: false,
       reason:
@@ -71,7 +83,7 @@ export function outreachDecision(
         "They haven't answered the last message, sent less than 24 hours ago. Wait before following up again.",
     };
   }
-  if (!inWorkingHours(now, input.timeZone)) {
+  if (!input.allowAnyHour && !inWorkingHours(now, input.timeZone)) {
     return {
       allowed: false,
       reason:

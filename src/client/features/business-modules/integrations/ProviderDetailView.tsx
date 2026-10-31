@@ -1,3 +1,4 @@
+import { CallBookLinkSettings } from "./CallBookLinkSettings";
 import { useProjectAddress } from "@/client/lib/use-project-address";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useParams } from "@tanstack/react-router";
@@ -9,6 +10,7 @@ import {
 } from "@/serverFunctions/commerce";
 import { getIntegrationsWorkspace } from "@/serverFunctions/communications";
 import { integrationCatalogue } from "@/shared/integration-catalogue";
+import { FitsmsCampaignDraftSetup } from "./FitsmsCampaignDraftPanel";
 import { ProviderConnectPanel } from "./ProviderConnectPanel";
 import { CatalogueSyncPanel } from "./CatalogueSyncPanel";
 import { verifyConnection } from "./verifyConnection";
@@ -173,7 +175,10 @@ export function IntegrationProviderDetailView() {
           ) : null}
 
           {entry.key === "elevenlabs" && connection ? (
-            <ElevenLabsAddresses connectionId={connection.id} />
+            <>
+              <ElevenLabsAddresses connectionId={connection.id} />
+              <CallBookLinkSettings connectionId={connection.id} />
+            </>
           ) : null}
 
           {entry.key === "deepgram" && connection ? (
@@ -289,6 +294,11 @@ export function IntegrationProviderDetailView() {
               workspaceKey={WORKSPACE_KEY}
             />
           ) : null}
+
+          <FitsmsCampaignDraftSetup
+            providerKey={entry.key}
+            connection={connection}
+          />
 
           {entry.notes?.length ? (
             <ul className="space-y-1 rounded-xl border border-base-300 p-4 text-sm text-base-content/60">

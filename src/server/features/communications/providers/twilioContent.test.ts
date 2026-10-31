@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   createContentTemplate,
+  fetchOrderConfirmationTemplate,
   withNumberedPlaceholders,
   fetchApproval,
   submitForApproval,
@@ -155,5 +156,198 @@ describe("withNumberedPlaceholders", () => {
     const { text, variables } = withNumberedPlaceholders("Hi, how are things?");
     expect(text).toBe("Hi, how are things?");
     expect(variables).toEqual({});
+  });
+});
+
+describe("order confirmation approval gate", () => {
+  const sid = `HX${"a".repeat(32)}`;
+  const body = "Hi {{1}}, order {{2}} total {{3}}.";
+  function fetcher(
+    status: string,
+    category = "UTILITY",
+    wording = body,
+  ): typeof fetch {
+    return async (input) =>
+      urlOf(input).endsWith("/ApprovalRequests")
+        ? Response.json({ whatsapp: { status, category } })
+        : Response.json({
+            sid,
+            language: "en",
+            types: { "twilio/text": { body: wording } },
+          });
+  }
+  it("reads pending/approved directly from Twilio without trusting a manually entered SID", async () => {
+    process.env.TEST_TW_AUTH_TOKEN = "private-token";
+    expect(
+      await fetchOrderConfirmationTemplate(connection, sid, fetcher("pending")),
+    ).toMatchObject({ status: "pending", body });
+    expect(
+      await fetchOrderConfirmationTemplate(
+        connection,
+        sid,
+        fetcher("approved"),
+      ),
+    ).toMatchObject({ status: "approved", languageCode: "en" });
+    delete process.env.TEST_TW_AUTH_TOKEN;
+  });
+  it("blocks reclassified templates, unknown variables and paused templates", async () => {
+    process.env.TEST_TW_AUTH_TOKEN = "private-token";
+    await expect(
+      fetchOrderConfirmationTemplate(
+        connection,
+        sid,
+        fetcher("approved", "MARKETING"),
+      ),
+    ).rejects.toThrow("utility");
+    await expect(
+      fetchOrderConfirmationTemplate(
+        connection,
+        sid,
+        fetcher("approved", "UTILITY", body + " {{4}}"),
+      ),
+    ).rejects.toThrow();
+    expect(
+      await fetchOrderConfirmationTemplate(connection, sid, fetcher("paused")),
+    ).toMatchObject({ status: "pending" });
+    delete process.env.TEST_TW_AUTH_TOKEN;
+  });
+});
+
+describe("call book-link approval", () => {
+  it("accepts an approved quick-reply name/link template", async () => {
+    const { fetchCallBookLinkTemplate } = await import("./twilioContent");
+    process.env.TEST_TW_AUTH_TOKEN = "test-token";
+    const sid = "HX" + "1".repeat(32);
+    const fetcher: typeof fetch = async (input, init) => {
+      expect(init?.redirect).toBe("manual");
+      return Response.json(
+        urlOf(input).endsWith("ApprovalRequests")
+          ? { whatsapp: { status: "approved", category: "MARKETING" } }
+          : {
+              sid,
+              language: "en",
+              types: {
+                "twilio/quick-reply": {
+                  body: "Hi {{1}}, your requested link: {{2}}",
+                },
+              },
+            },
+      );
+    };
+    expect(await fetchCallBookLinkTemplate(connection, sid, fetcher)).toEqual({
+      body: "Hi {{1}}, your requested link: {{2}}",
+      languageCode: "en",
+      status: "approved",
+    });
+    delete process.env.TEST_TW_AUTH_TOKEN;
+  });
+  it("refuses a redirected approval request without following the target", async () => {
+    const { fetchCallBookLinkTemplate } = await import("./twilioContent");
+    process.env.TEST_TW_AUTH_TOKEN = "test-token";
+    let requests = 0;
+    const fetcher: typeof fetch = async (_input, init) => {
+      requests++;
+      expect(init?.redirect).toBe("manual");
+      return new Response(null, {
+        status: 302,
+        headers: { Location: "https://unapproved.example" },
+      });
+    };
+    await expect(
+      fetchCallBookLinkTemplate(connection, "HX" + "1".repeat(32), fetcher),
+    ).rejects.toThrow("302");
+    expect(requests).toBe(1);
+    delete process.env.TEST_TW_AUTH_TOKEN;
+  });
+  it("rejects authentication content and templates with the wrong variables", async () => {
+    const { fetchCallBookLinkTemplate } = await import("./twilioContent");
+    process.env.TEST_TW_AUTH_TOKEN = "test-token";
+    const sid = "HX" + "2".repeat(32);
+    for (const body of ["Hi {{1}}", "Hi {{1}} {{2}} {{3}}"]) {
+      const fetcher: typeof fetch = async (input) =>
+        Response.json(
+          urlOf(input).endsWith("ApprovalRequests")
+            ? { whatsapp: { status: "approved", category: "UTILITY" } }
+            : { sid, language: "en", types: { "twilio/text": { body } } },
+        );
+      await expect(
+        fetchCallBookLinkTemplate(connection, sid, fetcher),
+      ).rejects.toThrow("slots");
+    }
+    const fetcher: typeof fetch = async (input) =>
+      Response.json(
+        urlOf(input).endsWith("ApprovalRequests")
+          ? { whatsapp: { status: "approved", category: "AUTHENTICATION" } }
+          : {
+              sid,
+              language: "en",
+              types: { "twilio/text": { body: "{{1}} {{2}}" } },
+            },
+      );
+    await expect(
+      fetchCallBookLinkTemplate(connection, sid, fetcher),
+    ).rejects.toThrow();
+    delete process.env.TEST_TW_AUTH_TOKEN;
+  });
+});
+
+describe("handoff utility templates", () => {
+  it("accepts only approved text utility content with the three handoff slots", async () => {
+    const { fetchHandoffTemplate } = await import("./twilioContent");
+    process.env.TEST_TW_AUTH_TOKEN = "test-token";
+    const sid = "HX" + "3".repeat(32);
+    const body =
+      "BooXworm: {{1}} needs a person. Reason: {{2}}. Customer window closes {{3}}. Open DU to review.";
+    const fetcher =
+      (
+        types: Record<string, unknown>,
+        status = "approved",
+        category = "UTILITY",
+      ): typeof fetch =>
+      async (input) =>
+        Response.json(
+          urlOf(input).endsWith("ApprovalRequests")
+            ? { whatsapp: { status, category } }
+            : { sid, language: "en", types },
+        );
+    expect(
+      await fetchHandoffTemplate(
+        connection,
+        sid,
+        fetcher({ "twilio/text": { body } }),
+      ),
+    ).toMatchObject({ body, externalTemplateId: sid });
+    for (const [status, category] of [
+      ["pending", "UTILITY"],
+      ["paused", "UTILITY"],
+      ["approved", "MARKETING"],
+    ])
+      await expect(
+        fetchHandoffTemplate(
+          connection,
+          sid,
+          fetcher({ "twilio/text": { body } }, status, category),
+        ),
+      ).rejects.toThrow("approved utility");
+    await expect(
+      fetchHandoffTemplate(
+        connection,
+        sid,
+        fetcher({
+          "twilio/call-to-action": {
+            body,
+            actions: [{ type: "PHONE_NUMBER", phone: "+61400000999" }],
+          },
+        }),
+      ),
+    ).rejects.toThrow();
+    await expect(
+      fetchHandoffTemplate(
+        connection,
+        sid,
+        fetcher({ "twilio/text": { body: "{{1}} {{2}}" } }),
+      ),
+    ).rejects.toThrow("slots");
+    delete process.env.TEST_TW_AUTH_TOKEN;
   });
 });

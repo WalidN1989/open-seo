@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   connection: vi.fn(),
   products: vi.fn(),
+  southsideProducts: vi.fn(),
   entitlements: vi.fn(),
   orders: vi.fn(),
 }));
@@ -30,6 +31,10 @@ vi.mock(
 vi.mock("@/server/features/commerce/services/OrderService", () => ({
   OrderService: { lookupCustomerOrder: mocks.orders },
 }));
+vi.mock("@/server/features/commerce/repositories/CommerceRepository", () => ({
+  CommerceRepository: { listProducts: mocks.southsideProducts },
+}));
+const SOUTHSIDE_ORGANIZATION_ID = "test-southside-workspace";
 import { VoiceCustomerQueryService as service } from "./VoiceCustomerQueryService";
 
 const headers = () =>
@@ -38,6 +43,7 @@ const headers = () =>
     "x-caller-id": "+94771111111",
   });
 beforeEach(() => {
+  vi.stubEnv("SOUTHSIDE_WORKFLOW_ORGANIZATION_ID", "test-southside-workspace");
   mocks.connection.mockResolvedValue({
     providerKey: "elevenlabs",
     status: "connected",
@@ -179,5 +185,58 @@ describe("ElevenLabs live CRM query", () => {
         )
       ).status,
     ).toBe(404);
+  });
+});
+
+describe("Southside product pricing", () => {
+  it("returns real prices, supply terms and null for unpriced items without claiming warehouse stock", async () => {
+    mocks.connection.mockResolvedValue({
+      providerKey: "elevenlabs",
+      status: "connected",
+      credentials: "test",
+      organizationId: SOUTHSIDE_ORGANIZATION_ID,
+    });
+    mocks.entitlements.mockResolvedValue([
+      { moduleKey: "crm", status: "enabled" },
+    ]);
+    mocks.southsideProducts.mockResolvedValue({
+      products: [
+        {
+          name: "TEST steel post",
+          sku: "TEST-POST",
+          description: "Supply only",
+          salePriceMinor: 1990,
+          productUrl: "https://example.invalid/product",
+        },
+        {
+          name: "TEST gate frame",
+          sku: "TEST-GATE",
+          description: "Starting price",
+          salePriceMinor: 24900,
+        },
+        { name: "TEST enquiry only", sku: "TEST-UNPRICED", salePriceMinor: 0 },
+      ],
+    });
+    const result = await service.query(
+      "southside",
+      headers(),
+      JSON.stringify({ action: "search_products", query: "TEST" }),
+    );
+    expect(result.status).toBe(200);
+    expect(result.body).toMatchObject({
+      products: [
+        { price: 19.9 },
+        {
+          price: 249,
+          pricingBasis: "starting price, supply only, GST included",
+        },
+        { price: null },
+      ],
+      fallback: "Our representative will get in touch with you.",
+    });
+    expect(mocks.southsideProducts).toHaveBeenCalledWith(
+      SOUTHSIDE_ORGANIZATION_ID,
+      expect.any(Object),
+    );
   });
 });

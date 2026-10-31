@@ -6,6 +6,7 @@ import {
   siteOrigin,
   wordpressWhoAmI,
 } from "@/server/features/optimizations/wordpress/wordpressClient";
+import { checkFitsmsConnection } from "@/server/features/sms/providers/fitsms";
 import { resolveConnectionCredential } from "@/server/lib/connection-secrets";
 import { z } from "zod";
 import { fetchStoreName } from "@/server/features/commerce/providers/shopify";
@@ -104,6 +105,89 @@ export async function runApifyActor(
   );
 }
 
+const apifyRunSchema = z.object({
+  data: z.object({
+    id: z.string().regex(/^[a-zA-Z0-9]+$/),
+    status: z.string(),
+    defaultDatasetId: z
+      .string()
+      .regex(/^[a-zA-Z0-9]+$/)
+      .optional(),
+  }),
+});
+
+/** Start without holding a request open; the CRM persists the run for later import. */
+export async function startApifyMapsSearch(
+  connection: IntegrationRecord,
+  input: {
+    query: string;
+    location?: string;
+    limit: number;
+    mapsUrls?: string[];
+  },
+  fetcher: typeof fetch = fetch,
+) {
+  if (connection.providerKey !== "apify")
+    throw new Error("An Apify connection is required.");
+  const key = await credentialValue(connection, "API_TOKEN");
+  const raw = await checkedJson(
+    "https://api.apify.com/v2/acts/compass~crawler-google-places/runs?waitForFinish=0",
+    { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+    fetcher,
+    {
+      method: "POST",
+      body: JSON.stringify({
+        ...(input.mapsUrls?.length
+          ? { startUrls: input.mapsUrls.map((url) => ({ url })) }
+          : {
+              searchStringsArray: [input.query],
+              locationQuery: input.location,
+            }),
+        maxCrawledPlacesPerSearch: input.mapsUrls?.length ? 1 : input.limit,
+        language: "en",
+      }),
+    },
+  );
+  return apifyRunSchema.parse(raw).data;
+}
+
+export async function readApifyMapsResults(
+  connection: IntegrationRecord,
+  runId: string,
+  fetcher: typeof fetch = fetch,
+) {
+  if (connection.providerKey !== "apify")
+    throw new Error("An Apify connection is required.");
+  const key = await credentialValue(connection, "API_TOKEN");
+  const headers = { Authorization: `Bearer ${key}` };
+  const { data: run } = apifyRunSchema.parse(
+    await checkedJson(
+      `https://api.apify.com/v2/actor-runs/${encodeURIComponent(runId)}`,
+      headers,
+      fetcher,
+    ),
+  );
+  if (["FAILED", "ABORTED", "TIMED-OUT"].includes(run.status)) {
+    throw new Error(
+      `Apify search ${run.status.toLowerCase()}. Check the run in Apify before starting another search.`,
+    );
+  }
+  if (run.status !== "SUCCEEDED") return { pending: true as const, items: [] };
+  if (!run.defaultDatasetId)
+    throw new Error("Apify returned no results dataset.");
+  const items = z
+    .array(z.unknown())
+    .max(100)
+    .parse(
+      await checkedJson(
+        `https://api.apify.com/v2/datasets/${run.defaultDatasetId}/items?format=json&clean=true&limit=100`,
+        headers,
+        fetcher,
+      ),
+    );
+  return { pending: false as const, items };
+}
+
 export async function scrapeWithFirecrawl(
   connection: IntegrationRecord,
   input: { url: string },
@@ -131,6 +215,13 @@ export async function testIntegrationConnection(
   fetcher: typeof fetch = fetch,
 ) {
   switch (connection.providerKey) {
+    case "fitsms":
+      await checkFitsmsConnection(connection, fetcher);
+      return {
+        providerKey: "fitsms",
+        detail:
+          "FITSMS v4 authenticated with a read-only check. SMS sending and schedules remain disabled.",
+      };
     case "apify": {
       const key = await credentialValue(connection, "API_TOKEN");
       await checkedJson(

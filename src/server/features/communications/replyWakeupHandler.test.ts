@@ -2,6 +2,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   authorized: vi.fn(),
   pending: vi.fn(),
+  handoffs: vi.fn(),
+  handoffRun: vi.fn(),
   run: vi.fn(),
 }));
 vi.mock("@/server/lib/internal-secret", () => ({
@@ -12,6 +14,12 @@ vi.mock("./repositories/WhatsappReplyJobRepository", () => ({
 }));
 vi.mock("./services/WhatsappReplyJobService", () => ({
   runDueWhatsappReplies: mocks.run,
+}));
+vi.mock("./repositories/WhatsappHandoffOutboxRepository", () => ({
+  WhatsappHandoffOutboxRepository: { pendingWakeups: mocks.handoffs },
+}));
+vi.mock("./services/WhatsappHandoffService", () => ({
+  WhatsappHandoffService: { runDue: mocks.handoffRun },
 }));
 import { handleWhatsappReplyWakeup } from "./replyWakeupHandler";
 function request(body: unknown) {
@@ -24,6 +32,7 @@ beforeEach(() => {
   vi.resetAllMocks();
   mocks.authorized.mockResolvedValue(true);
   mocks.pending.mockResolvedValue([]);
+  mocks.handoffs.mockResolvedValue([]);
 });
 describe("event-driven reply endpoint", () => {
   it("rejects unauthorized recovery without reading the queue", async () => {
@@ -48,7 +57,7 @@ describe("event-driven reply endpoint", () => {
       request({ action: "recover" }),
     );
     expect(response.status).toBe(200);
-    expect(mocks.pending).toHaveBeenCalledWith();
+    expect(mocks.pending).toHaveBeenCalledWith(undefined);
     expect(mocks.run).not.toHaveBeenCalled();
   });
   it("processes only the notified conversation", async () => {

@@ -1,23 +1,21 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Loader2, Search } from "lucide-react";
+import { Search } from "lucide-react";
 import {
   getSourcesWorkspace,
   promoteSourceCandidate,
   rejectSourceCandidate,
   startSourceRun,
+  refreshCrmSourceRun,
 } from "@/serverFunctions/crm";
 import { getStandardErrorMessage } from "@/client/lib/error-messages";
 import { CandidateRow, type Candidate } from "./CandidateRow";
 
-const SOURCES_KEY = ["crm", "sources"];
+import { ProspectForm } from "./ProspectForm";
+import { MapsSearchForm } from "./MapsSearchForm";
 
-/** FormData yields string | File | null; only a string is meaningful here. */
-function fieldValue(form: FormData, name: string): string {
-  const value = form.get(name);
-  return typeof value === "string" ? value.trim() : "";
-}
+const SOURCES_KEY = ["crm", "sources"];
 
 const STATUSES = ["new", "reviewing", "promoted", "rejected"] as const;
 type StatusFilter = (typeof STATUSES)[number] | "all";
@@ -31,6 +29,8 @@ export function SourcesView() {
   const queryClient = useQueryClient();
   const [status, setStatus] = useState<StatusFilter>("new");
   const [search, setSearch] = useState("");
+  const [websiteFilter, setWebsiteFilter] = useState("all");
+  const [form, setForm] = useState(false);
 
   const query = useQuery({
     queryKey: SOURCES_KEY,
@@ -44,17 +44,37 @@ export function SourcesView() {
     ]);
   };
 
-  const run = useMutation({
-    mutationFn: (input: { query: string; location?: string }) =>
+  const searchRun = useMutation({
+    mutationFn: (input: {
+      query: string;
+      location?: string;
+      mapsUrls?: string[];
+      limit: number;
+    }) =>
       startSourceRun({
-        data: { provider: "apify", limit: 25, ...input },
+        data: { provider: "apify", ...input },
       }),
     onSuccess: async (result) => {
       await refresh();
       toast.success(
-        result.inserted === 0 && result.skipped > 0
-          ? `Nothing new — all ${result.skipped} were already reviewed`
-          : `${result.inserted} new candidates${result.skipped ? `, ${result.skipped} already seen` : ""}`,
+        "pending" in result && result.pending
+          ? "Maps search started. Use Check results below to import when ready."
+          : result.inserted === 0 && result.skipped > 0
+            ? `Nothing new — all ${result.skipped} were already reviewed`
+            : `${result.inserted} new candidates${result.skipped ? `, ${result.skipped} already seen` : ""}`,
+      );
+    },
+    onError: (error) => toast.error(getStandardErrorMessage(error)),
+  });
+
+  const importRun = useMutation({
+    mutationFn: (runId: string) => refreshCrmSourceRun({ data: { runId } }),
+    onSuccess: async (result) => {
+      await refresh();
+      toast.success(
+        result.pending
+          ? "Apify is still working. Check again shortly."
+          : `${result.inserted} prospects imported, ${result.skipped} already saved`,
       );
     },
     onError: (error) => toast.error(getStandardErrorMessage(error)),
@@ -101,8 +121,19 @@ export function SourcesView() {
   const needle = search.trim().toLowerCase();
   const candidates = all.filter((item) => {
     if (status !== "all" && item.status !== status) return false;
+    if (websiteFilter === "listed" && !item.website) return false;
+    if (websiteFilter === "missing" && item.website) return false;
     if (!needle) return true;
-    return [item.companyName, item.contactName, item.category, item.website]
+    return [
+      item.companyName,
+      item.contactName,
+      item.category,
+      item.website,
+      item.country,
+      item.phone,
+      item.email,
+      item.notes,
+    ]
       .filter(Boolean)
       .some((field) => String(field).toLowerCase().includes(needle));
   });
@@ -114,48 +145,81 @@ export function SourcesView() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-semibold tracking-tight">Sources</h1>
+        <h1 className="text-3xl font-semibold tracking-tight">Prospects</h1>
         <p className="mt-1 text-base leading-6 text-base-content/65">
-          Find businesses, review what came back, and add the ones worth
-          pursuing to your leads.
+          Your research list of businesses. Review their website and contact
+          details, then convert promising prospects into leads.
         </p>
       </div>
 
-      <form
-        className="flex flex-wrap gap-2 rounded-xl border border-base-300 p-4"
-        onSubmit={(event) => {
-          event.preventDefault();
-          const form = new FormData(event.currentTarget);
-          const q = fieldValue(form, "query");
-          if (q.length < 2) {
-            toast.error("Describe what you are looking for.");
-            return;
-          }
-          run.mutate({
-            query: q,
-            location: fieldValue(form, "location") || undefined,
-          });
-        }}
-      >
-        <input
-          name="query"
-          className="input input-bordered input-sm min-w-0 flex-1"
-          placeholder="Bookshops, dentists, plumbers…"
-        />
-        <input
-          name="location"
-          className="input input-bordered input-sm min-w-0 flex-1"
-          placeholder="Colombo, Sri Lanka"
-        />
-        <button className="btn btn-primary btn-sm" disabled={run.isPending}>
-          {run.isPending ? (
-            <Loader2 className="size-4 animate-spin" />
-          ) : (
-            <Search className="size-4" />
-          )}
-          Search
+      <div className="flex flex-wrap gap-2">
+        <button
+          className="btn btn-primary btn-sm"
+          onClick={() => setForm(true)}
+        >
+          + New prospect
         </button>
-      </form>
+      </div>
+      {form ? <ProspectForm onClose={() => setForm(false)} /> : null}
+      <div className="grid gap-3 sm:grid-cols-3">
+        {[
+          ["Awaiting review", all.filter((c) => c.status === "new").length],
+          [
+            "Website not recorded",
+            all.filter((c) => !c.website && c.status === "new").length,
+          ],
+          ["Converted to leads", counts.promoted ?? 0],
+        ].map(([label, value]) => (
+          <div key={label} className="rounded-xl bg-base-200 p-4">
+            <div className="text-sm text-base-content/60">{label}</div>
+            <div className="mt-1 text-3xl font-semibold">{value}</div>
+          </div>
+        ))}
+      </div>
+      <MapsSearchForm
+        pending={searchRun.isPending}
+        onSearch={(input) => searchRun.mutate(input)}
+      />
+      {query.data?.runs.some((run) => run.providerRunId) ? (
+        <div className="rounded-xl border border-base-300 p-4">
+          <h2 className="mb-2 font-medium">Recent Maps searches</h2>
+          {query.data.runs
+            .filter((run) => run.providerRunId)
+            .slice(0, 5)
+            .map((run) => (
+              <div
+                key={run.id}
+                className="flex flex-wrap items-center gap-3 border-t border-base-200 py-2 text-sm"
+              >
+                <span className="flex-1">
+                  {run.query} · {run.location || "Shared Maps links"}
+                </span>
+                <span>
+                  {run.status === "complete"
+                    ? `${run.candidateCount} results`
+                    : run.status}
+                </span>
+                {run.status !== "complete" ? (
+                  <button
+                    className="btn btn-outline btn-xs"
+                    disabled={importRun.isPending}
+                    onClick={() => importRun.mutate(run.id)}
+                  >
+                    Check results
+                  </button>
+                ) : null}
+                <a
+                  className="text-primary hover:underline"
+                  href={`https://console.apify.com/actors/runs/${run.providerRunId}`}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  View in Apify
+                </a>
+              </div>
+            ))}
+        </div>
+      ) : null}
 
       <div className="flex flex-wrap items-center gap-2">
         <label className="input input-bordered input-sm flex flex-1 items-center gap-2 md:max-w-xs">
@@ -181,6 +245,16 @@ export function SourcesView() {
             </button>
           ))}
         </div>
+        <select
+          className="select select-bordered select-sm"
+          aria-label="Website filter"
+          value={websiteFilter}
+          onChange={(event) => setWebsiteFilter(event.target.value)}
+        >
+          <option value="all">All websites</option>
+          <option value="listed">Website recorded</option>
+          <option value="missing">Website not recorded</option>
+        </select>
         <span className="ml-auto text-xs text-base-content/50">
           {candidates.length} shown
         </span>
@@ -207,7 +281,7 @@ export function SourcesView() {
                   className="py-10 text-center text-base-content/40"
                 >
                   {all.length === 0
-                    ? "Run a search to find businesses to review."
+                    ? "Add a prospect manually or search Google Maps."
                     : "Nothing matches this filter."}
                 </td>
               </tr>
@@ -225,6 +299,11 @@ export function SourcesView() {
           </tbody>
         </table>
       </div>
+      <p className="text-xs text-base-content/50">
+        Showing up to 200 prospects, ordered by contact evidence. A missing
+        website field means it has not been recorded; verify before offering a
+        new website.
+      </p>
     </div>
   );
 }

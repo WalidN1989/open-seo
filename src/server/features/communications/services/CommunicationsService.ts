@@ -1,5 +1,7 @@
+import { WhatsappHandoffOutboxRepository } from "../repositories/WhatsappHandoffOutboxRepository";
 /* oxlint-disable max-lines, max-depth, max-params */
 import { waitUntil } from "cloudflare:workers";
+import { requireWhatsappSendAllowed } from "./WhatsappSendPolicyService";
 import { wakeWhatsappReply } from "./WhatsappReplyWakeupService";
 import type { z } from "zod";
 import { BusinessModuleService } from "@/server/features/business-modules/services/BusinessModuleService";
@@ -389,6 +391,8 @@ async function updateWhatsappConversation(
       contactId: conversation.contactId,
       status: conversation.status,
       replyMode: conversation.replyMode,
+      requestedReplyMode: input.replyMode,
+      replyRevision: conversation.replyRevision,
     },
   });
   return conversation;
@@ -1474,6 +1478,12 @@ async function ingestWhatsappGroup(
       message,
     );
     if (!ingestion.duplicate && ingestion.conversationId) {
+      const replyState =
+        await WhatsappAssistantRepository.getConversationReplyState(
+          connection.organizationId,
+          ingestion.conversationId,
+        );
+      if (!replyState || replyState.replyMode !== "auto") continue;
       const assistantSettings = await WhatsappAssistantRepository.getSettings(
         connection.organizationId,
       );
@@ -1487,7 +1497,9 @@ async function ingestWhatsappGroup(
           ingestion.conversationId,
           message.externalMessageId,
           assistantSettings.replyDelaySeconds,
+          replyState.replyRevision,
         );
+        if (!wakeup) continue;
         await wakeWhatsappReply(wakeup).catch((error: unknown) => {
           // The durable row survives; startup recovery or a manual run can retry it.
           console.error("Could not schedule WhatsApp reply wakeup", error);
@@ -1498,6 +1510,7 @@ async function ingestWhatsappGroup(
         connection,
         ingestion.conversationId,
         message,
+        { replyRevision: replyState.replyRevision },
       );
       if (handled) continue;
       await runWhatsappAutomationFallback(
@@ -1505,12 +1518,22 @@ async function ingestWhatsappGroup(
         ingestion.conversationId,
         message.sender,
         message.body,
-        ingestion.isNew,
+        {
+          isNew: ingestion.isNew,
+          revision: replyState.replyRevision,
+          messageId: message.externalMessageId,
+        },
       );
     }
   }
   for (const update of parsed.statuses) {
     await CommunicationsRepository.updateWhatsappDelivery(connection, update);
+    await WhatsappHandoffOutboxRepository.updateDelivery(
+      connection.organizationId,
+      connection.id,
+      update.externalMessageId,
+      update.status,
+    );
   }
   await CommunicationsRepository.markWhatsappConnectionConnected(connection.id);
 }
@@ -1683,6 +1706,7 @@ async function sendWhatsappMessage(
   organizationId: string,
   userId: string,
   input: z.infer<typeof sendWhatsappMessageSchema>,
+  enforceOutreach = false,
 ) {
   await BusinessModuleService.requireAccess(
     organizationId,
@@ -1703,6 +1727,12 @@ async function sendWhatsappMessage(
     input.body,
   );
   try {
+    await requireWhatsappSendAllowed(
+      organizationId,
+      input.conversationId,
+      true,
+      { outreach: enforceOutreach, excludeOutboundMessageId: queued.id },
+    );
     const result = await sendWhatsappText(
       context.connection,
       context.conversation.externalConversationId,

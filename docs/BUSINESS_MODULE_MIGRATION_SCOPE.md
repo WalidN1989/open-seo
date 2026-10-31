@@ -1,5 +1,44 @@
 # OpenSEO business module migration scope
 
+### 2026-10-27 — CRM Prospects release preparation
+
+Owner approved the first Prospects preview and explicitly requested deployment
+to the live VPS CRM, importing nine researched Australian businesses and a small
+Apify Google Maps test. Do not convert prospects or contact businesses during
+release verification. The initial prototype was built in the historical iCloud
+checkout; this release ports only its Prospects changes onto current main in an
+isolated VPS-workspace worktree. Existing voice, email, WhatsApp and CRM changes
+are preserved. Railway and Neon are not deployment or recovery dependencies.
+
+CRM now exposes **Prospects** at the project-scoped crm/prospects route; existing
+crm/sources links continue working. Supports manual entry, source links, notes,
+website filtering and explicit conversion to a Qualified lead. A missing website
+field means not recorded, not proof the business has no website. Examples are
+kept in private release material, not seeded into all organizations or public Git.
+
+Apify searches start asynchronously, persist the external run ID, and import
+completed dataset items through Check results without starting another actor.
+Maps profile URLs are not treated as owned websites. Credential-bearing calls
+stay server-side using the organization's existing encrypted connection. No new
+scheduler, global polling or outreach path is introduced.
+
+Conversion claims only new candidates and commits company/contact/lead/source
+state atomically through the existing dual-provider batch helper. Stage and owner
+relations are organization-validated; browser-supplied reviewer IDs are removed.
+Database inserts are chunked within D1 parameter limits. Additive migrations are
+SQLite 0117_prospect_apify_runs and Postgres 0096_prospect_apify_runs, adding only
+a nullable provider_run_id. Code rollback retains this column and prospect data.
+A current encrypted VPS backup and isolated restore/migration check are required
+before release. Preserve the current image digest, runtime settings and workers.
+
+Local selfhost build and ci:check pass. Full suite: 3,274 passed in the sandbox;
+the remaining reply-runner test requires a localhost listener and is rerun with
+that capability. Exact final-revision GitHub ci/docker-build checks must pass
+before merge, followed by the approved immutable image release through Coolify.
+The owner's release consent is recorded here; agents share the owner's GitHub
+identity, so this is not independent maintainer review. No review-control files
+were changed. The org-enforced Greptile baseline remains unverified.
+
 ### 2026-10-18 — BooXworm voice/WhatsApp CRM lookup prepared
 
 The owner requested CRM stock and price answers, sender-number-first order
@@ -2073,3 +2112,423 @@ reply-driven reordering, incoming refresh, stable chat selection and visible
 dates. No real customer message or production change was made. There is no
 schema migration or provider configuration change; rollback is the previous
 image with existing message and conversation records retained.
+### October 21, 2026 — WooCommerce orders and approved WhatsApp confirmations (pending release)
+
+The owner requested WooCommerce REST orders in the CRM and automatic WhatsApp
+order confirmations after template approval. Orders now has a WooCommerce setup
+panel for existing connected stores, history import and the selected Twilio
+sender/Content SID. History imports are read-only mirrors for Pending Approval;
+they do not enqueue messages or perform stock, invoice or courier actions.
+Amounts, billing contact details, line quantities and UTC provider revision times
+are validated at the boundary. Exact international phones are retained; Sri
+Lankan national numbers are normalized only with an explicit LK billing country.
+Ambiguous numbers cannot become WhatsApp recipients.
+
+WooCommerce reuses the atomic, revision-guarded order mirror and durable effect
+claims already used by Shopify. Shopify retains its existing basket fingerprint
+and fulfillment behavior. A separate live modification cursor uses bounded pages,
+provider pagination headers, a timestamp overlap and compare-and-set progress.
+The watermark advances only after the page succeeds. History import does not move
+this cursor. Duplicate snapshots and overlapping passes retain one confirmation
+effect per order; ambiguous provider outcomes stay unknown for staff review.
+
+Confirmations are explicitly enabled with a server-generated activation cutoff.
+Only orders created after that cutoff are eligible. The local template is bound
+to the selected sender and gets its wording, language, category and actual approval
+state from Twilio. Pending orders wait durably. Each selected worker pass refreshes
+approval, and dispatch checks current utility approval and unchanged wording again
+before sending. Rejected, paused, reclassified or unavailable templates cannot send;
+STOP, tenant/module access, disconnected senders and cancelled orders remain gated.
+Variables come directly from the order: customer first name, Woo order number and
+formatted order total. No language-model call is needed for fixed approved wording.
+
+A dedicated VPS bridge loop is opt-in via `WOOCOMMERCE_ORDER_CONNECTION_IDS` and
+runs one minute after the previous pass completes. Its internal endpoint requires
+the existing internal secret and that same allowlist. It processes only selected
+WooCommerce imports and confirmation effects; the global scheduler and other paused
+jobs remain untouched. The runtime binding writer forwards the allowlist. There
+is no database migration. Release requires passing checks, a verified backup,
+owner release approval, selected-connection activation and saving the submitted
+order confirmation SID against the correct connected Twilio sender. Never mark a
+pending SID approved manually or send a real customer message as a test. Rollback
+removes the allowlist, disables the confirmation setting and restores the prior
+image while preserving imported orders, cursors, effect/message history and all
+existing mailbox/courier settings. Never reset sending/unknown effects for a retry
+without checking provider history first.
+
+### 2026-10-21 — FITSMS integration and campaign preparation
+
+Owner requested FITSMS in DU for weekly promotions and flash discounts, with no
+SMS sent before campaign approval. Prepared on an isolated checkout of origin/main
+(eab3be47), preserving the unrelated primary-checkout changes.
+
+FITSMS is a connectable Channels integration using the existing encrypted API
+credential store. Its health check performs only GET /api/v4/sms?page=1 against
+the fixed FITSMS host, refuses redirects, validates application-level success,
+and returns neither provider history nor credentials. No live token was copied,
+rotated or tested. The owner must enter a fresh token through DU's connection
+form after release; the previously shared screenshot exposed the old token.
+
+The provider page saves organization-scoped weekly/flash campaign drafts with
+an approved-sender field, message, audience planning note and proposed date/time
+in Asia/Colombo. These are planning records, not executable schedules or actual
+recipient selections. Draft reads require Integrations view access and creation
+requires manage access. SQLite0107 / PG0086 add the normalized draft table.
+No send/launch/approval endpoint, callback route, contact upload, cron job or
+scheduler registration is introduced. Existing Twilio SMS inbox/send paths and
+legacy FITSMS subscriptions are untouched. Future activation must review actual
+consented recipients and opt-outs, segmentation/cost, sender approval, provider
+limits and timezone behavior, and obtain explicit campaign delivery approval.
+Do not infer approval from a saved draft or a connected credential.
+
+Validation: full suite 2,952 tests across 323 files passed. 646 focused tests
+including schema parity, real migrated SQLite
+organization isolation, input validation and no-network draft creation passed;
+existing Twilio SMS and integration authorization regressions passed. TypeScript,
+type-aware lint, Knip and production selfhost build passed. Browser preview used
+the actual form with synthetic in-memory data; saved weekly draft was visibly
+'Draft · Not scheduled', and 390px layout had no horizontal overflow.
+Screenshots: /private/tmp/fitsms-setup-desktop.png and
+/private/tmp/fitsms-setup-mobile.png. No live SMS, contact sync, account setting
+change, production migration or deployment occurred during preparation.
+
+Release approval: the owner explicitly authorized checking/fixing CI, merging
+PR58 and deploying the FITSMS preparation, while keeping SMS sends and schedules
+disabled until campaign approval. The first CI failed the existing integration
+page complexity limit (42, limit40); provider-specific visibility now lives in
+the FITSMS setup component, and the full local quality gate passes without any
+lint/check configuration changes. Live Coolify is manual-only on healthy main
+eab3be47. A fresh private VPS database/configuration backup was restored into an
+isolated database and PG0086 passed there, preserving existing product/order/SMS
+counts. The migration is additive; code rollback retains the empty draft table.
+Prior immutable image and settings are preserved privately on the VPS. Release
+verification remains pending until the final CI, merge and Coolify deployment.
+The owner's chat approval is the release authorization; it is not an independent
+second-person GitHub review. Org-wide Greptile baseline was not verified/changed.
+
+### October 23, 2026 — per-chat WhatsApp reply mode over MCP (review only)
+
+The owner accepted the access-code fix and authorized the next separate PR.
+`set_whatsapp_chat_mode` uses the existing inbox update service, organization
+membership, WhatsApp manage permission and audit trail. Agent list/get reads
+include `replyMode`. Manual persists across new inbound messages; returning to
+Auto does not replay old work or clear an independent pending handoff.
+
+SQLite 0109 / Postgres 0088 add reply revisions to conversations/jobs, an
+automatic-message revision marker and the last dispatch key. Mode changes,
+scheduling, model actions and dispatch use atomic guarded writes. Revision
+changes invalidate generation and rule fallback; stale queued jobs are deleted
+and unsent automated messages marked failed. One outbound record per inbound
+and revision prevents duplicate automatic dispatch. Already-claimed provider
+requests cannot be recalled. No process cache, timer map or polling loop is
+added; existing runner wakeups find an empty durable queue after cancellation.
+
+This branch is not deployed. Schema additions preserve existing modes/messages
+and remain compatible with the previous image; retain them on code rollback.
+The previous image would lose revision guards and the MCP mode tool. Production
+settings, providers and customer messages are untouched. The 24-hour-window,
+product-matching and team-handoff fixes remain outside this PR. Merge/deploy
+still require owner review of this PR and explicit release approval.
+
+### October 24, 2026 — named Shopify pickup methods and courier preflight (pending release)
+
+A reported missing waybill was traced read-only to a Shopify warehouse-pickup
+shipping method with no shipping address. DU recognized only the literal `pickup`
+code, so the named warehouse option was classified as delivery and reached courier
+preflight. No Citypak request was made; the catch-all failure message incorrectly
+suggested an uncertain provider submission. The selected courier worker is healthy
+and its existing activation settings remain unchanged.
+
+Shopify mapping now recognizes pickup/local-pickup code or title prefixes, including
+custom warehouse options, without treating delivery titles mentioning pickup or
+pickup-truck couriers as collection. The strict phone authorization boundary is
+unchanged. Pickup approval already excludes Citypak; review now explains that no
+waybill will be created. A missing delivery phone/address/city records a definite
+preflight failure stating no Citypak request was made. Actual provider/network
+exceptions retain the unknown/no-automatic-retry handling.
+
+This fix has no schema migration, provider call, historical replay, order approval,
+shipment creation or production configuration/data change. Existing records need
+separate scoped reconciliation against the authoritative Shopify shipping method;
+never substitute a billing address or reset uncertain courier actions automatically.
+Release still requires owner approval. Rollback is the previous image; no records
+or accepted provider actions are undone by a code rollback.
+
+Validation: ci:check and all 3,057 tests across 333 files pass, including synthetic
+pickup classification, delivery non-matches, no courier calls for pickup/missing
+fields, and unchanged ambiguous-provider no-retry behavior. Production build is
+verified separately in the PR. Production order data and activation settings remain
+unchanged while release approval is pending.
+
+### October 24, 2026 — PR63 approved and deployed
+
+Owner approved merging/deploying the named Shopify pickup and courier-preflight
+fix. PR63 merged as `a35087d3ef641a905560eb43682fd305480fbce4`; branch and merged-main
+CI/Docker checks passed. GitHub production image release 40098631921 published
+`sha256:090927a6f8f12c38416e1a58de35e1ac9a8b2b33988953b0327f8b1f70cf98aa`.
+Coolify deployed that exact revision and reports finished/healthy. The prior live
+revision was `31c0434b1f401ca70a38245054e1e76980a9e0fc`; its image, database and
+runtime/configuration backup were retained privately, and the database backup
+passed an isolated restore test before deployment.
+
+Post-deploy checks preserved protected records, existing order totals, inventory,
+all order-automation settings, 32 runtime settings and persistent mounts. Live
+synthetic mapper checks recognize the custom warehouse-pickup method, retain a
+delivery control and preserve the strict phone boundary. The shipped client includes
+the pickup notice; the authenticated live Orders workspace loads correctly. The
+selected Citypak worker started and completed a courier pass. There was no schema
+migration, provider test request, real order approval, manual courier retry or
+historical order reconciliation. Existing historical pickup flags/outbox outcomes
+remain unchanged; this release corrects future mapping and preflight behavior.
+Private release evidence is stored with the VPS release-preparation records.
+
+### October 24, 2026 — Shopify address phone normalization (pending release)
+
+An approved courier delivery failed before any Citypak request because Shopify's
+shipping phone was in national Sri Lankan format and DU retained only E.164.
+The source shipping address explicitly stated country LK. A scoped, guarded recovery
+backed up the existing order/effect privately, copied and normalized that source
+shipping phone, recorded an audit event and requeued only the definite preflight
+failure after verifying no DU/Shopify waybill existed. The ordinary worker created
+one waybill successfully. No reapproval, stock replay, customer message, global
+configuration change or uncertain-submission reset was performed. Per-order
+source/recovery evidence remains private on the VPS.
+
+The importer now validates each candidate phone independently, so an invalid
+higher-priority field cannot hide a valid shipping/billing number. National
+Sri Lankan numbers are normalized only with that phone's own address country LK;
+the order/customer phone fields and sender-based customer authorization retain
+strict E.164 with no inferred country. WooCommerce reuses the same explicit-country
+normalizer, preserving its existing LK behavior. No migration or historical bulk
+rewrite is included. Release requires reviewed passing checks and owner approval;
+rollback is the previous image, retaining the already recovered order and shipment.
+
+### October 21, 2026 — waybill WhatsApp notifications (pending release)
+
+Owner requested a WhatsApp message containing the Citypak WB ID after generation,
+and a second update the next day estimating delivery in 2–3 days. Two text utility
+templates were submitted in BooXworm's Twilio console: `booxworm_waybill_generated`
+and `booxworm_delivery_estimate`. Twilio approval is still pending; the separate
+existing order-confirmation template was verified approved. Provider references and
+screenshots stay in private local evidence, not in this public ledger.
+
+The new shipment-message gate and sender/template selections are independent of
+order confirmations. Both dialects add nullable configuration columns only; the
+migration leaves all notifications disabled. The selected Citypak worker can send
+only these explicitly enabled shipment notifications; it still does not start a
+global scheduler, confirmation or invoice jobs. Existing Citypak tracking and
+creation allowlists remain unchanged.
+
+Reconciliation queues each notification once per order through the existing durable
+outbox and unique key. It requires a newly generated Citypak shipment after the
+server-controlled enablement date, matching successful DU creation evidence, an
+approved template on the selected connected Twilio sender, an eligible order,
+module access and no recipient opt-out. Imported/linked historical waybills are
+excluded. The estimate waits at least 24 hours after generation and the first
+accepted notification, preventing a burst after downtime. Delivered, returned and
+cancelled orders are suppressed. Dispatch rechecks settings, order revision,
+shipment identity, access and opt-out before the external request. Uncertain sends
+are retained for manual provider-history review without automatic retry.
+
+New Citypak generation records write explicit ISO timestamps for both SQLite and
+Postgres. Activation requires approved templates and owner approval of the reviewed
+release. No live notification gate or existing confirmation setting was changed;
+no customer message was sent during implementation. Rollback disables shipment
+updates and restores the previous image; keep additive columns, message records and
+outbox outcomes, and never reset accepted/uncertain sends for automatic replay.
+
+Validation: ci:check passed; the full regression suite passed 2,933 tests across
+322 files. An isolated browser fixture rendered the actual settings component and
+confirmed saving emits only shipment configuration fields. Existing live order
+confirmation/Citypak gates were not edited. Production build and GitHub CI are
+recorded in the PR when complete.
+
+### October 24, 2026 — PR64 approved and deployed
+
+Owner approved merging/deploying PR64 after passing CI. It merged as
+`a9f8ff4b8bde8c327120b71958a19da5868ead1f`; branch and merged-main CI/Docker
+checks passed. Production image release 40100736710 published
+`sha256:b6d478abaacdb3872dbb32c95747a69259c8c7a4a5ffab221ecc8cad97866be0`.
+Coolify deployment `ed0e6ebe-26d7-48c5-b499-ad4b516f6726` finished healthy
+on that exact immutable image. The previous PR63 image and fresh database/runtime
+snapshots remain privately available; the database backup passed an isolated
+restore test before deployment.
+
+Post-deploy verification preserved protected record IDs, all shipment identities
+and counts, existing succeeded/unknown effect outcomes, order totals, stock,
+all automation settings, 32 runtime settings and persistent mounts. Live synthetic
+checks confirmed explicit-LK national address phone normalization, rejection without
+country evidence, valid candidate fallback, unchanged strict sender authorization
+and pickup classification. The Citypak worker completed its ordinary pass. The
+authenticated Citypak workspace retained the recovered order's single waybill.
+No historical replay, bulk import, reapproval, courier retry, provider test call,
+customer message or activation/configuration change was performed for this release.
+Rollback is the prior immutable image, retaining existing records and accepted
+provider actions. Private release evidence is with the VPS release preparations.
+
+### October 24, 2026 — existing-order source reconciliation
+
+Owner explicitly authorized fixing all existing affected orders after the scoped
+courier retry was explained. Audited 95 non-cancelled BooXworm Shopify orders
+against current source data using the deployed mapper. A private database dump,
+per-order/effect/shipment snapshots and source plan preceded guarded transactional
+repairs. Restored 38 missing phones and corrected five source-confirmed warehouse
+pickup classifications on orders without shipments; 42 distinct orders changed,
+each with an audit event. Approval states, monetary totals, inventory and activation
+settings were preserved. Existing courier submissions and shipments were retained.
+
+Only one confirmed/approved delivery met every retry condition: an explicit
+no-provider-request preflight failure, complete source-verified delivery details,
+no DU shipment and no Shopify tracking. Its existing effect was requeued once;
+the ordinary courier worker succeeded with exactly one linked shipment. No pending
+order was approved, no effect inserted, and no uncertain submission retried. Other
+effects remained unchanged. Twenty-eight records still have no valid source phone
+(two are pickup orders); details needing manual completion are listed privately.
+No missing phone or city was invented. Private source/recovery/verification records
+and the full backup are under the VPS order-reconciliation directory.
+
+### October 24, 2026 — shipment activation update
+
+Owner authorized updating/testing PR56 and deploying/activating shipment messages
+for future waybills only. Further clarification limits this activation to one
+waybill-generated notification; the next-day estimate stays disabled. Both original
+utility templates were approved on a fresh provider read, but generation wording
+promised a reminder. A separate generation-only utility template was submitted
+without that promise. Provider references and approval evidence remain private.
+
+Rebased migration metadata after the deployed history: SQLite 0110 / Postgres
+0089 add only four nullable shipment configuration fields. All existing migration
+SQL, snapshots and journal entries remain intact. Generation-only settings allow
+no estimate template and enqueue no estimate job; candidate selection stops after
+its single durable effect so old rows cannot starve new work. Existing order and
+courier effects remain independent. Current Twilio utility approval, wording and
+language are verified at configuration and before dispatch; unavailable/paused
+approval cannot send. Unknown sends never retry automatically. Voice order lookup
+and caller verification are a future flow, outside this activation.
+
+### 2026-10-24 — live Citypak voice lookup staged; OTP deferred
+
+The existing ElevenLabs integration already handles live CRM books, caller-bound
+orders, returning-caller recognition and post-call transcripts. A separate
+application branch adds authenticated `check_delivery` to query the caller's
+stored Citypak waybill during a call. It reuses the connected order fulfillment
+configuration, reads at most two waybills with six-second timeouts, distinguishes
+live courier responses from saved status, and never mutates orders, shipments,
+messages or stock. No migration or scheduler/provider activation is included.
+
+The separate ElevenLabs tool and prompt are staged with zero production traffic;
+Main and its existing shared tool remain unchanged. Backend deployment and a
+controlled caller test must precede any approved live switch. Targeted voice and
+Citypak regression tests, TypeScript, lint and production build pass.
+
+The owner deferred WhatsApp OTP pending a future test with their own number.
+Keep the local OTP draft, its submitted authentication template and its disabled
+settings separate; do not deploy its schema or activate message sending. A
+one-time reminder is scheduled for October 31. The existing daily waybill-template
+approval monitor and next-day-reminder-off requirement remain unchanged.
+
+The DU/BooXworm host allowlist is now saved on Main for
+`seo.digitalurgency.com.au`, `booxworm.lk` and `www.booxworm.lk`, with missing-
+Origin rejection enabled. Automatic review initially blocked publishing until
+native-phone compatibility could be checked. The owner then approved a controlled
+switch/test and confirmed their call connected and answered. ElevenLabs records
+a completed 66-second native SIP call on the secured Main version. Separate
+bounded WebSocket probes from an unapproved origin and without Origin were both
+rejected. Keep this verified security configuration during future agent merges.
+The production order/product tool remains unchanged; live Citypak is still
+staged with zero traffic, and OTP remains deferred.
+
+### 2026-10-24 — consented post-call book links tested; release pending
+
+The existing post-call pipeline recorded product-link consent and the requested
+URL, but its generic welcome sender did not use those fields. The separate
+book-link change reuses Twilio's existing approved `voice_call_followup` English
+quick-reply template, with customer name and catalogue URL in slots 1 and 2.
+No new template or ElevenLabs prompt change was needed.
+
+The new per-integration settings default to off. Activation applies to calls
+started after its cutoff, with explicit link consent, a confirmed WhatsApp
+number, an active product in the same workspace and a currently approved
+connected Twilio template. A durable WhatsApp message claim permits at most one
+provider attempt per call, including concurrent webhook replays and manual
+requests. Uncertain outcomes require receipt reconciliation, never an automatic
+resend. Delivery callbacks update the inbox and the linked call's displayed
+status. Generic welcome sending is suppressed for ElevenLabs book-link calls.
+
+The owner authorized one live test on their recent consented call. Exactly one
+existing-template message reached their number and Twilio confirmed it read;
+a second reconciliation found that receipt without sending again. The additive
+migration links such pre-release claims to their calls without creating messages.
+The new automatic workflow is not deployed or enabled yet. Its local tests,
+including concurrent claims, consent, opt-out, tenant isolation, webhook replay
+and migration preservation, pass. Follow the owner-reviewed PR/image release
+process before deploying and enabling only new calls. Do not replay other
+historical calls. OTP and next-day shipment reminders remain off.
+
+### 2026-10-24 — book-link release runtime check
+
+The owner approved publication of PR66 and PR67; both merged after passing their
+required checks. Combined regression tests passed (3,107). The pre-release VPS
+backup restored successfully and both additive PostgreSQL migrations preserved
+existing records, left book-link settings empty/off, and linked the one previously
+read owner-test message without sending again.
+
+An actual local Workerd probe caught unsupported `fetch` redirect mode `error`
+in the new template-approval and send wrappers before deployment. The follow-up
+uses `manual`, retains bounded requests and rejects non-success redirect
+responses without following their destinations. Regression coverage verifies
+approval redirects fail closed and message requests use the supported mode.
+No production image, activation cutoff, customer message or OTP action changed
+while preparing this correction. Include the compatibility fix in the reviewed
+release; do not deploy/activate the earlier unsupported request mode.
+
+### 2026-10-25 — external assistant cases and outbound logging (release pending)
+
+Owner approved a database/MCP workflow for an external assistant to run routines
+and outbound calls. No new app-side schedules, calling, retries, escalation or
+model requests are added. Existing inbound processing, WhatsApp replies, order
+sync and provider configuration remain independent and unchanged.
+
+The signed ElevenLabs post-call receiver now stores outbound calls without
+inbound welcome/book-link/recap/quote effects. It matches the actual callee and
+links only explicit case/provider-conversation IDs, supporting either webhook or
+assistant-update arrival order. Voice activity gains direction badges, Outbound
+and Cases views; list/get calls include outbound identity/case information. Number
+redaction was explicitly withdrawn by the owner for both existing and new paths.
+
+New tools are get_attention_list, create_case, update_case and list_cases. The
+attention check uses bounded previews and transactional per-organization source
+revisions; no full transcripts, provider/model calls, cursor writes or growing
+memory map. Database-only helpers flag explicit chat/CRM/order human activity as
+ready to close, but only the assistant explicitly closes the case. The agreed
+Sri Lanka calling policy is stored for the external assistant, not enforced by
+an app dialing system. See VOICE_CASES_MCP.md for the exact contract and setup.
+
+Additive SQLite 0114 / Postgres 0093 migrations seed source references and policy
+defaults without replaying business records or sending messages. Code rollback
+can leave these tables and triggers in place; preserve case data. Local tests,
+MCP protocol and migration checks use synthetic data only. No merge, deployment,
+provider configuration change, production migration or customer send is authorized
+by this implementation checkpoint. A production backup/restore drill, owner
+release approval, and long-running runtime stability check remain release gates.
+
+Validation includes real local MCP discovery/create/update/list/cursor checks,
+desktop and 390px browser navigation with synthetic outbound-to-case links,
+SQLite readiness/delta regressions, full PostgreSQL migration preservation and
+transaction visibility, twelve concurrent inserts and twenty mixed mode/case
+updates. An independent first-time MCP consumer completed the synthetic workflow
+without source access. Routine responses stayed small; the pre-existing global
+MCP tool catalogue is still large and was not removed or narrowed in this work.
+No long-running runtime stability pass is claimed by these bounded checks.
+
+## 2026-10-26 — Southside call workflow prepared, not released
+
+An isolated feature branch prepares a privately selected single-workspace
+rollout: authenticated live catalogue queries for the voice agent, durable
+post-call effects, a shared communications report, contact correction and
+owner-approved sends/callbacks. No scheduler was added. No real customer was
+contacted in tests. The voice-agent changes remain on a zero-traffic branch;
+the dedicated callback agent is inactive. Production image and data remain
+unchanged. See [SOUTHSIDE_WORKFLOW.md](./SOUTHSIDE_WORKFLOW.md) for tools,
+approval semantics, remaining provider setup and additive migration rollback.
+Owner review and exact release approval remain required before merge/deploy.

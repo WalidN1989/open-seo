@@ -54,6 +54,7 @@ import { Route as ProjectPProjectIdRouteRouteImport } from './routes/_project/p/
 import { Route as ProjectPProjectIdIndexRouteImport } from './routes/_project/p/$projectId/index'
 import { Route as ApiVoiceElevenlabsConnectionIdRouteImport } from './routes/api/voice/elevenlabs/$connectionId'
 import { Route as ApiVoiceElevenlabsQueryConnectionIdRouteImport } from './routes/api/voice/elevenlabs-query/$connectionId'
+import { Route as ApiVoiceElevenlabsOutboundConnectionIdRouteImport } from './routes/api/voice/elevenlabs-outbound/$connectionId'
 import { Route as ApiVoiceElevenlabsCallerConnectionIdRouteImport } from './routes/api/voice/elevenlabs-caller/$connectionId'
 import { Route as ApiVoiceDeepgramConnectionIdRouteImport } from './routes/api/voice/deepgram/$connectionId'
 import { Route as ApiSmsTwilioConnectionIdRouteImport } from './routes/api/sms/twilio/$connectionId'
@@ -101,6 +102,7 @@ import { Route as ProjectPProjectIdModulesIntegrationsProviderKeyRouteImport } f
 import { Route as ProjectPProjectIdModulesCrmSourcesRouteImport } from './routes/_project/p/$projectId/modules/crm/sources'
 import { Route as ProjectPProjectIdModulesCrmSmsRouteImport } from './routes/_project/p/$projectId/modules/crm/sms'
 import { Route as ProjectPProjectIdModulesCrmQuotationsRouteImport } from './routes/_project/p/$projectId/modules/crm/quotations'
+import { Route as ProjectPProjectIdModulesCrmProspectsRouteImport } from './routes/_project/p/$projectId/modules/crm/prospects'
 import { Route as ProjectPProjectIdModulesCrmProductsRouteImport } from './routes/_project/p/$projectId/modules/crm/products'
 import { Route as ProjectPProjectIdModulesCrmOrdersRouteImport } from './routes/_project/p/$projectId/modules/crm/orders'
 import { Route as ProjectPProjectIdModulesCrmMeetingsRouteImport } from './routes/_project/p/$projectId/modules/crm/meetings'
@@ -340,6 +342,12 @@ const ApiVoiceElevenlabsQueryConnectionIdRoute =
   ApiVoiceElevenlabsQueryConnectionIdRouteImport.update({
     id: '/api/voice/elevenlabs-query/$connectionId',
     path: '/api/voice/elevenlabs-query/$connectionId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiVoiceElevenlabsOutboundConnectionIdRoute =
+  ApiVoiceElevenlabsOutboundConnectionIdRouteImport.update({
+    id: '/api/voice/elevenlabs-outbound/$connectionId',
+    path: '/api/voice/elevenlabs-outbound/$connectionId',
     getParentRoute: () => rootRouteImport,
   } as any)
 const ApiVoiceElevenlabsCallerConnectionIdRoute =
@@ -615,6 +623,12 @@ const ProjectPProjectIdModulesCrmQuotationsRoute =
     path: '/quotations',
     getParentRoute: () => ProjectPProjectIdModulesCrmRoute,
   } as any)
+const ProjectPProjectIdModulesCrmProspectsRoute =
+  ProjectPProjectIdModulesCrmProspectsRouteImport.update({
+    id: '/prospects',
+    path: '/prospects',
+    getParentRoute: () => ProjectPProjectIdModulesCrmRoute,
+  } as any)
 const ProjectPProjectIdModulesCrmProductsRoute =
   ProjectPProjectIdModulesCrmProductsRouteImport.update({
     id: '/products',
@@ -750,6 +764,7 @@ export interface FileRoutesByFullPath {
   '/api/sms/twilio/$connectionId': typeof ApiSmsTwilioConnectionIdRoute
   '/api/voice/deepgram/$connectionId': typeof ApiVoiceDeepgramConnectionIdRoute
   '/api/voice/elevenlabs-caller/$connectionId': typeof ApiVoiceElevenlabsCallerConnectionIdRoute
+  '/api/voice/elevenlabs-outbound/$connectionId': typeof ApiVoiceElevenlabsOutboundConnectionIdRoute
   '/api/voice/elevenlabs-query/$connectionId': typeof ApiVoiceElevenlabsQueryConnectionIdRoute
   '/api/voice/elevenlabs/$connectionId': typeof ApiVoiceElevenlabsConnectionIdRoute
   '/p/$projectId/': typeof ProjectPProjectIdIndexRoute
@@ -778,6 +793,7 @@ export interface FileRoutesByFullPath {
   '/p/$projectId/modules/crm/meetings': typeof ProjectPProjectIdModulesCrmMeetingsRoute
   '/p/$projectId/modules/crm/orders': typeof ProjectPProjectIdModulesCrmOrdersRoute
   '/p/$projectId/modules/crm/products': typeof ProjectPProjectIdModulesCrmProductsRouteWithChildren
+  '/p/$projectId/modules/crm/prospects': typeof ProjectPProjectIdModulesCrmProspectsRoute
   '/p/$projectId/modules/crm/quotations': typeof ProjectPProjectIdModulesCrmQuotationsRoute
   '/p/$projectId/modules/crm/sms': typeof ProjectPProjectIdModulesCrmSmsRoute
   '/p/$projectId/modules/crm/sources': typeof ProjectPProjectIdModulesCrmSourcesRoute
@@ -846,6 +862,7 @@ export interface FileRoutesByTo {
   '/api/sms/twilio/$connectionId': typeof ApiSmsTwilioConnectionIdRoute
   '/api/voice/deepgram/$connectionId': typeof ApiVoiceDeepgramConnectionIdRoute
   '/api/voice/elevenlabs-caller/$connectionId': typeof ApiVoiceElevenlabsCallerConnectionIdRoute
+  '/api/voice/elevenlabs-outbound/$connectionId': typeof ApiVoiceElevenlabsOutboundConnectionIdRoute
   '/api/voice/elevenlabs-query/$connectionId': typeof ApiVoiceElevenlabsQueryConnectionIdRoute
   '/api/voice/elevenlabs/$connectionId': typeof ApiVoiceElevenlabsConnectionIdRoute
   '/p/$projectId': typeof ProjectPProjectIdIndexRoute
@@ -871,6 +888,7 @@ export interface FileRoutesByTo {
   '/p/$projectId/modules/crm/inventory': typeof ProjectPProjectIdModulesCrmInventoryRoute
   '/p/$projectId/modules/crm/meetings': typeof ProjectPProjectIdModulesCrmMeetingsRoute
   '/p/$projectId/modules/crm/orders': typeof ProjectPProjectIdModulesCrmOrdersRoute
+  '/p/$projectId/modules/crm/prospects': typeof ProjectPProjectIdModulesCrmProspectsRoute
   '/p/$projectId/modules/crm/quotations': typeof ProjectPProjectIdModulesCrmQuotationsRoute
   '/p/$projectId/modules/crm/sms': typeof ProjectPProjectIdModulesCrmSmsRoute
   '/p/$projectId/modules/crm/sources': typeof ProjectPProjectIdModulesCrmSourcesRoute
@@ -950,6 +968,7 @@ export interface FileRoutesById {
   '/api/sms/twilio/$connectionId': typeof ApiSmsTwilioConnectionIdRoute
   '/api/voice/deepgram/$connectionId': typeof ApiVoiceDeepgramConnectionIdRoute
   '/api/voice/elevenlabs-caller/$connectionId': typeof ApiVoiceElevenlabsCallerConnectionIdRoute
+  '/api/voice/elevenlabs-outbound/$connectionId': typeof ApiVoiceElevenlabsOutboundConnectionIdRoute
   '/api/voice/elevenlabs-query/$connectionId': typeof ApiVoiceElevenlabsQueryConnectionIdRoute
   '/api/voice/elevenlabs/$connectionId': typeof ApiVoiceElevenlabsConnectionIdRoute
   '/_project/p/$projectId/': typeof ProjectPProjectIdIndexRoute
@@ -978,6 +997,7 @@ export interface FileRoutesById {
   '/_project/p/$projectId/modules/crm/meetings': typeof ProjectPProjectIdModulesCrmMeetingsRoute
   '/_project/p/$projectId/modules/crm/orders': typeof ProjectPProjectIdModulesCrmOrdersRoute
   '/_project/p/$projectId/modules/crm/products': typeof ProjectPProjectIdModulesCrmProductsRouteWithChildren
+  '/_project/p/$projectId/modules/crm/prospects': typeof ProjectPProjectIdModulesCrmProspectsRoute
   '/_project/p/$projectId/modules/crm/quotations': typeof ProjectPProjectIdModulesCrmQuotationsRoute
   '/_project/p/$projectId/modules/crm/sms': typeof ProjectPProjectIdModulesCrmSmsRoute
   '/_project/p/$projectId/modules/crm/sources': typeof ProjectPProjectIdModulesCrmSourcesRoute
@@ -1054,6 +1074,7 @@ export interface FileRouteTypes {
     | '/api/sms/twilio/$connectionId'
     | '/api/voice/deepgram/$connectionId'
     | '/api/voice/elevenlabs-caller/$connectionId'
+    | '/api/voice/elevenlabs-outbound/$connectionId'
     | '/api/voice/elevenlabs-query/$connectionId'
     | '/api/voice/elevenlabs/$connectionId'
     | '/p/$projectId/'
@@ -1082,6 +1103,7 @@ export interface FileRouteTypes {
     | '/p/$projectId/modules/crm/meetings'
     | '/p/$projectId/modules/crm/orders'
     | '/p/$projectId/modules/crm/products'
+    | '/p/$projectId/modules/crm/prospects'
     | '/p/$projectId/modules/crm/quotations'
     | '/p/$projectId/modules/crm/sms'
     | '/p/$projectId/modules/crm/sources'
@@ -1150,6 +1172,7 @@ export interface FileRouteTypes {
     | '/api/sms/twilio/$connectionId'
     | '/api/voice/deepgram/$connectionId'
     | '/api/voice/elevenlabs-caller/$connectionId'
+    | '/api/voice/elevenlabs-outbound/$connectionId'
     | '/api/voice/elevenlabs-query/$connectionId'
     | '/api/voice/elevenlabs/$connectionId'
     | '/p/$projectId'
@@ -1175,6 +1198,7 @@ export interface FileRouteTypes {
     | '/p/$projectId/modules/crm/inventory'
     | '/p/$projectId/modules/crm/meetings'
     | '/p/$projectId/modules/crm/orders'
+    | '/p/$projectId/modules/crm/prospects'
     | '/p/$projectId/modules/crm/quotations'
     | '/p/$projectId/modules/crm/sms'
     | '/p/$projectId/modules/crm/sources'
@@ -1253,6 +1277,7 @@ export interface FileRouteTypes {
     | '/api/sms/twilio/$connectionId'
     | '/api/voice/deepgram/$connectionId'
     | '/api/voice/elevenlabs-caller/$connectionId'
+    | '/api/voice/elevenlabs-outbound/$connectionId'
     | '/api/voice/elevenlabs-query/$connectionId'
     | '/api/voice/elevenlabs/$connectionId'
     | '/_project/p/$projectId/'
@@ -1281,6 +1306,7 @@ export interface FileRouteTypes {
     | '/_project/p/$projectId/modules/crm/meetings'
     | '/_project/p/$projectId/modules/crm/orders'
     | '/_project/p/$projectId/modules/crm/products'
+    | '/_project/p/$projectId/modules/crm/prospects'
     | '/_project/p/$projectId/modules/crm/quotations'
     | '/_project/p/$projectId/modules/crm/sms'
     | '/_project/p/$projectId/modules/crm/sources'
@@ -1326,6 +1352,7 @@ export interface RootRouteChildren {
   ApiSmsTwilioConnectionIdRoute: typeof ApiSmsTwilioConnectionIdRoute
   ApiVoiceDeepgramConnectionIdRoute: typeof ApiVoiceDeepgramConnectionIdRoute
   ApiVoiceElevenlabsCallerConnectionIdRoute: typeof ApiVoiceElevenlabsCallerConnectionIdRoute
+  ApiVoiceElevenlabsOutboundConnectionIdRoute: typeof ApiVoiceElevenlabsOutboundConnectionIdRoute
   ApiVoiceElevenlabsQueryConnectionIdRoute: typeof ApiVoiceElevenlabsQueryConnectionIdRoute
   ApiVoiceElevenlabsConnectionIdRoute: typeof ApiVoiceElevenlabsConnectionIdRoute
   ApiEmailAttachmentsMessageIdAttachmentIdRoute: typeof ApiEmailAttachmentsMessageIdAttachmentIdRoute
@@ -1647,6 +1674,13 @@ declare module '@tanstack/react-router' {
       path: '/api/voice/elevenlabs-query/$connectionId'
       fullPath: '/api/voice/elevenlabs-query/$connectionId'
       preLoaderRoute: typeof ApiVoiceElevenlabsQueryConnectionIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/voice/elevenlabs-outbound/$connectionId': {
+      id: '/api/voice/elevenlabs-outbound/$connectionId'
+      path: '/api/voice/elevenlabs-outbound/$connectionId'
+      fullPath: '/api/voice/elevenlabs-outbound/$connectionId'
+      preLoaderRoute: typeof ApiVoiceElevenlabsOutboundConnectionIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/voice/elevenlabs-caller/$connectionId': {
@@ -1978,6 +2012,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProjectPProjectIdModulesCrmQuotationsRouteImport
       parentRoute: typeof ProjectPProjectIdModulesCrmRoute
     }
+    '/_project/p/$projectId/modules/crm/prospects': {
+      id: '/_project/p/$projectId/modules/crm/prospects'
+      path: '/prospects'
+      fullPath: '/p/$projectId/modules/crm/prospects'
+      preLoaderRoute: typeof ProjectPProjectIdModulesCrmProspectsRouteImport
+      parentRoute: typeof ProjectPProjectIdModulesCrmRoute
+    }
     '/_project/p/$projectId/modules/crm/products': {
       id: '/_project/p/$projectId/modules/crm/products'
       path: '/products'
@@ -2137,6 +2178,7 @@ interface ProjectPProjectIdModulesCrmRouteChildren {
   ProjectPProjectIdModulesCrmMeetingsRoute: typeof ProjectPProjectIdModulesCrmMeetingsRoute
   ProjectPProjectIdModulesCrmOrdersRoute: typeof ProjectPProjectIdModulesCrmOrdersRoute
   ProjectPProjectIdModulesCrmProductsRoute: typeof ProjectPProjectIdModulesCrmProductsRouteWithChildren
+  ProjectPProjectIdModulesCrmProspectsRoute: typeof ProjectPProjectIdModulesCrmProspectsRoute
   ProjectPProjectIdModulesCrmQuotationsRoute: typeof ProjectPProjectIdModulesCrmQuotationsRoute
   ProjectPProjectIdModulesCrmSmsRoute: typeof ProjectPProjectIdModulesCrmSmsRoute
   ProjectPProjectIdModulesCrmSourcesRoute: typeof ProjectPProjectIdModulesCrmSourcesRoute
@@ -2163,6 +2205,8 @@ const ProjectPProjectIdModulesCrmRouteChildren: ProjectPProjectIdModulesCrmRoute
       ProjectPProjectIdModulesCrmOrdersRoute,
     ProjectPProjectIdModulesCrmProductsRoute:
       ProjectPProjectIdModulesCrmProductsRouteWithChildren,
+    ProjectPProjectIdModulesCrmProspectsRoute:
+      ProjectPProjectIdModulesCrmProspectsRoute,
     ProjectPProjectIdModulesCrmQuotationsRoute:
       ProjectPProjectIdModulesCrmQuotationsRoute,
     ProjectPProjectIdModulesCrmSmsRoute: ProjectPProjectIdModulesCrmSmsRoute,
@@ -2415,6 +2459,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiVoiceDeepgramConnectionIdRoute: ApiVoiceDeepgramConnectionIdRoute,
   ApiVoiceElevenlabsCallerConnectionIdRoute:
     ApiVoiceElevenlabsCallerConnectionIdRoute,
+  ApiVoiceElevenlabsOutboundConnectionIdRoute:
+    ApiVoiceElevenlabsOutboundConnectionIdRoute,
   ApiVoiceElevenlabsQueryConnectionIdRoute:
     ApiVoiceElevenlabsQueryConnectionIdRoute,
   ApiVoiceElevenlabsConnectionIdRoute: ApiVoiceElevenlabsConnectionIdRoute,

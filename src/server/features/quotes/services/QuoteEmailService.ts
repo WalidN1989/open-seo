@@ -1,3 +1,4 @@
+import { isSouthsideWorkflow } from "@/server/features/customer-workflow/policy";
 import { BusinessAuditRepository } from "@/server/features/business-modules/repositories/BusinessAuditRepository";
 import { BusinessModuleService } from "@/server/features/business-modules/services/BusinessModuleService";
 import { LeadDetailRepository } from "@/server/features/crm/repositories/LeadDetailRepository";
@@ -37,6 +38,7 @@ async function emailQuote(
   organizationId: string,
   userId: string,
   input: { quoteId: string; to?: string | null; message?: string | null },
+  humanApproved = false,
 ) {
   await BusinessModuleService.requireAccess(
     organizationId,
@@ -92,20 +94,27 @@ async function emailQuote(
     footer: companyFooterLines(issuer, yearOf(quote.issueDate)).join("\n"),
   });
 
-  const sent = await EmailSendService.sendFromConnectedMailbox(organizationId, {
-    to,
-    subject: email.subject,
-    text: email.text,
-    html: email.html,
-    authoredBy: userId,
-    attachments: [
-      {
-        filename: pdf.filename,
-        contentType: "application/pdf",
-        contentBase64: toBase64(pdf.bytes),
-      },
-    ],
-  });
+  const sent = await EmailSendService.sendFromConnectedMailbox(
+    organizationId,
+    {
+      to,
+      subject: email.subject,
+      text: email.text,
+      html: email.html,
+      authoredBy: userId,
+      attachments: [
+        {
+          filename: pdf.filename,
+          contentType: "application/pdf",
+          contentBase64: toBase64(pdf.bytes),
+        },
+      ],
+    },
+    {
+      humanApproved:
+        humanApproved && (await isSouthsideWorkflow(organizationId)),
+    },
+  );
   if (!sent) {
     throw new AppError(
       "VALIDATION_ERROR",

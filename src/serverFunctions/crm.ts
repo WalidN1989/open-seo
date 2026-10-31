@@ -6,6 +6,8 @@ import {
   promoteCandidateSchema,
   rejectCandidateSchema,
   startSourceRunSchema,
+  createProspectSchema,
+  refreshSourceRunSchema,
 } from "@/types/schemas/sources";
 import { requireAuthenticatedContext } from "@/serverFunctions/middleware";
 import {
@@ -137,4 +139,22 @@ export const rejectSourceCandidate = createServerFn({ method: "POST" })
   .validator(rejectCandidateSchema)
   .handler(({ context, data }) =>
     SourceService.reject(context.organizationId, context.userId, data),
+  );
+
+export const createCrmProspect = createServerFn({ method: "POST" })
+  .middleware(requireAuthenticatedContext)
+  .validator(createProspectSchema)
+  .handler(({ context, data }) =>
+    SourceService.createProspect(context.organizationId, context.userId, data),
+  );
+
+export const refreshCrmSourceRun = createServerFn({ method: "POST" })
+  .middleware(requireAuthenticatedContext)
+  .validator(refreshSourceRunSchema)
+  .handler(({ context, data }) =>
+    SourceService.refreshRun(
+      context.organizationId,
+      context.userId,
+      data.runId,
+    ),
   );

@@ -16,6 +16,8 @@ beforeAll(async () => {
   state.db = drizzle(client);
   for (const table of [
     schema.voicePhoneCalls,
+    schema.voiceCaseCalls,
+    schema.whatsappMessages,
     schema.crmContacts,
     schema.crmLeads,
     schema.businessSettings,
@@ -77,4 +79,55 @@ describe("call repository tenant and time filters", () => {
     expect(row?.contact).toBeNull();
     expect(row?.lead).toBeNull();
   });
+});
+
+it("shows live message delivery status only for a message in the same workspace", async () => {
+  await client.execute(
+    "INSERT INTO whatsapp_messages (id,organization_id,status) VALUES ('foreign-message','org-b','read'),('owned-message','org-a','delivered')",
+  );
+  await client.execute(
+    "UPDATE voice_phone_calls SET book_link_message_id='foreign-message' WHERE id='recent'",
+  );
+  await client.execute(
+    "UPDATE voice_phone_calls SET book_link_message_id='owned-message' WHERE id='fallback'",
+  );
+  const rows = await PhoneCallRepository.listCalls("org-a");
+  expect(
+    rows.find((row) => row.call.id === "recent")?.bookLinkMessage,
+  ).toBeNull();
+  expect(
+    rows.find((row) => row.call.id === "fallback")?.bookLinkMessage?.status,
+  ).toBe("delivered");
+  await client.execute(
+    "UPDATE whatsapp_messages SET status='read' WHERE id='owned-message'",
+  );
+  expect(
+    (await PhoneCallRepository.listCalls("org-a")).find(
+      (row) => row.call.id === "fallback",
+    )?.bookLinkMessage?.status,
+  ).toBe("read");
+});
+
+it("keeps inbound conflicts fatal, while outbound storage can safely deduplicate", async () => {
+  await client.execute(
+    "CREATE UNIQUE INDEX fixture_phone_org_conv ON voice_phone_calls(organization_id, external_conversation_id)",
+  );
+  const row = {
+    id: "insert-once",
+    organizationId: "org-a",
+    externalConversationId: "insert-test",
+    provider: "elevenlabs",
+  };
+  await PhoneCallRepository.insertCall(row);
+  await expect(
+    PhoneCallRepository.insertCall({ ...row, id: "second-inbound" }),
+  ).rejects.toThrow();
+  expect(
+    (
+      await PhoneCallRepository.insertCall(
+        { ...row, id: "second-outbound" },
+        { deduplicate: true },
+      )
+    ).id,
+  ).toBe("insert-once");
 });

@@ -1,3 +1,4 @@
+import { customerWorkflowSurface } from "@/server/mcp/tools/customer-workflow-tools";
 /**
  * Every tool the MCP server offers, in one list.
  *
@@ -74,12 +75,14 @@ import { reportSurface } from "@/server/mcp/tools/report-tools";
 import { researchKeywordsTool } from "@/server/mcp/tools/research-keywords";
 import { runRankTrackerTool } from "@/server/mcp/tools/run-rank-tracker";
 import { saveKeywordsTool } from "@/server/mcp/tools/save-keywords";
+import { caseSurface } from "@/server/mcp/tools/case-tools";
 import { callSurface } from "@/server/mcp/tools/call-tools";
 import { smsSurface } from "@/server/mcp/tools/sms-tools";
 import { whatsappSurface } from "@/server/mcp/tools/whatsapp-tools";
 import { whoamiTool } from "@/server/mcp/tools/whoami";
 
 export const MODULE_SURFACES: readonly McpModuleSurface[] = [
+  customerWorkflowSurface,
   optimizationsSurface,
   invoiceSurface,
   quoteSurface,
@@ -89,6 +92,7 @@ export const MODULE_SURFACES: readonly McpModuleSurface[] = [
   emailSurface,
   smsSurface,
   callSurface,
+  caseSurface,
   whatsappSurface,
 ];
 

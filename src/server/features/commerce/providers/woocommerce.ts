@@ -181,3 +181,37 @@ export async function fetchProductPage(
   }
   return parsed.data;
 }
+
+/** Bounded, resumable order import using the existing read-only credentials. */
+export async function fetchWooOrderPage(
+  connection: IntegrationRecord,
+  page: number,
+  modifiedAfter: string | null,
+  fetcher: typeof fetch = fetch,
+) {
+  const response = await request(
+    connection,
+    "/wp-json/wc/v3/orders",
+    new URLSearchParams({
+      per_page: "25",
+      page: String(page),
+      status: "any",
+      orderby: "modified",
+      order: "desc",
+      dates_are_gmt: "true",
+      ...(modifiedAfter
+        ? { modified_after: modifiedAfter.replace(/Z$/, "") }
+        : {}),
+    }),
+    fetcher,
+  );
+  const payload: unknown = await response.json();
+  const totalPages = response.headers.get("x-wp-totalpages");
+  return {
+    payload,
+    hasMore:
+      totalPages !== null
+        ? page < z.coerce.number().int().nonnegative().parse(totalPages)
+        : Array.isArray(payload) && payload.length === 25,
+  };
+}

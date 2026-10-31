@@ -73,6 +73,7 @@ const postCallSchema = z.object({
     agent_id: z.string().optional(),
     agent_name: z.string().nullable().optional(),
     conversation_id: z.string().min(1),
+    recording_url: z.string().url().nullable().optional(),
     transcript: z.array(transcriptTurn).default([]),
     metadata: z
       .object({
@@ -123,6 +124,8 @@ const postCallSchema = z.object({
 
 export type PhoneCallReport = {
   conversationId: string;
+  caseId?: string | null;
+  recordingUrl?: string | null;
   agentId: string | null;
   agentName: string | null;
   direction: string | null;
@@ -254,16 +257,29 @@ export function readPostCall(
     if (value === null || value === undefined || value === "") continue;
     captured[key] = typeof value === "string" ? value : JSON.stringify(value);
   }
+  const outbound = phone?.direction === "outbound";
+  const externalNumber = normalisePhone(phone?.external_number, callerRegion);
   const start = data.metadata.start_time_unix_secs;
   return {
     conversationId: data.conversation_id,
+    caseId:
+      typeof dynamic?.case_id === "string" && dynamic.case_id.length <= 200
+        ? dynamic.case_id
+        : null,
+    recordingUrl: data.recording_url?.startsWith("https://")
+      ? data.recording_url
+      : null,
     agentId: data.agent_id ?? null,
     agentName: data.agent_name ?? null,
     direction: phone?.direction ?? null,
-    callerNumber:
-      normalisePhone(phone?.external_number, callerRegion) ??
-      normalisePhone(dynamic?.system__caller_id, callerRegion),
-    calledNumber,
+    callerNumber: outbound
+      ? calledNumber
+      : (externalNumber ??
+        normalisePhone(dynamic?.system__caller_id, callerRegion)),
+    calledNumber: outbound
+      ? (externalNumber ??
+        normalisePhone(dynamic?.system__called_number, callerRegion))
+      : calledNumber,
     startedAt:
       typeof start === "number" ? new Date(start * 1000).toISOString() : null,
     durationSeconds: data.metadata.call_duration_secs ?? null,
@@ -277,5 +293,52 @@ export function readPostCall(
         message: turn.message ?? "",
         atSeconds: turn.time_in_call_secs ?? null,
       })),
+  };
+}
+
+/** Failed outbound attempts have no transcript and may arrive before case linking. */
+export function readOutboundFailure(
+  payload: unknown,
+  region: PhoneRegion,
+): PhoneCallReport | null {
+  const parsed = z
+    .object({
+      type: z.literal("call_initiation_failure"),
+      data: z.object({
+        agent_id: z.string().optional(),
+        conversation_id: z.string().min(1),
+        failure_reason: z.enum(["busy", "no-answer", "unknown"]),
+        metadata: z.object({
+          body: z.object({
+            from_number: z.union([z.string(), z.number()]).optional(),
+            to_number: z.union([z.string(), z.number()]).optional(),
+            From: z.string().optional(),
+            To: z.string().optional(),
+          }),
+        }),
+      }),
+    })
+    .safeParse(payload);
+  if (!parsed.success) return null;
+  const { data } = parsed.data;
+  const from = data.metadata.body.from_number ?? data.metadata.body.From;
+  const to = data.metadata.body.to_number ?? data.metadata.body.To;
+  return {
+    conversationId: data.conversation_id,
+    agentId: data.agent_id ?? null,
+    agentName: null,
+    direction: "outbound",
+    caseId: null,
+    callerNumber: normalisePhone(
+      from === undefined ? null : String(from),
+      region,
+    ),
+    calledNumber: normalisePhone(to === undefined ? null : String(to), region),
+    startedAt: null,
+    durationSeconds: 0,
+    summary: `Outbound call: ${data.failure_reason}`,
+    callSuccessful: data.failure_reason,
+    captured: {},
+    transcript: [],
   };
 }

@@ -1,3 +1,6 @@
+import { CommunicationsReport } from "./voice/CommunicationsReport";
+import { getCustomerWorkflowAvailability } from "@/serverFunctions/customer-workflow";
+import { usePendingHandoffs, HandoffStatus } from "./whatsapp/HandoffPending";
 /* oxlint-disable max-lines, max-lines-per-function, complexity */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
@@ -21,7 +24,9 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { AssistantConfigSection } from "./whatsapp/AssistantConfigSection";
+import { CasesSection } from "./voice/CasesSection";
 import { PhoneCallsSection } from "./voice/PhoneCallsSection";
+import { ContactEditButton } from "./crm/ContactEditButton";
 import {
   AskedQuestionsSection,
   InstantAnswersSection,
@@ -209,6 +214,7 @@ function isConversationStatusFilter(
 export function WhatsappWorkspace({
   initialConversationId,
 }: { initialConversationId?: string } = {}) {
+  const handoffs = usePendingHandoffs();
   const client = useQueryClient();
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [mobileConversationOpen, setMobileConversationOpen] = useState(
@@ -976,7 +982,13 @@ export function WhatsappWorkspace({
                                 )}
                               </time>
                               <p className="truncate text-xs text-base-content/60">
-                                {lastMessage?.body || "No messages yet"}
+                                {handoffs.data?.some(
+                                  (row) =>
+                                    row.handoff.conversationId ===
+                                      conversation.id && row.status !== "sent",
+                                )
+                                  ? "Handoff · alert failed or queued"
+                                  : lastMessage?.body || "No messages yet"}
                               </p>
                             </div>
                           </button>
@@ -986,6 +998,12 @@ export function WhatsappWorkspace({
                   </aside>
 
                   <div className="wa-chat">
+                    {selectedConversation ? (
+                      <HandoffStatus
+                        rows={handoffs.data ?? []}
+                        conversationId={selectedConversation.id}
+                      />
+                    ) : null}
                     <header className="wa-chat-header">
                       <button
                         className="btn btn-ghost btn-square btn-sm wa-mobile-back"
@@ -1207,6 +1225,9 @@ export function WhatsappWorkspace({
                         <p className="text-xs text-base-content/55">
                           {selectedConversation?.externalConversationId}
                         </p>
+                        {selectedContact ? (
+                          <ContactEditButton contact={selectedContact} />
+                        ) : null}
                       </div>
                       {selectedConversation ? (
                         <div className="space-y-4">
@@ -1505,6 +1526,7 @@ export function WhatsappWorkspace({
                         <th>Marketing</th>
                         <th>Utility</th>
                         <th>Added</th>
+                        <th>Actions</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1551,6 +1573,9 @@ export function WhatsappWorkspace({
                               {new Date(
                                 contactRow.createdAt,
                               ).toLocaleDateString()}
+                            </td>
+                            <td>
+                              <ContactEditButton contact={contactRow} />
                             </td>
                           </tr>
                         );
@@ -1789,6 +1814,15 @@ function ContactToggle({
 }
 
 export function VoiceWorkspace() {
+  const [tab, setTab] = useState<
+    "activity" | "outbound" | "cases" | "reporting"
+  >("activity");
+  const [caseId, setCaseId] = useState<string | null>(null);
+  const workflow = useQuery({
+    queryKey: ["voice", "southside", "workflow-availability"],
+    queryFn: () => getCustomerWorkflowAvailability(),
+    staleTime: 60000,
+  });
   return (
     <Workspace
       title="Voice Agent"
@@ -1801,7 +1835,46 @@ export function VoiceWorkspace() {
           transcripts appear below.
         </p>
       </Panel>
-      <PhoneCallsSection />
+      <div role="tablist" className="tabs tabs-border">
+        {(
+          [
+            "activity",
+            "outbound",
+            "cases",
+            ...(workflow.data?.enabled ? ["reporting" as const] : []),
+          ] as const
+        ).map((value) => (
+          <button
+            key={value}
+            role="tab"
+            aria-selected={tab === value}
+            className={`tab ${tab === value ? "tab-active" : ""}`}
+            onClick={() => setTab(value)}
+          >
+            {value === "activity"
+              ? "Call activity"
+              : value === "outbound"
+                ? "Outbound"
+                : value === "reporting"
+                  ? "Reporting"
+                  : "Cases"}
+          </button>
+        ))}
+      </div>
+      {tab === "reporting" ? (
+        <CommunicationsReport />
+      ) : tab === "cases" ? (
+        <CasesSection caseId={caseId} onSelect={setCaseId} />
+      ) : (
+        <PhoneCallsSection
+          key={tab}
+          direction={tab === "outbound" ? "outbound" : undefined}
+          onCase={(id) => {
+            setCaseId(id);
+            setTab("cases");
+          }}
+        />
+      )}
     </Workspace>
   );
 }

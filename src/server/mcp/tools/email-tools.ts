@@ -1,3 +1,6 @@
+import { isSouthsideWorkflow } from "@/server/features/customer-workflow/policy";
+import { requireMcpSendConfirmation } from "@/server/features/email/mailboxPreferences";
+import { EmailRepository } from "@/server/features/email/repositories/EmailRepository";
 import { z } from "zod";
 import { EmailService } from "@/server/features/email/services/EmailService";
 import { mcpResponse } from "@/server/mcp/formatters";
@@ -52,7 +55,7 @@ const listEmailThreadsTool = {
   config: {
     title: "List email threads",
     description:
-      "The business's email threads, newest first, as mirrored from its connected mailbox. Includes mail read over IMAP and everything the app sent, such as client reports. Uses no credits.",
+      "The business's email threads, newest first, as mirrored from its connected mailbox. Includes mail read over IMAP and everything the app sent, such as client reports. Uses no credits. In the selected Southside workflow this only saves an owner approval request; confirmed=true cannot send it.",
     inputSchema: listInput,
     outputSchema: {
       address: z.string().nullable(),
@@ -124,7 +127,7 @@ const getEmailThreadTool = {
   config: {
     title: "Read an email thread",
     description:
-      "Every message in one thread in order, with direction, sender, recipients and plain-text body. Assistant drafts awaiting approval appear with direction 'draft'. Uses no credits.",
+      "Every message in one thread in order, with direction, sender, recipients and plain-text body. Assistant drafts awaiting approval appear with direction 'draft'. Uses no credits. In the selected Southside workflow this only saves an owner approval request; confirmed=true cannot send it.",
     inputSchema: threadInput,
     outputSchema: {
       thread: threadSummary,
@@ -194,7 +197,15 @@ const getEmailThreadTool = {
   }),
 };
 
+const confirmationInput = z
+  .boolean()
+  .optional()
+  .describe(
+    "Set true only after the user has approved the recipients, subject and exact message body. Required for mailboxes with manual approval enabled; otherwise save a draft.",
+  );
+
 const replyInput = {
+  confirmed: confirmationInput,
   organizationId: organizationIdSchema,
   threadId: z.string().min(1).describe("From list_email_threads."),
   text: z
@@ -221,9 +232,14 @@ const replyToEmailThreadTool = {
   config: {
     title: "Reply on an email thread",
     description:
-      "Sends a reply to the last inbound message on the thread from the business's own address. This is real mail to a real person: show the user the exact text and get a yes before calling it. Uses no credits.",
+      "Sends a reply to the last inbound message on the thread from the business's own address. This is real mail to a real person: show the user the exact text and get a yes before calling it. Uses no credits. In the selected Southside workflow this only saves an owner approval request; confirmed=true cannot send it.",
     inputSchema: replyInput,
-    outputSchema: { messageId: z.string(), ...optionalMetaOutputSchema },
+    outputSchema: {
+      messageId: z.string().optional(),
+      status: z.string().optional(),
+      approvalRequestId: z.string().optional(),
+      ...optionalMetaOutputSchema,
+    },
     annotations: {
       readOnlyHint: false,
       openWorldHint: true,
@@ -234,6 +250,26 @@ const replyToEmailThreadTool = {
     z.infer<z.ZodObject<typeof replyInput>>,
     ReturnType<typeof mcpResponse>
   >(async (args, context) => {
+    if (await isSouthsideWorkflow(context.organizationId)) {
+      const { CustomerActionService } =
+        await import("@/server/features/customer-workflow/services/CustomerActionService");
+      const request = await CustomerActionService.request(
+        context.organizationId,
+        context.auth.userId,
+        {
+          kind: "email_reply",
+          threadId: args.threadId,
+          text: args.text,
+          cc: args.cc,
+          bcc: args.bcc,
+        },
+      );
+      return mcpResponse({ text: request.message, structuredContent: request });
+    }
+    await requireMcpSendConfirmation(
+      await EmailRepository.getAccount(context.organizationId),
+      args.confirmed,
+    );
     const sent = await EmailService.sendReply(
       context.organizationId,
       context.auth.userId,
@@ -247,6 +283,7 @@ const replyToEmailThreadTool = {
 };
 
 const composeInput = {
+  confirmed: confirmationInput,
   organizationId: organizationIdSchema,
   to: z.string().email().max(320),
   subject: z.string().min(1).max(200),
@@ -274,11 +311,13 @@ const sendEmailTool = {
   config: {
     title: "Send a new email",
     description:
-      "Starts a new thread from the business's own address. This is real mail to a real person: show the user the recipient, subject and exact text and get a yes before calling it. Uses no credits.",
+      "Starts a new thread from the business's own address. This is real mail to a real person: show the user the recipient, subject and exact text and get a yes before calling it. Uses no credits. In the selected Southside workflow this only saves an owner approval request; confirmed=true cannot send it.",
     inputSchema: composeInput,
     outputSchema: {
-      threadId: z.string(),
-      messageId: z.string(),
+      threadId: z.string().optional(),
+      messageId: z.string().optional(),
+      status: z.string().optional(),
+      approvalRequestId: z.string().optional(),
       ...optionalMetaOutputSchema,
     },
     annotations: {
@@ -291,6 +330,27 @@ const sendEmailTool = {
     z.infer<z.ZodObject<typeof composeInput>>,
     ReturnType<typeof mcpResponse>
   >(async (args, context) => {
+    if (await isSouthsideWorkflow(context.organizationId)) {
+      const { CustomerActionService } =
+        await import("@/server/features/customer-workflow/services/CustomerActionService");
+      const request = await CustomerActionService.request(
+        context.organizationId,
+        context.auth.userId,
+        {
+          kind: "email",
+          to: args.to,
+          subject: args.subject,
+          text: args.text,
+          cc: args.cc,
+          bcc: args.bcc,
+        },
+      );
+      return mcpResponse({ text: request.message, structuredContent: request });
+    }
+    await requireMcpSendConfirmation(
+      await EmailRepository.getAccount(context.organizationId),
+      args.confirmed,
+    );
     const sent = await EmailService.compose(
       context.organizationId,
       context.auth.userId,

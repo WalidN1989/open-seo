@@ -226,8 +226,14 @@ export async function sendWhatsappText(
   body: string,
   fetcher: typeof fetch = fetch,
   /** A public https image sent with the text, shown above it as a caption. */
-  mediaUrl?: string | null,
+  media?:
+    | string
+    | null
+    | { mediaUrl?: string | null; statusCallbackUrl?: string },
 ): Promise<WhatsappSendResult> {
+  const mediaUrl = typeof media === "string" ? media : media?.mediaUrl;
+  const statusCallbackUrl =
+    typeof media === "object" ? media?.statusCallbackUrl : undefined;
   if (connection.provider === "twilio") {
     if (!connection.externalAccountId || !connection.displayPhoneNumber) {
       throw new Error("Twilio account SID and sender number are required.");
@@ -239,6 +245,7 @@ export async function sendWhatsappText(
       Body: body,
     });
     if (mediaUrl) params.append("MediaUrl", mediaUrl);
+    if (statusCallbackUrl) params.append("StatusCallback", statusCallbackUrl);
     const response = await fetcher(
       `https://api.twilio.com/2010-04-01/Accounts/${encodeURIComponent(connection.externalAccountId)}/Messages.json`,
       {
@@ -358,6 +365,7 @@ export async function sendWhatsappTemplate(
     externalTemplateId: string | null;
     /** Twilio content variables, keyed by placeholder number ("1", "2"…). */
     variables?: Record<string, string>;
+    statusCallbackUrl?: string;
   },
   fetcher: typeof fetch = fetch,
 ): Promise<WhatsappSendResult> {
@@ -420,6 +428,9 @@ export async function sendWhatsappTemplate(
           From: `whatsapp:${connection.displayPhoneNumber}`,
           To: `whatsapp:${recipient}`,
           ContentSid: template.externalTemplateId,
+          ...(template.statusCallbackUrl
+            ? { StatusCallback: template.statusCallbackUrl }
+            : {}),
           ...(template.variables
             ? { ContentVariables: JSON.stringify(template.variables) }
             : {}),

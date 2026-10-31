@@ -7,6 +7,8 @@ import {
   crmLeads,
   integrationConnections,
   voicePhoneCalls,
+  voiceCaseCalls,
+  whatsappMessages,
   whatsappConnections,
   businessSettings,
 } from "@/db/schema";
@@ -57,13 +59,24 @@ async function findCall(organizationId: string, conversationId: string) {
   return row ?? null;
 }
 
-async function insertCall(values: typeof voicePhoneCalls.$inferInsert) {
-  const [row] = await db
+async function insertCall(
+  values: typeof voicePhoneCalls.$inferInsert,
+  options: { deduplicate?: boolean } = {},
+) {
+  const insert = db
     .insert(voicePhoneCalls)
-    .values({ createdAt: now(), ...values })
-    .returning();
-  if (!row) throw new Error("The call could not be saved.");
-  return row;
+    .values({ createdAt: now(), ...values });
+  // Inbound keeps its original unique-conflict barrier before customer effects.
+  const [row] = await (
+    options.deduplicate ? insert.onConflictDoNothing() : insert
+  ).returning();
+  const saved =
+    row ??
+    (options.deduplicate
+      ? await findCall(values.organizationId, values.externalConversationId)
+      : null);
+  if (!saved) throw new Error("The call could not be saved.");
+  return saved;
 }
 
 async function setWelcomeStatus(id: string, welcomeStatus: string) {
@@ -100,6 +113,7 @@ export type CallReadOptions = {
   limit?: number;
   since?: string;
   callId?: string;
+  direction?: "inbound" | "outbound";
 };
 
 async function listCalls(
@@ -110,10 +124,29 @@ async function listCalls(
   return db
     .select({
       call: voicePhoneCalls,
+      caseLink: voiceCaseCalls,
+      bookLinkMessage: whatsappMessages,
       contact: crmContacts,
       lead: crmLeads,
     })
     .from(voicePhoneCalls)
+    .leftJoin(
+      voiceCaseCalls,
+      and(
+        eq(voiceCaseCalls.organizationId, organizationId),
+        eq(
+          voiceCaseCalls.externalConversationId,
+          voicePhoneCalls.externalConversationId,
+        ),
+      ),
+    )
+    .leftJoin(
+      whatsappMessages,
+      and(
+        eq(whatsappMessages.organizationId, organizationId),
+        eq(whatsappMessages.id, voicePhoneCalls.bookLinkMessageId),
+      ),
+    )
     .leftJoin(
       crmContacts,
       and(
@@ -132,6 +165,9 @@ async function listCalls(
       and(
         eq(voicePhoneCalls.organizationId, organizationId),
         options.callId ? eq(voicePhoneCalls.id, options.callId) : undefined,
+        options.direction
+          ? eq(voicePhoneCalls.direction, options.direction)
+          : undefined,
         options.since
           ? gte(
               sql<string>`coalesce(${voicePhoneCalls.startedAt}, ${voicePhoneCalls.createdAt})`,
@@ -162,6 +198,26 @@ async function findContactByPhone(organizationId: string, phone: string) {
     )
     .limit(1);
   return row ?? null;
+}
+
+/** Outbound imports may store the same international number without its +. */
+async function findCalleeByPhone(organizationId: string, phone: string) {
+  const digits = phone.replace(/^\+/, "");
+  const candidates = [phone, digits, `00${digits}`];
+  const rows = await db
+    .select()
+    .from(crmContacts)
+    .where(
+      and(
+        eq(crmContacts.organizationId, organizationId),
+        or(
+          inArray(crmContacts.phone, candidates),
+          inArray(crmContacts.whatsappPhone, candidates),
+        ),
+      ),
+    )
+    .limit(2);
+  return rows.length === 1 ? (rows[0] ?? null) : null;
 }
 
 async function findContactByEmail(organizationId: string, email: string) {
@@ -344,6 +400,7 @@ export const PhoneCallRepository = {
   welcomeSentTo,
   listCalls,
   findContactByPhone,
+  findCalleeByPhone,
   findContactByEmail,
   completeContact,
   companyNamed,

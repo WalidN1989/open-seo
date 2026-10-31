@@ -1,3 +1,4 @@
+import { WhatsappHandoffService } from "@/server/features/communications/services/WhatsappHandoffService";
 import { OrderShipmentService } from "@/server/features/commerce/services/OrderShipmentService";
 import { OrderOperationsService } from "@/server/features/commerce/services/OrderOperationsService";
 import { withPgClient } from "@/db";
@@ -47,7 +48,10 @@ export function registerBusinessCronJobs() {
     name: "whatsapp.replyAfterBurst",
     tier: "fast",
     run: async () => {
-      await withPgClient(() => runDueWhatsappReplies());
+      await withPgClient(async () => {
+        await runDueWhatsappReplies();
+        await WhatsappHandoffService.runDue();
+      });
     },
   });
 

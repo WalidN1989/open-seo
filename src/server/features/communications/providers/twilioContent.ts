@@ -182,3 +182,195 @@ export async function fetchApproval(
       : null;
   return readApproval(whatsapp);
 }
+
+/** Fetch both the registered wording and Meta's current approval/category.
+ * A SID typed into settings is not evidence that a template is approved. */
+export async function fetchOrderConfirmationTemplate(
+  connection: WhatsappConnectionRecord,
+  contentSid: string,
+  fetcher: typeof fetch = fetch,
+) {
+  if (!/^HX[0-9a-f]{32}$/i.test(contentSid))
+    throw new Error("Invalid Twilio Content SID.");
+  const content = z
+    .object({
+      sid: z.literal(contentSid),
+      language: z.string().min(1),
+      types: z.object({
+        "twilio/text": z.object({ body: z.string().min(1).max(1600) }),
+      }),
+    })
+    .parse(
+      await call(
+        connection,
+        `/Content/${encodeURIComponent(contentSid)}`,
+        undefined,
+        fetcher,
+        "GET",
+      ),
+    );
+  const approval = z
+    .object({
+      whatsapp: z.object({ status: z.string(), category: z.string() }),
+    })
+    .parse(
+      await call(
+        connection,
+        `/Content/${encodeURIComponent(contentSid)}/ApprovalRequests`,
+        undefined,
+        fetcher,
+        "GET",
+      ),
+    );
+  const body = content.types["twilio/text"].body;
+  const slots = [...body.matchAll(/\{\{\s*([^}]+)\s*\}\}/g)].map((match) =>
+    match[1].trim(),
+  );
+  if (
+    approval.whatsapp.category.toUpperCase() !== "UTILITY" ||
+    new Set(slots).size !== 3 ||
+    !["1", "2", "3"].every((key) => slots.includes(key))
+  )
+    throw new Error(
+      "Choose a utility order confirmation with slots 1 (name), 2 (order number) and 3 (total).",
+    );
+  return {
+    body,
+    languageCode: content.language,
+    status: readApproval(approval.whatsapp).status,
+  };
+}
+
+/** A caller-requested product link uses the approved name/link template, not a welcome. */
+export async function fetchCallBookLinkTemplate(
+  connection: WhatsappConnectionRecord,
+  sid: string,
+  fetcher: typeof fetch = fetch,
+) {
+  if (!/^HX[0-9a-f]{32}$/i.test(sid))
+    throw new Error("Invalid Twilio Content SID.");
+  const request: typeof fetch = (input, init) =>
+    fetcher(input, {
+      ...init,
+      redirect: "manual",
+      signal: AbortSignal.timeout(8000),
+    });
+  const bodyType = z.object({ body: z.string().min(1).max(1600) });
+  const content = z
+    .object({
+      sid: z.literal(sid),
+      language: z.string().min(1),
+      types: z.object({
+        "twilio/quick-reply": bodyType.optional(),
+        "twilio/text": bodyType.optional(),
+      }),
+    })
+    .parse(
+      await call(connection, `/Content/${sid}`, undefined, request, "GET"),
+    );
+  const approval = z
+    .object({
+      whatsapp: z.object({
+        status: z.string(),
+        category: z.enum(["MARKETING", "UTILITY"]),
+      }),
+    })
+    .parse(
+      await call(
+        connection,
+        `/Content/${sid}/ApprovalRequests`,
+        undefined,
+        request,
+        "GET",
+      ),
+    );
+  const body =
+    content.types["twilio/quick-reply"]?.body ??
+    content.types["twilio/text"]?.body;
+  const slots = body
+    ? [...body.matchAll(/\{\{\s*([^}]+)\s*\}\}/g)].map((m) => m[1].trim())
+    : [];
+  if (
+    !body ||
+    new Set(slots).size !== 2 ||
+    !slots.includes("1") ||
+    !slots.includes("2")
+  )
+    throw new Error(
+      "Choose a name/link template with slots 1 (name) and 2 (product URL).",
+    );
+  return {
+    body,
+    languageCode: content.language,
+    status: readApproval(approval.whatsapp).status,
+  };
+}
+
+/** Handoffs use a text-only utility template. Reject embedded actions with fixed recipients. */
+export async function fetchHandoffTemplate(
+  connection: WhatsappConnectionRecord,
+  contentSid: string,
+  fetcher: typeof fetch = fetch,
+) {
+  if (!/^HX[0-9a-f]{32}$/i.test(contentSid))
+    throw new Error("Invalid Content SID.");
+  const request: typeof fetch = (input, init) =>
+    fetcher(input, {
+      ...init,
+      redirect: "manual",
+      signal: AbortSignal.timeout(8000),
+    });
+  const content = z
+    .object({
+      sid: z.literal(contentSid),
+      language: z.string(),
+      types: z.record(z.string(), z.unknown()),
+    })
+    .parse(
+      await call(
+        connection,
+        `/Content/${contentSid}`,
+        undefined,
+        request,
+        "GET",
+      ),
+    );
+  const text = z
+    .object({ body: z.string().min(1).max(1600) })
+    .parse(content.types["twilio/text"]);
+  const slots = [...text.body.matchAll(/\{\{\s*([^}]+)\s*\}\}/g)].map((m) =>
+    m[1].trim(),
+  );
+  if (
+    Object.keys(content.types).length !== 1 ||
+    new Set(slots).size !== 3 ||
+    !["1", "2", "3"].every((s) => slots.includes(s))
+  )
+    throw new Error(
+      "Use a text-only handoff template with slots 1 (customer), 2 (reason), 3 (window expiry).",
+    );
+  const approval = z
+    .object({
+      whatsapp: z.object({ status: z.string(), category: z.string() }),
+    })
+    .parse(
+      await call(
+        connection,
+        `/Content/${contentSid}/ApprovalRequests`,
+        undefined,
+        request,
+        "GET",
+      ),
+    );
+  if (
+    approval.whatsapp.status.toLowerCase() !== "approved" ||
+    approval.whatsapp.category.toUpperCase() !== "UTILITY"
+  )
+    throw new Error("Handoff template must be an approved utility template.");
+  return {
+    body: text.body,
+    languageCode: content.language,
+    externalTemplateId: contentSid,
+    name: "handoff",
+  };
+}

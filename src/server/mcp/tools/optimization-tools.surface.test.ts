@@ -177,6 +177,7 @@ describe("the WhatsApp MCP surface", () => {
       "list_whatsapp_chats",
       "send_whatsapp_reply",
       "send_whatsapp_template",
+      "set_whatsapp_chat_mode",
     ]);
     // Sends go through WhatsappAgentService, which applies outreachDecision;
     // calling the raw provider or the unchecked service would skip the rules.
@@ -221,8 +222,10 @@ describe("the module registry", () => {
     );
     expect(surfaces.toSorted()).toEqual([
       "callSurface",
+      "caseSurface",
       "commerceSurface",
       "crmSurface",
+      "customerWorkflowSurface",
       "emailSurface",
       "invoiceSurface",
       "optimizationsSurface",
@@ -249,5 +252,13 @@ describe("the module registry", () => {
       expect(withheld).toContain("action:");
       expect(withheld).toContain("because:");
     }
+  });
+});
+
+describe("the external case MCP surface", () => {
+  it("exposes only the requested storage and read tools", () => {
+    expect(declaredToolNames(source("tools/case-tools.ts")).toSorted()).toEqual(
+      ["create_case", "get_attention_list", "list_cases", "update_case"],
+    );
   });
 });

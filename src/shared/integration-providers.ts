@@ -1,5 +1,11 @@
 export const integrationProviders = [
   {
+    key: "fitsms",
+    name: "FITSMS",
+    capabilities: ["SMS campaign drafts", "read-only authentication check"],
+    credentialSuffixes: ["API_TOKEN"],
+  },
+  {
     key: "apify",
     name: "Apify",
     capabilities: ["actors", "datasets", "lead enrichment"],

@@ -1,3 +1,4 @@
+import { createVoiceCaseTestClient } from "@/test/tenancy/voiceCaseDatabase";
 import {
   afterAll,
   beforeAll,
@@ -7,13 +8,13 @@ import {
   it,
   vi,
 } from "vitest";
-import { createClient } from "@libsql/client";
 import { drizzle } from "drizzle-orm/libsql";
 import { getTableConfig } from "drizzle-orm/sqlite-core";
 import * as schema from "@/db/business.schema";
 
 const state = vi.hoisted(() => ({
   db: null as unknown,
+  bookLink: vi.fn().mockResolvedValue("skipped: test"),
   welcome: vi.fn().mockResolvedValue("skipped: test"),
   recap: vi.fn().mockResolvedValue("skipped: test"),
   quote: vi.fn().mockResolvedValue("skipped: test"),
@@ -45,6 +46,9 @@ vi.mock(
 vi.mock("@/server/features/crm/services/CrmService", () => ({
   CrmService: { ensureStages: async () => [] },
 }));
+vi.mock("./CallBookLinkService", () => ({
+  CallBookLinkService: { send: state.bookLink },
+}));
 vi.mock("./CallWelcomeService", () => ({
   CallWelcomeService: { sendWelcome: state.welcome },
 }));
@@ -54,16 +58,31 @@ vi.mock("./CallRecapService", () => ({
 vi.mock("./CallQuoteService", () => ({
   CallQuoteService: { quoteFromCall: state.quote },
 }));
+vi.mock("@/db/runBatch", () => ({
+  runBatch: async (
+    build: (
+      tx: Pick<ReturnType<typeof drizzle>, "insert" | "update">,
+    ) => readonly Promise<unknown>[],
+  ) => {
+    await drizzle(client).transaction(async (tx) => {
+      for (const statement of build(tx)) await statement;
+    });
+  },
+}));
 import { PhoneCallService } from "./PhoneCallService";
 import { CallerLookupService } from "./CallerLookupService";
 
-const client = createClient({ url: ":memory:" });
+const { client, close } = createVoiceCaseTestClient();
 beforeAll(async () => {
   state.db = drizzle(client);
   for (const table of [
     schema.businessSettings,
     schema.integrationConnections,
     schema.voicePhoneCalls,
+    schema.voiceCaseCalls,
+    schema.attentionHeads,
+    schema.voiceCases,
+    schema.whatsappMessages,
     schema.crmContacts,
     schema.crmLeads,
     schema.crmActivities,
@@ -74,18 +93,28 @@ beforeAll(async () => {
     );
   }
   await client.execute(
+    "CREATE UNIQUE INDEX fixture_attention_org ON attention_heads(organization_id)",
+  );
+  await client.execute(
+    "CREATE UNIQUE INDEX fixture_case_conversation ON voice_case_calls(organization_id,external_conversation_id)",
+  );
+  await client.execute(
     "insert into business_settings (id,organization_id,currency) values ('lk','org-lk','LKR'),('au','org-au','AUD')",
   );
   await client.execute(
     "insert into integration_connections (id,organization_id,provider_key,status,credentials) values ('lk-line','org-lk','elevenlabs','connected','test'),('au-line','org-au','elevenlabs','connected','test')",
   );
 });
-afterAll(() => client.close());
+afterAll(close);
 beforeEach(async () => {
+  vi.clearAllMocks();
   state.welcome.mockResolvedValue("skipped: test");
   state.recap.mockResolvedValue("skipped: test");
   state.quote.mockResolvedValue("skipped: test");
   for (const table of [
+    "attention_heads",
+    "voice_case_calls",
+    "voice_cases",
     "voice_phone_calls",
     "crm_contacts",
     "crm_leads",
@@ -99,24 +128,35 @@ async function webhook(
   caller?: string,
   line?: string,
   callback?: string,
-  customerPhone?: string,
+  captured: {
+    customerPhone?: string;
+    consent?: string;
+    direction?: string;
+    caseId?: string;
+  } = {},
 ) {
   const raw = JSON.stringify({
     type: "post_call_transcription",
     data: {
       conversation_id: "test-conversation",
+      conversation_initiation_client_data: {
+        dynamic_variables: { case_id: captured.caseId },
+      },
       metadata: {
         phone_call: {
-          direction: "inbound",
+          direction: captured.direction ?? "inbound",
           external_number: caller,
           agent_number: line,
         },
       },
       analysis: {
         data_collection_results: {
+          ...(captured.consent === undefined
+            ? {}
+            : { whatsapp_link_consent: { value: captured.consent } }),
           caller_name: { value: "Test Caller" },
           callback_details: { value: callback },
-          customer_phone_number: { value: customerPhone },
+          customer_phone_number: { value: captured.customerPhone },
         },
       },
     },
@@ -150,8 +190,41 @@ async function savedPhone() {
 }
 
 describe("workspace-aware phone calls and CRM", () => {
+  it.each(["true", "false"])(
+    "routes captured book-link consent %s separately from generic welcomes and resumes only the stored call on replay",
+    async (consent) => {
+      await webhook("lk-line", "+94761234567", "+94110000000", undefined, {
+        consent,
+      });
+      expect(state.welcome).not.toHaveBeenCalled();
+      const callId = (await client.execute("select id from voice_phone_calls"))
+        .rows[0]?.id;
+      expect(state.bookLink).toHaveBeenCalledWith("org-lk", "lk-line", callId);
+      await webhook("lk-line", "+94761234567", "+94110000000", undefined, {
+        consent,
+      });
+      expect(state.bookLink).toHaveBeenCalledTimes(2);
+      expect(state.bookLink).toHaveBeenLastCalledWith(
+        "org-lk",
+        "lk-line",
+        callId,
+      );
+      expect(state.recap).toHaveBeenCalledTimes(1);
+      expect(state.quote).toHaveBeenCalledTimes(1);
+      expect(
+        (
+          await client.execute(
+            "select count(*) as total from voice_phone_calls",
+          )
+        ).rows[0]?.total,
+      ).toBe(1);
+    },
+  );
+
   it("saves a first-time website caller's explicitly captured customer phone", async () => {
-    await webhook("lk-line", undefined, undefined, undefined, "0761234567");
+    await webhook("lk-line", undefined, undefined, undefined, {
+      customerPhone: "0761234567",
+    });
     expect(await savedPhone()).toBe("+94761234567");
     expect(
       (await client.execute("select first_name,phone from crm_contacts")).rows,
@@ -251,5 +324,86 @@ describe("workspace-aware phone calls and CRM", () => {
         .rows[0]?.total,
     ).toBe(0);
     expect(state.welcome).not.toHaveBeenCalled();
+  });
+});
+
+describe("outbound post-call storage", () => {
+  it("matches the callee, links the explicit case, and never executes inbound follow-ups on replay", async () => {
+    await client.execute(
+      "INSERT INTO crm_contacts (id,organization_id,first_name,phone) VALUES ('umi','org-lk','Umi','+94761234567')",
+    );
+    await client.execute(
+      "INSERT INTO voice_cases (id,organization_id,customer_name,reason,status) VALUES ('case','org-lk','Customer','Delivery','open')",
+    );
+    const result = await webhook(
+      "lk-line",
+      "+94761234567",
+      "+94110000000",
+      undefined,
+      { direction: "outbound", caseId: "case", consent: "true" },
+    );
+    expect(result).toEqual({ status: 200, body: "recorded" });
+    const { rows: calls } = await client.execute(
+      "SELECT direction,contact_id,caller_number,called_number FROM voice_phone_calls",
+    );
+    expect(calls[0]).toMatchObject({
+      direction: "outbound",
+      contact_id: "umi",
+      caller_number: "+94110000000",
+      called_number: "+94761234567",
+    });
+    const { rows: links } = await client.execute(
+      "SELECT case_id,external_conversation_id FROM voice_case_calls",
+    );
+    expect(links[0]).toMatchObject({
+      case_id: "case",
+      external_conversation_id: "test-conversation",
+    });
+    await webhook("lk-line", "+94761234567", "+94110000000", undefined, {
+      direction: "outbound",
+      caseId: "case",
+      consent: "true",
+    });
+    for (const effect of [
+      state.welcome,
+      state.recap,
+      state.quote,
+      state.bookLink,
+    ])
+      expect(effect).not.toHaveBeenCalled();
+    expect(
+      (await client.execute("SELECT count(*) AS n FROM crm_leads")).rows[0]?.n,
+    ).toBe(0);
+    const [call] = await PhoneCallService.listCalls("org-lk", "owner", {
+      direction: "outbound",
+    });
+    expect(call).toMatchObject({
+      direction: "outbound",
+      calleeName: "Umi",
+      caseId: "case",
+    });
+  });
+  it("does not link a foreign case or accept an unsigned webhook", async () => {
+    await client.execute(
+      "INSERT INTO voice_cases (id,organization_id) VALUES ('foreign','org-au')",
+    );
+    await expect(
+      webhook("lk-line", "+94761234567", "+94110000000", undefined, {
+        direction: "outbound",
+        caseId: "foreign",
+      }),
+    ).rejects.toThrow("Invalid or conflicting");
+    expect(
+      await PhoneCallService.processElevenLabsWebhook(
+        "lk-line",
+        new Headers(),
+        "{}",
+        true,
+      ),
+    ).toEqual({ status: 401, body: "bad signature" });
+    expect(
+      (await client.execute("SELECT count(*) AS n FROM voice_phone_calls"))
+        .rows[0]?.n,
+    ).toBe(0);
   });
 });

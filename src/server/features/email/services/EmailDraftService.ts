@@ -1,3 +1,4 @@
+import { signedEmailText } from "../mailboxPreferences";
 import type { z } from "zod";
 import { AppError } from "@/server/lib/errors";
 import { BusinessModuleService } from "@/server/features/business-modules/services/BusinessModuleService";
@@ -39,6 +40,7 @@ async function saveReplyDraft(
   authoredBy: string,
 ) {
   const account = await requireAccount(organizationId, userId);
+  input = { ...input, text: await signedEmailText(account, input.text) };
   const thread = await Repo.getThread(organizationId, input.threadId);
   if (!thread) throw new AppError("NOT_FOUND", "Thread not found.");
   const last = await Repo.lastInboundMessage(thread.id);
@@ -96,6 +98,7 @@ async function saveComposeDraft(
   authoredBy: string,
 ) {
   const account = await requireAccount(organizationId, userId);
+  input = { ...input, text: await signedEmailText(account, input.text) };
   const copies = copiesFor(account.address, [input.to], input);
   const occurredAt = new Date().toISOString();
   // A thread of its own, keyed by a placeholder until it is sent; approving

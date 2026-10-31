@@ -1,3 +1,4 @@
+import { ShipmentMessagesSettings } from "./ShipmentMessagesSettings";
 import { OrderOperationsSettings } from "./OrderOperationsSettings";
 import { LegacyOrderImport } from "./LegacyOrderImport";
 import { useState } from "react";
@@ -171,6 +172,7 @@ export function OrderSyncPanel() {
                 </>
               ) : null}
               <OrderOperationsSettings connectionId={config.connectionId} />
+              <ShipmentMessagesSettings connectionId={config.connectionId} />
               <LegacyOrderImport connectionId={config.connectionId} />
             </div>
           ))}
