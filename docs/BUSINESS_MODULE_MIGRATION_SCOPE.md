@@ -2112,6 +2112,7 @@ reply-driven reordering, incoming refresh, stable chat selection and visible
 dates. No real customer message or production change was made. There is no
 schema migration or provider configuration change; rollback is the previous
 image with existing message and conversation records retained.
+
 ### October 21, 2026 — WooCommerce orders and approved WhatsApp confirmations (pending release)
 
 The owner requested WooCommerce REST orders in the CRM and automatic WhatsApp
@@ -2532,3 +2533,16 @@ the dedicated callback agent is inactive. Production image and data remain
 unchanged. See [SOUTHSIDE_WORKFLOW.md](./SOUTHSIDE_WORKFLOW.md) for tools,
 approval semantics, remaining provider setup and additive migration rollback.
 Owner review and exact release approval remain required before merge/deploy.
+
+### October 31, 2026 — WhatsApp inbox release authorized
+
+Owner explicitly requested fixing and deploying visible message/preview dates and
+newest-active-first chat sorting for incoming and staff replies. This authorizes
+PR55's foreground-only 15-second Inbox refresh as the narrow exception to the
+October 8 no-polling preference. It does not activate other UI timers, schedulers,
+provider jobs or customer sends. PR55 was reconciled with current main; only its
+inbox component, message repository, timestamp helper/tests and this ledger differ.
+All 3,280 tests across 354 files, ci:check and selfhost build pass. No migration or
+provider setting change is required; rollback retains all saved messages and
+conversation records and restores the prior immutable image. Production release
+verification remains pending until the exact-head hosted checks and deployment.
