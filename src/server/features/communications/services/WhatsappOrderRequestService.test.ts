@@ -1,4 +1,5 @@
 import { beforeEach, expect, it, vi } from "vitest";
+import { AppError } from "@/server/lib/errors";
 const mocks = vi.hoisted(() => ({
   access: vi.fn(),
   get: vi.fn(),
@@ -42,6 +43,7 @@ const request = {
   conversationId: "c1",
   customerPhone: "+61400000001",
   status: "available",
+  summary: "Blue Book",
 };
 beforeEach(() => {
   Object.values(mocks).forEach((mock) => mock.mockReset());
@@ -49,8 +51,18 @@ beforeEach(() => {
   mocks.getChat.mockResolvedValue({
     chat: { lastInboundAt: new Date().toISOString() },
     templates: [
-      { id: "utility", category: "utility", body: "Your {{1}} has arrived." },
-      { id: "marketing", category: "marketing", body: "Buy now" },
+      {
+        id: "utility",
+        name: "utility",
+        category: "utility",
+        body: "Your {{1}} has arrived.",
+      },
+      {
+        id: "marketing",
+        name: "marketing",
+        category: "marketing",
+        body: "Buy now",
+      },
     ],
   });
   mocks.claim.mockResolvedValue(request);
@@ -160,4 +172,71 @@ it("does not mark a provider-rejected message Notified", async () => {
     service.notify("org", "staff", { requestId: "r1", body: "Arrived" }),
   ).rejects.toThrow(/outcome needs checking/);
   expect(mocks.finish).toHaveBeenCalledWith("org", "r1", null);
+});
+
+const availability = {
+  id: "available-template",
+  name: "shop_item_available",
+  category: "utility",
+  body: "Your {{1}} is available.",
+  externalTemplateId: "HX-synthetic",
+};
+it("defaults to the single approved availability template and the requested item", async () => {
+  mocks.getChat.mockResolvedValue({
+    chat: { lastInboundAt: "2026-10-01T00:00:00Z" },
+    templates: [availability],
+  });
+  const preview = await service.preview("org", "staff", "r1");
+  expect(preview.defaultTemplateId).toBe(availability.id);
+  expect(preview.defaultVariables).toEqual({ "1": "Blue Book" });
+  expect(preview.sendBlockedReason).toBeNull();
+  expect(preview.windowOpen).toBe(false);
+  expect(mocks.claim).not.toHaveBeenCalled();
+  expect(mocks.template).not.toHaveBeenCalled();
+});
+it("does not guess an availability template when the choice is ambiguous or incompatible", async () => {
+  for (const templates of [
+    [
+      availability,
+      { ...availability, id: "other-language", languageCode: "si" },
+    ],
+    [{ ...availability, body: "Your {{1}} has arrived for order {{2}}." }],
+    [{ ...availability, externalTemplateId: null }],
+    [{ ...availability, category: "marketing" }],
+  ]) {
+    mocks.getChat.mockResolvedValue({
+      chat: { lastInboundAt: null },
+      templates,
+    });
+    const preview = await service.preview("org", "staff", "r1");
+    expect(preview.defaultTemplateId).toBe("");
+    expect(preview.defaultVariables).toEqual({});
+  }
+});
+it("reports policy restrictions in the preview without claiming or sending", async () => {
+  mocks.allowed.mockRejectedValue(
+    new AppError(
+      "VALIDATION_ERROR",
+      "Follow-ups are restricted to business hours.",
+    ),
+  );
+  const preview = await service.preview("org", "staff", "r1");
+  expect(preview.sendBlockedReason).toBe(
+    "Follow-ups are restricted to business hours.",
+  );
+  await expect(
+    service.notify("org", "staff", { requestId: "r1", body: "Arrived" }),
+  ).rejects.toThrow(/business hours/);
+  expect(mocks.claim).not.toHaveBeenCalled();
+});
+it("cannot preview an already started send as ready or hide an unexpected preflight error", async () => {
+  mocks.get.mockResolvedValue({ ...request, notificationState: "unknown" });
+  expect(
+    (await service.preview("org", "staff", "r1")).sendBlockedReason,
+  ).toMatch(/history/);
+  mocks.get.mockResolvedValue(request);
+  mocks.allowed.mockRejectedValue(new Error("Database unavailable"));
+  await expect(service.preview("org", "staff", "r1")).rejects.toThrow(
+    /Database unavailable/,
+  );
 });
