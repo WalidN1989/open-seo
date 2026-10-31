@@ -163,7 +163,10 @@ async function runDue(conversationId?: string) {
         const expiry = customerWindow.expiresAt ?? "closed or unavailable";
         const variables = {
           "1": customer ?? "Unknown customer",
-          "2": details.handoff.reason,
+          "2": `${details.handoff.reason}: ${details.handoff.summary}`.slice(
+            0,
+            600,
+          ),
           "3": expiry,
         };
         const body =

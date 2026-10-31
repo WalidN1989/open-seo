@@ -9,6 +9,7 @@ import { CallBookLinkService } from "./CallBookLinkService";
 import { CallWelcomeService } from "./CallWelcomeService";
 import { CallRecapService } from "./CallRecapService";
 import { CallQuoteService } from "./CallQuoteService";
+import { VoiceStaffAlertService } from "./VoiceStaffAlertService";
 function handlesBookLink(
   provider: CallSource["provider"],
   report: PhoneCallReport,
@@ -80,6 +81,18 @@ export async function finishInbound(input: {
     phone,
   } = input;
   const { provider, organizationId, integrationId, welcomeTemplate } = source;
+
+  if (provider === "elevenlabs") {
+    await VoiceStaffAlertService.afterCall(
+      organizationId,
+      callId,
+      report,
+    ).catch(() => {
+      console.error(
+        "Could not prepare voice staff alert; review the saved call in DU.",
+      );
+    });
+  }
 
   if (await isSouthsideWorkflow(organizationId)) {
     const { PostCallFollowupService } =
