@@ -2547,6 +2547,39 @@ provider setting change is required; rollback retains all saved messages and
 conversation records and restores the prior immutable image. Production release
 verification remains pending until the exact-head hosted checks and deployment.
 
+### October 31, 2026 — availability notification defaults and preflight (prepared)
+
+Owner requested Notify customer automatically select the approved availability
+utility template and fill the saved requested item, with a review before sending.
+The existing template was connected through live Settings and its exact wording,
+approval and single item slot were verified against Twilio; private references
+remain outside this public repository. No availability notification was sent in
+setup. Existing automatic order confirmations are separate and remain active.
+
+The isolated change prepares a default only when the workspace has exactly one
+approved, registered utility template named item_available or ending in
+\_item_available, with only item slot1. Ambiguous language/template choices remain
+manual. The dialog initializes after the options arrive, retains reviewed edits
+across refreshes, labels the variable Item name and blocks a vanished selection.
+Known send-policy blocks are returned by the authenticated preview and displayed
+before Send; errors remain visible instead of closing the dialog silently. Final
+server checks, once-only notification claims and unknown-outcome locks remain.
+No send is triggered by opening, prefilling or refreshing a notification.
+
+Read-only diagnosis found the current Available request has no notification claim
+or completed send. Its last incoming message predates its last outgoing message;
+the existing Monday-Friday 9am-5pm business-time follow-up rule would block it on
+Saturday, October31. This is an application rule, not a Twilio template-approval
+failure. The rule has not been bypassed or changed. No uncertain send was retried.
+
+Validation: 3,284 tests across354files, ci:check and selfhost build pass. Browser
+checks with synthetic data and mocked providers cover delayed defaults, preserved
+edits, visible policy blocks, disabled sends and persistent provider errors. No
+real customer message was used as a test. No schema migration, scheduler or
+provider configuration change is introduced by the code change. Release needs
+passing final hosted checks and explicit owner merge/deployment approval. Rollback
+uses the prior immutable image while retaining templates and notification history.
+
 ### October 31, 2026 — BooXworm greetings, pickup hours and private escalation
 
 Owner authorized correcting greetings, order lookup and handoffs. Confirmed online
