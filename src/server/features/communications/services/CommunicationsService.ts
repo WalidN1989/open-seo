@@ -1478,6 +1478,16 @@ async function ingestWhatsappGroup(
       message,
     );
     if (!ingestion.duplicate && ingestion.conversationId) {
+      const { VoiceStaffAlertService } =
+        await import("@/server/features/voice-calls/services/VoiceStaffAlertService");
+      if (
+        await VoiceStaffAlertService.staffInbound(
+          connection.organizationId,
+          ingestion.conversationId,
+          message.sender,
+        )
+      )
+        continue;
       const replyState =
         await WhatsappAssistantRepository.getConversationReplyState(
           connection.organizationId,

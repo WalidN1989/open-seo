@@ -51,10 +51,51 @@ async function preview(
     userId,
     request.conversationId,
   );
+  const utilityTemplates = templates.filter(
+    (template) => template.category.toLowerCase() === "utility",
+  );
+  const availability = utilityTemplates.filter((template) => {
+    const name = template.name.toLowerCase();
+    const slots = new Set(
+      [...template.body.matchAll(/{{([^{}]+)}}/g)].map((match) => match[1]),
+    );
+    return (
+      (name === "item_available" || name.endsWith("_item_available")) &&
+      Boolean(template.externalTemplateId) &&
+      slots.size === 1 &&
+      slots.has("1")
+    );
+  });
+  // Never guess between languages or different availability templates.
+  const preferred = availability.length === 1 ? availability[0] : null;
+  const defaultVariables: Record<string, string> = {};
+  if (preferred) defaultVariables["1"] = request.summary;
+  let sendBlockedReason = request.notificationState
+    ? "This request is already notified or its send outcome needs checking. Review its history before contacting the customer again."
+    : request.status !== "available"
+      ? "Mark the item Available before notifying the customer."
+      : null;
+  if (!sendBlockedReason) {
+    try {
+      // Template approval does not override opt-outs or the existing follow-up policy.
+      await WhatsappAgentService.requireAllowed(
+        organizationId,
+        request.conversationId,
+        false,
+      );
+    } catch (error) {
+      if (!(error instanceof AppError) || error.code !== "VALIDATION_ERROR")
+        throw error;
+      sendBlockedReason = error.message;
+    }
+  }
   return {
     request,
     ...evaluateWhatsappWindow(chat.lastInboundAt),
-    templates: templates.filter((template) => template.category === "utility"),
+    templates: utilityTemplates,
+    defaultTemplateId: preferred?.id ?? "",
+    defaultVariables,
+    sendBlockedReason,
   };
 }
 async function notify(

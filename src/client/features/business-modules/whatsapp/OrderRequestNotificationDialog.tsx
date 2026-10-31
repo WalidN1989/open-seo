@@ -18,18 +18,54 @@ export function OrderRequestNotificationDialog({
   request: Request;
   onClose: () => void;
 }) {
-  const client = useQueryClient();
   const context = useQuery({
     queryKey: ["whatsapp", "order-notification", request.id],
     queryFn: () =>
       previewWhatsappOrderNotification({ data: { requestId: request.id } }),
   });
+  if (!context.data)
+    return (
+      <Modal maxWidth="max-w-lg" onClose={onClose} labelledBy="notify-title">
+        <h2 id="notify-title" className="text-lg font-semibold">
+          Notify customer
+        </h2>
+        {context.isPending && <p>Loading messaging options…</p>}
+        {context.error && (
+          <p role="alert" className="text-error">
+            {getStandardErrorMessage(context.error)}
+          </p>
+        )}
+        <button className="btn btn-ghost btn-sm" onClick={onClose}>
+          Cancel
+        </button>
+      </Modal>
+    );
+  return (
+    <NotificationDialog
+      key={request.id}
+      context={context.data}
+      onClose={onClose}
+    />
+  );
+}
+
+function NotificationDialog({
+  context,
+  onClose,
+}: {
+  context: Awaited<ReturnType<typeof previewWhatsappOrderNotification>>;
+  onClose: () => void;
+}) {
+  const client = useQueryClient();
+  const request = context.request;
   const [body, setBody] = useState(
     `Hello! The item you requested is now available: ${request.summary}. Please reply here so we can help arrange your order.`,
   );
-  const [templateId, setTemplateId] = useState("");
-  const [variables, setVariables] = useState<Record<string, string>>({});
-  const template = context.data?.templates.find((row) => row.id === templateId);
+  const [templateId, setTemplateId] = useState(context.defaultTemplateId);
+  const [variables, setVariables] = useState<Record<string, string>>(
+    context.defaultVariables,
+  );
+  const template = context.templates.find((row) => row.id === templateId);
   const keys = [
     ...new Set(
       [...(template?.body ?? "").matchAll(/{{([^{}]+)}}/g)].map(
@@ -43,7 +79,7 @@ export function OrderRequestNotificationDialog({
         template.body,
       )
     : body;
-  const needsTemplate = context.data && !context.data.windowOpen;
+  const needsTemplate = !context.windowOpen;
   const send = useMutation({
     mutationFn: () =>
       notifyWhatsappOrderRequest({
@@ -61,7 +97,6 @@ export function OrderRequestNotificationDialog({
     onError: async (error) => {
       await client.invalidateQueries({ queryKey: ["whatsapp"] });
       toast.error(getStandardErrorMessage(error));
-      onClose();
     },
   });
   return (
@@ -77,77 +112,83 @@ export function OrderRequestNotificationDialog({
         {request.customerName || "Customer"} ·{" "}
         <strong>{request.customerPhone}</strong>
       </p>
-      {context.isPending && <p>Loading messaging options…</p>}
-      {context.error && (
-        <p className="text-error">{getStandardErrorMessage(context.error)}</p>
-      )}
       {needsTemplate && (
         <p className="text-sm">
-          The customer’s 24-hour reply window has closed. Choose an approved
-          utility template.
+          The customer’s 24-hour reply window has closed. An approved utility
+          template is required.
         </p>
       )}
-      {!!context.data && (
-        <>
-          <label className="text-sm">
-            Message type
-            <select
-              className="select select-bordered mt-1 w-full"
-              value={templateId}
-              onChange={(event) => {
-                setTemplateId(event.target.value);
-                setVariables({});
-              }}
-            >
-              <option value="">
-                {needsTemplate
-                  ? "Select an approved template"
-                  : "Personal message"}
-              </option>
-              {context.data.templates.map((row) => (
-                <option key={row.id} value={row.id}>
-                  {row.name} · {row.languageCode}
-                </option>
-              ))}
-            </select>
-          </label>
-          {template
-            ? keys.map((key) => (
-                <label className="text-sm" key={key}>
-                  Template value {key}
-                  <input
-                    className="input input-bordered mt-1 w-full"
-                    value={variables[key] ?? ""}
-                    onChange={(event) =>
-                      setVariables({ ...variables, [key]: event.target.value })
-                    }
-                  />
-                </label>
-              ))
-            : !needsTemplate && (
-                <label className="text-sm">
-                  Message
-                  <textarea
-                    className="textarea textarea-bordered mt-1 w-full"
-                    rows={4}
-                    value={body}
-                    onChange={(event) => setBody(event.target.value)}
-                  />
-                </label>
-              )}
-          <div
-            className="whitespace-pre-wrap rounded-lg bg-base-200 p-3 text-sm"
-            aria-label="Notification preview"
-          >
-            {rendered}
-          </div>
-          {needsTemplate && !context.data.templates.length && (
-            <p className="text-sm text-warning">
-              No approved utility templates are available. Add one in Settings →
-              Templates before sending.
-            </p>
+      {context.sendBlockedReason && (
+        <p role="alert" className="rounded-lg bg-warning/10 p-3 text-sm">
+          {context.sendBlockedReason}
+        </p>
+      )}
+      {send.error && (
+        <p role="alert" className="text-sm text-error">
+          {getStandardErrorMessage(send.error)}
+        </p>
+      )}
+      <label className="text-sm">
+        Message type
+        <select
+          className="select select-bordered mt-1 w-full"
+          value={templateId}
+          onChange={(event) => {
+            setTemplateId(event.target.value);
+            setVariables(
+              event.target.value === context.defaultTemplateId
+                ? context.defaultVariables
+                : {},
+            );
+          }}
+        >
+          <option value="">
+            {needsTemplate ? "Select an approved template" : "Personal message"}
+          </option>
+          {context.templates.map((row) => (
+            <option key={row.id} value={row.id}>
+              {row.name} · {row.languageCode}
+            </option>
+          ))}
+        </select>
+      </label>
+      {template
+        ? keys.map((key) => (
+            <label className="text-sm" key={key}>
+              {template.id === context.defaultTemplateId && key === "1"
+                ? "Item name"
+                : `Template value ${key}`}
+              <input
+                className="input input-bordered mt-1 w-full"
+                value={variables[key] ?? ""}
+                onChange={(event) =>
+                  setVariables({ ...variables, [key]: event.target.value })
+                }
+              />
+            </label>
+          ))
+        : !needsTemplate && (
+            <label className="text-sm">
+              Message
+              <textarea
+                className="textarea textarea-bordered mt-1 w-full"
+                rows={4}
+                value={body}
+                onChange={(event) => setBody(event.target.value)}
+              />
+            </label>
           )}
-        </>
+      <div
+        className="whitespace-pre-wrap rounded-lg bg-base-200 p-3 text-sm"
+        aria-label="Notification preview"
+      >
+        {rendered}
+      </div>
+      {needsTemplate && !context.templates.length && (
+        <p className="text-sm text-warning">
+          No approved utility templates are available. Add one in Settings →
+          Templates before sending.
+        </p>
       )}
       <div className="flex justify-end gap-2">
         <button
@@ -161,7 +202,8 @@ export function OrderRequestNotificationDialog({
           className="btn btn-primary btn-sm"
           disabled={
             send.isPending ||
-            !context.data ||
+            Boolean(context.sendBlockedReason) ||
+            Boolean(templateId && !template) ||
             (!!needsTemplate && !template) ||
             (!!template && keys.some((key) => !variables[key]?.trim())) ||
             !rendered.trim() ||

@@ -2582,3 +2582,100 @@ one refresh to load them. Private evidence includes the live screenshot and
 release verification. Rollback restores the previous immutable image while
 preserving messages, conversations and current runtime settings. Org-enforced
 Greptile baseline was not verified or changed.
+
+### October 31, 2026 — availability notification defaults and preflight (prepared)
+
+Owner requested Notify customer automatically select the approved availability
+utility template and fill the saved requested item, with a review before sending.
+The existing template was connected through live Settings and its exact wording,
+approval and single item slot were verified against Twilio; private references
+remain outside this public repository. No availability notification was sent in
+setup. Existing automatic order confirmations are separate and remain active.
+
+The isolated change prepares a default only when the workspace has exactly one
+approved, registered utility template named item_available or ending in
+\_item_available, with only item slot1. Ambiguous language/template choices remain
+manual. The dialog initializes after the options arrive, retains reviewed edits
+across refreshes, labels the variable Item name and blocks a vanished selection.
+Known send-policy blocks are returned by the authenticated preview and displayed
+before Send; errors remain visible instead of closing the dialog silently. Final
+server checks, once-only notification claims and unknown-outcome locks remain.
+No send is triggered by opening, prefilling or refreshing a notification.
+
+Read-only diagnosis found the current Available request has no notification claim
+or completed send. Its last incoming message predates its last outgoing message;
+the existing Monday-Friday 9am-5pm business-time follow-up rule would block it on
+Saturday, October31. This is an application rule, not a Twilio template-approval
+failure. The rule has not been bypassed or changed. No uncertain send was retried.
+
+Validation: 3,284 tests across354files, ci:check and selfhost build pass. Browser
+checks with synthetic data and mocked providers cover delayed defaults, preserved
+edits, visible policy blocks, disabled sends and persistent provider errors. No
+real customer message was used as a test. No schema migration, scheduler or
+provider configuration change is introduced by the code change. Release needs
+passing final hosted checks and explicit owner merge/deployment approval. Rollback
+uses the prior immutable image while retaining templates and notification history.
+
+### October 31, 2026 — BooXworm greetings, pickup hours and private escalation
+
+Owner authorized correcting greetings, order lookup and handoffs. Confirmed online
+orders can be collected at Kollanawa Monday–Saturday, 10:00–20:00 Asia/Colombo;
+Sunday is closed and there is no walk-in retail store. Saved these facts, locality,
+hours and concise reply/order/handoff rules through the live WhatsApp AI settings.
+Added an enabled exact-match instant answer for the website's named greeting:
+“Yes, please go ahead.” Read-only database verification confirmed persistence.
+The exact street address and other unconfirmed policies were not invented.
+
+The live ElevenLabs query tool was sending the literal caller-ID placeholder as
+an HTTP header. Corrected only that header to a typed dynamic-variable locator;
+re-read matched the expected complete tool configuration. Kept caller-bound order
+authorization: a spoken phone number or order number alone cannot unlock another
+customer's history. Updated Main's natural greeting and prompt with confirmed
+hours/pickup and truthful escalation rules. Provider response tests for hours,
+Sunday closure and online-order pickup passed. A real SIP call after this change
+is still required to verify the entire telephone/tool transport. The published
+prompt mirror is updated; private provider/version/recipient details stay outside
+the repository.
+
+Saved the owner-designated private staff handoff recipient through the app;
+that phone is not in either customer-facing prompt/contact field. At the owner's
+request, asked the staff member over the existing personal WhatsApp chat to send
+an initial message to the business sender. The owner says she is offline and will
+reply later. Submitted a text-only utility staff-alert template for approval;
+activation and delivery verification are separate from template submission.
+No customer was contacted and no historical handoff or phone call was replayed.
+
+Application change prepared on an isolated branch from current main: opt-in
+post-call escalation classification creates one durable action per call/staff
+chat using existing call/chat relationships. Critical issues and unresolved repeat
+order enquiries produce concise private summaries. Staff destinations come only
+from tenant-scoped handoff settings; staff inbound chats become Manual. If their
+24-hour window is closed, voice alerts remain pending until a staff message or
+an approved utility template permits delivery. Provider acceptance uncertainty
+requires review, never an automatic resend. WhatsApp handoff summaries now include
+both the reason and customer context. No new migration, application model request, scheduler,
+call transfer, customer callback or historical replay is introduced.
+
+Rollback of application code leaves existing call/chat/action records intact;
+pending staff actions need review before any later resend. Live prompt/settings
+rollback is separate and must preserve the owner-confirmed hours and private
+recipient. Release follows VPS_RELEASES.md: final CI/review and explicit owner
+approval before merge/deployment. Production application code is not yet changed.
+
+Local final validation: 3,292 tests across 356 files, ci:check (format, knip,
+both TypeScript projects, type-aware lint and skill sync), and the selfhost
+production build passed. ElevenLabs response tests and persisted header/config
+reads passed. The staff utility template reference is saved, with provider
+approval checked again by the dispatch code before any out-of-window send.
+
+Final order-path review found a second cause: SIP supplies national caller IDs,
+but the query service accepted only international E.164 numbers. It now uses the
+existing workspace phone-region normalization before the strict order-phone
+validator. Five added regressions cover Sri Lankan local/trunkless/00-prefixed
+numbers, preservation of international/Australian numbers, and rejection of an
+unresolved provider placeholder. Phone numbers spoken to the model remain
+unauthorized. Both the configuration correction and this application fix are
+needed for the reported SIP line; the backend fix awaits the approved release.
+
+With the SIP normalization correction included, final local validation passes:
+3,297 tests across 356 files, the complete ci:check gate and selfhost build.
