@@ -57,7 +57,12 @@ async function run(conversationId: string) {
       attempts.delete(conversationId);
       return;
     }
-    if (attempt < 3) for (const job of pending) schedule(job);
+    // Handoff outbox jobs enforce their own persisted three-attempt limit.
+    // Ordinary reply jobs still need the runner's cap, including HTTP-successful
+    // passes where the worker rescheduled a failed model/database operation.
+    const handoffOnly = pending.every((job) => job.source === "handoff");
+    if (handoffOnly) attempts.delete(conversationId);
+    if (attempt < 3 || handoffOnly) for (const job of pending) schedule(job);
     else {
       attempts.delete(conversationId);
       console.error(

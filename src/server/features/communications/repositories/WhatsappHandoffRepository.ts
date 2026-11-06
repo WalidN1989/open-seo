@@ -1,3 +1,4 @@
+import { WhatsappHandoffFollowupRepository as Followup } from "./WhatsappHandoffFollowupRepository";
 import { and, asc, desc, eq, exists, ne, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { runBatch } from "@/db/runBatch";
@@ -5,6 +6,7 @@ import {
   member,
   crmReminders,
   whatsappConversations as chats,
+  whatsappMessages,
   whatsappHandoffContacts as contacts,
   whatsappHandoffs as handoffs,
   whatsappHandoffOutbox as outbox,
@@ -52,6 +54,7 @@ async function create(input: {
   revision: number;
   reason: string;
   summary: string;
+  acknowledgement?: string;
 }) {
   const { organizationId, conversationId, revision, reason, summary } = input;
   const id = `handoff:${conversationId}:${revision + 1}`;
@@ -107,13 +110,49 @@ async function create(input: {
       })
       .where(and(owned, eq(chats.replyRevision, revision))),
     ...cancelStaleWhatsappReplies(tx, organizationId, conversationId),
-    ...[null, ...recipients].map((contact) =>
+    ...(input.acknowledgement
+      ? [
+          tx
+            .insert(whatsappMessages)
+            .select(
+              tx
+                .select({
+                  id: sql<string>`${id + ":ack"}`.as("id"),
+                  organizationId: chats.organizationId,
+                  conversationId: chats.id,
+                  externalMessageId: sql<null>`null`.as("externalMessageId"),
+                  direction: sql<"outbound">`'outbound'`.as("direction"),
+                  messageType: sql<string>`'text'`.as("messageType"),
+                  body: sql<string>`${input.acknowledgement}`.as("body"),
+                  mediaId: sql<null>`null`.as("mediaId"),
+                  mediaUrl: sql<null>`null`.as("mediaUrl"),
+                  mediaContentType: sql<null>`null`.as("mediaContentType"),
+                  status: sql<string>`'queued'`.as("status"),
+                  autoReplyRevision: sql<null>`null`.as("autoReplyRevision"),
+                  sentAt: sql<null>`null`.as("sentAt"),
+                  createdAt: sql<string>`${now}`.as("createdAt"),
+                })
+                .from(chats)
+                .where(owned),
+            )
+            .onConflictDoNothing(),
+        ]
+      : []),
+    ...[
+      { contact: null, followup: false },
+      ...recipients.flatMap((contact) => [
+        { contact, followup: false },
+        { contact, followup: true },
+      ]),
+    ].map(({ contact, followup }) =>
       tx
         .insert(outbox)
         .select(
           tx
             .select({
-              id: sql<string>`${id + ":" + (contact?.id ?? "ack")}`.as("id"),
+              id: sql<string>`${id + ":" + (followup ? "followup:" : "") + (contact?.id ?? "ack")}`.as(
+                "id",
+              ),
               organizationId: chats.organizationId,
               handoffId: sql<string>`${id}`.as("handoffId"),
               conversationId: chats.id,
@@ -123,7 +162,10 @@ async function create(input: {
               kind: sql<string>`${contact ? "team" : "ack"}`.as("kind"),
               status: sql<string>`'pending'`.as("status"),
               attempts: sql<number>`0`.as("attempts"),
-              dueAt: sql<string>`${now}`.as("dueAt"),
+              dueAt:
+                sql<string>`${followup ? new Date(Date.parse(now) + 3_600_000).toISOString() : now}`.as(
+                  "dueAt",
+                ),
               claimExpiresAt: sql<null>`null`.as("claimExpiresAt"),
               claimToken: sql<null>`null`.as("claimToken"),
               externalMessageId: sql<null>`null`.as("externalMessageId"),
@@ -189,6 +231,8 @@ async function pending(organizationId: string) {
       status: outbox.status,
       error: outbox.error,
       attempts: outbox.attempts,
+      dueAt: outbox.dueAt,
+      alertId: outbox.id,
       contactName: contacts.name,
     })
     .from(handoffs)
@@ -221,7 +265,11 @@ async function pending(organizationId: string) {
         eq(handoffs.replyRevision, chats.replyRevision),
       ),
     )
-    .orderBy(desc(handoffs.createdAt))
+    .orderBy(
+      desc(handoffs.createdAt),
+      sql`case when ${outbox.id} like '%:followup:%' then 1 else 0 end`,
+      asc(outbox.id),
+    )
     .limit(200);
 }
 
@@ -229,5 +277,7 @@ export const WhatsappHandoffRepository = {
   listContacts,
   saveContacts,
   create,
+  followUp: Followup.followUp,
+  staffReplied: Followup.staffReplied,
   pending,
 };

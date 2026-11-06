@@ -134,7 +134,7 @@ async function lookupCustomerOrder(
       hasMore: orders.length > 5,
       next: orders.length
         ? "Use these sender-matched orders. If several could match the question, ask which one using the order date or title; do not ask them to find an order number first."
-        : "No order matched this sending number. Ask once whether they used a different number, then hand off for verification; never look up a model-selected phone.",
+        : "No order matched this sending number. Call flag_for_team for staff verification. Do not ask for another phone number that this tool cannot use, and never look up a model-selected phone.",
     });
   }
   const match = /^(?:#?(SHOP|WOO)-)?(\d{1,15})$/i.exec(query.trim());

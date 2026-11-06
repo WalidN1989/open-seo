@@ -22,10 +22,28 @@ const server = createServer(async (request, response) => {
       ? JSON.stringify([
           {
             conversationId: "recovered",
+            source: "handoff",
             dueAt: new Date(Date.now() + 100).toISOString(),
           },
         ])
-      : "[]",
+      : action.conversationId === "recovered" &&
+          requests.filter((row) => row.conversationId === "recovered").length <
+            4
+        ? JSON.stringify([
+            {
+              conversationId: "recovered",
+              source: "handoff",
+              dueAt: new Date(Date.now() + 50).toISOString(),
+            },
+          ])
+        : action.conversationId === "failing"
+          ? JSON.stringify([
+              {
+                conversationId: "failing",
+                dueAt: new Date(Date.now() + 50).toISOString(),
+              },
+            ])
+          : "[]",
   );
 });
 let child: ReturnType<typeof spawn> | undefined;
@@ -36,11 +54,15 @@ afterAll(async () => {
   }
   await new Promise<void>((resolve) => server.close(() => resolve()));
 });
-const notify = (dueAt: string, secret = "test-only-secret") =>
+const notify = (
+  dueAt: string,
+  secret = "test-only-secret",
+  conversationId = "burst",
+) =>
   fetch("http://127.0.0.1:3003/schedule", {
     method: "POST",
     headers: { "x-internal-cron-secret": secret },
-    body: JSON.stringify({ conversationId: "burst", dueAt }),
+    body: JSON.stringify({ conversationId, dueAt }),
   });
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -52,7 +74,7 @@ async function waitFor(predicate: () => boolean) {
   throw new Error("Reply runner did not become ready");
 }
 
-it("recovers once, stays quiet while idle, and coalesces one-time message wakeups", async () => {
+it("recovers once, handles later durable deadlines beyond three successful passes, stays idle, and coalesces wakeups", async () => {
   server.listen(0, "127.0.0.1");
   await once(server, "listening");
   const address = server.address();
@@ -80,8 +102,9 @@ it("recovers once, stays quiet while idle, and coalesces one-time message wakeup
     errors += String(data);
   });
   await waitFor(() => ready);
-  await waitFor(() =>
-    requests.some((row) => row.conversationId === "recovered"),
+  await waitFor(
+    () =>
+      requests.filter((row) => row.conversationId === "recovered").length === 4,
   );
   expect(requests.filter((row) => row.action === "recover")).toHaveLength(1);
   const idleCount = requests.length;
@@ -107,4 +130,18 @@ it("recovers once, stays quiet while idle, and coalesces one-time message wakeup
     1,
   );
   expect(errors).toBe("");
+  await notify(
+    new Date(Date.now() + 20).toISOString(),
+    "test-only-secret",
+    "failing",
+  );
+  await waitFor(
+    () =>
+      requests.filter((row) => row.conversationId === "failing").length === 3,
+  );
+  await sleep(200);
+  expect(
+    requests.filter((row) => row.conversationId === "failing"),
+  ).toHaveLength(3);
+  expect(errors).toContain("manual retry required");
 }, 15_000);

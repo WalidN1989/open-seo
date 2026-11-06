@@ -65,6 +65,7 @@ describe("durable team handoffs", () => {
     expect((await outbox()).map((r) => r.kind).toSorted()).toEqual([
       "ack",
       "team",
+      "team",
     ]);
     expect(await db.select().from(s.whatsappReplyJobs)).toEqual([]);
     expect(
@@ -86,7 +87,7 @@ describe("durable team handoffs", () => {
     await staffWindow();
     await Promise.all([start(), start(), start()]);
     expect(await db.select().from(s.whatsappHandoffs)).toHaveLength(1);
-    expect(await outbox()).toHaveLength(2);
+    expect(await outbox()).toHaveLength(3);
     await service.runDue(chat);
     await service.runDue(chat);
     await start();
@@ -121,7 +122,9 @@ describe("durable team handoffs", () => {
       status: "failed",
       attempts: 3,
     });
-    expect(await repo.pendingWakeups(chat)).toEqual([]);
+    expect(await repo.pendingWakeups(chat)).toEqual([
+      { conversationId: chat, dueAt: "2026-10-25T11:00:00.000Z" },
+    ]);
     expect(await db.select().from(s.crmReminders)).toHaveLength(1);
   });
   it("uses only the staff recipient's window and succeeds after a retry when staff opens it", async () => {
@@ -180,7 +183,11 @@ describe("durable team handoffs", () => {
     await start();
     provider.text.mockRejectedValue(new Error("Network timeout after POST"));
     await service.runDue(chat);
-    expect((await outbox()).every((r) => r.status === "unknown")).toBe(true);
+    expect(
+      (await outbox())
+        .filter((r) => !r.id.includes(":followup:"))
+        .every((r) => r.status === "unknown"),
+    ).toBe(true);
     vi.advanceTimersByTime(600_000);
     await service.runDue(chat);
     expect(provider.text).toHaveBeenCalledTimes(2);
@@ -203,6 +210,8 @@ describe("durable team handoffs", () => {
       .where(eq(s.whatsappConversations.id, chat));
     await service.runDue(chat);
     expect(provider.text).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(3_600_001);
+    await service.runDue(chat);
     expect((await outbox()).every((r) => r.status === "cancelled")).toBe(true);
   });
   it("records an in-app fallback without inventing a WhatsApp destination when no contacts are configured", async () => {

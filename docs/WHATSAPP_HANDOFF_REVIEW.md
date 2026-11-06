@@ -35,3 +35,43 @@ The contract suites run against fully migrated SQLite and an opt-in disposable l
 For PostgreSQL, create an isolated local test container/database named `du_handoff_test`, then run the two handoff suites with `DU_TEST_POSTGRES_URL` pointing to it. The fixture refuses other hosts/database names and creates/drops only its own uniquely named test database. CI defaults to SQLite.
 
 Migrations are additive on both backends. No database or provider configuration has been changed in production. A later release needs a verified backup and the owner's approval; rollback should restore the previous image and disable new configuration, preserving outbox receipts rather than deleting them and risking replay. No automatic sends should be enabled by replaying historical pending chats.
+
+## November 2026 follow-up repair
+
+New handoffs atomically queue one additional staff-only escalation for one hour
+later. The event-driven runner preserves later durable deadlines using the
+outbox's persisted retry budget. Ordinary bot replies retain the runner's bounded
+retry budget even when a successful HTTP pass reports rescheduled work. No global
+polling or cron tier is enabled. An accepted operator reply cancels an unstarted
+escalation; resolving the chat or handing it back invalidates dispatch through
+the existing revision guard.
+
+A new inbound message in a pending Manual handoff resurfaces the existing owner
+reminder and advances an unstarted escalation. Missing recipients can be picked
+up from the current enabled configuration on that event. Each handoff/recipient
+has one deterministic escalation identity: concurrent messages cannot create an
+alert storm, and sent, failed or uncertain attempts are never reset. A reminder
+cancelled before any dispatch because staff replied may become pending again
+when the customer returns. Manually paused chats without an active handoff stay
+silent. There is no historical bulk replay on release or settings save.
+
+Uncertain earlier staff delivery blocks the escalation for that recipient.
+Staff-window and approved-template restrictions still apply; in-app reminders
+remain the fallback, not a guarantee that staff received an off-site alert or
+will respond within an hour. Pending chats are visibly labelled as waiting for
+staff even when the provider accepted an alert.
+
+Failed sender-bound order lookups require a verification handoff in code, even
+if the model forgets to request one. The customer receives a persisted ownership
+verification acknowledgement instead of another-phone-number instructions.
+Sender matching is not relaxed. Any recorded purchase/preorder enquiry also
+requires a handoff, with an acknowledgement that prices, delivery and availability
+still require confirmation; it is not a confirmed order. The assistant prompt
+requires answering known item and delivery prices before asking for commitment,
+and leaving the request amount zero when the total is unconfirmed.
+
+No schema migration is required. All verification uses synthetic data and mocked
+providers. Before a code rollback, inspect and cancel only unstarted new
+`:followup:` outbox jobs under the approved recovery procedure: the previous
+image can read these rows but does not have the new escalation safeguards.
+Preserve sending/unknown rows and all receipts; a rollback cannot unsend alerts.

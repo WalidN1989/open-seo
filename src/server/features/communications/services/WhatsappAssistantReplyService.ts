@@ -1,7 +1,11 @@
+import {
+  applyActions,
+  handoffFromActions,
+  senderOrderLookup,
+} from "./WhatsappAssistantActions";
 import { WhatsappHandoffService } from "./WhatsappHandoffService";
 import { sendAutomaticWhatsappReply } from "./WhatsappAutomaticReplyService";
 import { WhatsappReplyControlRepository as Control } from "../repositories/WhatsappReplyControlRepository";
-import { OrderService } from "@/server/features/commerce/services/OrderService";
 import { loadWhatsappImage } from "../providers/whatsapp-media";
 import { getOptionalEnvValue } from "@/server/lib/runtime-env";
 import { ProjectContextService } from "@/server/features/project-context/services/ProjectContextService";
@@ -88,62 +92,6 @@ export async function lookupProducts(organizationId: string, query: string) {
     Repo.currencyFor(organizationId),
   ]);
   return formatCatalogueMatches(query, rows, currency);
-}
-
-async function applyActions(
-  organizationId: string,
-  conversationId: string,
-  revision: number,
-  actions: NonNullable<
-    Awaited<ReturnType<typeof generateWhatsappAiReply>>
-  >["actions"],
-) {
-  for (const action of actions) {
-    if (
-      !(await Control.isCurrent(organizationId, conversationId, revision, true))
-    )
-      return;
-    if (action.name === "flag_for_team") continue;
-    const rawAmount = Number(action.input.amount_cents || 0);
-    await Control.createOrder(
-      organizationId,
-      conversationId,
-      revision,
-      typeof action.input.summary === "string"
-        ? action.input.summary.slice(0, 2000)
-        : "Customer order enquiry",
-      Number.isSafeInteger(rawAmount) && rawAmount >= 0 ? rawAmount : 0,
-    );
-  }
-}
-
-async function handoffFromActions(
-  organizationId: string,
-  conversationId: string,
-  revision: number,
-  actions: NonNullable<
-    Awaited<ReturnType<typeof generateWhatsappAiReply>>
-  >["actions"],
-  body: string,
-) {
-  const handoff = actions.find((action) => action.name === "flag_for_team");
-  if (!handoff) return false;
-  const reason =
-    typeof handoff.input.reason === "string"
-      ? handoff.input.reason.trim().slice(0, 300)
-      : "Customer needs assistance";
-  const summary =
-    typeof handoff.input.summary === "string"
-      ? handoff.input.summary.trim().slice(0, 600)
-      : body.slice(0, 600);
-  await WhatsappHandoffService.start(
-    organizationId,
-    conversationId,
-    revision,
-    reason || "Customer needs assistance",
-    summary || "Customer needs assistance",
-  );
-  return true;
 }
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -378,6 +326,7 @@ export async function replyToInbound(
       return true;
     }
     if (!(await current())) return true;
+    const orderLookup = senderOrderLookup(organizationId, message.sender, body);
     const result = await generateWhatsappAiReply({
       history: history
         .filter(
@@ -402,16 +351,12 @@ export async function replyToInbound(
       persona: settings.persona,
       accessNote: accessNote(access),
       lookupProducts: (query) => lookupProducts(organizationId, query),
-      lookupOrder: (orderId) =>
-        OrderService.lookupCustomerOrder(
-          organizationId,
-          message.sender,
-          orderId,
-        ),
+      lookupOrder: orderLookup.lookup,
       clientData: clientDataFor(access),
     });
     if (!(await current())) return true;
     if (!result) return false;
+    result.actions.push(...orderLookup.actions);
     // Another customer message may arrive while Claude is thinking. The
     // newer scheduled job will answer the entire burst instead.
     const latest = await Repo.latestInboundExternalId(
@@ -442,7 +387,7 @@ export async function replyToInbound(
         conversationId,
         revision,
         result.actions,
-        body,
+        { body, verificationRequired: orderLookup.actions.length > 0 },
       )
     )
       return true;
