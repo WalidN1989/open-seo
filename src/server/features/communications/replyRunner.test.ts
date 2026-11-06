@@ -22,6 +22,7 @@ const server = createServer(async (request, response) => {
       ? JSON.stringify([
           {
             conversationId: "recovered",
+            source: "handoff",
             dueAt: new Date(Date.now() + 100).toISOString(),
           },
         ])
@@ -31,10 +32,18 @@ const server = createServer(async (request, response) => {
         ? JSON.stringify([
             {
               conversationId: "recovered",
+              source: "handoff",
               dueAt: new Date(Date.now() + 50).toISOString(),
             },
           ])
-        : "[]",
+        : action.conversationId === "failing"
+          ? JSON.stringify([
+              {
+                conversationId: "failing",
+                dueAt: new Date(Date.now() + 50).toISOString(),
+              },
+            ])
+          : "[]",
   );
 });
 let child: ReturnType<typeof spawn> | undefined;
@@ -45,11 +54,15 @@ afterAll(async () => {
   }
   await new Promise<void>((resolve) => server.close(() => resolve()));
 });
-const notify = (dueAt: string, secret = "test-only-secret") =>
+const notify = (
+  dueAt: string,
+  secret = "test-only-secret",
+  conversationId = "burst",
+) =>
   fetch("http://127.0.0.1:3003/schedule", {
     method: "POST",
     headers: { "x-internal-cron-secret": secret },
-    body: JSON.stringify({ conversationId: "burst", dueAt }),
+    body: JSON.stringify({ conversationId, dueAt }),
   });
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -117,4 +130,18 @@ it("recovers once, handles later durable deadlines beyond three successful passe
     1,
   );
   expect(errors).toBe("");
+  await notify(
+    new Date(Date.now() + 20).toISOString(),
+    "test-only-secret",
+    "failing",
+  );
+  await waitFor(
+    () =>
+      requests.filter((row) => row.conversationId === "failing").length === 3,
+  );
+  await sleep(200);
+  expect(
+    requests.filter((row) => row.conversationId === "failing"),
+  ).toHaveLength(3);
+  expect(errors).toContain("manual retry required");
 }, 15_000);

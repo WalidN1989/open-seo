@@ -1,3 +1,4 @@
+import type { ReplyWakeup } from "@/shared/whatsapp-reply-wakeup";
 import { WhatsappHandoffOutboxRepository } from "./repositories/WhatsappHandoffOutboxRepository";
 import { WhatsappHandoffService } from "./services/WhatsappHandoffService";
 import { z } from "zod";
@@ -37,8 +38,12 @@ async function pendingWakeups(conversationId?: string) {
     WhatsappHandoffOutboxRepository.pendingWakeups(conversationId),
   ]);
   // Request-local and bounded by the two repository limits; no long-lived cache.
-  const earliest = new Map<string, (typeof replies)[number]>();
-  for (const job of [...replies, ...handoffs]) {
+  const earliest = new Map<string, ReplyWakeup>();
+  const wakeups: ReplyWakeup[] = [
+    ...replies,
+    ...handoffs.map((job): ReplyWakeup => ({ ...job, source: "handoff" })),
+  ];
+  for (const job of wakeups) {
     const current = earliest.get(job.conversationId);
     if (!current || job.dueAt < current.dueAt)
       earliest.set(job.conversationId, job);

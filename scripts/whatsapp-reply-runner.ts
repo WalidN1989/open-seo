@@ -57,11 +57,18 @@ async function run(conversationId: string) {
       attempts.delete(conversationId);
       return;
     }
-    // Successful passes can expose later jobs (including the one-hour handoff
-    // escalation). Only transport failures consume this runner's retry budget;
-    // each durable outbox job has its own bounded attempts.
-    attempts.delete(conversationId);
-    for (const job of pending) schedule(job);
+    // Handoff outbox jobs enforce their own persisted three-attempt limit.
+    // Ordinary reply jobs still need the runner's cap, including HTTP-successful
+    // passes where the worker rescheduled a failed model/database operation.
+    const handoffOnly = pending.every((job) => job.source === "handoff");
+    if (handoffOnly) attempts.delete(conversationId);
+    if (attempt < 3 || handoffOnly) for (const job of pending) schedule(job);
+    else {
+      attempts.delete(conversationId);
+      console.error(
+        "[reply-runner] Reply remains queued after three attempts; manual retry required",
+      );
+    }
   } catch (error) {
     console.error("[reply-runner] Processing failed", error);
     if (attempt >= 3) attempts.delete(conversationId);

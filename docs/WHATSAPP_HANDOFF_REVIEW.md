@@ -39,8 +39,9 @@ Migrations are additive on both backends. No database or provider configuration 
 ## November 2026 follow-up repair
 
 New handoffs atomically queue one additional staff-only escalation for one hour
-later. The event-driven runner preserves later durable deadlines instead of
-counting successful passes against its transport-error retry budget. No global
+later. The event-driven runner preserves later durable deadlines using the
+outbox's persisted retry budget. Ordinary bot replies retain the runner's bounded
+retry budget even when a successful HTTP pass reports rescheduled work. No global
 polling or cron tier is enabled. An accepted operator reply cancels an unstarted
 escalation; resolving the chat or handing it back invalidates dispatch through
 the existing revision guard.

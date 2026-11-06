@@ -68,3 +68,23 @@ describe("event-driven reply endpoint", () => {
     expect(mocks.pending).toHaveBeenCalledWith("chat");
   });
 });
+
+it("marks only handoff work as owning a persisted retry budget", async () => {
+  mocks.handoffs.mockResolvedValue([
+    { conversationId: "handoff", dueAt: "2026-11-06T10:00:00.000Z" },
+  ]);
+  mocks.pending.mockResolvedValue([
+    { conversationId: "reply", dueAt: "2026-11-06T10:00:00.000Z" },
+  ]);
+  const response = await handleWhatsappReplyWakeup(
+    request({ action: "recover" }),
+  );
+  expect(await response.json()).toEqual([
+    { conversationId: "reply", dueAt: "2026-11-06T10:00:00.000Z" },
+    {
+      conversationId: "handoff",
+      dueAt: "2026-11-06T10:00:00.000Z",
+      source: "handoff",
+    },
+  ]);
+});

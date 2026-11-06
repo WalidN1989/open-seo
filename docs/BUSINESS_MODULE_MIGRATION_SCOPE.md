@@ -2652,8 +2652,8 @@ main `d100aac`. New handoffs atomically queue a single one-hour staff escalation
 returning customers reopen the owner reminder and advance unstarted escalation
 work without resuming the bot. Operator replies cancel unstarted escalations.
 Duplicate, revision, recipient/window and uncertain-provider safeguards remain.
-The reply runner now separates successful durable deadlines from its bounded
-transport-failure retries. No global ticker or polling was enabled.
+The reply runner now separates handoff outbox deadlines from its bounded
+ordinary-reply/transport-failure retries. No global ticker or polling was enabled.
 
 Sender-bound lookup failures now force a staff verification handoff. Recorded
 purchase/preorder requests force staff review with persisted customer wording
@@ -2668,7 +2668,7 @@ must account for queued `:followup:` jobs without resetting uncertain receipts.
 No production configuration, customer order or message has been changed. Required
 checks and owner approval of the reviewed revision remain release gates.
 
-Validation: 3,311 SQLite/default tests across 357 files pass; 26 handoff contracts
+Validation: 3,312 SQLite/default tests across 357 files pass; 26 handoff contracts
 also pass against a disposable local PostgreSQL instance. Provider calls were
 mocked. Full static checks and the production selfhost build pass. The actual status
 component was visually checked in a local preview with synthetic data. Hosted
