@@ -116,7 +116,7 @@ describe("handoff dispatch guards", () => {
     expect(await repo.listContacts(ORG_A)).toHaveLength(2);
     await start();
     await start();
-    expect(await outbox()).toHaveLength(3);
+    expect(await outbox()).toHaveLength(5);
   });
   it("recovers a preflight lease but never reclaims a possibly accepted sending request", async () => {
     await start();

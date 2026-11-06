@@ -1,3 +1,4 @@
+import type { generateWhatsappAiReply } from "../providers/whatsapp-ai";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
@@ -21,6 +22,7 @@ const mocks = vi.hoisted(() => ({
   claim: vi.fn(),
   flag: vi.fn(),
   order: vi.fn(),
+  lookupOrder: vi.fn(),
 }));
 vi.mock("./WhatsappHandoffService", () => ({
   WhatsappHandoffService: { start: mocks.flag },
@@ -74,7 +76,7 @@ vi.mock("./WhatsappAssistantService", () => ({
   DEFAULT_HANDOFF_MESSAGE: "Team will help",
 }));
 vi.mock("@/server/features/commerce/services/OrderService", () => ({
-  OrderService: { lookupCustomerOrder: vi.fn() },
+  OrderService: { lookupCustomerOrder: mocks.lookupOrder },
 }));
 import { replyToInbound } from "./WhatsappAssistantReplyService";
 
@@ -314,5 +316,69 @@ describe("retail verification isolation", () => {
         ],
       }),
     );
+  });
+});
+
+describe("order requests require staff review", () => {
+  it("creates a handoff even when the model forgets flag_for_team", async () => {
+    mocks.generate.mockResolvedValue({
+      reply: "Confirmed!",
+      actions: [
+        {
+          name: "create_order_request",
+          input: {
+            summary:
+              "Three colouring books; prices and delivery need confirmation",
+            amount_cents: 0,
+          },
+        },
+      ],
+      ignore: false,
+    });
+    await replyToInbound(connection, "chat", message("Yes please"));
+    expect(mocks.order).toHaveBeenCalled();
+    expect(mocks.flag).toHaveBeenCalledWith(
+      "organization",
+      "chat",
+      0,
+      "Order/preorder request needs staff confirmation",
+      expect.objectContaining({
+        summary: "Three colouring books; prices and delivery need confirmation",
+      }),
+    );
+    expect(mocks.send).not.toHaveBeenCalled();
+  });
+});
+
+describe("sender-bound order verification", () => {
+  it("hands off a no-match even when the model asks for an unusable phone number", async () => {
+    mocks.lookupOrder.mockResolvedValue(JSON.stringify({ found: false }));
+    mocks.generate.mockImplementationOnce(
+      async (input: Parameters<typeof generateWhatsappAiReply>[0]) => {
+        await input.lookupOrder!("SHOP-123");
+        return {
+          reply: "Send another phone number",
+          actions: [],
+          ignore: false,
+        };
+      },
+    );
+    await replyToInbound(connection, "chat", message("Where is SHOP-123?"));
+    expect(mocks.lookupOrder).toHaveBeenCalledWith(
+      "organization",
+      "sender",
+      "SHOP-123",
+    );
+    expect(mocks.flag).toHaveBeenCalledWith(
+      "organization",
+      "chat",
+      0,
+      "Order ownership needs staff verification",
+      expect.objectContaining({
+        acknowledgement:
+          "I couldn't match this order to your WhatsApp number. I've saved the enquiry here for staff to verify ownership and help you; I can't confirm another number's order details.",
+      }),
+    );
+    expect(mocks.send).not.toHaveBeenCalled();
   });
 });

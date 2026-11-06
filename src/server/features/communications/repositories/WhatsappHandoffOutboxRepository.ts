@@ -1,3 +1,4 @@
+import { WhatsappHandoffContextRepository as Context } from "./WhatsappHandoffContextRepository";
 import {
   and,
   asc,
@@ -7,7 +8,6 @@ import {
   isNull,
   lt,
   lte,
-  ne,
   or,
   sql,
 } from "drizzle-orm";
@@ -18,7 +18,6 @@ import {
   whatsappMessages,
   whatsappConnections as senders,
   whatsappHandoffContacts as contacts,
-  whatsappHandoffs as handoffs,
   whatsappHandoffOutbox as outbox,
 } from "@/db/schema";
 async function claimDue(conversationId?: string, now = new Date()) {
@@ -90,62 +89,6 @@ async function claimDue(conversationId?: string, now = new Date()) {
     if (got) claimed.push(got);
   }
   return claimed;
-}
-async function details(job: typeof outbox.$inferSelect) {
-  const [row] = await db
-    .select()
-    .from(handoffs)
-    .where(
-      and(
-        eq(handoffs.id, job.handoffId),
-        eq(handoffs.organizationId, job.organizationId),
-      ),
-    )
-    .limit(1);
-  const [contact] = job.contactId
-    ? await db
-        .select()
-        .from(contacts)
-        .where(
-          and(
-            eq(contacts.id, job.contactId),
-            eq(contacts.organizationId, job.organizationId),
-            eq(contacts.enabled, true),
-          ),
-        )
-        .limit(1)
-    : [];
-  return { handoff: row ?? null, contact: contact ?? null };
-}
-async function lastInboundAt(
-  organizationId: string,
-  connectionId: string,
-  recipient: string,
-) {
-  const [row] = await db
-    .select({
-      at: sql<
-        string | null
-      >`max(coalesce(${whatsappMessages.sentAt}, ${whatsappMessages.createdAt}))`,
-    })
-    .from(whatsappMessages)
-    .innerJoin(
-      chats,
-      and(
-        eq(chats.id, whatsappMessages.conversationId),
-        eq(chats.organizationId, organizationId),
-      ),
-    )
-    .where(
-      and(
-        eq(whatsappMessages.organizationId, organizationId),
-        eq(chats.connectionId, connectionId),
-        sql`replace(${chats.externalConversationId}, '+', '') = ${recipient.replace(/^\+/, "")}`,
-        eq(whatsappMessages.direction, "inbound"),
-        ne(whatsappMessages.status, "failed"),
-      ),
-    );
-  return row?.at ?? null;
 }
 async function beginDispatch(
   job: typeof outbox.$inferSelect,
@@ -373,9 +316,8 @@ async function updateDelivery(
 }
 
 export const WhatsappHandoffOutboxRepository = {
+  lastInboundAt: Context.lastInboundAt,
   claimDue,
-  details,
-  lastInboundAt,
   beginDispatch,
   finish,
   pendingWakeups,

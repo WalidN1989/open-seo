@@ -1,3 +1,4 @@
+import { WhatsappHandoffService } from "./WhatsappHandoffService";
 import { WhatsappHandoffOutboxRepository } from "../repositories/WhatsappHandoffOutboxRepository";
 /* oxlint-disable max-lines, max-depth, max-params */
 import { waitUntil } from "cloudflare:workers";
@@ -1493,7 +1494,15 @@ async function ingestWhatsappGroup(
           connection.organizationId,
           ingestion.conversationId,
         );
-      if (!replyState || replyState.replyMode !== "auto") continue;
+      if (!replyState) continue;
+      if (replyState.replyMode !== "auto") {
+        if (replyState.status === "pending")
+          await WhatsappHandoffService.followUp(
+            connection.organizationId,
+            ingestion.conversationId,
+          );
+        continue;
+      }
       const assistantSettings = await WhatsappAssistantRepository.getSettings(
         connection.organizationId,
       );
@@ -1757,6 +1766,16 @@ async function sendWhatsappMessage(
         sentAt: new Date().toISOString(),
       },
     );
+    if (!["failed", "undelivered"].includes(result.status))
+      await WhatsappHandoffService.staffReplied(
+        organizationId,
+        context.conversation.id,
+      ).catch(() => {
+        // The provider already accepted the operator's reply. Preserve its receipt.
+        console.error(
+          "Staff reply saved; could not cancel the handoff escalation.",
+        );
+      });
     await auditMutation(
       organizationId,
       userId,

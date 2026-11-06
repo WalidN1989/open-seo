@@ -25,7 +25,16 @@ const server = createServer(async (request, response) => {
             dueAt: new Date(Date.now() + 100).toISOString(),
           },
         ])
-      : "[]",
+      : action.conversationId === "recovered" &&
+          requests.filter((row) => row.conversationId === "recovered").length <
+            4
+        ? JSON.stringify([
+            {
+              conversationId: "recovered",
+              dueAt: new Date(Date.now() + 50).toISOString(),
+            },
+          ])
+        : "[]",
   );
 });
 let child: ReturnType<typeof spawn> | undefined;
@@ -52,7 +61,7 @@ async function waitFor(predicate: () => boolean) {
   throw new Error("Reply runner did not become ready");
 }
 
-it("recovers once, stays quiet while idle, and coalesces one-time message wakeups", async () => {
+it("recovers once, handles later durable deadlines beyond three successful passes, stays idle, and coalesces wakeups", async () => {
   server.listen(0, "127.0.0.1");
   await once(server, "listening");
   const address = server.address();
@@ -80,8 +89,9 @@ it("recovers once, stays quiet while idle, and coalesces one-time message wakeup
     errors += String(data);
   });
   await waitFor(() => ready);
-  await waitFor(() =>
-    requests.some((row) => row.conversationId === "recovered"),
+  await waitFor(
+    () =>
+      requests.filter((row) => row.conversationId === "recovered").length === 4,
   );
   expect(requests.filter((row) => row.action === "recover")).toHaveLength(1);
   const idleCount = requests.length;

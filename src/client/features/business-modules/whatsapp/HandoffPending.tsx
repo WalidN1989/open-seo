@@ -33,7 +33,9 @@ export function HandoffStatus({
           {row.status === "sent"
             ? "Alert accepted by provider"
             : row.status === "pending"
-              ? "Alert queued"
+              ? row.alertId?.includes(":followup:") && row.attempts === 0
+                ? `Escalation scheduled for ${row.dueAt ? new Date(row.dueAt).toLocaleString() : "follow-up"}`
+                : "Alert queued"
               : row.status === "processing" || row.status === "sending"
                 ? "Alert sending"
                 : row.status === "unknown"
@@ -46,7 +48,10 @@ export function HandoffStatus({
           {!row.status ? " · No handoff contact configured" : ""}
         </p>
       ))}
-      <p>The handoff is saved in DU. The bot stays silent until handed back.</p>
+      <p>
+        A staff reply is still required. Provider acceptance does not confirm
+        follow-up. The bot stays silent until handed back.
+      </p>
     </div>
   );
 }

@@ -985,9 +985,9 @@ export function WhatsappWorkspace({
                                 {handoffs.data?.some(
                                   (row) =>
                                     row.handoff.conversationId ===
-                                      conversation.id && row.status !== "sent",
+                                    conversation.id,
                                 )
-                                  ? "Handoff · alert failed or queued"
+                                  ? "Waiting for staff · check handoff"
                                   : lastMessage?.body || "No messages yet"}
                               </p>
                             </div>

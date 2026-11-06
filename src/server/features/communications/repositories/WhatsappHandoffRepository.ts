@@ -1,10 +1,11 @@
-import { and, asc, desc, eq, exists, ne, sql } from "drizzle-orm";
+import { and, asc, desc, eq, exists, inArray, ne, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { runBatch } from "@/db/runBatch";
 import {
   member,
   crmReminders,
   whatsappConversations as chats,
+  whatsappMessages,
   whatsappHandoffContacts as contacts,
   whatsappHandoffs as handoffs,
   whatsappHandoffOutbox as outbox,
@@ -52,6 +53,7 @@ async function create(input: {
   revision: number;
   reason: string;
   summary: string;
+  acknowledgement?: string;
 }) {
   const { organizationId, conversationId, revision, reason, summary } = input;
   const id = `handoff:${conversationId}:${revision + 1}`;
@@ -107,13 +109,49 @@ async function create(input: {
       })
       .where(and(owned, eq(chats.replyRevision, revision))),
     ...cancelStaleWhatsappReplies(tx, organizationId, conversationId),
-    ...[null, ...recipients].map((contact) =>
+    ...(input.acknowledgement
+      ? [
+          tx
+            .insert(whatsappMessages)
+            .select(
+              tx
+                .select({
+                  id: sql<string>`${id + ":ack"}`.as("id"),
+                  organizationId: chats.organizationId,
+                  conversationId: chats.id,
+                  externalMessageId: sql<null>`null`.as("externalMessageId"),
+                  direction: sql<"outbound">`'outbound'`.as("direction"),
+                  messageType: sql<string>`'text'`.as("messageType"),
+                  body: sql<string>`${input.acknowledgement}`.as("body"),
+                  mediaId: sql<null>`null`.as("mediaId"),
+                  mediaUrl: sql<null>`null`.as("mediaUrl"),
+                  mediaContentType: sql<null>`null`.as("mediaContentType"),
+                  status: sql<string>`'queued'`.as("status"),
+                  autoReplyRevision: sql<null>`null`.as("autoReplyRevision"),
+                  sentAt: sql<null>`null`.as("sentAt"),
+                  createdAt: sql<string>`${now}`.as("createdAt"),
+                })
+                .from(chats)
+                .where(owned),
+            )
+            .onConflictDoNothing(),
+        ]
+      : []),
+    ...[
+      { contact: null, followup: false },
+      ...recipients.flatMap((contact) => [
+        { contact, followup: false },
+        { contact, followup: true },
+      ]),
+    ].map(({ contact, followup }) =>
       tx
         .insert(outbox)
         .select(
           tx
             .select({
-              id: sql<string>`${id + ":" + (contact?.id ?? "ack")}`.as("id"),
+              id: sql<string>`${id + ":" + (followup ? "followup:" : "") + (contact?.id ?? "ack")}`.as(
+                "id",
+              ),
               organizationId: chats.organizationId,
               handoffId: sql<string>`${id}`.as("handoffId"),
               conversationId: chats.id,
@@ -123,7 +161,10 @@ async function create(input: {
               kind: sql<string>`${contact ? "team" : "ack"}`.as("kind"),
               status: sql<string>`'pending'`.as("status"),
               attempts: sql<number>`0`.as("attempts"),
-              dueAt: sql<string>`${now}`.as("dueAt"),
+              dueAt:
+                sql<string>`${followup ? new Date(Date.parse(now) + 3_600_000).toISOString() : now}`.as(
+                  "dueAt",
+                ),
               claimExpiresAt: sql<null>`null`.as("claimExpiresAt"),
               claimToken: sql<null>`null`.as("claimToken"),
               externalMessageId: sql<null>`null`.as("externalMessageId"),
@@ -182,6 +223,148 @@ async function create(input: {
   return saved ?? null;
 }
 
+/** One durable overdue alert per handoff/recipient; no recurring scan or customer send. */
+async function followUp(organizationId: string, conversationId: string) {
+  const now = new Date().toISOString();
+  const active = and(
+    eq(chats.organizationId, organizationId),
+    eq(chats.id, conversationId),
+    eq(chats.status, "pending"),
+    eq(chats.replyMode, "manual"),
+    exists(
+      db
+        .select({ id: handoffs.id })
+        .from(handoffs)
+        .where(
+          and(
+            eq(handoffs.organizationId, organizationId),
+            eq(handoffs.conversationId, chats.id),
+            eq(handoffs.replyRevision, chats.replyRevision),
+          ),
+        ),
+    ),
+  );
+  await runBatch((tx) => [
+    // Compete with resolution/hand-back on the same conversation row.
+    tx
+      .update(chats)
+      .set({ replyRevision: sql`${chats.replyRevision}` })
+      .where(active),
+    tx
+      .insert(outbox)
+      .select(
+        tx
+          .select({
+            id: sql<string>`${handoffs.id} || ':followup:' || ${contacts.id}`.as(
+              "id",
+            ),
+            organizationId: handoffs.organizationId,
+            handoffId: handoffs.id,
+            conversationId: chats.id,
+            contactId: contacts.id,
+            kind: sql<string>`'team'`.as("kind"),
+            status: sql<string>`'pending'`.as("status"),
+            attempts: sql<number>`0`.as("attempts"),
+            // ISO timestamps are written explicitly for both database dialects.
+            dueAt: sql<string>`${now}`.as("dueAt"),
+            claimExpiresAt: sql<null>`null`.as("claimExpiresAt"),
+            claimToken: sql<null>`null`.as("claimToken"),
+            externalMessageId: sql<null>`null`.as("externalMessageId"),
+            error: sql<null>`null`.as("error"),
+          })
+          .from(chats)
+          .innerJoin(
+            handoffs,
+            and(
+              eq(handoffs.organizationId, organizationId),
+              eq(handoffs.conversationId, chats.id),
+              eq(handoffs.replyRevision, chats.replyRevision),
+            ),
+          )
+          .innerJoin(
+            contacts,
+            and(
+              eq(contacts.organizationId, organizationId),
+              eq(contacts.enabled, true),
+            ),
+          )
+          .where(active),
+      )
+      .onConflictDoNothing(),
+    tx
+      .update(outbox)
+      .set({ dueAt: now, status: "pending", error: null })
+      .where(
+        and(
+          eq(outbox.organizationId, organizationId),
+          eq(outbox.conversationId, conversationId),
+          inArray(outbox.status, ["pending", "cancelled"]),
+          eq(outbox.attempts, 0),
+          sql`${outbox.id} like '%:followup:%'`,
+          exists(
+            tx
+              .select({ id: chats.id })
+              .from(chats)
+              .innerJoin(
+                handoffs,
+                and(
+                  eq(handoffs.id, outbox.handoffId),
+                  eq(handoffs.organizationId, organizationId),
+                  eq(handoffs.conversationId, chats.id),
+                  eq(handoffs.replyRevision, chats.replyRevision),
+                ),
+              )
+              .where(active),
+          ),
+        ),
+      ),
+    tx
+      .update(crmReminders)
+      .set({
+        status: "pending",
+        remindAt: now,
+        updatedAt: now,
+        title: "Customer followed up on a waiting WhatsApp handoff",
+      })
+      .where(
+        and(
+          eq(crmReminders.organizationId, organizationId),
+          eq(crmReminders.whatsappConversationId, conversationId),
+          exists(
+            tx
+              .select({ id: chats.id })
+              .from(chats)
+              .innerJoin(
+                handoffs,
+                and(
+                  eq(handoffs.organizationId, organizationId),
+                  eq(handoffs.conversationId, chats.id),
+                  eq(handoffs.replyRevision, chats.replyRevision),
+                  sql`${crmReminders.id} = ${handoffs.id} || ':reminder'`,
+                ),
+              )
+              .where(active),
+          ),
+        ),
+      ),
+  ]);
+}
+
+/** A real operator reply satisfies the unanswered escalation; keep Manual ownership. */
+async function staffReplied(organizationId: string, conversationId: string) {
+  await db
+    .update(outbox)
+    .set({ status: "cancelled", error: "Staff replied in this chat." })
+    .where(
+      and(
+        eq(outbox.organizationId, organizationId),
+        eq(outbox.conversationId, conversationId),
+        sql`${outbox.id} like '%:followup:%'`,
+        inArray(outbox.status, ["pending", "retry", "processing"]),
+      ),
+    );
+}
+
 async function pending(organizationId: string) {
   return db
     .select({
@@ -189,6 +372,8 @@ async function pending(organizationId: string) {
       status: outbox.status,
       error: outbox.error,
       attempts: outbox.attempts,
+      dueAt: outbox.dueAt,
+      alertId: outbox.id,
       contactName: contacts.name,
     })
     .from(handoffs)
@@ -221,7 +406,11 @@ async function pending(organizationId: string) {
         eq(handoffs.replyRevision, chats.replyRevision),
       ),
     )
-    .orderBy(desc(handoffs.createdAt))
+    .orderBy(
+      desc(handoffs.createdAt),
+      sql`case when ${outbox.id} like '%:followup:%' then 1 else 0 end`,
+      asc(outbox.id),
+    )
     .limit(200);
 }
 
@@ -229,5 +418,7 @@ export const WhatsappHandoffRepository = {
   listContacts,
   saveContacts,
   create,
+  followUp,
+  staffReplied,
   pending,
 };

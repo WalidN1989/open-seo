@@ -8,6 +8,7 @@ import {
   type TestDb,
 } from "./fixture";
 import type * as Schema from "@/db/schema";
+import type * as ContextModule from "@/server/features/communications/repositories/WhatsappHandoffContextRepository";
 import type * as OutboxModule from "@/server/features/communications/repositories/WhatsappHandoffOutboxRepository";
 import type * as Repository from "@/server/features/communications/repositories/WhatsappHandoffRepository";
 import type * as Service from "@/server/features/communications/services/WhatsappHandoffService";
@@ -42,6 +43,7 @@ vi.mock(
 export let db: TestDb;
 export let s: typeof Schema;
 export let repo: typeof Repository.WhatsappHandoffRepository &
+  typeof ContextModule.WhatsappHandoffContextRepository &
   typeof OutboxModule.WhatsappHandoffOutboxRepository;
 export let service: typeof Service.WhatsappHandoffService;
 let close: () => void | Promise<void>;
@@ -72,6 +74,9 @@ beforeAll(async () => {
   }));
   s = await import("@/db/schema");
   repo = {
+    ...(
+      await import("@/server/features/communications/repositories/WhatsappHandoffContextRepository")
+    ).WhatsappHandoffContextRepository,
     ...(
       await import("@/server/features/communications/repositories/WhatsappHandoffRepository")
     ).WhatsappHandoffRepository,

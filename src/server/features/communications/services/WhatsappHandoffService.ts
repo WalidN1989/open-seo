@@ -1,3 +1,4 @@
+import { WhatsappHandoffContextRepository as Context } from "../repositories/WhatsappHandoffContextRepository";
 import { WhatsappHandoffOutboxRepository as Outbox } from "../repositories/WhatsappHandoffOutboxRepository";
 import { getRequiredEnvValue } from "@/server/lib/runtime-env";
 import type { z } from "zod";
@@ -66,16 +67,21 @@ async function start(
   conversationId: string,
   revision: number,
   reason: string,
-  summary: string,
+  details: string | { summary: string; acknowledgement: string },
 ) {
+  const { summary, acknowledgement } =
+    typeof details === "string"
+      ? { summary: details, acknowledgement: undefined }
+      : details;
   const validated = handoffInputSchema.parse({ reason, summary });
   const saved = await Repo.create({
     organizationId,
     conversationId,
     revision,
     ...validated,
+    acknowledgement,
   });
-  if (saved)
+  if (saved) {
     await wakeWhatsappReply({
       conversationId,
       dueAt: new Date().toISOString(),
@@ -84,11 +90,29 @@ async function start(
         "Handoff saved; reply runner wakeup failed. Startup recovery will retry.",
       );
     });
+  }
   return saved;
+}
+async function followUp(organizationId: string, conversationId: string) {
+  await Repo.followUp(organizationId, conversationId);
+  const wakeups = await Outbox.pendingWakeups(conversationId);
+  for (const wakeup of wakeups) await wakeWhatsappReply(wakeup);
 }
 async function pending(organizationId: string, userId: string) {
   await BusinessModuleService.requireAccess(organizationId, userId, "whatsapp");
   return Repo.pending(organizationId);
+}
+
+function handoffBody(
+  job: { kind: string; id: string },
+  acknowledgement: string | null | undefined,
+  variables: Record<string, string>,
+) {
+  if (job.kind === "ack") return acknowledgement ?? HANDOFF_ACKNOWLEDGEMENT;
+  const status = job.id.includes(":followup:")
+    ? "is still waiting for a person; please prioritize this unresolved handoff"
+    : "needs a person";
+  return `Customer ${variables["1"]} ${status}. Reason: ${variables["2"]}. Customer reply window closes at ${variables["3"]}. Please review the pending chat in DU.`;
 }
 
 /** All recipients come from scoped persisted records, never a tool argument or an order phone. */
@@ -100,7 +124,7 @@ async function runDue(conversationId?: string) {
       let dispatched = false;
       try {
         const [details, route, config] = await Promise.all([
-          Outbox.details(job),
+          Context.details(job),
           CommunicationsRepository.getWhatsappConversationForSend(
             job.organizationId,
             job.conversationId,
@@ -119,6 +143,14 @@ async function runDue(conversationId?: string) {
             job,
             "cancelled",
             "Chat was resolved or reply mode changed.",
+          );
+          return;
+        }
+        if (details.uncertain) {
+          await Outbox.finish(
+            job,
+            "cancelled",
+            "Earlier alert delivery is uncertain; check provider before further alerts.",
           );
           return;
         }
@@ -144,7 +176,7 @@ async function runDue(conversationId?: string) {
           return;
         }
         const window = evaluateWhatsappWindow(
-          await Outbox.lastInboundAt(
+          await Context.lastInboundAt(
             job.organizationId,
             route.connection.id,
             recipient,
@@ -154,7 +186,7 @@ async function runDue(conversationId?: string) {
           job.kind === "ack"
             ? window
             : evaluateWhatsappWindow(
-                await Outbox.lastInboundAt(
+                await Context.lastInboundAt(
                   job.organizationId,
                   route.connection.id,
                   customer ?? "",
@@ -169,10 +201,7 @@ async function runDue(conversationId?: string) {
           ),
           "3": expiry,
         };
-        const body =
-          job.kind === "ack"
-            ? HANDOFF_ACKNOWLEDGEMENT
-            : `Customer ${variables["1"]} needs a person. Reason: ${variables["2"]}. Customer reply window closes at ${expiry}. Please review the pending chat in DU.`;
+        const body = handoffBody(job, details.acknowledgement, variables);
         let template;
         if (!window.windowOpen) {
           if (
@@ -255,6 +284,8 @@ export const WhatsappHandoffService = {
   settings,
   saveSettings,
   start,
+  followUp,
+  staffReplied: Repo.staffReplied,
   pending,
   runDue,
 };
