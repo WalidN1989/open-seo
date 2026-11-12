@@ -90,6 +90,12 @@ export const createWhatsappCampaignSchema = z.object({
 });
 export const launchWhatsappCampaignSchema = z.object({
   campaignId: z.string().min(1),
+  variables: z
+    .record(
+      z.string().regex(/^\d+$/, "Template variable keys must be numbers."),
+      z.string().trim().min(1).max(2000),
+    )
+    .default({}),
 });
 export const createWhatsappAutomationSchema = z.object({
   name: z.string().trim().min(1).max(150),

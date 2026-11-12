@@ -2673,3 +2673,27 @@ also pass against a disposable local PostgreSQL instance. Provider calls were
 mocked. Full static checks and the production selfhost build pass. The actual status
 component was visually checked in a local preview with synthetic data. Hosted
 checks must pass on the final revision before owner release approval.
+
+### 2026-11-12 — WhatsApp marketing campaign repair prepared
+
+Period.lk's approved Twilio marketing template uses four content variables,
+including a variable image path, but the application launched campaigns without
+collecting or forwarding any variables. The launch form now collects variables
+1–4, shows Period.lk-specific guidance, renders the saved inbox copy, and passes
+the values to Twilio as `ContentVariables`. Launch validation rejects missing
+placeholders and image URLs that are not public HTTPS JPG/JPEG/PNG assets.
+
+Campaign audience selection is now limited to open WhatsApp conversations linked
+to CRM contacts whose tenant-scoped WhatsApp profile explicitly has marketing
+opt-in enabled. An empty opted-in audience stops before the campaign is marked
+running. This deliberately does not infer marketing consent from prior chat
+history and does not backfill consent or send any messages.
+
+The source WebP promotion artwork was converted through the Period.lk WordPress
+media environment to `wp-content/uploads/2026/11/healthfab-hair-serum.jpg`; an
+external HEAD check returned HTTP 200 with `image/jpeg`. The original WebP remains
+unchanged. No database migration or scheduler change is introduced. Local
+validation completed so far: TypeScript, targeted type-aware lint, formatting,
+diff checks, and all 15 WhatsApp provider tests pass. Production code is not yet
+changed; release still follows `docs/VPS_RELEASES.md` with CI, review, merge and
+the owner-approved manual Coolify deployment.

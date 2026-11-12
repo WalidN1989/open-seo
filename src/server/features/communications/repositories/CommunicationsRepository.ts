@@ -993,6 +993,19 @@ async function getWhatsappCampaignContext(
   ) {
     return null;
   }
+  const optedInProfiles = await db
+    .select({ contactId: whatsappContactProfiles.contactId })
+    .from(whatsappContactProfiles)
+    .where(
+      and(
+        eq(whatsappContactProfiles.organizationId, organizationId),
+        eq(whatsappContactProfiles.marketingOptIn, true),
+      ),
+    );
+  const optedInContactIds = optedInProfiles.map((profile) => profile.contactId);
+  if (!optedInContactIds.length) {
+    return { campaign, connection, template, conversations: [] };
+  }
   const conversations = await db
     .select()
     .from(whatsappConversations)
@@ -1001,6 +1014,7 @@ async function getWhatsappCampaignContext(
         eq(whatsappConversations.organizationId, organizationId),
         eq(whatsappConversations.connectionId, connection.id),
         eq(whatsappConversations.status, "open"),
+        inArray(whatsappConversations.contactId, optedInContactIds),
       ),
     );
   return { campaign, connection, template, conversations };
