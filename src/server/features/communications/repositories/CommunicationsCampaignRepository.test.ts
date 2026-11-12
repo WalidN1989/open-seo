@@ -106,4 +106,23 @@ describe("WhatsApp campaign audience and launch claim", () => {
       Repository.claimWhatsappCampaign("org", "campaign", "later"),
     ).resolves.toBeNull();
   });
+
+  it("rechecks STOP and marketing consent immediately before dispatch", async () => {
+    await client.execute(
+      "UPDATE whatsapp_conversations SET opted_out_at = 'now' WHERE id = 'eligible-chat'",
+    );
+    await expect(
+      Repository.whatsappCampaignRecipientAllowed("org", "eligible-chat"),
+    ).resolves.toBe(false);
+
+    await client.execute(
+      "UPDATE whatsapp_conversations SET opted_out_at = NULL WHERE id = 'eligible-chat'",
+    );
+    await client.execute(
+      "UPDATE whatsapp_contact_profiles SET marketing_opt_in = 0 WHERE contact_id = 'eligible'",
+    );
+    await expect(
+      Repository.whatsappCampaignRecipientAllowed("org", "eligible-chat"),
+    ).resolves.toBe(false);
+  });
 });

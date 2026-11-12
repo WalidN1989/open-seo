@@ -691,8 +691,18 @@ async function launchWhatsappCampaign(
   }
   let sent = 0;
   let failed = 0;
+  let skipped = 0;
   for (const conversation of context.conversations) {
     if (!conversation.externalConversationId) continue;
+    if (
+      !(await CommunicationsRepository.whatsappCampaignRecipientAllowed(
+        organizationId,
+        conversation.id,
+      ))
+    ) {
+      skipped += 1;
+      continue;
+    }
     const queued = await CommunicationsRepository.createQueuedWhatsappMessage(
       organizationId,
       conversation.id,
@@ -743,6 +753,7 @@ async function launchWhatsappCampaign(
     campaignId: context.campaign.id,
     sent,
     failed,
+    skipped,
   });
   await auditMutation(
     organizationId,
@@ -750,9 +761,9 @@ async function launchWhatsappCampaign(
     "whatsapp.campaign.launched",
     "whatsapp_campaign",
     context.campaign.id,
-    { sent, failed },
+    { sent, failed, skipped },
   );
-  return { campaignId: context.campaign.id, sent, failed };
+  return { campaignId: context.campaign.id, sent, failed, skipped };
 }
 
 async function createWhatsappAutomation(

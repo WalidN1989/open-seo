@@ -1017,6 +1017,33 @@ async function getWhatsappCampaignContext(
   return { campaign, connection, template, conversations };
 }
 
+async function whatsappCampaignRecipientAllowed(
+  organizationId: string,
+  conversationId: string,
+) {
+  const [row] = await db
+    .select({ id: whatsappConversations.id })
+    .from(whatsappConversations)
+    .innerJoin(
+      whatsappContactProfiles,
+      and(
+        eq(whatsappContactProfiles.organizationId, organizationId),
+        eq(whatsappContactProfiles.contactId, whatsappConversations.contactId),
+        eq(whatsappContactProfiles.marketingOptIn, true),
+      ),
+    )
+    .where(
+      and(
+        eq(whatsappConversations.id, conversationId),
+        eq(whatsappConversations.organizationId, organizationId),
+        eq(whatsappConversations.status, "open"),
+        isNull(whatsappConversations.optedOutAt),
+      ),
+    )
+    .limit(1);
+  return Boolean(row);
+}
+
 async function updateWhatsappCampaign(
   organizationId: string,
   campaignId: string,
@@ -1594,6 +1621,7 @@ export const CommunicationsRepository = {
   getWhatsappWorkspace,
   getWhatsappOperations,
   getWhatsappCampaignContext,
+  whatsappCampaignRecipientAllowed,
   getWhatsappConnectionById,
   getWhatsappConversationForSend,
   getWhatsappConversationHistory,

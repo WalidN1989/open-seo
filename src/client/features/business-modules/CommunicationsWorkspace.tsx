@@ -437,7 +437,7 @@ export function WhatsappWorkspace({
       await client.invalidateQueries({ queryKey: ["whatsapp"] });
       setLaunchingCampaignId(null);
       toast.success(
-        `Campaign finished: ${result.sent} sent, ${result.failed} failed`,
+        `Campaign finished: ${result.sent} sent, ${result.failed} failed, ${result.skipped} skipped`,
       );
     },
     onError: showError,
