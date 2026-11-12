@@ -2693,7 +2693,10 @@ The source WebP promotion artwork was converted through the Period.lk WordPress
 media environment to `wp-content/uploads/2026/11/healthfab-hair-serum.jpg`; an
 external HEAD check returned HTTP 200 with `image/jpeg`. The original WebP remains
 unchanged. No database migration or scheduler change is introduced. Local
-validation completed so far: TypeScript, targeted type-aware lint, formatting,
-diff checks, and all 15 WhatsApp provider tests pass. Production code is not yet
-changed; release still follows `docs/VPS_RELEASES.md` with CI, review, merge and
-the owner-approved manual Coolify deployment.
+validation passes: 3,315 tests across 358 files, the complete static CI gate,
+three campaign audience/claim regressions, and all 15 WhatsApp provider tests.
+Review also added atomic launch claiming, dispatch-time consent rechecks, a
+scalable tenant-scoped audience join, generic template-variable fields, and a
+clear rejection for unsupported variable Meta templates. Production code is not
+yet changed; release still follows `docs/VPS_RELEASES.md` with hosted CI,
+maintainer review and the owner-approved manual Coolify deployment.
