@@ -8,8 +8,10 @@ import {
   count,
   desc,
   eq,
+  getTableColumns,
   inArray,
   isNotNull,
+  isNull,
   lte,
   sql,
 } from "drizzle-orm";
@@ -993,28 +995,23 @@ async function getWhatsappCampaignContext(
   ) {
     return null;
   }
-  const optedInProfiles = await db
-    .select({ contactId: whatsappContactProfiles.contactId })
-    .from(whatsappContactProfiles)
-    .where(
+  const conversations = await db
+    .select(getTableColumns(whatsappConversations))
+    .from(whatsappConversations)
+    .innerJoin(
+      whatsappContactProfiles,
       and(
         eq(whatsappContactProfiles.organizationId, organizationId),
+        eq(whatsappContactProfiles.contactId, whatsappConversations.contactId),
         eq(whatsappContactProfiles.marketingOptIn, true),
       ),
-    );
-  const optedInContactIds = optedInProfiles.map((profile) => profile.contactId);
-  if (!optedInContactIds.length) {
-    return { campaign, connection, template, conversations: [] };
-  }
-  const conversations = await db
-    .select()
-    .from(whatsappConversations)
+    )
     .where(
       and(
         eq(whatsappConversations.organizationId, organizationId),
         eq(whatsappConversations.connectionId, connection.id),
         eq(whatsappConversations.status, "open"),
-        inArray(whatsappConversations.contactId, optedInContactIds),
+        isNull(whatsappConversations.optedOutAt),
       ),
     );
   return { campaign, connection, template, conversations };
@@ -1036,6 +1033,29 @@ async function updateWhatsappCampaign(
     )
     .returning();
   return campaign;
+}
+
+async function claimWhatsappCampaign(
+  organizationId: string,
+  campaignId: string,
+  startedAt: string,
+) {
+  const [campaign] = await db
+    .update(whatsappCampaigns)
+    .set({
+      status: "running",
+      startedAt,
+      updatedAt: new Date().toISOString(),
+    })
+    .where(
+      and(
+        eq(whatsappCampaigns.id, campaignId),
+        eq(whatsappCampaigns.organizationId, organizationId),
+        inArray(whatsappCampaigns.status, ["draft", "scheduled"]),
+      ),
+    )
+    .returning();
+  return campaign ?? null;
 }
 
 async function listMatchingWhatsappAutomations(
@@ -1581,6 +1601,7 @@ export const CommunicationsRepository = {
   ingestWhatsappMessage,
   markWhatsappConnectionConnected,
   startVoiceConversation,
+  claimWhatsappCampaign,
   updateWhatsappCampaign,
   updateWhatsappConversation,
   updateWhatsappContactProfile,

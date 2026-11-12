@@ -642,6 +642,15 @@ async function launchWhatsappCampaign(
       `Fill template variable${missingVariableKeys.length === 1 ? "" : "s"} ${missingVariableKeys.join(", ")}.`,
     );
   }
+  if (
+    context.connection.provider === "meta_cloud" &&
+    requiredVariableKeys.length
+  ) {
+    throw new AppError(
+      "VALIDATION_ERROR",
+      "Variable campaign templates are not supported for Meta Cloud senders yet.",
+    );
+  }
   const renderTemplate = (value: string) =>
     value.replace(
       /\{\{\s*(\d+)\s*\}\}/g,
@@ -672,11 +681,14 @@ async function launchWhatsappCampaign(
     }
   }
   const startedAt = new Date().toISOString();
-  await CommunicationsRepository.updateWhatsappCampaign(
+  const claimed = await CommunicationsRepository.claimWhatsappCampaign(
     organizationId,
     context.campaign.id,
-    { status: "running", startedAt },
+    startedAt,
   );
+  if (!claimed) {
+    throw new AppError("CONFLICT", "This campaign has already been launched.");
+  }
   let sent = 0;
   let failed = 0;
   for (const conversation of context.conversations) {
