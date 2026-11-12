@@ -2700,3 +2700,29 @@ scalable tenant-scoped audience join, generic template-variable fields, and a
 clear rejection for unsupported variable Meta templates. Production code is not
 yet changed; release still follows `docs/VPS_RELEASES.md` with hosted CI,
 maintainer review and the owner-approved manual Coolify deployment.
+
+### 2026-11-13 — WhatsApp marketing campaign repair released
+
+The owner approved PR 84 and the production release in chat. PR 84 merged as
+`5b73e91b8c036450715fd97d53cc2e903ad5aec7`; the branch and merged-main `ci`
+and `docker-build` jobs passed on that exact revision. GitHub production image
+run `43296006084` published
+`ghcr.io/walidn1989/digital-urgency@sha256:e8b7e630be696e228725bcddc477a9aa0239792c20f3aced42f9e16a313363df`.
+Coolify deployment `fo2twz12hpgo8nyzpqnmzjcv` finished its rolling update and
+the new container passed `/api/health` on its first configured check. The public
+health endpoint returned HTTP 200, and the live Period.lk campaign screen exposed
+the approved `period_product_promotion` template through the new campaign form.
+
+The prior known-good image
+`ghcr.io/walidn1989/digital-urgency@sha256:25d1129fc494ac0f9bc7d0c590b18a497618e0c75ac7195326e75810bbfc2d29`
+remains the code rollback target. The release preserved all 33 Coolify runtime
+variables and the `/data/open-seo/runtime` bind mount. There was no database
+migration, consent backfill, campaign launch or corrective customer message as
+part of deployment verification.
+
+Before this release, the owner launched the saved `Hair Serium` campaign through
+the old form at 2026-11-12 19:42 UTC. Its audit records 24 accepted sends with
+unrendered variables in the saved inbox copy; subsequent message state was 14
+delivered, 3 read, 6 sent and 1 undelivered. The campaign was not replayed after
+the fix. Any corrective promotion must be a new owner-reviewed campaign using
+explicit variables and only currently opted-in linked contacts.
