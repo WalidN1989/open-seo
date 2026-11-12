@@ -233,6 +233,9 @@ export function WhatsappWorkspace({
   const [editingConnectionId, setEditingConnectionId] = useState<string | null>(
     null,
   );
+  const [launchingCampaignId, setLaunchingCampaignId] = useState<string | null>(
+    null,
+  );
   const [webhookOrigin, setWebhookOrigin] = useState("");
   useEffect(() => setWebhookOrigin(window.location.origin), []);
   const [selectedConversationId, setSelectedConversationId] = useState<
@@ -426,12 +429,15 @@ export function WhatsappWorkspace({
     onError: showError,
   });
   const launchCampaign = useMutation({
-    mutationFn: (campaignId: string) =>
-      launchWhatsappCampaign({ data: { campaignId } }),
+    mutationFn: (data: {
+      campaignId: string;
+      variables: Record<string, string>;
+    }) => launchWhatsappCampaign({ data }),
     onSuccess: async (result) => {
       await client.invalidateQueries({ queryKey: ["whatsapp"] });
+      setLaunchingCampaignId(null);
       toast.success(
-        `Campaign finished: ${result.sent} sent, ${result.failed} failed`,
+        `Campaign finished: ${result.sent} sent, ${result.failed} failed, ${result.skipped} skipped`,
       );
     },
     onError: showError,
@@ -1643,40 +1649,111 @@ export function WhatsappWorkspace({
                 </button>
               </div>
               {(ops?.campaigns ?? []).length ? (
-                (ops?.campaigns ?? []).map((item) => (
-                  <div key={item.id} className="flex items-center gap-2 pr-4">
-                    <div className="min-w-0 flex-1">
-                      <Row title={item.name} detail={item.status} />
+                (ops?.campaigns ?? []).map((item) => {
+                  const selectedTemplate = (ops?.templates ?? []).find(
+                    (candidate) => candidate.id === item.templateId,
+                  );
+                  const templateText = `${selectedTemplate?.body ?? ""}\n${selectedTemplate?.mediaUrl ?? ""}`;
+                  const variableKeys = [
+                    ...new Set(
+                      [...templateText.matchAll(/\{\{\s*(\d+)\s*\}\}/g)].map(
+                        (match) => match[1],
+                      ),
+                    ),
+                  ].toSorted((left, right) => Number(left) - Number(right));
+                  const mediaVariableKeys = new Set(
+                    [
+                      ...(selectedTemplate?.mediaUrl ?? "").matchAll(
+                        /\{\{\s*(\d+)\s*\}\}/g,
+                      ),
+                    ].map((match) => match[1]),
+                  );
+                  const variableFields = variableKeys.map(
+                    (key) => `variable${key}`,
+                  );
+                  return (
+                    <div key={item.id} className="border-b border-base-300">
+                      <div className="flex items-center gap-2 pr-4">
+                        <div className="min-w-0 flex-1">
+                          <Row title={item.name} detail={item.status} />
+                        </div>
+                        {item.status === "draft" ||
+                        item.status === "scheduled" ? (
+                          <button
+                            className="btn btn-primary btn-xs"
+                            disabled={launchCampaign.isPending}
+                            onClick={() =>
+                              setLaunchingCampaignId(
+                                launchingCampaignId === item.id
+                                  ? null
+                                  : item.id,
+                              )
+                            }
+                          >
+                            Launch
+                          </button>
+                        ) : null}
+                        {item.status !== "running" ? (
+                          <button
+                            className="btn btn-ghost btn-xs text-error"
+                            aria-label={`Delete campaign ${item.name}`}
+                            disabled={deleteCampaign.isPending}
+                            onClick={() => {
+                              if (
+                                window.confirm(
+                                  `Delete "${item.name}"? Messages it already sent stay in the chats.`,
+                                )
+                              ) {
+                                deleteCampaign.mutate(item.id);
+                              }
+                            }}
+                          >
+                            <Trash2 className="size-3.5" />
+                          </button>
+                        ) : null}
+                      </div>
+                      {launchingCampaignId === item.id ? (
+                        <div className="p-3 pt-0">
+                          <SimpleForm
+                            stacked
+                            isSubmitting={launchCampaign.isPending}
+                            submitLabel="Send campaign"
+                            fields={variableFields}
+                            meta={Object.fromEntries(
+                              variableKeys.map((key) => [
+                                `variable${key}`,
+                                {
+                                  label: `Template variable ${key}`,
+                                  hint: mediaVariableKeys.has(key)
+                                    ? `Used in the image URL pattern: ${selectedTemplate?.mediaUrl}`
+                                    : "Used in the approved message text.",
+                                },
+                              ]),
+                            )}
+                            onSubmit={(values) => {
+                              if (
+                                !window.confirm(
+                                  "Send this marketing message to every opted-in WhatsApp contact with an open conversation?",
+                                )
+                              ) {
+                                return;
+                              }
+                              launchCampaign.mutate({
+                                campaignId: item.id,
+                                variables: Object.fromEntries(
+                                  variableKeys.map((key) => [
+                                    key,
+                                    values[`variable${key}`],
+                                  ]),
+                                ),
+                              });
+                            }}
+                          />
+                        </div>
+                      ) : null}
                     </div>
-                    {item.status === "draft" || item.status === "scheduled" ? (
-                      <button
-                        className="btn btn-primary btn-xs"
-                        disabled={launchCampaign.isPending}
-                        onClick={() => launchCampaign.mutate(item.id)}
-                      >
-                        Launch
-                      </button>
-                    ) : null}
-                    {item.status !== "running" ? (
-                      <button
-                        className="btn btn-ghost btn-xs text-error"
-                        aria-label={`Delete campaign ${item.name}`}
-                        disabled={deleteCampaign.isPending}
-                        onClick={() => {
-                          if (
-                            window.confirm(
-                              `Delete "${item.name}"? Messages it already sent stay in the chats.`,
-                            )
-                          ) {
-                            deleteCampaign.mutate(item.id);
-                          }
-                        }}
-                      >
-                        <Trash2 className="size-3.5" />
-                      </button>
-                    ) : null}
-                  </div>
-                ))
+                  );
+                })
               ) : (
                 <Empty text="No campaigns yet." />
               )}

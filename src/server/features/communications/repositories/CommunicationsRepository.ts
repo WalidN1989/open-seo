@@ -8,8 +8,10 @@ import {
   count,
   desc,
   eq,
+  getTableColumns,
   inArray,
   isNotNull,
+  isNull,
   lte,
   sql,
 } from "drizzle-orm";
@@ -994,16 +996,52 @@ async function getWhatsappCampaignContext(
     return null;
   }
   const conversations = await db
-    .select()
+    .select(getTableColumns(whatsappConversations))
     .from(whatsappConversations)
+    .innerJoin(
+      whatsappContactProfiles,
+      and(
+        eq(whatsappContactProfiles.organizationId, organizationId),
+        eq(whatsappContactProfiles.contactId, whatsappConversations.contactId),
+        eq(whatsappContactProfiles.marketingOptIn, true),
+      ),
+    )
     .where(
       and(
         eq(whatsappConversations.organizationId, organizationId),
         eq(whatsappConversations.connectionId, connection.id),
         eq(whatsappConversations.status, "open"),
+        isNull(whatsappConversations.optedOutAt),
       ),
     );
   return { campaign, connection, template, conversations };
+}
+
+async function whatsappCampaignRecipientAllowed(
+  organizationId: string,
+  conversationId: string,
+) {
+  const [row] = await db
+    .select({ id: whatsappConversations.id })
+    .from(whatsappConversations)
+    .innerJoin(
+      whatsappContactProfiles,
+      and(
+        eq(whatsappContactProfiles.organizationId, organizationId),
+        eq(whatsappContactProfiles.contactId, whatsappConversations.contactId),
+        eq(whatsappContactProfiles.marketingOptIn, true),
+      ),
+    )
+    .where(
+      and(
+        eq(whatsappConversations.id, conversationId),
+        eq(whatsappConversations.organizationId, organizationId),
+        eq(whatsappConversations.status, "open"),
+        isNull(whatsappConversations.optedOutAt),
+      ),
+    )
+    .limit(1);
+  return Boolean(row);
 }
 
 async function updateWhatsappCampaign(
@@ -1022,6 +1060,29 @@ async function updateWhatsappCampaign(
     )
     .returning();
   return campaign;
+}
+
+async function claimWhatsappCampaign(
+  organizationId: string,
+  campaignId: string,
+  startedAt: string,
+) {
+  const [campaign] = await db
+    .update(whatsappCampaigns)
+    .set({
+      status: "running",
+      startedAt,
+      updatedAt: new Date().toISOString(),
+    })
+    .where(
+      and(
+        eq(whatsappCampaigns.id, campaignId),
+        eq(whatsappCampaigns.organizationId, organizationId),
+        inArray(whatsappCampaigns.status, ["draft", "scheduled"]),
+      ),
+    )
+    .returning();
+  return campaign ?? null;
 }
 
 async function listMatchingWhatsappAutomations(
@@ -1560,6 +1621,7 @@ export const CommunicationsRepository = {
   getWhatsappWorkspace,
   getWhatsappOperations,
   getWhatsappCampaignContext,
+  whatsappCampaignRecipientAllowed,
   getWhatsappConnectionById,
   getWhatsappConversationForSend,
   getWhatsappConversationHistory,
@@ -1567,6 +1629,7 @@ export const CommunicationsRepository = {
   ingestWhatsappMessage,
   markWhatsappConnectionConnected,
   startVoiceConversation,
+  claimWhatsappCampaign,
   updateWhatsappCampaign,
   updateWhatsappConversation,
   updateWhatsappContactProfile,

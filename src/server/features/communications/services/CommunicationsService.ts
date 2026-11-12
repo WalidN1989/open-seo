@@ -619,34 +619,108 @@ async function launchWhatsappCampaign(
   if (!sandbox && context.template.status !== "approved") {
     throw new Error("Campaigns require a provider-approved WhatsApp template.");
   }
+  if (!context.conversations.length) {
+    throw new AppError(
+      "VALIDATION_ERROR",
+      "No open WhatsApp conversations are linked to contacts who opted in to marketing.",
+    );
+  }
+  const templateText = `${context.template.body}\n${context.template.mediaUrl ?? ""}`;
+  const requiredVariableKeys = [
+    ...new Set(
+      [...templateText.matchAll(/\{\{\s*(\d+)\s*\}\}/g)].map(
+        (match) => match[1],
+      ),
+    ),
+  ];
+  const missingVariableKeys = requiredVariableKeys.filter(
+    (key) => !input.variables[key]?.trim(),
+  );
+  if (missingVariableKeys.length) {
+    throw new AppError(
+      "VALIDATION_ERROR",
+      `Fill template variable${missingVariableKeys.length === 1 ? "" : "s"} ${missingVariableKeys.join(", ")}.`,
+    );
+  }
+  if (
+    context.connection.provider === "meta_cloud" &&
+    requiredVariableKeys.length
+  ) {
+    throw new AppError(
+      "VALIDATION_ERROR",
+      "Variable campaign templates are not supported for Meta Cloud senders yet.",
+    );
+  }
+  const renderTemplate = (value: string) =>
+    value.replace(
+      /\{\{\s*(\d+)\s*\}\}/g,
+      (whole, key: string) => input.variables[key] ?? whole,
+    );
+  const renderedBody = renderTemplate(context.template.body);
+  const renderedMediaUrl = context.template.mediaUrl
+    ? renderTemplate(context.template.mediaUrl)
+    : undefined;
+  if (renderedMediaUrl) {
+    let parsedMediaUrl: URL;
+    try {
+      parsedMediaUrl = new URL(renderedMediaUrl);
+    } catch {
+      throw new AppError(
+        "VALIDATION_ERROR",
+        "The campaign image variable did not produce a valid public URL.",
+      );
+    }
+    if (
+      parsedMediaUrl.protocol !== "https:" ||
+      !/\.(?:jpe?g|png)$/i.test(parsedMediaUrl.pathname)
+    ) {
+      throw new AppError(
+        "VALIDATION_ERROR",
+        "WhatsApp image templates require a public HTTPS JPG, JPEG, or PNG image.",
+      );
+    }
+  }
   const startedAt = new Date().toISOString();
-  await CommunicationsRepository.updateWhatsappCampaign(
+  const claimed = await CommunicationsRepository.claimWhatsappCampaign(
     organizationId,
     context.campaign.id,
-    { status: "running", startedAt },
+    startedAt,
   );
+  if (!claimed) {
+    throw new AppError("CONFLICT", "This campaign has already been launched.");
+  }
   let sent = 0;
   let failed = 0;
+  let skipped = 0;
   for (const conversation of context.conversations) {
     if (!conversation.externalConversationId) continue;
+    if (
+      !(await CommunicationsRepository.whatsappCampaignRecipientAllowed(
+        organizationId,
+        conversation.id,
+      ))
+    ) {
+      skipped += 1;
+      continue;
+    }
     const queued = await CommunicationsRepository.createQueuedWhatsappMessage(
       organizationId,
       conversation.id,
-      context.template.body,
+      renderedBody,
     );
     try {
       const result = sandbox
         ? await sendWhatsappText(
             context.connection,
             conversation.externalConversationId,
-            context.template.body,
+            renderedBody,
             undefined,
-            context.template.mediaUrl,
+            renderedMediaUrl,
           )
         : await sendWhatsappTemplate(
             context.connection,
             conversation.externalConversationId,
-            context.template,
+            { ...context.template, variables: input.variables },
           );
       await CommunicationsRepository.completeWhatsappMessage(
         organizationId,
@@ -679,6 +753,7 @@ async function launchWhatsappCampaign(
     campaignId: context.campaign.id,
     sent,
     failed,
+    skipped,
   });
   await auditMutation(
     organizationId,
@@ -686,9 +761,9 @@ async function launchWhatsappCampaign(
     "whatsapp.campaign.launched",
     "whatsapp_campaign",
     context.campaign.id,
-    { sent, failed },
+    { sent, failed, skipped },
   );
-  return { campaignId: context.campaign.id, sent, failed };
+  return { campaignId: context.campaign.id, sent, failed, skipped };
 }
 
 async function createWhatsappAutomation(
