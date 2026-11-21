@@ -2767,3 +2767,41 @@ verification and the Coolify procedure in `docs/VPS_RELEASES.md`. Code rollback
 may revert the feature while leaving the two additive tables in place; removing
 or rotating the VAPID configuration stops delivery without affecting WhatsApp
 ingestion. No subscription or preference backfill is performed.
+
+### 2026-11-21 — GSC Insights adaptation prepared
+
+The owner requested adapting upstream GSC improvements into Digital Urgency,
+while preserving the business modules. Work is isolated on `codex/gsc-insights`
+from fork main `5ec0c1b9`; the older iCloud checkout and pending work are untouched.
+Upstream references are the GSC Insights redesign `afd25714` and its public
+Search Performance implementation at `af3f995f`. The adaptation retains existing
+DaisyUI, table components, project authorization and GSC connection handling.
+It does not import the upstream app shell, auth, schema, deployment or reports
+systems and introduces no database migration or dependency change.
+
+Search Performance gains current/previous daily charts, bounded query/page
+click-change comparisons, row detail views, page/query text filters and Web,
+Discover and Google News views. Query text exclusion is manual; it does not
+claim Google's automatic branded/non-branded classification. Discover ignores
+unsupported device and query filters. Comparisons disclose their 1,000-row cap
+and leave unobserved prior clicks unknown when capped, rather than inventing
+zeroes. Date windows use Google's inclusive endpoints for seven/28-day ranges.
+
+Validation: all 3,366 tests across 362 files pass, including existing tenancy,
+communications, commerce, invoices, email and voice regressions. Forty focused
+GSC tests cover authorized context use, filters, supported dimensions, inclusive
+windows, missing positions, comparison caps and error states. Full `ci:check`
+and the production Vite client/SSR build pass. Reviews covered security,
+billing, complexity, project idioms and unused code. The verified stale-export
+finding was fixed: navigation/filter/tab changes invalidate pending exports.
+No review-control changes were needed for that one-off issue.
+
+Headless Chrome tested the actual GSC components with synthetic API fixtures at
+1440px and 390px: charts, text filters, details/Escape, comparisons, CSV export,
+Discover/News restrictions, delayed workspace switching, canceled stale exports,
+disconnected and error states. Preview harness and browser script are local-only
+in `/private/tmp/gsc-insights-preview`; screenshots are
+`/private/tmp/gsc-insights-desktop.png` and `/private/tmp/gsc-insights-mobile.png`.
+This does not establish live Google OAuth/data behavior; no live Google query,
+paid research, customer send, production data change, merge or deployment was
+performed. Release follows `docs/VPS_RELEASES.md`.

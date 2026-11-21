@@ -1,0 +1,329 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { z } from "zod";
+import type { GscPerformanceInput } from "@/server/features/gsc/searchAnalytics";
+import { GscNotConnectedError } from "@/server/features/gsc/services/GscService";
+import {
+  exportSearchPerformanceTable,
+  getSearchPerformanceDetail,
+  getSearchPerformanceChanges,
+  getSearchPerformanceReport,
+  getSearchPerformanceTable,
+} from "./searchPerformance";
+
+const { getPerformance } = vi.hoisted(() => ({
+  getPerformance:
+    vi.fn<(input: GscPerformanceInput) => Promise<{ rows: unknown[] }>>(),
+}));
+vi.mock("@/server/features/gsc/services/GscService", () => ({
+  GscService: { getPerformance },
+  GscNotConnectedError: class extends Error {},
+  isExpectedGrantFailure: () => false,
+}));
+vi.mock("@/serverFunctions/middleware", () => ({ requireProjectContext: [] }));
+vi.mock("@tanstack/react-start", () => ({
+  createServerFn: () => ({
+    middleware: () => ({
+      validator: (schema: z.ZodType) => ({
+        handler:
+          (
+            handler: (input: {
+              data: unknown;
+              context: { projectId: string };
+            }) => unknown,
+          ) =>
+          ({ data }: { data: unknown }) =>
+            handler({
+              data: schema.parse(data),
+              context: { projectId: "authorized-project" },
+            }),
+      }),
+    }),
+  }),
+}));
+
+const data = {
+  projectId: "authorized-project",
+  dateRange: "last_28_days" as const,
+  country: "SWE",
+  device: "MOBILE" as const,
+  pageFilter: { operator: "contains" as const, expression: "/collections/" },
+  queryFilter: { operator: "equals" as const, expression: "OpenSEO" },
+};
+const filters = [
+  { dimension: "device", operator: "equals", expression: "MOBILE" },
+  { dimension: "page", ...data.pageFilter },
+  { dimension: "query", ...data.queryFilter },
+  { dimension: "country", operator: "equals", expression: "swe" },
+];
+
+describe("Search Performance combined filters", () => {
+  beforeEach(() => {
+    getPerformance.mockResolvedValue({ rows: [] });
+  });
+
+  it("applies the same filters to both totals periods and striking distance, keeping country options available", async () => {
+    await getSearchPerformanceReport({ data });
+    expect(getPerformance).toHaveBeenCalledTimes(4);
+    for (const index of [0, 1, 2]) {
+      expect(getPerformance.mock.calls[index][0]).toMatchObject({
+        projectId: "authorized-project",
+        filters,
+      });
+    }
+    expect(getPerformance.mock.calls[3][0]).toMatchObject({
+      dimensions: ["country"],
+      filters: filters.slice(0, 3),
+    });
+  });
+
+  it("reads Discover without queries: no striking-distance scan, query filter, or device filter", async () => {
+    await getSearchPerformanceReport({
+      data: { ...data, searchType: "discover" },
+    });
+
+    expect(getPerformance).toHaveBeenCalledTimes(3);
+    // Totals for both periods, then the country list; Google rejects a device
+    // filter on Discover and it has no queries, so both are dropped everywhere.
+    const discoverFilters = [filters[1], filters[3]];
+    for (const index of [0, 1]) {
+      expect(getPerformance.mock.calls[index][0]).toMatchObject({
+        type: "discover",
+        dimensions: ["date"],
+        filters: discoverFilters,
+      });
+    }
+    expect(getPerformance.mock.calls[2][0]).toMatchObject({
+      type: "discover",
+      dimensions: ["country"],
+      filters: discoverFilters.slice(0, 1),
+    });
+  });
+
+  it.each(["query", "page"] as const)(
+    "keeps %s pagination and exports on the same filtered dataset",
+    async (dimension) => {
+      await getSearchPerformanceTable({
+        data: { ...data, dimension, page: 2, pageSize: 25 },
+      });
+      await exportSearchPerformanceTable({ data: { ...data, dimension } });
+      expect(getPerformance.mock.calls[0][0]).toMatchObject({
+        dimensions: [dimension],
+        filters,
+        startRow: 25,
+        rowLimit: 26,
+      });
+      // The previous period, which each row's change in clicks is read from.
+      expect(getPerformance.mock.calls[1][0]).toMatchObject({
+        dimensions: [dimension],
+        filters,
+      });
+      expect(getPerformance.mock.calls[2][0]).toMatchObject({
+        dimensions: [dimension],
+        filters,
+        rowLimit: 1000,
+      });
+    },
+  );
+
+  it("opens one page under the other filters, with its URL in place of the page text filter", async () => {
+    const key = "https://example.com/collections/mugs";
+    await getSearchPerformanceDetail({
+      data: { ...data, dimension: "page", key },
+    });
+    // Both periods' daily rows, then the queries the page ranks for.
+    expect(getPerformance).toHaveBeenCalledTimes(3);
+    for (const index of [0, 1, 2]) {
+      expect(getPerformance.mock.calls[index][0]).toMatchObject({
+        filters: [
+          filters[0],
+          { dimension: "page", operator: "equals", expression: key },
+          filters[2],
+          filters[3],
+        ],
+      });
+    }
+    expect(getPerformance.mock.calls[2][0]).toMatchObject({
+      dimensions: ["query"],
+    });
+  });
+
+  it("reports the last-page row count instead of a full page for narrow filters", async () => {
+    getPerformance.mockResolvedValue({
+      rows: [
+        {
+          keys: ["soundsplitter"],
+          clicks: 1,
+          impressions: 1,
+          ctr: 1,
+          position: 6,
+        },
+      ],
+    });
+    const result = await getSearchPerformanceTable({
+      data: { ...data, dimension: "query", page: 1, pageSize: 25 },
+    });
+    expect(result).toMatchObject({
+      connected: true,
+      hasNextPage: false,
+      totalCount: 1,
+    });
+    getPerformance.mockResolvedValue({ rows: [] });
+    const empty = await getSearchPerformanceTable({
+      data: { ...data, dimension: "query", page: 1, pageSize: 25 },
+    });
+    expect(empty).toMatchObject({
+      connected: true,
+      hasNextPage: false,
+      totalCount: 0,
+    });
+  });
+});
+
+describe("Search Performance scope and limits", () => {
+  beforeEach(() => {
+    getPerformance.mockResolvedValue({ rows: [] });
+  });
+
+  it("always reads the authorized context project for overview, table, export, changes and detail", async () => {
+    const foreign = {
+      ...data,
+      projectId: "another-workspace",
+      dimension: "query" as const,
+    };
+    await getSearchPerformanceReport({ data: foreign });
+    await getSearchPerformanceTable({ data: foreign });
+    await exportSearchPerformanceTable({ data: foreign });
+    await getSearchPerformanceChanges({ data: foreign });
+    await getSearchPerformanceDetail({ data: { ...foreign, key: "books" } });
+    expect(getPerformance.mock.calls.length).toBeGreaterThan(0);
+    for (const [request] of getPerformance.mock.calls) {
+      expect(request.projectId).toBe("authorized-project");
+      expect(request.rowLimit).toBeLessThanOrEqual(1000);
+    }
+  });
+
+  it("passes manual brand exclusion consistently through comparisons and details", async () => {
+    const exclusion = {
+      ...data,
+      queryFilter: {
+        operator: "notContains" as const,
+        expression: "Example Brand",
+      },
+    };
+    await getSearchPerformanceChanges({
+      data: { ...exclusion, dimension: "query" },
+    });
+    await getSearchPerformanceDetail({
+      data: {
+        ...exclusion,
+        dimension: "page",
+        key: "https://example.com/books",
+      },
+    });
+    for (const [request] of getPerformance.mock.calls) {
+      expect(request.filters).toContainEqual({
+        dimension: "query",
+        ...exclusion.queryFilter,
+      });
+    }
+  });
+
+  it.each(["discover", "googleNews"] as const)(
+    "rejects query dimensions for %s before reading GSC",
+    (searchType) => {
+      const unsupported = { ...data, searchType, dimension: "query" as const };
+      expect(() => getSearchPerformanceTable({ data: unsupported })).toThrow(
+        "report pages only",
+      );
+      expect(() => exportSearchPerformanceTable({ data: unsupported })).toThrow(
+        "report pages only",
+      );
+      expect(() => getSearchPerformanceChanges({ data: unsupported })).toThrow(
+        "report pages only",
+      );
+      expect(() =>
+        getSearchPerformanceDetail({ data: { ...unsupported, key: "books" } }),
+      ).toThrow("report pages only");
+      expect(getPerformance).not.toHaveBeenCalled();
+    },
+  );
+
+  it("does not request related queries or a device filter for a Discover page detail", async () => {
+    await getSearchPerformanceDetail({
+      data: {
+        ...data,
+        searchType: "discover",
+        dimension: "page",
+        key: "https://example.com/books",
+      },
+    });
+    expect(getPerformance).toHaveBeenCalledTimes(2);
+    for (const [request] of getPerformance.mock.calls) {
+      expect(request.dimensions).toEqual(["date"]);
+      expect(request.filters).toEqual([
+        {
+          dimension: "page",
+          operator: "equals",
+          expression: "https://example.com/books",
+        },
+        { dimension: "country", operator: "equals", expression: "swe" },
+      ]);
+    }
+  });
+
+  it("handles Discover rows without Google's unavailable position metric", async () => {
+    getPerformance.mockResolvedValue({
+      rows: [{ keys: ["2026-11-01"], clicks: 3, impressions: 30, ctr: 0.1 }],
+    });
+    const result = await getSearchPerformanceReport({
+      data: { ...data, searchType: "discover" },
+    });
+    expect(result.connected).toBe(true);
+    if (!result.connected) throw new Error("Expected connected report");
+    expect(result.totals).toEqual({
+      clicks: 3,
+      impressions: 30,
+      ctr: 0.1,
+      position: 0,
+    });
+    expect(result.trend.every((day) => day.position === null)).toBe(true);
+    expect(result.countries[0].position).toBe(0);
+  });
+
+  it("marks comparisons sampled at the row cap", async () => {
+    getPerformance.mockResolvedValue({
+      rows: Array.from({ length: 1000 }, (_, i) => ({
+        keys: [String(i)],
+        clicks: 1,
+        impressions: 10,
+        ctr: 0.1,
+        position: 3,
+      })),
+    });
+    expect(
+      await getSearchPerformanceChanges({
+        data: { ...data, dimension: "query" },
+      }),
+    ).toMatchObject({ connected: true, truncated: true });
+  });
+
+  it("returns reconnect state for an absent connection but surfaces provider failures", async () => {
+    getPerformance.mockRejectedValue(
+      new GscNotConnectedError("authorized-project"),
+    );
+    expect(
+      await getSearchPerformanceChanges({
+        data: { ...data, dimension: "query" },
+      }),
+    ).toEqual({ connected: false });
+    getPerformance.mockRejectedValue(new Error("rate limited"));
+    const failure = await getSearchPerformanceDetail({
+      data: { ...data, dimension: "page", key: "https://example.com" },
+    }).then(
+      () => null,
+      (error: unknown) => error,
+    );
+    expect(failure).toBeInstanceOf(Error);
+    expect(failure instanceof Error && failure.message).toBe("rate limited");
+  });
+});
