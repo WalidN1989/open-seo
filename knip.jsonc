@@ -20,6 +20,8 @@
     "src/db/pg/schema.ts",
     // Standalone CLI/dev scripts, invoked via package.json scripts
     "scripts/**",
+    // Standalone service worker registered by the browser at runtime.
+    "public/push-sw.js",
     // DataForSEO section barrel — consumed via the dynamic import in
     // client.ts (loadDataforseoSections) + property access, which knip
     // can't trace

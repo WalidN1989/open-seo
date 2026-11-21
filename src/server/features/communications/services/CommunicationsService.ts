@@ -1554,6 +1554,20 @@ async function ingestWhatsappGroup(
       message,
     );
     if (!ingestion.duplicate && ingestion.conversationId) {
+      const conversationId = ingestion.conversationId;
+      void import("@/server/features/notifications/services/PushNotificationService")
+        .then(({ PushNotificationService }) =>
+          PushNotificationService.notifyWhatsappInbound({
+            organizationId: connection.organizationId,
+            conversationId,
+            externalMessageId: message.externalMessageId,
+          }),
+        )
+        .catch((error: unknown) => {
+          console.warn("Could not send inbound-message push notifications", {
+            error: error instanceof Error ? error.name : "UnknownError",
+          });
+        });
       const { VoiceStaffAlertService } =
         await import("@/server/features/voice-calls/services/VoiceStaffAlertService");
       if (

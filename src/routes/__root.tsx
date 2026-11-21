@@ -31,6 +31,7 @@ import { VoiceAgentLauncher } from "@/client/features/voice/VoiceAgentLauncher";
 import { queryClient } from "@/client/tanstack-db";
 import { getActiveOrganizationId } from "@/lib/auth-session";
 import { discardWorkspaceQueries } from "@/client/lib/organization-scoped-queries";
+import { PushNotificationPrompt } from "@/client/features/notifications/PushNotificationPrompt";
 
 export const Route = createRootRoute({
   head: () => ({
@@ -194,6 +195,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
               <>
                 <PostHogBootstrap />
                 {children}
+                <PushNotificationPrompt />
                 <ExportToSheetsModal />
                 <Toaster
                   position="bottom-right"

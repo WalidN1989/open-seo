@@ -1,6 +1,8 @@
 {
   "name": "Digital Urgency",
   "short_name": "Digital Urgency",
+  "id": "/",
+  "scope": "/",
   "icons": [
     {
       "src": "/android-chrome-192x192.png",

@@ -2726,3 +2726,44 @@ unrendered variables in the saved inbox copy; subsequent message state was 14
 delivered, 3 read, 6 sent and 1 undelivered. The campaign was not replayed after
 the fix. Any corrective promotion must be a new owner-reviewed campaign using
 explicit variables and only currently opted-in linked contacts.
+
+### 2026-11-21 — Application-wide browser push notifications prepared
+
+An application-wide Web Push foundation is prepared for Digital Urgency. It is
+not tied to Period.lk: every authenticated user may register each supported
+browser or installed home-screen app, then independently opt in to WhatsApp
+notifications for each workspace they are entitled to access. A workspace owner
+therefore does not enable notifications for every staff member; each person must
+grant browser permission on their own device. On iPhone, Web Push requires a
+home-screen installation and a user-initiated permission request.
+
+The first supported notification channel is inbound WhatsApp. After a provider
+message has been accepted and deduplicated, the webhook queues a best-effort push
+without delaying its acknowledgement. The notification deliberately excludes the
+customer name, phone number and message body. It identifies the workspace and
+opens the exact conversation after authentication. Delivery rechecks current
+WhatsApp module access and the user's workspace preference; expired browser
+subscriptions are disabled. No customer reply, provider template, marketing
+consent, AI configuration or communications routing is changed.
+
+Subscription endpoints are restricted to the browser push services used by
+Safari, Chromium/FCM and Firefox; arbitrary HTTPS hosts are rejected. Each user
+may retain at most five active browser/device subscriptions. Delivery uses a
+10-second socket timeout and batches at most ten simultaneous push-service
+requests, preventing a forged subscription list from turning inbound messages
+into unrestricted outbound traffic.
+
+The change adds `push_subscriptions` and `push_notification_preferences` in both
+SQLite and PostgreSQL, plus additive migrations for each dialect. Production also
+requires owner-supplied VAPID configuration in Coolify:
+`WEB_PUSH_VAPID_PUBLIC_KEY`, `WEB_PUSH_VAPID_PRIVATE_KEY` and optionally
+`WEB_PUSH_VAPID_SUBJECT`. Keys are secrets/configuration and are not committed.
+Without valid keys, the settings screen reports that notifications are not yet
+configured and no push send is attempted.
+
+This is prepared only and has not been deployed. Release still requires passing
+hosted checks, maintainer review, explicit owner release approval, migration
+verification and the Coolify procedure in `docs/VPS_RELEASES.md`. Code rollback
+may revert the feature while leaving the two additive tables in place; removing
+or rotating the VAPID configuration stops delivery without affecting WhatsApp
+ingestion. No subscription or preference backfill is performed.

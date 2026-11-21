@@ -29,15 +29,6 @@ export function ReminderPopup() {
   const [snoozing, setSnoozing] = useState(false);
 
   useEffect(() => {
-    if (
-      typeof Notification !== "undefined" &&
-      Notification.permission === "default"
-    ) {
-      void Notification.requestPermission().catch(() => undefined);
-    }
-  }, []);
-
-  useEffect(() => {
     for (const id of popped)
       if (!reminders.some((reminder) => reminder.id === id)) popped.delete(id);
     if (current) return;

@@ -1,6 +1,7 @@
 import { CommunicationsReport } from "./voice/CommunicationsReport";
 import { getCustomerWorkflowAvailability } from "@/serverFunctions/customer-workflow";
 import { usePendingHandoffs, HandoffStatus } from "./whatsapp/HandoffPending";
+import { PushNotificationSettings } from "@/client/features/notifications/PushNotificationSettings";
 /* oxlint-disable max-lines, max-lines-per-function, complexity */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
@@ -1801,63 +1802,66 @@ export function WhatsappWorkspace({
             <AskedQuestionsSection />
           ) : null}
           {activeSection === "Settings" ? (
-            <Panel title="WhatsApp connections" icon={Cable}>
-              {configuredConnections.map((sender) => (
-                <div key={sender.id} className="border-b border-base-300 p-4">
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                      <p className="font-medium">
-                        {sender.displayPhoneNumber || "WhatsApp number"}
-                      </p>
-                      <p className="text-sm text-base-content/55">
-                        {sender.provider === "twilio"
-                          ? "Twilio"
-                          : sender.provider === "meta_cloud"
-                            ? "Meta"
-                            : "Custom"}{" "}
-                        · {sender.status}
-                      </p>
+            <div className="space-y-4">
+              <PushNotificationSettings />
+              <Panel title="WhatsApp connections" icon={Cable}>
+                {configuredConnections.map((sender) => (
+                  <div key={sender.id} className="border-b border-base-300 p-4">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <p className="font-medium">
+                          {sender.displayPhoneNumber || "WhatsApp number"}
+                        </p>
+                        <p className="text-sm text-base-content/55">
+                          {sender.provider === "twilio"
+                            ? "Twilio"
+                            : sender.provider === "meta_cloud"
+                              ? "Meta"
+                              : "Custom"}{" "}
+                          · {sender.status}
+                        </p>
+                      </div>
+                      <button
+                        className="btn btn-outline btn-sm"
+                        onClick={() => {
+                          setEditingConnectionId(sender.id);
+                          setForm("connection-update");
+                        }}
+                      >
+                        Update connection
+                      </button>
                     </div>
-                    <button
-                      className="btn btn-outline btn-sm"
-                      onClick={() => {
-                        setEditingConnectionId(sender.id);
-                        setForm("connection-update");
-                      }}
-                    >
-                      Update connection
-                    </button>
+                    {sender.provider === "twilio" ? (
+                      <label className="form-control mt-3">
+                        <span className="mb-1 text-sm">
+                          Incoming messages and delivery status webhook
+                        </span>
+                        <input
+                          className="input input-bordered input-sm w-full"
+                          readOnly
+                          value={`${webhookOrigin}/api/whatsapp/${sender.id}`}
+                        />
+                        <span className="mt-1 text-xs text-base-content/60">
+                          Use HTTP POST in the Twilio sender settings. Connected
+                          status is confirmed after a verified callback arrives.
+                        </span>
+                      </label>
+                    ) : null}
                   </div>
-                  {sender.provider === "twilio" ? (
-                    <label className="form-control mt-3">
-                      <span className="mb-1 text-sm">
-                        Incoming messages and delivery status webhook
-                      </span>
-                      <input
-                        className="input input-bordered input-sm w-full"
-                        readOnly
-                        value={`${webhookOrigin}/api/whatsapp/${sender.id}`}
-                      />
-                      <span className="mt-1 text-xs text-base-content/60">
-                        Use HTTP POST in the Twilio sender settings. Connected
-                        status is confirmed after a verified callback arrives.
-                      </span>
-                    </label>
+                ))}
+                <div className="flex flex-wrap items-center justify-between gap-3 p-4">
+                  {!configuredConnections.length ? (
+                    <p>No WhatsApp number connected</p>
                   ) : null}
+                  <button
+                    className="btn btn-primary btn-sm"
+                    onClick={() => setForm("connection")}
+                  >
+                    <Plus className="size-4" /> Connect number
+                  </button>
                 </div>
-              ))}
-              <div className="flex flex-wrap items-center justify-between gap-3 p-4">
-                {!configuredConnections.length ? (
-                  <p>No WhatsApp number connected</p>
-                ) : null}
-                <button
-                  className="btn btn-primary btn-sm"
-                  onClick={() => setForm("connection")}
-                >
-                  <Plus className="size-4" /> Connect number
-                </button>
-              </div>
-            </Panel>
+              </Panel>
+            </div>
           ) : null}
         </div>
       </div>
