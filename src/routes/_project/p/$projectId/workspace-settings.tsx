@@ -14,6 +14,7 @@ import { authClient, useSession } from "@/lib/auth-client";
 import { isUserClientAuthMode } from "@/lib/auth-mode";
 import { version } from "../../../../../package.json";
 import { getBusinessModuleAccess } from "@/serverFunctions/business-modules";
+import { PushNotificationSettings } from "@/client/features/notifications/PushNotificationSettings";
 
 export const Route = createFileRoute(
   "/_project/p/$projectId/workspace-settings",
@@ -118,6 +119,8 @@ function SettingsPage() {
             <AccountSettings />
 
             <TeamSettings />
+
+            <PushNotificationSettings />
 
             {canManageBusinessAccess ? (
               <section className="space-y-3">

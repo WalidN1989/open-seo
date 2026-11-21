@@ -10,7 +10,7 @@ import {
   text,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
-import { member, organization } from "./better-auth-schema";
+import { member, organization, user } from "./better-auth-schema";
 
 const isoNow = sql`to_char(now() AT TIME ZONE 'utc', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')`;
 const createdAt = () => text("created_at").notNull().default(isoNow);
@@ -2597,6 +2597,58 @@ export const whatsappHandoffOutbox = pgTable(
   (t) => [
     index("whatsapp_handoff_outbox_due_idx").on(t.status, t.dueAt),
     index("whatsapp_handoff_outbox_handoff_idx").on(t.handoffId),
+  ],
+);
+
+/** One browser/device subscription. Preferences decide which workspaces may use it. */
+export const pushSubscriptions = pgTable(
+  "push_subscriptions",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    endpoint: text("endpoint").notNull(),
+    p256dh: text("p256dh").notNull(),
+    auth: text("auth").notNull(),
+    userAgent: text("user_agent"),
+    createdAt: createdAt(),
+    updatedAt: text("updated_at").notNull().default(isoNow),
+    lastSuccessAt: text("last_success_at"),
+    disabledAt: text("disabled_at"),
+  },
+  (table) => [
+    uniqueIndex("push_subscriptions_endpoint_idx").on(table.endpoint),
+    index("push_subscriptions_user_idx").on(table.userId),
+  ],
+);
+
+/** Explicit per-user, per-workspace opt-in for each notification channel. */
+export const pushNotificationPreferences = pgTable(
+  "push_notification_preferences",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    channel: text("channel", { enum: ["whatsapp"] }).notNull(),
+    enabled: boolean("enabled").notNull().default(true),
+    createdAt: createdAt(),
+    updatedAt: text("updated_at").notNull().default(isoNow),
+  },
+  (table) => [
+    uniqueIndex("push_preferences_org_user_channel_idx").on(
+      table.organizationId,
+      table.userId,
+      table.channel,
+    ),
+    index("push_preferences_org_channel_idx").on(
+      table.organizationId,
+      table.channel,
+    ),
   ],
 );
 

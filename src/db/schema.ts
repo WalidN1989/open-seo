@@ -156,6 +156,8 @@ export const {
   whatsappHandoffContacts,
   whatsappHandoffs,
   whatsappHandoffOutbox,
+  pushSubscriptions,
+  pushNotificationPreferences,
   smsConversations,
   smsMessages,
   whatsappContactProfiles,

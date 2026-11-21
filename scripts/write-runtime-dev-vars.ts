@@ -56,6 +56,9 @@ const runtimeVariableNames = [
   "TURNSTILE_SITE_KEY",
   "VOICE_AI_MODEL",
   "WHATSAPP_REPLY_RUNNER_URL",
+  "WEB_PUSH_VAPID_PRIVATE_KEY",
+  "WEB_PUSH_VAPID_PUBLIC_KEY",
+  "WEB_PUSH_VAPID_SUBJECT",
 ] as const;
 
 const outputPath = process.argv[2];
