@@ -12,10 +12,13 @@ export type Report = Extract<
   Awaited<ReturnType<typeof getSearchPerformanceReport>>,
   { connected: true }
 >;
-export type SearchPerformanceTableRow = Extract<
-  Awaited<ReturnType<typeof getSearchPerformanceTable>>,
-  { connected: true }
->["rows"][number];
+export type SearchPerformanceTableRow = Omit<
+  Extract<
+    Awaited<ReturnType<typeof getSearchPerformanceTable>>,
+    { connected: true }
+  >["rows"][number],
+  "prevClicks"
+> & { prevClicks?: number | null };
 type DimensionRow = SearchPerformanceTableRow;
 type StrikingRow = Report["strikingDistance"][number];
 
@@ -42,22 +45,59 @@ const dimensionHelper = createColumnHelper<DimensionRow>();
 
 export function buildDimensionColumns(
   keyLabel: string,
+  onSelect?: (key: string) => void,
+  showPosition = true,
 ): ColumnDef<DimensionRow>[] {
   return [
     dimensionHelper.accessor("key", {
       enableSorting: false,
       header: () => keyLabel,
-      cell: ({ getValue }) => (
-        <span className="block max-w-xl truncate" title={getValue()}>
-          {getValue()}
-        </span>
-      ),
+      cell: ({ getValue }) =>
+        onSelect ? (
+          <button
+            type="button"
+            className="link link-hover block max-w-xl truncate text-left"
+            title={getValue()}
+            onClick={() => onSelect(getValue())}
+          >
+            {getValue()}
+          </button>
+        ) : (
+          <span className="block max-w-xl truncate" title={getValue()}>
+            {getValue()}
+          </span>
+        ),
     }),
     dimensionHelper.accessor("clicks", {
       header: ({ column }) => (
         <SortableHeader column={column} label="Clicks" align="right" />
       ),
-      cell: ({ getValue }) => formatCount(getValue()),
+      cell: ({ getValue, row }) => {
+        const previous = row.original.prevClicks;
+        const change =
+          previous === null || previous === undefined
+            ? null
+            : getValue() - previous;
+        return (
+          <>
+            <span>{formatCount(getValue())}</span>
+            {previous !== undefined ? (
+              <span
+                className={`block text-xs ${change === null || change === 0 ? "text-base-content/50" : change > 0 ? "text-success" : "text-error"}`}
+                title={
+                  previous === null
+                    ? "Previous-period clicks are unknown in the returned data"
+                    : `Previous period: ${formatCount(previous)} clicks`
+                }
+              >
+                {change === null
+                  ? "Comparison unavailable"
+                  : `${change > 0 ? "+" : ""}${formatCount(change)} vs previous`}
+              </span>
+            ) : null}
+          </>
+        );
+      },
       meta: rightAligned,
     }),
     dimensionHelper.accessor("impressions", {
@@ -74,13 +114,17 @@ export function buildDimensionColumns(
       cell: ({ getValue }) => formatCtr(getValue()),
       meta: rightAligned,
     }),
-    dimensionHelper.accessor("position", {
-      header: ({ column }) => (
-        <SortableHeader column={column} label="Position" align="right" />
-      ),
-      cell: ({ getValue }) => formatPosition(getValue()),
-      meta: rightAligned,
-    }),
+    ...(showPosition
+      ? [
+          dimensionHelper.accessor("position", {
+            header: ({ column }) => (
+              <SortableHeader column={column} label="Position" align="right" />
+            ),
+            cell: ({ getValue }) => formatPosition(getValue()),
+            meta: rightAligned,
+          }),
+        ]
+      : []),
   ];
 }
 

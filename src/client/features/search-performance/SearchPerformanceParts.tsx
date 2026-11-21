@@ -154,7 +154,13 @@ function positionDelta(current: number, previous: number): Delta {
   };
 }
 
-export function TotalsCards({ report }: { report: Report }) {
+export function TotalsCards({
+  report,
+  showPosition = true,
+}: {
+  report: Pick<Report, "totals" | "prevTotals" | "range">;
+  showPosition?: boolean;
+}) {
   const { totals, prevTotals, range } = report;
   const deltaTitle = `vs ${range.prevStartDate} to ${range.prevEndDate}`;
   return (
@@ -177,12 +183,14 @@ export function TotalsCards({ report }: { report: Report }) {
         delta={percentDelta(totals.ctr, prevTotals.ctr)}
         deltaTitle={deltaTitle}
       />
-      <TotalCard
-        label="Avg position"
-        value={formatPosition(totals.position)}
-        delta={positionDelta(totals.position, prevTotals.position)}
-        deltaTitle={deltaTitle}
-      />
+      {showPosition ? (
+        <TotalCard
+          label="Avg position"
+          value={formatPosition(totals.position)}
+          delta={positionDelta(totals.position, prevTotals.position)}
+          deltaTitle={deltaTitle}
+        />
+      ) : null}
     </div>
   );
 }
@@ -221,11 +229,18 @@ function TotalCard({
 export function DimensionTable({
   rows,
   keyLabel,
+  onSelect,
+  showPosition = true,
 }: {
   rows: SearchPerformanceTableRow[];
   keyLabel: string;
+  onSelect?: (key: string) => void;
+  showPosition?: boolean;
 }) {
-  const columns = useMemo(() => buildDimensionColumns(keyLabel), [keyLabel]);
+  const columns = useMemo(
+    () => buildDimensionColumns(keyLabel, onSelect, showPosition),
+    [keyLabel, onSelect, showPosition],
+  );
   const table = useAppTable({
     data: rows,
     columns,

@@ -17,8 +17,20 @@ describe("resolveDateRange", () => {
       { dateRange: "last_28_days" },
       TODAY,
     );
-    expect(startDate).toBe("2026-04-27");
+    expect(startDate).toBe("2026-04-28");
     expect(endDate).toBe("2026-05-25");
+  });
+
+  it("returns exactly seven inclusive UTC days across a month boundary", () => {
+    const range = resolveDateRange(
+      { dateRange: "last_7_days" },
+      new Date("2026-03-06T23:59:00Z"),
+    );
+    expect(range).toEqual({ startDate: "2026-02-25", endDate: "2026-03-03" });
+    expect(
+      (Date.parse(range.endDate) - Date.parse(range.startDate)) / 86_400_000 +
+        1,
+    ).toBe(7);
   });
 
   it("clamps the start to the 16-month floor", () => {
