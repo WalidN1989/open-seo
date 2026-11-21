@@ -2805,3 +2805,46 @@ in `/private/tmp/gsc-insights-preview`; screenshots are
 This does not establish live Google OAuth/data behavior; no live Google query,
 paid research, customer send, production data change, merge or deployment was
 performed. Release follows `docs/VPS_RELEASES.md`.
+
+### 2026-11-21 — GSC Insights released and verified
+
+The owner explicitly approved PR 88 merge, Coolify deployment and live checks.
+PR 88 merged as `7990e686da7c08c5177c0c157d448f1ded64794e`; exact-main CI
+and Docker checks passed in run `44941445416`. Approved production-image run
+`44941839898` published
+`ghcr.io/walidn1989/digital-urgency@sha256:6f38994d81ad8c5f385835325b38114406473aa0273254aac72fb05233c5922d`.
+Coolify deployment `vwxeuzere30tik9o1f9k0fcq` became healthy at 19:43:17 UTC
+and finished its rolling update at 19:43:23 UTC. Its log identifies the exact
+image digest; the live GSC source fingerprint matches the approved commit.
+
+A fresh local PostgreSQL backup completed at 19:34:48 UTC (13.57 MB). The prior
+known-good image remains
+`ghcr.io/walidn1989/digital-urgency@sha256:5ad41a6973c268ffe2dc6f5beafd51d7c8c7b1052f408843f97ac463df7bdd13`
+from PR 86 / commit `5ec0c1b9`. This release introduces no migration, dependency,
+provider-setting or global scheduler change. Code rollback can use that prior
+image, subject to the normal owner-approved recovery procedure.
+
+Read-only before/after checks confirmed preserved ID fingerprints for projects,
+CRM companies/contacts/leads, products, invoices, quotes, integration connections,
+mailboxes, WhatsApp conversations, voice configurations and client reports. One
+new order arrived during the release; filtering to the backup timestamp exactly
+reproduced the original order count and ID fingerprint. The new container runs
+one WhatsApp reply runner and one mailbox bridge, with no global ticker. Public
+health reports auth/database/configuration OK. Recent runtime logs showed no
+server-error pattern. CRM contacts, orders and their detail modal, WhatsApp,
+email, voice history and integration catalogue were checked in the live UI.
+No customer send, provider test call, order approval or historical replay occurred.
+
+The existing Google grant had expired before deployment. The owner separately
+authorized reconnection and personally completed passkey and unverified-app
+warning/consent steps. After reconnection, real BooXworm data loaded in the new
+chart, gained/lost comparisons and query details. Manual query exclusion changed
+live results; the metric selector and related ranking pages worked. Test filters
+were cleared. Period.lk's selected property showed no access for this Google
+account; its property selection was left untouched, and the app was returned
+to the Period.lk WhatsApp workspace. This is a property permission limitation,
+not a claim that Period.lk GSC data was verified.
+
+Private aggregate checks, image-build log and screenshots are under
+`~/Hostinger VPS/release-preparations/gsc-pr88`. No credential values, customer
+records or private Google analytics figures are included in this public ledger.
