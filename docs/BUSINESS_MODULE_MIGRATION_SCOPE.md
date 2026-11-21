@@ -2767,3 +2767,31 @@ verification and the Coolify procedure in `docs/VPS_RELEASES.md`. Code rollback
 may revert the feature while leaving the two additive tables in place; removing
 or rotating the VAPID configuration stops delivery without affecting WhatsApp
 ingestion. No subscription or preference backfill is performed.
+
+### 2026-11-21 — Application-wide browser push notifications released
+
+The owner approved PR 86 and the production release in chat. PR 86 merged as
+`5ec0c1b954dd327a0f14719b607a804eabb5fe68`; the branch and merged-main `ci`
+and `docker-build` jobs passed on that exact revision. GitHub production image
+run `44934516564` published
+`ghcr.io/walidn1989/digital-urgency@sha256:5ad41a6973c268ffe2dc6f5beafd51d7c8c7b1052f408843f97ac463df7bdd13`.
+Coolify deployment `qb9nlw2z2djfyzozg1oazbe9` finished its rolling update,
+and the new container became healthy on its third configured check. Runtime logs
+confirmed that the PostgreSQL migrations applied successfully and the internal
+and public `/api/health` checks returned HTTP 200.
+
+Immediately before deployment, Coolify completed a fresh local PostgreSQL backup
+at 2026-11-21 18:20:59 UTC (13.56 MB). The prior known-good image
+`ghcr.io/walidn1989/digital-urgency@sha256:e8b7e630be696e228725bcddc477a9aa0239792c20f3aced42f9e16a313363df`
+from commit `5b73e91b8c036450715fd97d53cc2e903ad5aec7` remains the code rollback
+target. The additive push tables may remain after a code rollback.
+
+The live Period.lk WhatsApp workspace loaded after the release and exposed the
+new per-device Notifications panel. The status endpoint reported Web Push as
+configured using the existing private Coolify runtime configuration; no VAPID
+value was displayed, copied or changed during release. The verification browser
+had previously denied notification permission, so no browser subscription or
+test notification was created. Each user must still enable notifications on each
+supported device and workspace, with iPhone requiring the installed home-screen
+app. No customer message, WhatsApp routing rule or marketing preference changed
+as part of this release.
