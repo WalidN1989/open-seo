@@ -16,7 +16,6 @@ const repository = vi.hoisted(() => ({
   isEnabled: vi.fn(),
   listActiveSubscriptions: vi.fn(),
   listEnabledUserIds: vi.fn(),
-  markSuccess: vi.fn(),
   setPreference: vi.fn(),
   upsertSubscription: vi.fn(),
 }));
@@ -115,9 +114,39 @@ describe("PushNotificationService", () => {
       url: "/p/period-lk/modules/whatsapp?conversation=conversation-1",
       tag: "whatsapp:message-1",
     });
-    expect(repository.markSuccess).toHaveBeenCalledWith(
-      "https://push.example/subscription",
+    expect(push.sendNotification).toHaveBeenCalledWith(
+      expect.any(Object),
+      expect.any(String),
+      expect.objectContaining({ timeout: 10_000 }),
     );
+  });
+
+  it("bounds concurrent push-service requests", async () => {
+    repository.listActiveSubscriptions.mockResolvedValue(
+      Array.from({ length: 12 }, (_, index) => ({
+        endpoint: `https://fcm.googleapis.com/fcm/send/${index}`,
+        p256dh: "device-public-key",
+        auth: "device-auth",
+      })),
+    );
+    let active = 0;
+    let maximum = 0;
+    push.sendNotification.mockImplementation(async () => {
+      active += 1;
+      maximum = Math.max(maximum, active);
+      await Promise.resolve();
+      active -= 1;
+      return { statusCode: 201 };
+    });
+
+    await PushNotificationService.notifyWhatsappInbound({
+      organizationId: "org-1",
+      conversationId: "conversation-1",
+      externalMessageId: "message-1",
+    });
+
+    expect(push.sendNotification).toHaveBeenCalledTimes(12);
+    expect(maximum).toBe(10);
   });
 
   it("does not notify a user whose WhatsApp access was removed", async () => {

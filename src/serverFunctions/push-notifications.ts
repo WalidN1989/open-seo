@@ -2,18 +2,15 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireAuthenticatedContext } from "@/serverFunctions/middleware";
 import { PushNotificationService as Service } from "@/server/features/notifications/services/PushNotificationService";
+import { isAllowedPushEndpoint } from "@/server/features/notifications/pushEndpoint";
 
 const subscriptionSchema = z.object({
   endpoint: z
     .string()
-    .url()
     .max(4_096)
-    .refine((value) => new URL(value).protocol === "https:", {
-      message: "Push subscription endpoint must use HTTPS",
-    }),
+    .refine(isAllowedPushEndpoint, "Unsupported push subscription endpoint"),
   p256dh: z.string().min(1).max(1_024),
   auth: z.string().min(1).max(1_024),
-  userAgent: z.string().max(1_000).optional(),
 });
 
 export const getPushNotificationStatus = createServerFn({ method: "GET" })

@@ -2746,6 +2746,13 @@ WhatsApp module access and the user's workspace preference; expired browser
 subscriptions are disabled. No customer reply, provider template, marketing
 consent, AI configuration or communications routing is changed.
 
+Subscription endpoints are restricted to the browser push services used by
+Safari, Chromium/FCM and Firefox; arbitrary HTTPS hosts are rejected. Each user
+may retain at most five active browser/device subscriptions. Delivery uses a
+10-second socket timeout and batches at most ten simultaneous push-service
+requests, preventing a forged subscription list from turning inbound messages
+into unrestricted outbound traffic.
+
 The change adds `push_subscriptions` and `push_notification_preferences` in both
 SQLite and PostgreSQL, plus additive migrations for each dialect. Production also
 requires owner-supplied VAPID configuration in Coolify:

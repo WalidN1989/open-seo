@@ -14,10 +14,8 @@ CREATE TABLE "push_subscriptions" (
 	"endpoint" text NOT NULL,
 	"p256dh" text NOT NULL,
 	"auth" text NOT NULL,
-	"user_agent" text,
 	"created_at" text DEFAULT to_char(now() AT TIME ZONE 'utc', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') NOT NULL,
 	"updated_at" text DEFAULT to_char(now() AT TIME ZONE 'utc', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') NOT NULL,
-	"last_success_at" text,
 	"disabled_at" text
 );
 --> statement-breakpoint

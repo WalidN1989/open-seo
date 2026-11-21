@@ -1,4 +1,5 @@
 import { AppError } from "@/server/lib/errors";
+import type * as WebPush from "web-push";
 import { getOptionalEnvValue } from "@/server/lib/runtime-env";
 import { BusinessModuleService } from "@/server/features/business-modules/services/BusinessModuleService";
 import { ProjectRepository } from "@/server/features/projects/repositories/ProjectRepository";
@@ -8,12 +9,15 @@ type SubscriptionInput = {
   endpoint: string;
   p256dh: string;
   auth: string;
-  userAgent?: string;
 };
+
+const PUSH_REQUEST_TIMEOUT_MS = 10_000;
+const PUSH_DELIVERY_CONCURRENCY = 10;
 
 type StoredSubscription = Awaited<
   ReturnType<typeof Repository.listActiveSubscriptions>
 >[number];
+type SendNotification = typeof WebPush.sendNotification;
 
 async function configuration() {
   const [publicKey, privateKey, subject, applicationUrl] = await Promise.all([
@@ -103,9 +107,9 @@ async function sendOne(
     privateKey: string;
     subject: string;
   },
+  sendNotification: SendNotification,
 ) {
   try {
-    const { sendNotification } = await import("web-push");
     await sendNotification(
       {
         endpoint: subscription.endpoint,
@@ -116,17 +120,37 @@ async function sendOne(
         TTL: 60 * 60,
         urgency: "high",
         vapidDetails: config,
+        timeout: PUSH_REQUEST_TIMEOUT_MS,
       },
     );
-    await Repository.markSuccess(subscription.endpoint);
-    return true;
   } catch (error) {
     const statusCode = errorStatus(error);
     if (statusCode === 404 || statusCode === 410) {
       await Repository.disable(subscription.endpoint);
     }
     console.warn("Web Push delivery failed", { statusCode });
-    return false;
+  }
+}
+
+async function sendAll(
+  subscriptions: StoredSubscription[],
+  payload: string,
+  vapidDetails: { publicKey: string; privateKey: string; subject: string },
+) {
+  if (subscriptions.length === 0) return;
+  const { sendNotification } = await import("web-push");
+  for (
+    let index = 0;
+    index < subscriptions.length;
+    index += PUSH_DELIVERY_CONCURRENCY
+  ) {
+    await Promise.all(
+      subscriptions
+        .slice(index, index + PUSH_DELIVERY_CONCURRENCY)
+        .map((subscription) =>
+          sendOne(subscription, payload, vapidDetails, sendNotification),
+        ),
+    );
   }
 }
 
@@ -175,11 +199,7 @@ async function notifyWhatsappInbound(input: {
       // Access changed after opt-in. The stale preference remains harmless.
     }
   }
-  await Promise.all(
-    subscriptions.map((subscription) =>
-      sendOne(subscription, payload, vapidDetails),
-    ),
-  );
+  await sendAll(subscriptions, payload, vapidDetails);
 }
 
 export const PushNotificationService = {

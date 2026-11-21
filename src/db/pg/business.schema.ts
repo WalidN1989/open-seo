@@ -2611,10 +2611,8 @@ export const pushSubscriptions = pgTable(
     endpoint: text("endpoint").notNull(),
     p256dh: text("p256dh").notNull(),
     auth: text("auth").notNull(),
-    userAgent: text("user_agent"),
     createdAt: createdAt(),
     updatedAt: text("updated_at").notNull().default(isoNow),
-    lastSuccessAt: text("last_success_at"),
     disabledAt: text("disabled_at"),
   },
   (table) => [

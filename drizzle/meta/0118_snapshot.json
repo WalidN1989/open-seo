@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "70d1a1fb-112b-477b-813b-5dfbd229a057",
+  "id": "1dd02453-ea4c-47ff-9b34-b496da9b372c",
   "prevId": "8fa2e88c-520f-48ac-88b0-7d7dd67f7eee",
   "tables": {
     "backlink_snapshots": {
@@ -11414,13 +11414,6 @@
           "notNull": true,
           "autoincrement": false
         },
-        "user_agent": {
-          "name": "user_agent",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
         "created_at": {
           "name": "created_at",
           "type": "text",
@@ -11436,13 +11429,6 @@
           "notNull": true,
           "autoincrement": false,
           "default": "(current_timestamp)"
-        },
-        "last_success_at": {
-          "name": "last_success_at",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
         },
         "disabled_at": {
           "name": "disabled_at",

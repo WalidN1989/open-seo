@@ -55,7 +55,6 @@ function subscriptionFields(subscription: PushSubscription) {
     endpoint: json.endpoint,
     p256dh,
     auth,
-    userAgent: navigator.userAgent,
   };
 }
 

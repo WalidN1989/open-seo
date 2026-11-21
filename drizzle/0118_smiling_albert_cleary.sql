@@ -18,10 +18,8 @@ CREATE TABLE `push_subscriptions` (
 	`endpoint` text NOT NULL,
 	`p256dh` text NOT NULL,
 	`auth` text NOT NULL,
-	`user_agent` text,
 	`created_at` text DEFAULT (current_timestamp) NOT NULL,
 	`updated_at` text DEFAULT (current_timestamp) NOT NULL,
-	`last_success_at` text,
 	`disabled_at` text,
 	FOREIGN KEY (`user_id`) REFERENCES `user`(`id`) ON UPDATE no action ON DELETE cascade
 );

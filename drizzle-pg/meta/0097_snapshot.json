@@ -1,5 +1,5 @@
 {
-  "id": "94a9931e-3632-47fc-b5cd-01c55da075c1",
+  "id": "af1ad838-3ddd-40a6-8c50-ed102eb9295a",
   "prevId": "c37ad70a-c7f6-4f3a-9458-e801a67cee0d",
   "version": "7",
   "dialect": "postgresql",
@@ -12482,12 +12482,6 @@
           "primaryKey": false,
           "notNull": true
         },
-        "user_agent": {
-          "name": "user_agent",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
         "created_at": {
           "name": "created_at",
           "type": "text",
@@ -12501,12 +12495,6 @@
           "primaryKey": false,
           "notNull": true,
           "default": "to_char(now() AT TIME ZONE 'utc', 'YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"')"
-        },
-        "last_success_at": {
-          "name": "last_success_at",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
         },
         "disabled_at": {
           "name": "disabled_at",

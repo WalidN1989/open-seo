@@ -2709,12 +2709,10 @@ export const pushSubscriptions = sqliteTable(
     endpoint: text("endpoint").notNull(),
     p256dh: text("p256dh").notNull(),
     auth: text("auth").notNull(),
-    userAgent: text("user_agent"),
     createdAt: createdAt(),
     updatedAt: text("updated_at")
       .notNull()
       .default(sql`(current_timestamp)`),
-    lastSuccessAt: text("last_success_at"),
     disabledAt: text("disabled_at"),
   },
   (table) => [

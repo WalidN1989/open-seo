@@ -1,4 +1,4 @@
-import { and, eq, isNull } from "drizzle-orm";
+import { and, desc, eq, isNull, ne, notInArray } from "drizzle-orm";
 import { db } from "@/db";
 import { pushNotificationPreferences, pushSubscriptions } from "@/db/schema";
 
@@ -6,8 +6,9 @@ type SubscriptionInput = {
   endpoint: string;
   p256dh: string;
   auth: string;
-  userAgent?: string;
 };
+
+const MAX_ACTIVE_SUBSCRIPTIONS_PER_USER = 5;
 
 async function upsertSubscription(userId: string, input: SubscriptionInput) {
   const now = new Date().toISOString();
@@ -19,7 +20,6 @@ async function upsertSubscription(userId: string, input: SubscriptionInput) {
       endpoint: input.endpoint,
       p256dh: input.p256dh,
       auth: input.auth,
-      userAgent: input.userAgent,
       updatedAt: now,
     })
     .onConflictDoUpdate({
@@ -28,12 +28,35 @@ async function upsertSubscription(userId: string, input: SubscriptionInput) {
         userId,
         p256dh: input.p256dh,
         auth: input.auth,
-        userAgent: input.userAgent,
         updatedAt: now,
         disabledAt: null,
       },
     })
     .returning({ id: pushSubscriptions.id });
+  const recentOthers = await db
+    .select({ endpoint: pushSubscriptions.endpoint })
+    .from(pushSubscriptions)
+    .where(
+      and(
+        eq(pushSubscriptions.userId, userId),
+        isNull(pushSubscriptions.disabledAt),
+        ne(pushSubscriptions.endpoint, input.endpoint),
+      ),
+    )
+    .orderBy(desc(pushSubscriptions.updatedAt))
+    .limit(MAX_ACTIVE_SUBSCRIPTIONS_PER_USER - 1);
+  const retainedEndpoints = [
+    input.endpoint,
+    ...recentOthers.map((item) => item.endpoint),
+  ];
+  await db
+    .delete(pushSubscriptions)
+    .where(
+      and(
+        eq(pushSubscriptions.userId, userId),
+        notInArray(pushSubscriptions.endpoint, retainedEndpoints),
+      ),
+    );
   return row ?? null;
 }
 
@@ -106,14 +129,9 @@ async function listActiveSubscriptions(userId: string) {
         eq(pushSubscriptions.userId, userId),
         isNull(pushSubscriptions.disabledAt),
       ),
-    );
-}
-
-async function markSuccess(endpoint: string) {
-  await db
-    .update(pushSubscriptions)
-    .set({ lastSuccessAt: new Date().toISOString() })
-    .where(eq(pushSubscriptions.endpoint, endpoint));
+    )
+    .orderBy(desc(pushSubscriptions.updatedAt))
+    .limit(MAX_ACTIVE_SUBSCRIPTIONS_PER_USER);
 }
 
 async function disable(endpoint: string) {
@@ -128,7 +146,6 @@ export const PushNotificationRepository = {
   isEnabled,
   listActiveSubscriptions,
   listEnabledUserIds,
-  markSuccess,
   setPreference,
   upsertSubscription,
 };
