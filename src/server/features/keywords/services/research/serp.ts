@@ -15,6 +15,7 @@ type SerpAnalysisReason = "no_organic_results";
 type SerpAnalysisResult = {
   requestedKeyword: string;
   items: SerpResultItem[];
+  depth: number;
   reason?: SerpAnalysisReason;
 };
 
@@ -34,6 +35,7 @@ const serpResultItemSchema = z.object({
 
 const serpCacheSchema = z.object({
   requestedKeyword: z.string(),
+  depth: z.number().default(20),
   items: z.array(serpResultItemSchema),
   reason: z.enum(["no_organic_results"]).optional(),
 });
@@ -62,15 +64,18 @@ async function getSerpLiveAnalysis(
     keyword: string;
     locationCode: number;
     languageCode: string;
+    depth?: 20 | 100;
   },
   billingCustomer: BillingCustomerContext,
 ): Promise<SerpAnalysisResult> {
   const keyword = normalizeKeyword(input.keyword);
+  const depth = input.depth ?? 20;
 
-  const cacheKey = await buildCacheKey("serp:analysis", {
+  const cacheKey = await buildCacheKey("serp:analysis:v2", {
     organizationId: billingCustomer.organizationId,
     projectId: input.projectId,
     keyword,
+    depth,
     locationCode: input.locationCode,
     languageCode: input.languageCode,
   });
@@ -92,6 +97,7 @@ async function getSerpLiveAnalysis(
 
   const liveItems = await createDataforseoClient(billingCustomer).serp.live({
     keyword,
+    depth,
     locationCode: input.locationCode,
     languageCode: input.languageCode,
   });
@@ -103,7 +109,11 @@ async function getSerpLiveAnalysis(
     locationCode: input.locationCode,
     items,
   });
-  const result: SerpAnalysisResult = { requestedKeyword: keyword, items };
+  const result: SerpAnalysisResult = {
+    requestedKeyword: keyword,
+    items,
+    depth,
+  };
   if (items.length === 0) {
     result.reason = "no_organic_results";
   }

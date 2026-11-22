@@ -153,6 +153,7 @@ export function BacklinksBody({
         summaryStats={summaryStats}
       />
       <BacklinksResultsCard
+        includeSpam={searchState.includeSpam}
         projectId={projectId}
         activeTab={searchState.tab}
         scope={searchState.scope}

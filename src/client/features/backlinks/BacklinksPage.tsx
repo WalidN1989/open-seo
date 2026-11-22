@@ -220,6 +220,30 @@ export function BacklinksPage({
           }}
         />
 
+        {searchState.target && searchState.tab === "backlinks" ? (
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              className="checkbox checkbox-sm"
+              checked={searchState.includeSpam ?? false}
+              onChange={(event) => {
+                const includeSpam = event.target.checked;
+                navigate({
+                  search: (prev) => ({
+                    ...prev,
+                    includeSpam: includeSpam || undefined,
+                    page: undefined,
+                  }),
+                  replace: true,
+                });
+              }}
+            />
+            Show likely spam links
+            <span className="text-xs text-base-content/60">
+              Hidden by default; links without a spam score stay visible.
+            </span>
+          </label>
+        ) : null}
         <BacklinksBody
           projectId={projectId}
           history={history}

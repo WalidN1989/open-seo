@@ -1,3 +1,4 @@
+import { ImportKeywordsButton } from "./ImportKeywordsButton";
 import {
   ChevronDown,
   Download,
@@ -8,6 +9,7 @@ import {
 } from "lucide-react";
 
 export function SavedKeywordsHeader({
+  projectId,
   totalCount,
   exporting,
   metricsRefreshing,
@@ -15,6 +17,7 @@ export function SavedKeywordsHeader({
   onExportSheets,
   onRefreshMetrics,
 }: {
+  projectId: string;
   totalCount: number;
   exporting: "csv" | "sheets" | null;
   metricsRefreshing: boolean;
@@ -34,7 +37,8 @@ export function SavedKeywordsHeader({
         </p>
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
+        <ImportKeywordsButton key={projectId} projectId={projectId} />
         <div className="dropdown dropdown-end">
           <button
             type="button"

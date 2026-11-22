@@ -196,6 +196,7 @@ const backlinksPageRequestBase = backlinksLookupSchema.extend({
 });
 
 export const backlinksRowsPageRequestSchema = backlinksPageRequestBase.extend({
+  hideSpam: z.boolean().optional(),
   sortField: backlinksRowsSortFieldSchema.default(
     BACKLINKS_DEFAULT_SORT.backlinks.field,
   ),
@@ -219,6 +220,7 @@ export const topPagesPageRequestSchema = backlinksPageRequestBase.extend({
 });
 
 export const backlinksSearchSchema = z.object({
+  includeSpam: z.boolean().optional().catch(undefined),
   target: z.string().optional(),
   scope: backlinksScopeParamSchema.optional().catch(undefined),
   tab: backlinksTabSchema.optional(),

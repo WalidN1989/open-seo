@@ -36,11 +36,13 @@ async function addKeywords(
 
   for (const raw of keywords) {
     if (rows.length >= available) break;
-    const normalized = raw.trim().toLowerCase();
+    const trimmed = raw.trim();
+    const normalized = trimmed.toLocaleLowerCase(config.languageCode);
     if (
       normalized &&
       !seen.has(normalized) &&
-      !existingKeywords.has(normalized)
+      !existingKeywords.has(normalized) &&
+      !existingKeywords.has(trimmed.toLowerCase())
     ) {
       seen.add(normalized);
       rows.push({ id: crypto.randomUUID(), configId, keyword: normalized });

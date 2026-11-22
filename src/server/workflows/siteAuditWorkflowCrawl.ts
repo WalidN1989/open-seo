@@ -163,6 +163,7 @@ async function runCrawlChunk(
   const { urls: claimed, isRetry } = await scratchpad.claimChunk(
     chunkNo,
     claimLimit,
+    maxPages - input.attemptedBefore,
   );
   if (claimed.length === 0) {
     const stats = await scratchpad.getStats();

@@ -8,6 +8,7 @@ export function SerpAnalysisCard({
   loading,
   error,
   onRetry,
+  onLoadMore,
   page,
   pageSize,
   onPageChange,
@@ -17,6 +18,7 @@ export function SerpAnalysisCard({
   loading: boolean;
   error?: string | null;
   onRetry?: () => void;
+  onLoadMore?: () => void;
   page: number;
   pageSize: number;
   onPageChange: (p: number) => void;
@@ -57,6 +59,15 @@ export function SerpAnalysisCard({
         />
       </div>
       <SerpAnalysisTable items={pageItems} />
+      {onLoadMore ? (
+        <button
+          type="button"
+          className="btn btn-outline btn-sm mt-3"
+          onClick={onLoadMore}
+        >
+          Load top 100 (uses credits)
+        </button>
+      ) : null}
       <SerpAnalysisPagination
         page={page}
         totalPages={totalPages}

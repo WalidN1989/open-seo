@@ -1,3 +1,4 @@
+import { AppError } from "@/server/lib/errors";
 import { beforeEach, expect, it, vi } from "vitest";
 
 const backlinksSummaryMock = vi.fn();
@@ -388,3 +389,47 @@ it("builds subfolder overview totals from two filtered backlink counts", async (
     expect.objectContaining({ mode: "one_per_domain", limit: 1 }),
   );
 });
+
+it("adds today's compatible summary to the historical growth chart", async () => {
+  mockTarget({ scope: "subdomains", includeSubdomains: true });
+  backlinksSummaryMock.mockResolvedValue({
+    backlinks: 1500,
+    referring_domains: 500,
+    rank: 50,
+  });
+  backlinksHistoryMock.mockResolvedValue([
+    { date: "2026-01-31", backlinks: 1000, referring_domains: 400, rank: 40 },
+  ]);
+  const { overview } = await service.profileOverview(
+    { target: "example.com" },
+    billingCustomer,
+  );
+  expect(overview.trends).toHaveLength(2);
+  expect(overview.trends.at(-1)).toMatchObject({
+    backlinks: 1500,
+    referringDomains: 500,
+    rank: 50,
+  });
+});
+it.each([
+  new AppError("INSUFFICIENT_CREDITS"),
+  new AppError("UNAUTHENTICATED"),
+  new Error("trackUsageCreditSpend failed"),
+  new Error("recordResearchPurchase failed"),
+  new Error("history unavailable"),
+])(
+  "surfaces subdomain history errors without caching partial success: %s",
+  async (error) => {
+    mockTarget({
+      apiTarget: "shop.example.com",
+      displayTarget: "shop.example.com",
+      includeSubdomains: true,
+    });
+    backlinksSummaryMock.mockResolvedValue({ backlinks: 1500 });
+    backlinksHistoryMock.mockRejectedValue(error);
+    await expect(
+      service.profileOverview({ target: "shop.example.com" }, billingCustomer),
+    ).rejects.toBe(error);
+    expect(cache.size).toBe(0);
+  },
+);

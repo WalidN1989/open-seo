@@ -94,8 +94,8 @@ export function IssuesView({ issues }: { issues: AuditIssueRow[] }) {
       <div className="py-10 text-center text-base-content/60">
         <p className="font-medium">No issues recorded for this audit.</p>
         <p className="text-sm mt-1">
-          Either the site is in great shape, or this audit ran before issue
-          checks existed — run a new audit to get the full report.
+          No issues were returned by the checks recorded in this report. This
+          does not assess pages outside the crawl.
         </p>
       </div>
     );

@@ -141,3 +141,19 @@ describe("urlMatchesResearchTarget", () => {
     );
   });
 });
+
+// Backlinks exact-page matching cannot silently discard campaign parameters.
+describe("backlinks exact page validation", () => {
+  it("rejects query strings and fragments before a lookup", async () => {
+    const { parseBacklinksTarget } = await import("./researchScope");
+    expect(
+      parseBacklinksTarget("https://example.com/page?ref=1", "exact_url").ok,
+    ).toBe(false);
+    expect(
+      parseBacklinksTarget("https://example.com/page#top", "exact_url").ok,
+    ).toBe(false);
+    expect(
+      parseBacklinksTarget("https://example.com/page?ref=1", "subfolder").ok,
+    ).toBe(true);
+  });
+});

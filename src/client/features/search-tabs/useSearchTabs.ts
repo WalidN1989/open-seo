@@ -110,6 +110,7 @@ function parseTabInput(value: unknown): SearchTabInput | null {
       mode: value.mode,
       // Tabs persisted before the clickstream toggle existed default to off.
       clickstream: value.clickstream === true,
+      ...(value.groupKeywords === true ? { groupKeywords: true } : {}),
     };
   }
 

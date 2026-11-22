@@ -374,8 +374,11 @@ function DesktopSerpPanel({ controller }: Props) {
             items={controller.serpResults}
             keyword={controller.activeSerpKeyword}
             loading={controller.serpLoading}
+            onLoadMore={
+              controller.canLoadMoreSerp ? controller.loadMoreSerp : undefined
+            }
             error={controller.serpError}
-            onRetry={() => void controller.serpQuery.refetch()}
+            onRetry={controller.retrySerp}
             page={controller.serpPage}
             pageSize={controller.SERP_PAGE_SIZE}
             onPageChange={controller.setSerpPage}

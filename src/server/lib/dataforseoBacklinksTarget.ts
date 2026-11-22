@@ -4,7 +4,7 @@ import {
   type BacklinksScopeWithLegacy,
 } from "@/types/schemas/backlinks";
 import {
-  parseResearchTarget,
+  parseBacklinksTarget,
   type ResearchScope,
 } from "@/shared/researchScope";
 
@@ -40,7 +40,7 @@ export function normalizeBacklinksTarget(
     ? resolveBacklinksScope(options.scope)
     : undefined;
 
-  const parsed = parseResearchTarget(trimmed, requestedScope);
+  const parsed = parseBacklinksTarget(trimmed, requestedScope);
   if (!parsed.ok) {
     throw new AppError("VALIDATION_ERROR", parsed.message);
   }

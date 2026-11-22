@@ -77,6 +77,24 @@ export function LaunchFormCard({
               maxPagesLimit={maxPagesLimit}
             />
             <LighthouseOptions launchForm={launchForm} />
+            <launchForm.Field name="excludePathsInput">
+              {(field) => (
+                <label className="space-y-1 text-sm md:col-span-2">
+                  Exclude URL paths (optional)
+                  <textarea
+                    className="textarea textarea-bordered w-full"
+                    rows={3}
+                    placeholder={"/tags/\n/search*"}
+                    value={field.state.value}
+                    onChange={(event) => field.handleChange(event.target.value)}
+                  />
+                  <span className="block text-xs text-base-content/60">
+                    One path per line, up to 20. * matches any text; $ matches
+                    the end. Excluded pages are not audited.
+                  </span>
+                </label>
+              )}
+            </launchForm.Field>
           </div>
         </form>
 

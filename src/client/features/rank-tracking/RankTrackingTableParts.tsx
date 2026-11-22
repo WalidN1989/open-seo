@@ -1,3 +1,4 @@
+import { formatExportTimestamp } from "@/client/lib/db-timestamp";
 import { Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { buildCsv, downloadCsv } from "@/client/lib/csv";
@@ -186,6 +187,7 @@ export function buildRankTrackingExport(
     "CPC",
     ...(showDesktop
       ? [
+          "Desktop Checked At (UTC)",
           "Desktop Position",
           "Desktop Change",
           "Desktop URL",
@@ -194,6 +196,7 @@ export function buildRankTrackingExport(
       : []),
     ...(showMobile
       ? [
+          "Mobile Checked At (UTC)",
           "Mobile Position",
           "Mobile Change",
           "Mobile URL",
@@ -210,6 +213,9 @@ export function buildRankTrackingExport(
     row.cpc ?? "",
     ...(showDesktop
       ? [
+          row.desktop.checkedAt
+            ? formatExportTimestamp(row.desktop.checkedAt)
+            : "",
           row.desktop.position ?? "",
           csvChange(row.desktop.position, row.desktop.previousPosition),
           row.desktop.rankingUrl ?? "",
@@ -218,6 +224,9 @@ export function buildRankTrackingExport(
       : []),
     ...(showMobile
       ? [
+          row.mobile.checkedAt
+            ? formatExportTimestamp(row.mobile.checkedAt)
+            : "",
           row.mobile.position ?? "",
           csvChange(row.mobile.position, row.mobile.previousPosition),
           row.mobile.rankingUrl ?? "",

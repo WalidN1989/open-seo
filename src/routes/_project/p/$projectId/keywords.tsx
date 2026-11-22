@@ -38,12 +38,14 @@ function KeywordResearchPageRoute() {
   } = search;
   return (
     <KeywordResearchPage
+      key={projectId}
       projectId={projectId}
       keywordInput={keywordInput}
       locationCode={locationCode}
       resultLimit={isResultLimit(resultLimit) ? resultLimit : 150}
       keywordMode={normalizeKeywordMode(keywordMode)}
       clickstream={search.cs ?? false}
+      groupKeywords={search.group ?? false}
       sortField={normalizeSortField(sortField)}
       sortDir={normalizeSortDir(sortDir)}
     />

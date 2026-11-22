@@ -1,3 +1,4 @@
+import { keywordWildcardError } from "@/shared/keyword-wildcard";
 import { useEffect } from "react";
 import { useForm } from "@tanstack/react-form";
 import {
@@ -17,6 +18,7 @@ type UseKeywordControlsFormInput = {
   resultLimit: ResultLimit;
   keywordMode: KeywordMode;
   clickstream: boolean;
+  groupKeywords?: boolean;
 };
 
 export type KeywordControlsValues = {
@@ -25,6 +27,7 @@ export type KeywordControlsValues = {
   resultLimit: ResultLimit;
   mode: KeywordMode;
   clickstream: boolean;
+  groupKeywords?: boolean;
 };
 
 function getKeywordSearchValidationErrors(
@@ -44,6 +47,11 @@ function getKeywordSearchValidationErrors(
   }
 
   if (!shouldValidateUntouchedField) return null;
+  for (const keyword of keywords) {
+    const error = keywordWildcardError(keyword, value.locationCode);
+    if (error)
+      return createFormValidationErrors({ fields: { keyword: error } });
+  }
 
   if (keywords.length > MAX_KEYWORDS_PER_SUBMIT) {
     return createFormValidationErrors({
@@ -67,6 +75,7 @@ export function useKeywordControlsForm(
       resultLimit: input.resultLimit,
       mode: input.keywordMode,
       clickstream: input.clickstream,
+      groupKeywords: input.groupKeywords ?? false,
     },
     validators: {
       onChange: ({ formApi, value }) =>
@@ -90,6 +99,7 @@ export function useKeywordControlsForm(
       resultLimit: input.resultLimit,
       mode: input.keywordMode,
       clickstream: input.clickstream,
+      groupKeywords: input.groupKeywords ?? false,
     });
   }, [
     form,
@@ -98,6 +108,7 @@ export function useKeywordControlsForm(
     input.locationCode,
     input.resultLimit,
     input.clickstream,
+    input.groupKeywords,
   ]);
 
   return form;

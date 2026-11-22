@@ -326,4 +326,51 @@ describe("RankTrackingService management invariants", () => {
     ).rejects.toMatchObject({ code: "NOT_FOUND" });
     expect(mocks.removeKeywordsFromConfig).not.toHaveBeenCalled();
   });
+  it("refreshes legacy city metrics in the country/language while retaining city scoping", async () => {
+    mocks.createDataforseoClient.mockReturnValue({});
+    mocks.getConfigById.mockResolvedValue({
+      ...config,
+      locationCode: 1001634,
+      locationName: "Curitiba,State of Parana,Brazil",
+      languageCode: "pt",
+    });
+    mocks.isHostedServerAuthMode.mockResolvedValue(false);
+    mocks.fetchKeywordMetricsForList.mockResolvedValue([]);
+    await RankTrackingService.refreshKeywordMetrics(
+      "config_1",
+      "project_1",
+      billingCustomer,
+    );
+    expect(mocks.fetchKeywordMetricsForList).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        locationCode: 2076,
+        languageCode: "pt",
+        locationName: "Curitiba,State of Parana,Brazil",
+        creditFeature: "rank_tracking",
+      }),
+    );
+  });
+  it("uses Turkish lowercasing and does not re-add legacy normalized keywords", async () => {
+    mocks.getConfigById.mockResolvedValue({
+      ...config,
+      languageCode: "tr",
+      scheduleInterval: "manual",
+    });
+    mocks.getKeywordsForConfig.mockResolvedValue([
+      { id: "old", keyword: "i\u0307stanbul" },
+    ]);
+    mocks.addKeywordsToConfig.mockImplementation(
+      async (rows: { id: string }[]) => rows.map((row) => row.id),
+    );
+    await RankTrackingService.addKeywords(
+      "config_1",
+      "project_1",
+      ["İstanbul", "KIRMIZI"],
+      { kind: "direct_user_action" },
+    );
+    expect(mocks.addKeywordsToConfig).toHaveBeenCalledWith([
+      expect.objectContaining({ keyword: "kırmızı" }),
+    ]);
+  });
 });

@@ -37,6 +37,7 @@ export type KeywordResearchControllerInput = {
   resultLimit: ResultLimit;
   keywordMode: KeywordMode;
   clickstream: boolean;
+  groupKeywords?: boolean;
   sortField: SortField;
   sortDir: SortDir;
   /**
@@ -56,7 +57,7 @@ export function useKeywordResearchController(
     filtersForm,
     values: filterValues,
     resetFilters,
-  } = useLocalKeywordFilters();
+  } = useLocalKeywordFilters(input.projectId);
   const uiState = useKeywordUiState(
     Object.values(filterValues).some((v) => v.trim() !== ""),
   );
@@ -73,6 +74,9 @@ export function useKeywordResearchController(
     setSerpPage,
     SERP_PAGE_SIZE,
     serpQuery,
+    retrySerp,
+    canLoadMoreSerp,
+    loadMoreSerp,
     serpResults,
     activeSerpKeyword,
     serpLoading,
@@ -110,6 +114,7 @@ export function useKeywordResearchController(
       resultLimit: input.resultLimit,
       mode: input.keywordMode,
       clickstream: input.clickstream,
+      groupKeywords: input.groupKeywords ?? false,
     },
     addSearch,
   );
@@ -123,6 +128,7 @@ export function useKeywordResearchController(
         resultLimit: input.resultLimit,
         mode: input.keywordMode,
         clickstream: input.clickstream,
+        groupKeywords: input.groupKeywords ?? false,
       })
     : null;
 
@@ -269,6 +275,9 @@ export function useKeywordResearchController(
     serpLoading,
     serpPage,
     serpQuery,
+    retrySerp,
+    canLoadMoreSerp,
+    loadMoreSerp,
     serpResults,
     setMobileTab: uiState.setMobileTab,
     setSelectedRows,

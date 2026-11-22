@@ -40,6 +40,7 @@ const BACKLINKS_RESULTS_TABS: Array<{
 
 export function BacklinksResultsCard({
   projectId,
+  includeSpam = false,
   activeTab,
   scope,
   tabRows,
@@ -58,6 +59,7 @@ export function BacklinksResultsCard({
   onViewChange,
 }: {
   projectId: string;
+  includeSpam?: boolean;
   activeTab: BacklinksSearchState["tab"];
   scope: ResearchScope;
   tabRows: BacklinksTabRows;
@@ -201,16 +203,21 @@ export function BacklinksResultsCard({
           // The subfolder url-prefix group (and, on the backlinks tab, the
           // server-appended spam condition) shares the 8-condition budget.
           maxConditions={
-            scope === "subfolder"
-              ? MAX_DATAFORSEO_FILTER_CONDITIONS -
-                BACKLINKS_SUBFOLDER_FILTER_CONDITIONS -
-                (activeTab === "pages" ? 0 : 1)
-              : undefined
+            MAX_DATAFORSEO_FILTER_CONDITIONS -
+            (scope === "subfolder"
+              ? BACKLINKS_SUBFOLDER_FILTER_CONDITIONS
+              : 0) -
+            (activeTab === "backlinks" && !includeSpam ? 2 : 0)
           }
         />
       ) : null}
 
-      <div className="p-4">
+      <div className="p-4" aria-busy={pagination.isFetching}>
+        {pagination.isFetching && !isTabLoading ? (
+          <p role="status" className="mb-3 text-sm text-base-content/60">
+            Updating results…
+          </p>
+        ) : null}
         {tabErrorMessage ? (
           <div className="alert alert-error mb-3">
             <span>{tabErrorMessage}</span>

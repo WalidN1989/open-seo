@@ -29,6 +29,7 @@ export type TopPageRow = BacklinksTopPagesData["rows"][number];
 
 export type BacklinksSearchState = {
   target: string;
+  includeSpam?: boolean;
   scope: BacklinksTargetScope;
   tab: BacklinksTab;
   page: number;

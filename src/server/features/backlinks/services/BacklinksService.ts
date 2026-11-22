@@ -45,7 +45,7 @@ function createBacklinksService(cache: BacklinksCache = defaultCache) {
       // results stay shared across callers.
       creditFeature?: CreditFeature,
     ) {
-      const cacheKey = await buildCacheKey("backlinks:overview", {
+      const cacheKey = await buildCacheKey("backlinks:overview:v2", {
         ...buildTargetCacheInput(input, billingCustomer),
       });
 
@@ -63,7 +63,7 @@ function createBacklinksService(cache: BacklinksCache = defaultCache) {
       options?: BacklinksSpamFilterOptions,
     ) {
       const cacheKey = await buildPageCacheKey(
-        "backlinks:rows-page",
+        "backlinks:rows-page:v2",
         input,
         billingCustomer,
         options,

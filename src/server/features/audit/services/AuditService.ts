@@ -1,3 +1,7 @@
+import {
+  excludePathsSchema,
+  findExcludingPath,
+} from "@/shared/audit-exclude-paths";
 import { env } from "cloudflare:workers";
 import {
   customerHasManagedAccess,
@@ -49,6 +53,7 @@ async function startAudit(input: {
   projectId: string;
   startUrl: string;
   maxPages?: number;
+  excludePaths?: string[];
   lighthouseStrategy?: LighthouseStrategy;
   limitTier: AuditLimitTier;
 }) {
@@ -65,13 +70,27 @@ async function startAudit(input: {
   });
 
   const auditId = crypto.randomUUID();
-  const config: AuditConfig = { maxPages, lighthouseStrategy };
+  const excludePaths = [
+    ...new Set(excludePathsSchema.parse(input.excludePaths ?? [])),
+  ];
+  const config: AuditConfig = {
+    maxPages,
+    lighthouseStrategy,
+    ...(excludePaths.length ? { excludePaths } : {}),
+  };
   // Anchor the audit to the site's real origin: a start domain that 301s
   // elsewhere (…net -> …com, apex -> www) would otherwise dead-end after
   // one page at the same-origin crawl boundary.
   const startUrl = await resolveStartUrlRedirects(
     await normalizeAndValidateStartUrl(input.startUrl),
   );
+
+  const excludedBy = findExcludingPath(excludePaths, startUrl);
+  if (excludedBy)
+    throw new AppError(
+      "VALIDATION_ERROR",
+      `The start URL is excluded by "${excludedBy}".`,
+    );
 
   await AuditRepository.createAudit({
     id: auditId,
@@ -154,6 +173,7 @@ async function getStatus(auditId: string, projectId: string) {
     lighthouseTotal: audit.lighthouseTotal,
     lighthouseCompleted: audit.lighthouseCompleted,
     lighthouseFailed: audit.lighthouseFailed,
+    excludePaths: parseAuditConfig(audit.config)?.excludePaths ?? [],
     currentPhase: audit.currentPhase,
     errorCode: audit.errorCode,
     startedAt: audit.startedAt,

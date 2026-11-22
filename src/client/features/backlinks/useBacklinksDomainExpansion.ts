@@ -36,7 +36,7 @@ export function useBacklinksDomainExpansion({
   // Collapse everything when the lookup changes.
   useEffect(() => {
     setExpanded([]);
-  }, [projectId, target, scope]);
+  }, [projectId, target, scope, searchState.includeSpam]);
 
   const queries = useQueries({
     queries: expanded.map((domain) => ({
@@ -46,6 +46,7 @@ export function useBacklinksDomainExpansion({
         scope,
         target,
         domain,
+        searchState.includeSpam ?? false,
       ] as const,
       staleTime: DOMAIN_LINKS_STALE_TIME_MS,
       queryFn: () =>
@@ -60,6 +61,7 @@ export function useBacklinksDomainExpansion({
             sortOrder: "desc",
             filters: { domainFrom: domain },
             mode: "as_is",
+            hideSpam: !searchState.includeSpam,
           },
         }),
     })),

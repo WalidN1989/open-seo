@@ -26,11 +26,12 @@ import {
   rankCheckCostApprovalError,
 } from "@/shared/rank-tracking";
 import {
+  getKeywordDataCountryCode,
   resolveKeywordDataLanguage,
   resolveMarket,
 } from "@/shared/keyword-locations";
 import { getLatestResults } from "./rankTrackingResults";
-import { toSqliteTimestamp } from "@/server/features/rank-tracking/rankTrackingTimestamps";
+import { toRankTrackingTimestamp } from "@/server/features/rank-tracking/rankTrackingTimestamps";
 import { RankTrackingKeywordService } from "./RankTrackingKeywordService";
 
 // ---------------------------------------------------------------------------
@@ -124,7 +125,7 @@ async function createConfig(input: {
     isActive: true,
     lastCheckedAt: null,
     lastSkipReason: null,
-    createdAt: toSqliteTimestamp(new Date()),
+    createdAt: toRankTrackingTimestamp(new Date()),
   };
 
   await RankTrackingRepository.createConfig(config);
@@ -263,29 +264,28 @@ async function refreshKeywordMetrics(
   const keywords = await RankTrackingRepository.getKeywordsForConfig(configId);
   if (keywords.length === 0) return { updated: 0 };
 
+  const countryCode = getKeywordDataCountryCode(config);
+  const lower = (text: string) => text.toLocaleLowerCase(config.languageCode);
   const client = createDataforseoClient(billingCustomer);
   const metrics = await fetchKeywordMetricsForList(client, {
-    keywords: keywords.map((kw) => kw.keyword),
-    locationCode: config.locationCode,
+    keywords: [...new Set(keywords.map((kw) => lower(kw.keyword)))],
+    locationCode: countryCode,
     // Trackers can pair any SERP language with any country; the keyword-data
     // APIs only serve the country's own languages.
-    languageCode: resolveKeywordDataLanguage(
-      config.locationCode,
-      config.languageCode,
-    ),
+    languageCode: resolveKeywordDataLanguage(countryCode, config.languageCode),
     // Local configs get volume/CPC scoped to the tracked city; national
     // numbers can overstate local demand by orders of magnitude.
     locationName: config.locationName ?? undefined,
     creditFeature: "rank_tracking",
   });
   const byKeyword = new Map(
-    metrics.map((metric) => [metric.keyword.toLowerCase(), metric]),
+    metrics.map((metric) => [lower(metric.keyword), metric]),
   );
 
   const now = new Date().toISOString();
   const updates = keywords
     .map((kw) => {
-      const metric = byKeyword.get(kw.keyword.toLowerCase());
+      const metric = byKeyword.get(lower(kw.keyword));
       if (!metric) return null;
       // Rank tracking only tracks volume / difficulty / CPC.
       return {

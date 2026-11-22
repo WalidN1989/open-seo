@@ -58,6 +58,21 @@ export function CompetitorsView({ projectId }: { projectId: string }) {
       </div>
     );
   }
+  if (query.isError)
+    return (
+      <div role="alert" className="alert alert-error">
+        <span>
+          {getStandardErrorMessage(query.error, "Could not load competitors.")}
+        </span>
+        <button
+          type="button"
+          className="btn btn-sm"
+          onClick={() => void query.refetch()}
+        >
+          Retry
+        </button>
+      </div>
+    );
   if (!query.data) return null;
   const { tracked, discovered, keywordsSeen, pages, gaps } = query.data;
 

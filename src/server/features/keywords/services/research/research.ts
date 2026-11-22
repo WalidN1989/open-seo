@@ -1,3 +1,9 @@
+import { escapeLikeTerm, joinClauses } from "@/server/lib/dataforseo/filters";
+import {
+  hasKeywordWildcard,
+  keywordWildcardError,
+  wildcardAnchor,
+} from "@/shared/keyword-wildcard";
 import { AppError } from "@/server/lib/errors";
 import type { BillingCustomerContext } from "@/server/billing/subscription";
 import type { CreditFeature } from "@/shared/billing-credit-features";
@@ -12,13 +18,16 @@ import type { KeywordResearchRow } from "@/types/keywords";
 import type { ResolvedResearchKeywordsInput } from "@/types/schemas/keywords";
 import { z } from "zod";
 import { getKeywordDataProvider } from "@/shared/keyword-locations";
-import { type EnrichedKeyword, normalizeKeyword } from "./helpers";
+import {
+  type EnrichedKeyword,
+  normalizeKeyword,
+  interleaveRows,
+} from "./helpers";
 import {
   fetchGoogleAdsResearchRows,
   fetchResearchRowsBySource,
 } from "./research-data";
 import {
-  AUTO_KEYWORD_SOURCES,
   MIN_NON_SEED_FOR_AUTO,
   countNonSeedKeywords,
   hasSufficientCoverage,
@@ -78,7 +87,7 @@ const sourceAttemptSchema = z.object({
 
 const cachedResultSchema = z.object({
   rows: z.array(cachedKeywordRowSchema),
-  source: z.enum(["related", "suggestions", "ideas", "google_ads"]),
+  source: z.enum(["related", "suggestions", "ideas", "google_ads", "blended"]),
   usedFallback: z.boolean(),
   diagnostics: z.object({
     requestedMode: z.enum(["auto", "related", "suggestions", "ideas"]),
@@ -89,7 +98,7 @@ const cachedResultSchema = z.object({
 
 // v3: research volumes are no longer clickstream-refined, and Google-Ads-only
 // locations route to keywords_for_keywords.
-const CACHE_VERSION = 3;
+const CACHE_VERSION = 4;
 
 async function fetchRowsFromSource(
   source: KeywordSource,
@@ -106,6 +115,7 @@ async function fetchRowsFromSource(
       languageCode: input.languageCode,
       resultLimit: input.resultLimit,
       includeClickstreamData: input.clickstream,
+      ignoreSynonyms: !(input.groupKeywords ?? false),
       creditFeature,
     },
     billingCustomer,
@@ -119,53 +129,49 @@ async function fetchAutoRows(
   creditFeature?: CreditFeature,
 ): Promise<ResearchResult> {
   const attempts: SourceAttempt[] = [];
-  let lastSource: KeywordSource = "related";
-  const accumulatedRows: EnrichedKeyword[] = [];
-  const seenKeywords = new Set<string>();
-
-  for (const source of AUTO_KEYWORD_SOURCES) {
-    const rows = await fetchRowsFromSource(
-      source,
-      input,
-      seedKeyword,
+  // Keep each metered leg sequential: this fork checks the balance per call.
+  const read = async (source: KeywordSource, resultLimit: number) => {
+    const rows = await fetchResearchRowsBySource(
+      {
+        source,
+        seedKeyword,
+        locationCode: input.locationCode,
+        languageCode: input.languageCode,
+        resultLimit,
+        includeClickstreamData: input.clickstream,
+        ignoreSynonyms: !(input.groupKeywords ?? false),
+        creditFeature,
+      },
       billingCustomer,
-      creditFeature,
     );
-    for (const row of rows) {
-      if (accumulatedRows.length >= input.resultLimit) break;
-      if (seenKeywords.has(row.keyword)) continue;
-      seenKeywords.add(row.keyword);
-      accumulatedRows.push(row);
-    }
-
     attempts.push({
       source,
       rowCount: rows.length,
       nonSeedCount: countNonSeedKeywords(rows, seedKeyword),
     });
-
-    lastSource = source;
-
-    if (
-      hasSufficientCoverage(accumulatedRows, seedKeyword, MIN_NON_SEED_FOR_AUTO)
-    ) {
-      return {
-        rows: accumulatedRows,
-        source,
-        usedFallback: source !== AUTO_KEYWORD_SOURCES[0],
-        diagnostics: {
-          requestedMode: "auto",
-          threshold: MIN_NON_SEED_FOR_AUTO,
-          sourceAttempts: attempts,
-        },
-      };
-    }
-  }
-
+    return rows;
+  };
+  const suggestions = await read(
+    "suggestions",
+    Math.ceil(input.resultLimit / 2),
+  );
+  const ideas = await read("ideas", Math.ceil(input.resultLimit / 2));
+  let rows = interleaveRows(suggestions, ideas, input.resultLimit);
+  const usedFallback = !hasSufficientCoverage(
+    rows,
+    seedKeyword,
+    MIN_NON_SEED_FOR_AUTO,
+  );
+  if (usedFallback)
+    rows = interleaveRows(
+      rows,
+      await read("related", input.resultLimit),
+      input.resultLimit,
+    );
   return {
-    rows: accumulatedRows,
-    source: lastSource,
-    usedFallback: true,
+    rows,
+    source: "blended",
+    usedFallback,
     diagnostics: {
       requestedMode: "auto",
       threshold: MIN_NON_SEED_FOR_AUTO,
@@ -203,6 +209,58 @@ async function fetchGoogleAdsRows(
           source: "google_ads",
           rowCount: rows.length,
           nonSeedCount: countNonSeedKeywords(rows, seedKeyword),
+        },
+      ],
+    },
+  };
+}
+
+async function fetchWildcardRows(
+  input: ResolvedResearchKeywordsInput,
+  seed: string,
+  customer: BillingCustomerContext,
+  creditFeature?: CreditFeature,
+): Promise<ResearchResult> {
+  const pattern = seed
+    .replace(/\s+/g, " ")
+    .replace(/\*+/g, "*")
+    .split("*")
+    .map(escapeLikeTerm)
+    .join("%");
+  const filters = joinClauses(
+    [pattern, `${pattern} %`, `% ${pattern}`, `% ${pattern} %`].map((value) => [
+      "keyword",
+      "like",
+      value,
+    ]),
+    "or",
+  );
+  const rows = await fetchResearchRowsBySource(
+    {
+      source: "suggestions",
+      seedKeyword: wildcardAnchor(seed),
+      locationCode: input.locationCode,
+      languageCode: input.languageCode,
+      resultLimit: input.resultLimit,
+      includeClickstreamData: input.clickstream,
+      ignoreSynonyms: !(input.groupKeywords ?? false),
+      filters,
+      creditFeature,
+    },
+    customer,
+  );
+  return {
+    rows,
+    source: "suggestions",
+    usedFallback: false,
+    diagnostics: {
+      requestedMode: input.mode,
+      threshold: MIN_NON_SEED_FOR_AUTO,
+      sourceAttempts: [
+        {
+          source: "suggestions",
+          rowCount: rows.length,
+          nonSeedCount: countNonSeedKeywords(rows, seed),
         },
       ],
     },
@@ -258,6 +316,7 @@ async function buildResearchCacheKey(
     mode,
     depth: 3,
     clickstream: input.clickstream,
+    groupKeywords: input.groupKeywords ?? false,
   });
 }
 
@@ -312,6 +371,8 @@ export async function research(
 
   const seedKeyword = uniqueKeywords[0];
   const provider = getKeywordDataProvider(input.locationCode);
+  const wildcardError = keywordWildcardError(seedKeyword, input.locationCode);
+  if (wildcardError) throw new AppError("VALIDATION_ERROR", wildcardError);
   // Labs source modes and clickstream refinement don't exist for
   // Google-Ads-served countries; collapse both so equivalent requests share
   // one cache entry.
@@ -343,8 +404,14 @@ export async function research(
     return cached;
   }
 
-  const result =
-    provider === "google_ads"
+  const result = hasKeywordWildcard(seedKeyword)
+    ? await fetchWildcardRows(
+        effectiveInput,
+        seedKeyword,
+        billingCustomer,
+        creditFeature,
+      )
+    : provider === "google_ads"
       ? await fetchGoogleAdsRows(
           effectiveInput,
           seedKeyword,
