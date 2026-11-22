@@ -15,7 +15,7 @@ const mocks = vi.hoisted(() => ({
       (
         runId: string,
         patch: { errorMessage?: string } & Record<string, unknown>,
-      ) => Promise<void>
+      ) => Promise<boolean>
     >(),
   getTargetsForRun: vi.fn(),
   prepareRunTargets: vi.fn(),

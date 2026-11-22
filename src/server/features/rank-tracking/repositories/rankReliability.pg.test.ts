@@ -82,7 +82,14 @@ it.skipIf(!state.url)(
       ],
       "both",
     );
-    await state.sql!`UPDATE rank_check_runs SET status='failed' WHERE id='partial'`;
+    expect(
+      await RankTrackingRepository.updateRun("partial", { status: "failed" }),
+    ).toBe(true);
+    expect(
+      await RankTrackingRepository.updateRun("partial", {
+        status: "completed",
+      }),
+    ).toBe(false);
     await state.sql!`INSERT INTO rank_snapshots(run_id, tracking_keyword_id, keyword, device, position, checked_at)
     VALUES('partial', 'one', 'one', 'mobile', NULL, '2026-11-22T12:00:00.000Z')`;
     expect(
