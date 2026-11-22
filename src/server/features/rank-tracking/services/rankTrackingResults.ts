@@ -132,6 +132,37 @@ export async function getLatestResults(
     }
   }
 
+  // A stale observation stays useful, but must not masquerade as this run's result.
+  const targets = latestRun?.targetsPrepared
+    ? await RankTrackingRepository.getTargetsForRun(latestRun.id)
+    : [];
+  const targetKeys = new Set(
+    targets.map((t) => `${t.trackingKeywordId}:${t.device}`),
+  );
+  const snapshotRunByPair = new Map(
+    currentSnapshots.map((s) => [
+      `${s.trackingKeywordId}:${s.device}`,
+      s.runId,
+    ]),
+  );
+  const active =
+    latestRun?.status === "pending" || latestRun?.status === "running";
+  for (const row of rows.values()) {
+    for (const device of ["desktop", "mobile"] as const) {
+      const key = `${row.trackingKeywordId}:${device}`;
+      row[device].checkState =
+        snapshotRunByPair.get(key) === latestRun?.id && row[device].checkedAt
+          ? "checked"
+          : latestRun?.targetsPrepared
+            ? targetKeys.has(key)
+              ? active
+                ? "checking"
+                : "not_checked"
+              : "not_requested"
+            : "unknown";
+    }
+  }
+
   return {
     rows: [...rows.values()],
     run: latestRun

@@ -42,8 +42,11 @@ beforeAll(async () => {
     CREATE TABLE rank_check_runs (
       id TEXT PRIMARY KEY, config_id TEXT, project_id TEXT, status TEXT,
       keywords_total INTEGER, keywords_checked INTEGER, is_subset_run INTEGER,
+      targets_prepared INTEGER NOT NULL DEFAULT 0,
       error_message TEXT, started_at TEXT, completed_at TEXT
     );
+    CREATE TABLE rank_check_run_targets (run_id TEXT, tracking_keyword_id TEXT, keyword TEXT, device TEXT,
+      UNIQUE(run_id, tracking_keyword_id, device));
     CREATE TABLE rank_snapshots (
       id INTEGER PRIMARY KEY, run_id TEXT, tracking_keyword_id TEXT, keyword TEXT,
       device TEXT, position INTEGER, url TEXT, serp_features TEXT, checked_at TEXT
@@ -74,7 +77,7 @@ describe.each(["d1", "postgres"])(
         Date.parse("2026-10-05T04:00:00.000Z"),
       );
       await runtime.client!.executeMultiple(
-        "DELETE FROM rank_snapshots; DELETE FROM rank_check_runs;",
+        "DELETE FROM rank_snapshots; DELETE FROM rank_check_run_targets; DELETE FROM rank_check_runs;",
       );
       for (const snapshot of snapshots) {
         const checkedAt =

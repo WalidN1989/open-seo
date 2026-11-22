@@ -301,6 +301,9 @@ export const rankCheckRuns = sqliteTable(
       .default("pending"),
     keywordsTotal: integer("keywords_total").notNull().default(0),
     keywordsChecked: integer("keywords_checked").notNull().default(0),
+    targetsPrepared: integer("targets_prepared", { mode: "boolean" })
+      .notNull()
+      .default(false),
     isSubsetRun: integer("is_subset_run", { mode: "boolean" })
       .notNull()
       .default(false),

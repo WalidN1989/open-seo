@@ -37,12 +37,14 @@ function makeRow(
     keywordDifficulty: metrics.kd ?? null,
     cpc: metrics.cpc ?? null,
     desktop: {
+      checkState: "checked",
       position: desktopPosition,
       previousPosition: null,
       rankingUrl: null,
       serpFeatures: [],
     },
     mobile: {
+      checkState: "checked",
       position: mobilePosition,
       previousPosition: null,
       rankingUrl: null,

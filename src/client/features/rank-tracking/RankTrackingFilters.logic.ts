@@ -1,3 +1,4 @@
+import { hasCurrentRankObservation } from "./rankTrackingCheckState";
 import { LOCATIONS } from "@/client/features/keywords/locations";
 import { devicesLabel } from "@/shared/rank-tracking";
 import type {
@@ -140,6 +141,14 @@ export function applyFilters(
       return false;
 
     if (excludeTerms.some((t) => kw.includes(t))) return false;
+
+    if (
+      filters.maxDesktopPos === "0" &&
+      !hasCurrentRankObservation(row.desktop)
+    )
+      return false;
+    if (filters.maxMobilePos === "0" && !hasCurrentRankObservation(row.mobile))
+      return false;
 
     if (
       !matchesPositionFilter(

@@ -20,6 +20,7 @@ import {
   projects,
 } from "@/db/schema";
 import { DB_BATCH_SIZE, executeInBatches } from "@/db/runBatch";
+import * as runQueries from "./runQueries";
 import type { RankTrackingSkipReason } from "@/shared/rank-tracking";
 import {
   getLatestSnapshotsForKeywords,
@@ -298,10 +299,6 @@ async function insertSnapshots(
   );
 }
 
-async function getSnapshotsForRun(runId: string) {
-  return db.select().from(rankSnapshots).where(eq(rankSnapshots.runId, runId));
-}
-
 // ---------------------------------------------------------------------------
 // Tracking keywords per config
 // ---------------------------------------------------------------------------
@@ -478,7 +475,9 @@ export const RankTrackingRepository = {
   getLatestRunForConfig,
   getActiveRunForConfig,
   insertSnapshots,
-  getSnapshotsForRun,
+  getSnapshotsForRun: runQueries.getSnapshotsForRun,
+  prepareRunTargets: runQueries.prepareRunTargets,
+  getTargetsForRun: runQueries.getTargetsForRun,
   getKeywordsForConfig,
   addKeywordsToConfig,
   removeKeywordsFromConfig,

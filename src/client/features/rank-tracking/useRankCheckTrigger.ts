@@ -18,12 +18,13 @@ export function useRankCheckTrigger({
   const queryClient = useQueryClient();
 
   const triggerMutation = useMutation({
-    mutationFn: (opts: { keywordIds?: string[] }) =>
+    mutationFn: (opts: { keywordIds?: string[]; maxCostCredits?: number }) =>
       triggerRankCheck({
         data: {
           projectId,
           configId,
           keywordIds: opts.keywordIds,
+          maxCostCredits: opts.maxCostCredits,
         },
       }),
     onSuccess: (result) => {
@@ -44,7 +45,10 @@ export function useRankCheckTrigger({
     },
   });
 
-  const startCheck = (opts: { keywordIds?: string[] }) => {
+  const startCheck = (opts: {
+    keywordIds?: string[];
+    maxCostCredits?: number;
+  }) => {
     if (triggerMutation.isPending || isRunning) return;
     triggerMutation.mutate(opts);
   };

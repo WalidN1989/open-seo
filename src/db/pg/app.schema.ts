@@ -301,6 +301,7 @@ export const rankCheckRuns = pgTable(
       .default("pending"),
     keywordsTotal: integer("keywords_total").notNull().default(0),
     keywordsChecked: integer("keywords_checked").notNull().default(0),
+    targetsPrepared: boolean("targets_prepared").notNull().default(false),
     isSubsetRun: boolean("is_subset_run").notNull().default(false),
     errorMessage: text("error_message"),
     startedAt: timestampColumn("started_at").notNull().default(isoNow),

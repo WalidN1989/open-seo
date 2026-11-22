@@ -19,7 +19,7 @@ const inputSchema = {
     .max(1000)
     .optional()
     .describe(
-      "Number of keywords you plan to add. Include this before adding to a scheduled tracker so the response projects its recurring per-check and monthly cost.",
+      "Number of keywords you plan to add. Projects recurring per-check and monthly cost assuming ordinary queries. Adding the actual keywords validates operator charges and may request higher approval.",
     ),
 } as const;
 
@@ -30,7 +30,7 @@ export const estimateRankTrackerCostTool = {
   config: {
     title: "Estimate rank tracker cost",
     description:
-      "Estimate rank tracker cost without spending credits or starting a check. The live estimate covers one explicit run_rank_tracker check. For a scheduled tracker, the response also includes nominal queued per-check and approximate monthly recurring cost. Pass additionalKeywordCount before adding keywords to project the post-add cost. Scheduled estimates are not runtime caps; rejected, failed, or timed-out queued tasks may use additional separately billed live fallback.",
+      "Estimate rank tracker cost without spending credits or starting a check. The live estimate covers one explicit run_rank_tracker check. For a scheduled tracker, the response also includes nominal queued per-check and approximate monthly recurring cost. Pass additionalKeywordCount before adding keywords to project the post-add cost assuming ordinary queries. Actual keyword text is validated when adding, including the provider's 5x operator charge, and may require higher approval. Scheduled estimates are not runtime caps. Result collection is free; failed or unfinished checks remain unchecked, with no paid fallback.",
     inputSchema,
     outputSchema: z
       .object({
@@ -69,7 +69,7 @@ export const estimateRankTrackerCostTool = {
       args.additionalKeywordCount,
     );
     return mcpResponse({
-      text: `One live check for tracker ${args.trackerId} is estimated at $${estimate.costUsd.toFixed(4)} (${estimate.costCredits} credits): ${estimate.keywordCount} keyword${estimate.keywordCount === 1 ? "" : "s"} × ${estimate.devicesCount} device${estimate.devicesCount === 1 ? "" : "s"} = ${estimate.totalChecks} SERP checks.${estimate.additionalKeywordCount > 0 ? ` This projects ${estimate.additionalKeywordCount} additional keyword${estimate.additionalKeywordCount === 1 ? "" : "s"}.` : ""}${estimate.scheduledEstimate ? ` Its ${estimate.scheduledEstimate.scheduleInterval} queued checks have a nominal estimate of $${estimate.scheduledEstimate.costUsd.toFixed(4)} (${estimate.scheduledEstimate.costCredits} credits) each, or about $${estimate.scheduledEstimate.monthlyCostUsd.toFixed(4)} (${estimate.scheduledEstimate.monthlyCostCredits} credits) per month. Show the user that rejected, failed, or timed-out queued tasks may use additional separately billed live fallback, then use the per-check estimate as maxEstimatedScheduledCheckCredits when adding keywords.` : ""} No check was started.`,
+      text: `One live check for tracker ${args.trackerId} is estimated at $${estimate.costUsd.toFixed(4)} (${estimate.costCredits} credits): ${estimate.keywordCount} keyword${estimate.keywordCount === 1 ? "" : "s"} × ${estimate.devicesCount} device${estimate.devicesCount === 1 ? "" : "s"} = ${estimate.totalChecks} SERP checks.${estimate.additionalKeywordCount > 0 ? ` This projects ${estimate.additionalKeywordCount} additional keyword${estimate.additionalKeywordCount === 1 ? "" : "s"}, assuming ordinary queries. Adding the actual keywords validates operator charges and may require higher approval.` : ""}${estimate.scheduledEstimate ? ` Its ${estimate.scheduledEstimate.scheduleInterval} queued checks have a nominal estimate of $${estimate.scheduledEstimate.costUsd.toFixed(4)} (${estimate.scheduledEstimate.costCredits} credits) each, or about $${estimate.scheduledEstimate.monthlyCostUsd.toFixed(4)} (${estimate.scheduledEstimate.monthlyCostCredits} credits) per month. Result collection is free; failed or unfinished checks remain unchecked, with no paid fallback. Show this recurring estimate to the user, then use the approved per-check amount as maxEstimatedScheduledCheckCredits when adding keywords.` : ""} No check was started.`,
       meta: buildProjectMeta(
         context,
         args.projectId,

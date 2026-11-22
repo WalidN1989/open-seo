@@ -148,7 +148,15 @@ describe("rank tracking management MCP tools", () => {
   });
 
   it("reports database-confirmed add and removal counts in text and structured output", async () => {
-    mocks.addKeywords.mockResolvedValue({ added: 1, addedIds: [keywordId] });
+    mocks.addKeywords.mockResolvedValue({
+      added: 1,
+      addedIds: [keywordId],
+      scheduledEstimate: {
+        scheduleInterval: "weekly",
+        costCredits: 5,
+        monthlyCostCredits: 20,
+      },
+    });
     mocks.removeKeywords.mockResolvedValue({
       removed: 1,
       removedIds: [keywordId],
@@ -159,6 +167,8 @@ describe("rank tracking management MCP tools", () => {
       toolContext,
     );
     expect(textContent(added)).toContain("Added 1 of 3 requested");
+    expect(textContent(added)).toContain("Result collection is free");
+    expect(textContent(added)).toContain("no paid fallback");
     expect(added.structuredContent).toMatchObject({ requested: 3, added: 1 });
     expect(mocks.addKeywords).toHaveBeenCalledWith(
       trackerId,
@@ -209,9 +219,10 @@ describe("rank tracking management MCP tools", () => {
     expect(textContent(result)).toContain(
       "8 keywords × 2 devices = 16 SERP checks",
     );
-    expect(textContent(result)).toContain(
-      "additional separately billed live fallback",
-    );
+    expect(textContent(result)).toContain("Result collection is free");
+    expect(textContent(result)).toContain("no paid fallback");
+    expect(textContent(result)).toContain("assuming ordinary queries");
+    expect(textContent(result)).toContain("may require higher approval");
     expect(result.structuredContent).toMatchObject({
       costCredits: 13,
       method: "live",

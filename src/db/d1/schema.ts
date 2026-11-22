@@ -17,3 +17,4 @@ export * from "../telemetry.schema";
 export * from "../business.schema";
 export * from "../research-reports.schema";
 export * from "../report-templates.schema";
+export * from "../rank-check.schema";

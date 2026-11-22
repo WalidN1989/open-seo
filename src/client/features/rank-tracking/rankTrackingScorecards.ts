@@ -1,3 +1,4 @@
+import { hasCurrentRankObservation } from "./rankTrackingCheckState";
 import type { RankTrackingRow } from "@/types/schemas/rank-tracking";
 
 // Approximate organic CTR by position (index = position; aggregate industry
@@ -55,7 +56,11 @@ export function computeScorecards(
   let visVolume = 0; // Σ volume over keywords with known volume
 
   for (const row of rows) {
-    const { position, previousPosition } = row[device];
+    const result = row[device];
+    const { position } = result;
+    // Retain the last known portfolio, but changes require a checked result.
+    const checked = hasCurrentRankObservation(result);
+    const previousPosition = checked ? result.previousPosition : position;
 
     if (position !== null) {
       countCurrent += 1;
@@ -71,6 +76,8 @@ export function computeScorecards(
       visNumCurrent += row.searchVolume * ctr(position);
       visNumPrevious += row.searchVolume * ctr(previousPosition);
     }
+
+    if (!checked) continue;
 
     // 4-case change classification (mirrors DeviceRankCell)
     if (position === null && previousPosition === null) {

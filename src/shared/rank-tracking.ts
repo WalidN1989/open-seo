@@ -72,13 +72,37 @@ export function pagesToDepth(pages: number): number {
   return pages * 10;
 }
 
+// DataForSEO documents a 5x charge when the keyword contains these operators.
+// https://docs.dataforseo.com/v3/serp/google/organic/live/advanced/ (keyword)
+const SERP_OPERATOR_KEYWORD =
+  /(allinanchor|allintext|allintitle|allinurl|cache|define|definition|filetype|id|inanchor|info|intext|intitle|inurl|link|site):/i;
+
+function serpKeywordCostMultiplier(keyword: string): number {
+  // Decode percent bytes before matching ASCII operators, as the provider
+  // does. Unrelated malformed escapes must not hide an encoded operator.
+  const decoded = keyword.replace(/%([0-9a-f]{2})/gi, (_match, hex: string) =>
+    String.fromCharCode(Number.parseInt(hex, 16)),
+  );
+  return SERP_OPERATOR_KEYWORD.test(decoded) ? 5 : 1;
+}
+
 export function estimateRankCheckCredits(
-  keywordCount: number,
+  keywords: number | readonly string[],
   devices: RankTrackingConfig["devices"],
   depth: number,
   method: RankCheckMethod,
 ) {
-  const totalChecks = keywordCount * devicesCount(devices);
+  // Count-only callers estimate ordinary keywords. Exact keyword arrays expand
+  // keyword-major, matching the workflow's device pairs and queued post chunks.
+  const multipliers =
+    typeof keywords === "number"
+      ? Array<number>(keywords * devicesCount(devices)).fill(1)
+      : keywords.flatMap((keyword) =>
+          Array<number>(devicesCount(devices)).fill(
+            serpKeywordCostMultiplier(keyword),
+          ),
+        );
+  const totalChecks = multipliers.length;
   const checksPerMeteredCall = method === "queued" ? MAX_TASKS_PER_POST : 1;
   let costUsd = 0;
   let costCredits = 0;
@@ -88,16 +112,17 @@ export function estimateRankCheckCredits(
   // to MAX_TASKS_PER_POST pairs per call. Summing one aggregate and rounding
   // once can therefore understate the credits that will actually be charged.
   for (let offset = 0; offset < totalChecks; offset += checksPerMeteredCall) {
-    const checksInCall = Math.min(checksPerMeteredCall, totalChecks - offset);
+    const callMultiplier = multipliers
+      .slice(offset, offset + checksPerMeteredCall)
+      .reduce((sum, multiplier) => sum + multiplier, 0);
     const callCostUsd = roundUsdForBilling(
-      checksInCall * costPerSerpAtDepth(depth, method) * SEO_DATA_COST_MARKUP,
+      callMultiplier * costPerSerpAtDepth(depth, method) * SEO_DATA_COST_MARKUP,
     );
     costUsd += callCostUsd;
     costCredits += Math.ceil(callCostUsd * AUTUMN_SEO_DATA_CREDITS_PER_USD);
   }
 
-  // This is the nominal queued task_post estimate. Rejected, failed, or
-  // timed-out tasks can later incur additional live-fallback spend.
+  // Queued collection is free; no additional paid fallback is started.
   costUsd = roundUsdForBilling(costUsd);
   return { costUsd, costCredits };
 }
@@ -119,13 +144,13 @@ export type RankTrackingSkipReason =
   | "insufficient_credits";
 
 export function estimateScheduledRankCheckCredits(
-  keywordCount: number,
+  keywords: number | readonly string[],
   devices: RankTrackingConfig["devices"],
   depth: number,
   scheduleInterval: ScheduledRankTrackingInterval,
 ) {
   const { costUsd, costCredits } = estimateRankCheckCredits(
-    keywordCount,
+    keywords,
     devices,
     depth,
     "queued",

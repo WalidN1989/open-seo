@@ -9,26 +9,27 @@ import {
 } from "@/shared/rank-tracking";
 
 export function CheckConfirmModal({
-  keywordCount,
+  keywords,
   devices,
   serpDepth,
   isPending,
   onRunNow,
   onCancel,
 }: {
-  keywordCount: number;
+  keywords: readonly string[];
   devices: RankTrackingConfig["devices"];
   serpDepth: number;
   isPending: boolean;
-  onRunNow: () => void;
+  onRunNow: (maxCostCredits: number) => void;
   onCancel: () => void;
 }) {
-  const { costUsd } = estimateRankCheckCredits(
-    keywordCount,
+  const { costUsd, costCredits } = estimateRankCheckCredits(
+    keywords,
     devices,
     serpDepth,
     "live",
   );
+  const keywordCount = keywords.length;
   const dc = devicesCount(devices);
   const totalChecks = keywordCount * dc;
   const liveTime =
@@ -53,7 +54,7 @@ export function CheckConfirmModal({
 
       <button
         className="flex w-full items-center gap-4 rounded-xl border-2 border-base-300 p-4 text-left transition-colors hover:border-primary hover:bg-primary/5"
-        onClick={onRunNow}
+        onClick={() => onRunNow(costCredits)}
         disabled={isPending}
       >
         <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">

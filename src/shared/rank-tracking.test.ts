@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   computeNextCheckAt,
   estimateRankCheckCredits,
+  estimateScheduledRankCheckCredits,
   scheduleLabel,
 } from "./rank-tracking";
 
@@ -47,6 +48,69 @@ describe("rank tracking cost estimates", () => {
       ).toEqual({ costUsd, costCredits });
     },
   );
+  it.each([
+    "allinanchor:",
+    "allintext:",
+    "allintitle:",
+    "allinurl:",
+    "cache:",
+    "define:",
+    "definition:",
+    "filetype:",
+    "id:",
+    "inanchor:",
+    "info:",
+    "intext:",
+    "intitle:",
+    "inurl:",
+    "link:",
+    "site:",
+  ])("includes the documented fivefold charge for %s", (operator) => {
+    expect(
+      estimateRankCheckCredits(
+        [`query ${operator.toUpperCase()}example.com`],
+        "both",
+        10,
+        "live",
+      ),
+    ).toEqual({ costUsd: 0.0256, costCredits: 26 });
+  });
+
+  it("decodes operator escapes without allowing unrelated malformed escapes to hide them", () => {
+    expect(
+      estimateRankCheckCredits(
+        ["%73ite%3Aexample.com%broken%"],
+        "desktop",
+        10,
+        "live",
+      ),
+    ).toEqual({ costUsd: 0.0128, costCredits: 13 });
+  });
+
+  it("keeps count-only ordinary keyword callers compatible", () => {
+    expect(
+      estimateRankCheckCredits(["seo", "audit"], "desktop", 10, "live"),
+    ).toEqual(estimateRankCheckCredits(2, "desktop", 10, "live"));
+    expect(estimateRankCheckCredits([], "both", 10, "queued")).toEqual({
+      costUsd: 0,
+      costCredits: 0,
+    });
+  });
+
+  it("rounds each queued batch after expanding mixed keywords in keyword/device order", () => {
+    const keywords = Array.from({ length: 61 }, (_, i) =>
+      i === 50 ? "site:example.com" : `query ${i}`,
+    );
+    // 100 ordinary pairs cost .07680 (77 credits); the final 22 pairs
+    // include two 5x operator checks and cost .02304 (24 credits).
+    expect(estimateRankCheckCredits(keywords, "both", 10, "queued")).toEqual({
+      costUsd: 0.09984,
+      costCredits: 101,
+    });
+    expect(
+      estimateScheduledRankCheckCredits(keywords, "both", 10, "weekly"),
+    ).toMatchObject({ costCredits: 101, monthlyCostCredits: 404 });
+  });
 });
 
 describe("rank tracking schedules", () => {

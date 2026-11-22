@@ -9,7 +9,13 @@ function device(
   position: number | null,
   previousPosition: number | null,
 ): RankTrackingDeviceResult {
-  return { position, previousPosition, rankingUrl: null, serpFeatures: [] };
+  return {
+    checkState: "checked",
+    position,
+    previousPosition,
+    rankingUrl: null,
+    serpFeatures: [],
+  };
 }
 
 function row(
@@ -87,5 +93,25 @@ describe("computeScorecards", () => {
     const result = computeScorecards(rows, "desktop");
     expect(result.improved).toBe(2);
     expect(result.declined).toBe(2);
+  });
+  it("retains last-known ranks without inventing changes from an unchecked device", () => {
+    const stale = { ...device(4, 1), checkState: "not_checked" as const };
+    const noResult = { ...device(null, 6), checkState: "not_checked" as const };
+    const result = computeScorecards([row(stale), row(noResult)], "desktop");
+    expect(result).toMatchObject({
+      ranking: 1,
+      rankingDelta: 0,
+      improved: 0,
+      declined: 0,
+    });
+  });
+
+  it("does not turn unknown legacy coverage into a ranking loss", () => {
+    const legacy = {
+      ...device(null, 6),
+      checkState: undefined,
+      checkedAt: null,
+    };
+    expect(computeScorecards([row(legacy)], "desktop").declined).toBe(0);
   });
 });

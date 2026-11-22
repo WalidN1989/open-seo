@@ -6,15 +6,17 @@ import {
   SerpGoogleOrganicLiveAdvancedRequestInfo,
   SerpGoogleOrganicTaskPostRequestInfo,
 } from "dataforseo-client";
-import { serpApi } from "@/server/lib/dataforseo/core";
+import { serpApi, serpTaskApi } from "@/server/lib/dataforseo/core";
 import { MAX_TASKS_PER_POST } from "@/server/lib/dataforseo/shared";
 import {
   assertOk,
+  DataforseoChargedTaskError,
   buildTaskBilling,
   isNoResultsTask,
   isTaskInProgress,
   parseTaskItems,
   type DataforseoApiResponse,
+  type DataforseoTaskLike,
 } from "@/server/lib/dataforseo/envelope";
 import { AppError } from "@/server/lib/errors";
 
@@ -109,6 +111,81 @@ export async function fetchLiveSerp(input: {
   };
 }
 
+// A success status alone does not prove the SERP contains usable rankings.
+// Keep this stricter boundary local to rank tracking; research can display
+// partial SERPs without turning an absent listing into a ranking loss.
+const rankCheckPayloadSchema = z.object({
+  items: z.array(serpSnapshotItemSchema).min(1),
+});
+
+function rankCheckItems(task: DataforseoTaskLike): SerpLiveItem[] {
+  // 40102 is the documented SERP status; retain the legacy 40501 response
+  // only when its message explicitly identifies an empty search (not Invalid Field).
+  if (
+    (task.status_code === 40102 || task.status_code === 40501) &&
+    isNoResultsTask(task)
+  ) {
+    return [];
+  }
+  if (task.status_code !== 20000) {
+    throw new AppError(
+      "INTERNAL_ERROR",
+      "DataForSEO returned an invalid rank-check task status",
+    );
+  }
+  const parsed = rankCheckPayloadSchema.safeParse(task.result?.[0]);
+  if (!parsed.success) {
+    throw new AppError(
+      "INTERNAL_ERROR",
+      "DataForSEO returned an incomplete rank-check SERP",
+    );
+  }
+  const organic = parsed.data.items.filter((item) => item.type === "organic");
+  if (organic.length === 0) {
+    throw new AppError(
+      "INTERNAL_ERROR",
+      "DataForSEO returned no usable organic rankings",
+    );
+  }
+  for (const item of organic) {
+    const position = item.rank_group ?? item.rank_absolute;
+    if (
+      !Number.isInteger(position) ||
+      position == null ||
+      position <= 0 ||
+      !item.domain ||
+      !item.url
+    ) {
+      throw new AppError(
+        "INTERNAL_ERROR",
+        "DataForSEO returned an incomplete organic ranking",
+      );
+    }
+    let url: URL;
+    try {
+      url = new URL(item.url);
+    } catch {
+      throw new AppError(
+        "INTERNAL_ERROR",
+        "DataForSEO returned an invalid organic URL",
+      );
+    }
+    if (
+      !["https:", "http:"].includes(url.protocol) ||
+      (url.pathname === "/goto" &&
+        /^(www\.)?google\.[a-z.]+$/.test(url.hostname)) ||
+      url.hostname.toLowerCase().replace(/^www\./, "") !==
+        item.domain.toLowerCase().replace(/^www\./, "")
+    ) {
+      throw new AppError(
+        "INTERNAL_ERROR",
+        "DataForSEO returned an unresolved organic URL",
+      );
+    }
+  }
+  return parsed.data.items;
+}
+
 export interface RankCheckResult {
   keywordId: string;
   keyword: string;
@@ -156,7 +233,7 @@ export async function fetchRankCheckSerp(input: {
   const locationParams = input.locationName
     ? { location_name: input.locationName }
     : { location_code: input.locationCode };
-  const response = await serpApi().googleOrganicLiveAdvanced([
+  const response = await serpTaskApi().googleOrganicLiveAdvanced([
     new SerpGoogleOrganicLiveAdvancedRequestInfo({
       keyword: input.keyword,
       ...locationParams,
@@ -168,26 +245,28 @@ export async function fetchRankCheckSerp(input: {
     }),
   ]);
 
-  // "No Search Results" (40501) is valid for obscure/new keywords — treat as an
-  // empty result set rather than failing the whole rank-tracking run.
   const task = assertOk(response, { treatNoResultsAsEmpty: true });
-  const items = parseTaskItems(
-    "google-organic-live-advanced",
-    task,
-    serpSnapshotItemSchema,
-  );
-
-  return {
-    data: buildRankCheckResult(input, items),
-    billing: buildTaskBilling(task),
-  };
+  const billing = buildTaskBilling(task);
+  try {
+    return { data: buildRankCheckResult(input, rankCheckItems(task)), billing };
+  } catch (error) {
+    // The provider already charged for this read. The shared client meters
+    // charged-task errors before rethrowing; a plain parsing error would lose
+    // the cost and the workflow would incorrectly treat the read as free.
+    throw new DataforseoChargedTaskError(
+      error instanceof Error
+        ? error.message
+        : "DataForSEO returned an unreliable rank-check SERP",
+      billing,
+    );
+  }
 }
 
 // ---------------------------------------------------------------------------
 // Task-queue rank checks (scheduled runs). DataForSEO's standard queue costs
 // ~30% of the live endpoint; tasks complete in ~5 minutes on average. The flow
-// is task_post (charged) -> poll task_get (free) -> live fallback for
-// stragglers, orchestrated by the rank check workflow.
+// is task_post (charged) -> poll task_get (free), orchestrated by the
+// rank check workflow. Unfinished tasks remain unchecked.
 // ---------------------------------------------------------------------------
 
 export interface RankCheckTaskInput {
@@ -218,7 +297,7 @@ export async function postRankCheckTasks(input: {
   const locationParams = input.locationName
     ? { location_name: input.locationName }
     : { location_code: input.locationCode };
-  const response = await serpApi().googleOrganicTaskPost(
+  const response = await serpTaskApi().googleOrganicTaskPost(
     input.tasks.map(
       (task) =>
         new SerpGoogleOrganicTaskPostRequestInfo({
@@ -250,8 +329,8 @@ export async function postRankCheckTasks(input: {
   // One response entry per submitted task; accepted entries have status 20100
   // "Task Created" and their own cost (charged at post time). Cost is summed
   // over every entry — accepted or not — so anything DataForSEO charged is
-  // metered. Rejected entries get no posted task; the workflow falls back to
-  // the live endpoint for any keyword/device pair missing from the result.
+  // metered. Rejected entries get no posted task and remain unchecked; the
+  // workflow never launches an additional paid fallback.
   const byTag = new Map(
     input.tasks.map((task) => [`${task.keywordId}:${task.device}`, task]),
   );
@@ -310,28 +389,33 @@ export async function fetchRankCheckTaskResult(input: {
     return { status: "pending" };
   }
 
-  if (task.status_code !== 20000) {
-    // "No Search Results" is valid for obscure/new keywords — same treatment
-    // as the live path's treatNoResultsAsEmpty.
-    if (!isNoResultsTask(task)) {
-      return {
-        status: "failed",
-        message:
-          task.status_message || `DataForSEO task failed (${task.status_code})`,
-      };
-    }
+  if (
+    task.status_code !== 20000 &&
+    !(
+      (task.status_code === 40102 || task.status_code === 40501) &&
+      isNoResultsTask(task)
+    )
+  ) {
     return {
-      status: "completed",
-      result: buildRankCheckResult(input, []),
+      status: "failed",
+      message:
+        task.status_message || `DataForSEO task failed (${task.status_code})`,
     };
   }
-
-  const items = parseTaskItems(
-    "google-organic-task-get-advanced",
-    task,
-    serpSnapshotItemSchema,
-  );
-  return { status: "completed", result: buildRankCheckResult(input, items) };
+  try {
+    return {
+      status: "completed",
+      result: buildRankCheckResult(input, rankCheckItems(task)),
+    };
+  } catch (error) {
+    return {
+      status: "failed",
+      message:
+        error instanceof Error
+          ? error.message
+          : "DataForSEO returned an unreliable rank-check SERP",
+    };
+  }
 }
 
 export async function fetchLocalSerp(input: {

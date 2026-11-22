@@ -10,6 +10,11 @@ import type {
   RankTrackingRow,
 } from "@/types/schemas/rank-tracking";
 
+import {
+  hasCurrentRankObservation,
+  rankCheckStateLabel,
+} from "./rankTrackingCheckState";
+
 const FEATURE_SHORT_LABELS: Record<string, string> = {
   featured_snippet: "FS",
   people_also_ask: "PAA",
@@ -61,9 +66,25 @@ export function DeviceRankCell({
 }) {
   const { position, previousPosition } = result;
 
+  if (!hasCurrentRankObservation(result)) {
+    return (
+      <span
+        className="inline-flex flex-col text-xs text-base-content/60"
+        title={
+          result.checkedAt
+            ? `Last observed: ${formatExportTimestamp(result.checkedAt)} UTC`
+            : undefined
+        }
+      >
+        <span>{rankCheckStateLabel(result)}</span>
+        {result.checkedAt && <span>Last known: {position ?? "not found"}</span>}
+      </span>
+    );
+  }
+
   // Nothing at all
   if (position === null && previousPosition === null) {
-    return <span className="text-base-content/40">-</span>;
+    return <span className="text-base-content/40 text-xs">Not found</span>;
   }
 
   // Was ranking, now lost
@@ -187,6 +208,7 @@ export function buildRankTrackingExport(
     "CPC",
     ...(showDesktop
       ? [
+          "Desktop Check State",
           "Desktop Checked At (UTC)",
           "Desktop Position",
           "Desktop Change",
@@ -196,6 +218,7 @@ export function buildRankTrackingExport(
       : []),
     ...(showMobile
       ? [
+          "Mobile Check State",
           "Mobile Checked At (UTC)",
           "Mobile Position",
           "Mobile Change",
@@ -213,22 +236,28 @@ export function buildRankTrackingExport(
     row.cpc ?? "",
     ...(showDesktop
       ? [
+          rankCheckStateLabel(row.desktop),
           row.desktop.checkedAt
             ? formatExportTimestamp(row.desktop.checkedAt)
             : "",
           row.desktop.position ?? "",
-          csvChange(row.desktop.position, row.desktop.previousPosition),
+          hasCurrentRankObservation(row.desktop)
+            ? csvChange(row.desktop.position, row.desktop.previousPosition)
+            : "",
           row.desktop.rankingUrl ?? "",
           row.desktop.serpFeatures.join(", "),
         ]
       : []),
     ...(showMobile
       ? [
+          rankCheckStateLabel(row.mobile),
           row.mobile.checkedAt
             ? formatExportTimestamp(row.mobile.checkedAt)
             : "",
           row.mobile.position ?? "",
-          csvChange(row.mobile.position, row.mobile.previousPosition),
+          hasCurrentRankObservation(row.mobile)
+            ? csvChange(row.mobile.position, row.mobile.previousPosition)
+            : "",
           row.mobile.rankingUrl ?? "",
           row.mobile.serpFeatures.join(", "),
         ]

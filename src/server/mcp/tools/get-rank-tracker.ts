@@ -15,6 +15,22 @@ import {
 import { projectIdSchema } from "@/server/mcp/schemas";
 
 const RANK_RESULT_COLUMNS: McpTableColumn<unknown>[] = [
+  {
+    header: "desktop check",
+    value: (row) => readPath(row, "desktop", "checkState"),
+  },
+  {
+    header: "desktop observed",
+    value: (row) => readPath(row, "desktop", "checkedAt"),
+  },
+  {
+    header: "mobile check",
+    value: (row) => readPath(row, "mobile", "checkState"),
+  },
+  {
+    header: "mobile observed",
+    value: (row) => readPath(row, "mobile", "checkedAt"),
+  },
   { header: "keyword", value: (row) => readPath(row, "keyword") },
   { header: "desktop", value: (row) => readPath(row, "desktop", "position") },
   {
@@ -109,7 +125,10 @@ export const getRankTrackerTool = {
       `Latest run: ${results.run?.lastCheckedAt ?? "never"}`,
       results.run?.status === "failed"
         ? `Latest run failed: ${results.run.errorMessage ?? "Unknown error"}`
-        : null,
+        : results.run?.errorMessage
+          ? `Latest run incomplete: ${results.run.errorMessage}`
+          : null,
+      "Check states describe the latest run. Positions with unchecked states are last known observations, not ranking losses.",
       `Keywords (${results.rows.length}):`,
       results.rows.length === 0
         ? "No keywords tracked yet."

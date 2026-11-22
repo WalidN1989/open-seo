@@ -23,6 +23,7 @@ const BUCKETS = [
   { key: "top4to10", label: "4–10", color: "#2563eb" },
   { key: "top11to20", label: "11–20", color: "#f59e0b" },
   { key: "notRanking", label: "Not in top 20", color: "#6b7280" },
+  { key: "notChecked", label: "Not checked", color: "#cbd5e1" },
 ] as const;
 
 /** Narrowed recharts tooltip payload entry (typed `any` upstream). */
@@ -58,6 +59,7 @@ export function RankTrackingOverview({
         top4to10: p.top4to10,
         top11to20: p.top11to20,
         notRanking: p.notRanking,
+        notChecked: p.notChecked,
       })),
     [trend],
   );
@@ -86,6 +88,13 @@ export function RankTrackingOverview({
             </span>
           ))}
         </div>
+
+        {(trend ?? []).some((p) => p.notChecked == null) && (
+          <p className="text-xs text-base-content/55">
+            Check coverage is unknown for older runs. Their chart includes
+            observed results only.
+          </p>
+        )}
 
         {trendLoading ? (
           <div className="flex items-center justify-center p-8">

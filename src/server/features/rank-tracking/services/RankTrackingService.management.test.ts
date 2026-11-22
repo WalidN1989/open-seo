@@ -53,15 +53,15 @@ const billingCustomer = {
   projectId: "project_1",
 };
 
-describe("RankTrackingService management invariants", () => {
-  beforeEach(() => {
-    mocks.getConfigById.mockResolvedValue(config);
-    mocks.getKeywordsForConfig.mockResolvedValue([
-      { id: "kw_1", keyword: "seo" },
-      { id: "kw_2", keyword: "audit" },
-    ]);
-  });
+beforeEach(() => {
+  mocks.getConfigById.mockResolvedValue(config);
+  mocks.getKeywordsForConfig.mockResolvedValue([
+    { id: "kw_1", keyword: "seo" },
+    { id: "kw_2", keyword: "audit" },
+  ]);
+});
 
+describe("RankTrackingService keyword management", () => {
   it("reports only keyword rows actually inserted", async () => {
     mocks.getKeywordsForConfig.mockResolvedValue([]);
     mocks.addKeywordsToConfig.mockImplementation(
@@ -96,15 +96,17 @@ describe("RankTrackingService management invariants", () => {
     if (!(error instanceof Error) || !("code" in error)) throw error;
     expect(error.code).toBe("VALIDATION_ERROR");
     expect(error.message).toContain("nominal queued estimate");
-    expect(error.message).toContain("Live fallback");
+    expect(error.message).toContain("not retried through a paid fallback");
     expect(mocks.addKeywordsToConfig).not.toHaveBeenCalled();
   });
 
   it("adds scheduled keywords at the approved estimate", async () => {
     mocks.getKeywordsForConfig.mockResolvedValue([]);
-    mocks.getKeywordCountForConfig.mockResolvedValue(2);
     mocks.addKeywordsToConfig.mockImplementation(
-      async (rows: Array<{ id: string }>) => rows.map((row) => row.id),
+      async (rows: Array<{ id: string; keyword: string }>) => {
+        mocks.getKeywordsForConfig.mockResolvedValue(rows);
+        return rows.map((row) => row.id);
+      },
     );
 
     await expect(
@@ -130,7 +132,11 @@ describe("RankTrackingService management invariants", () => {
 
   it("rolls back its inserts when a concurrent add exceeds the estimate", async () => {
     mocks.getKeywordsForConfig.mockResolvedValue([]);
-    mocks.getKeywordCountForConfig.mockResolvedValue(3);
+    mocks.getKeywordsForConfig.mockResolvedValueOnce([]).mockResolvedValueOnce([
+      { id: "kw_1", keyword: "seo" },
+      { id: "kw_2", keyword: "technical seo" },
+      { id: "kw_3", keyword: "concurrent" },
+    ]);
     mocks.addKeywordsToConfig.mockImplementation(
       async (rows: Array<{ id: string }>) => rows.map((row) => row.id),
     );
@@ -191,7 +197,12 @@ describe("RankTrackingService management invariants", () => {
   });
 
   it("uses the same live cost invariant exposed to the browser", async () => {
-    mocks.getKeywordCountForConfig.mockResolvedValue(5);
+    mocks.getKeywordsForConfig.mockResolvedValue(
+      Array.from({ length: 5 }, (_, i) => ({
+        id: `kw_${i}`,
+        keyword: `query ${i}`,
+      })),
+    );
 
     await expect(
       RankTrackingService.estimateCost("config_1", "project_1"),
@@ -208,7 +219,9 @@ describe("RankTrackingService management invariants", () => {
       },
     });
   });
+});
 
+describe("RankTrackingService check management", () => {
   it("rejects a hosted unpaid run before keyword or workflow work", async () => {
     mocks.isHostedServerAuthMode.mockResolvedValue(true);
     mocks.customerHasPaidPlan.mockResolvedValue(false);
@@ -265,6 +278,37 @@ describe("RankTrackingService management invariants", () => {
     if (!(error instanceof Error) || !("code" in error)) throw error;
     expect(error.code).toBe("VALIDATION_ERROR");
     expect(error.message).toContain("costs 12 credits");
+    expect(mocks.beginRankCheckRun).not.toHaveBeenCalled();
+  });
+
+  it("prices and starts only unique selected keywords belonging to this config", async () => {
+    mocks.beginRankCheckRun.mockResolvedValue({ ok: true, runId: "run_1" });
+    await RankTrackingService.triggerCheck({
+      configId: "config_1",
+      projectId: "project_1",
+      billingCustomer,
+      keywordIds: ["kw_1", "kw_1", "foreign_or_removed"],
+      maxCostCredits: 6,
+    });
+    expect(mocks.beginRankCheckRun).toHaveBeenCalledWith(
+      expect.objectContaining({
+        keywordsTotal: 1,
+        keywordIds: ["kw_1"],
+        maxCostCredits: 6,
+      }),
+    );
+  });
+
+  it("rejects an empty or invalid subset before starting a workflow", async () => {
+    await expect(
+      RankTrackingService.triggerCheck({
+        configId: "config_1",
+        projectId: "project_1",
+        billingCustomer,
+        keywordIds: ["foreign_or_removed"],
+        maxCostCredits: 6,
+      }),
+    ).rejects.toBeInstanceOf(Error);
     expect(mocks.beginRankCheckRun).not.toHaveBeenCalled();
   });
 

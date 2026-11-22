@@ -189,7 +189,11 @@ async function triggerCheck(input: {
   await requireRankCheckAccess(input.billingCustomer.organizationId);
 
   const keywords = await RankTrackingRepository.getKeywordsForConfig(config.id);
-  if (keywords.length === 0) {
+  const selectedIds = input.keywordIds ? new Set(input.keywordIds) : null;
+  const selectedKeywords = selectedIds
+    ? keywords.filter((keyword) => selectedIds.has(keyword.id))
+    : keywords;
+  if (selectedKeywords.length === 0) {
     throw new AppError(
       "INTERNAL_ERROR",
       "No keywords to track. Add keywords to this domain first.",
@@ -198,7 +202,9 @@ async function triggerCheck(input: {
 
   if (input.maxCostCredits != null) {
     const { costCredits } = estimateRankCheckCredits(
-      keywords.length,
+      selectedKeywords
+        .toSorted((a, b) => a.id.localeCompare(b.id))
+        .map((keyword) => keyword.keyword),
       config.devices,
       config.serpDepth,
       "live",
@@ -221,8 +227,10 @@ async function triggerCheck(input: {
       organizationId: input.billingCustomer.organizationId,
       projectId: input.billingCustomer.projectId,
     },
-    keywordsTotal: input.keywordIds ? input.keywordIds.length : keywords.length,
-    keywordIds: input.keywordIds,
+    keywordsTotal: selectedKeywords.length,
+    keywordIds: selectedIds
+      ? selectedKeywords.map((keyword) => keyword.id)
+      : undefined,
     maxCostCredits: input.maxCostCredits,
     trigger: "manual",
     workflowStartErrorMessage: "Failed to start rank check workflow",

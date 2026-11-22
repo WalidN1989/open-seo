@@ -35,9 +35,11 @@ interface RankConfigTrendPoint {
   top4to10: number;
   top11to20: number;
   notRanking: number;
+  notChecked: number | null;
 }
 
 export interface RankPositionMatrixCell {
+  checked?: boolean;
   runId: string;
   checkedAt: string;
   trackingKeywordId: string;
@@ -128,6 +130,7 @@ export const triggerRankCheck = createServerFn({ method: "POST" })
       projectId: context.projectId,
       billingCustomer: context,
       keywordIds: data.keywordIds,
+      maxCostCredits: data.maxCostCredits,
     });
 
     if (result.ok) {
@@ -305,6 +308,10 @@ export const getRankConfigTrend = createServerFn({ method: "POST" })
         top4to10,
         top11to20,
         notRanking: Math.max(0, total - top3 - top4to10 - top11to20),
+        notChecked:
+          row.intendedTotal == null
+            ? null
+            : Math.max(0, Number(row.intendedTotal) - total),
       };
     });
   });
