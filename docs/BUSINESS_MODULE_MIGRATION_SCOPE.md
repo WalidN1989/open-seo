@@ -2904,7 +2904,7 @@ its existing permission. The pre-existing invoice restriction in the other
 workspace remained unchanged. GSC displayed live metrics without reconnecting;
 Site Audit, Competitors, Backlinks, Research reports and Saved Keywords loaded.
 
-**Live rank retrieval remains unresolved.** One existing 22-keyword mobile
+**PR92 live retrieval was unresolved; see the PR94 follow-up below.** One existing 22-keyword mobile
 tracker was checked. All 22 targets were frozen, but no new reliable snapshots
 were produced: 20 responses were rejected as unresolved organic URLs, one
 provider internal error occurred, and one response was partial. The run failed
@@ -2919,3 +2919,56 @@ Pre-release validation passed 3,580 tests plus two isolated Postgres checks,
 ci:check, self-host build and GitHub CI/Docker checks. The live failure above
 must remain visible in future release planning; a healthy deployment alone is
 not evidence that fresh rank data is available.
+
+### 2026-11-22 — Rank URL resolution PR94 released and verified
+
+The owner explicitly approved merging PR94 and deploying it through Coolify.
+PR94 merged as `f22073dcfe95c19b56818c93c546a1e2fe3fa677`; reviewed-head and
+merged-main CI/Docker checks passed. Production image workflow `45016774092`
+published `ghcr.io/walidn1989/digital-urgency@sha256:1e3f1d1aa540115fd6bdf948ae2ce20a1c6ae8647f616afcf80a3839fc4539a5`.
+Coolify deployment `9a461c15-0805-4ad9-871c-4fb40d82301f` finished healthy at
+2026-11-22 11:25:32 UTC. The deployed digest/source label matches the approved
+revision, public health returns HTTP 200, and the prior container has retired.
+The existing manual deployment and image-scan setting were preserved.
+
+Manual rank requests now enable native Google redirect resolution inside the
+existing paid request, including an explicit serialization workaround for the
+installed SDK. The rank-only HTTP deadline is 280 seconds and its workflow step
+allows six minutes; other request budgets and zero paid retries are unchanged.
+No migration, runtime setting, dependency, scheduler or business-worker change
+was required. Remaining uncertain results still do not become ranking losses.
+
+**Fresh live rank retrieval is now verified.** One existing 22-keyword mobile
+tracker completed in approximately four minutes. All 22 targets were frozen;
+19 reliable fresh observations were saved: 17 ranked positions and two confirmed
+not-found results. There were no URL-validation failures. Three requests returned
+provider Internal SE Server Error responses; their prior results and original
+timestamps remained intact. No additional paid run was started to retry them.
+The UI and history rendered the new results. The 22-row CSV contained 19 Checked
+and three Not checked rows, current timestamps for fresh observations, and no
+change claims for unchecked rows. This resolves the PR92 URL-handling blocker;
+it does not claim the provider will return usable results for every request.
+
+Fresh encrypted database/runtime/Coolify backups were retained in the existing
+private VPS and Mac storage, with recovery keys held separately. An isolated
+Postgres 18 restore preserved all 134 public tables and the original business
+record IDs. The schema migration history, original business IDs, configured
+runtime variables and persistent mount were preserved after deployment. Only
+source/container deployment metadata changed. One reply runner and one mail
+bridge remain active; no global ticker was introduced. The previous PR92 image
+is retained for code rollback, which does not undo paid requests or snapshots.
+
+Post-deployment authenticated checks passed for CRM, products, orders, inventory,
+WhatsApp, email, voice, integrations, quotations and authorized invoice access.
+Existing invoice restrictions remained unchanged in the other workspace. GSC
+loaded live metrics without reconnection; Site Audit, Competitors, Backlinks,
+Research reports and Saved Keywords loaded. Verification sent no customer test
+messages and did not issue invoices, adjust stock, make payments or create
+shipments. The only deliberate provider spend was the one existing-tracker run.
+
+Pre-release validation passed 3,592 tests, ci:check, self-host build and GitHub
+CI/Docker checks, with desktop/mobile component previews. Native resolution is
+best effort; the existing Not checked protection still applies to unresolved,
+conflicting, malformed or incomplete observations. Private release evidence is
+retained in the owner's seo-pr94 preparation folder; no credentials, customer
+records or backup contents are committed.
