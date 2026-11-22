@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, sql, type InferInsertModel } from "drizzle-orm";
 import { db } from "@/db";
 import { rankCheckRuns, rankCheckRunTargets, rankSnapshots } from "@/db/schema";
 import { runBatch } from "@/db/runBatch";
@@ -69,4 +69,22 @@ export async function getTargetsForRun(runId: string) {
 
 export async function getSnapshotsForRun(runId: string) {
   return db.select().from(rankSnapshots).where(eq(rankSnapshots.runId, runId));
+}
+
+/** Terminal decisions cannot be overwritten by a delayed progress/finalize/cleanup step. */
+export async function updateRun(
+  runId: string,
+  data: Partial<InferInsertModel<typeof rankCheckRuns>>,
+) {
+  const rows = await db
+    .update(rankCheckRuns)
+    .set(data)
+    .where(
+      and(
+        eq(rankCheckRuns.id, runId),
+        inArray(rankCheckRuns.status, ["pending", "running"]),
+      ),
+    )
+    .returning({ id: rankCheckRuns.id });
+  return rows.length > 0;
 }

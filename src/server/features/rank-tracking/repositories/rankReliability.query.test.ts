@@ -154,3 +154,24 @@ it("freezes the supported 1000-keyword both-device limit atomically", async () =
     await RankTrackingRepository.prepareRunTargets("run", keywords, "both"),
   ).toHaveLength(2000);
 });
+
+it("keeps terminal results immutable when late cleanup or finalization arrives", async () => {
+  expect(
+    await RankTrackingRepository.updateRun("run", {
+      status: "completed",
+      keywordsChecked: 1,
+    }),
+  ).toBe(true);
+  expect(
+    await RankTrackingRepository.updateRun("run", {
+      status: "failed",
+      keywordsChecked: 0,
+      errorMessage: "late cleanup",
+    }),
+  ).toBe(false);
+  expect(await RankTrackingRepository.getRunById("run")).toMatchObject({
+    status: "completed",
+    keywordsChecked: 1,
+    errorMessage: null,
+  });
+});

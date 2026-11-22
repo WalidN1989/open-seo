@@ -213,12 +213,13 @@ export async function finalizeRankCheckRun(input: {
 
   // Flipping status away from 'pending'/'running' is what releases the
   // partial-index slot for the next run.
-  await RankTrackingRepository.updateRun(input.runId, {
+  const finalized = await RankTrackingRepository.updateRun(input.runId, {
     status,
     keywordsChecked,
     completedAt: nowIso,
     ...(errorMessage ? { errorMessage } : {}),
   });
+  if (!finalized) return;
 
   // Clear any previous skip reason on success.
   // Note: nextCheckAt is NOT set here — the cron handler advances it eagerly

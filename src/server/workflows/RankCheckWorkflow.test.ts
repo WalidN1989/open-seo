@@ -101,7 +101,7 @@ describe("rank check workflow credit ceiling", () => {
           ),
         ),
     );
-    mocks.updateRun.mockResolvedValue(undefined);
+    mocks.updateRun.mockResolvedValue(true);
     mocks.isHostedServerAuthMode.mockResolvedValue(true);
     mocks.autumnCheck.mockResolvedValue({ balance: { remaining: 1_000 } });
   });
@@ -247,6 +247,7 @@ describe("rank run coverage", () => {
     queueStats: null,
   };
   beforeEach(() => {
+    mocks.updateRun.mockResolvedValue(true);
     mocks.getRunById.mockResolvedValue({
       ...activeRun,
       targetsPrepared: true,
@@ -283,6 +284,15 @@ describe("rank run coverage", () => {
       expect.objectContaining({ status: "failed" }),
     );
     expect(mocks.updateConfig).not.toHaveBeenCalled();
+  });
+  it("does not publish success if cleanup wins the terminal transition", async () => {
+    mocks.getSnapshotsForRun.mockResolvedValue([
+      { trackingKeywordId: "kw_1", device: "desktop", position: 2 },
+    ]);
+    mocks.updateRun.mockResolvedValue(false);
+    await finalizeRankCheckRun(input);
+    expect(mocks.updateConfig).not.toHaveBeenCalled();
+    expect(mocks.captureServerEvent).not.toHaveBeenCalled();
   });
   it("does not reload edited keyword text after targets are frozen", async () => {
     mocks.isHostedServerAuthMode.mockResolvedValue(false);

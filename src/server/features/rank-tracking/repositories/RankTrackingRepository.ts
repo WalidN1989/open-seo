@@ -226,13 +226,6 @@ async function tryCreateRun(data: {
   return Boolean(inserted[0]);
 }
 
-async function updateRun(
-  runId: string,
-  data: Partial<InferInsertModel<typeof rankCheckRuns>>,
-) {
-  await db.update(rankCheckRuns).set(data).where(eq(rankCheckRuns.id, runId));
-}
-
 async function getRunById(runId: string) {
   const rows = await db
     .select()
@@ -470,7 +463,7 @@ export const RankTrackingRepository = {
   getDueConfigsWithOrganization,
   claimDueConfig,
   tryCreateRun,
-  updateRun,
+  updateRun: runQueries.updateRun,
   getRunById,
   getLatestRunForConfig,
   getActiveRunForConfig,
