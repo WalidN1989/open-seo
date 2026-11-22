@@ -14,7 +14,7 @@ import type { ErrorCode } from "@/shared/error-codes";
 
 const API_BASE = "https://api.dataforseo.com";
 const MAX_DATAFORSEO_ERROR_PAYLOAD_LENGTH = 1600;
-// Safety ceiling on any live call (Lighthouse is the slowest, ~tens of seconds).
+// Default request deadline. Rank Live calls allow longer for native redirects.
 const DATAFORSEO_REQUEST_TIMEOUT_MS = 60_000;
 // Retry idempotent reads on transient 5xx. Total attempts = retries + 1; the
 // shared request-timeout signal still caps overall wall time.
@@ -68,15 +68,15 @@ function formatDataforseoRequestPath(url: RequestInfo): string {
 function createAuthenticatedFetch(
   classify?: DataforseoErrorClassifier,
   maxServerErrorRetries = DATAFORSEO_MAX_RETRIES,
+  requestTimeoutMs = DATAFORSEO_REQUEST_TIMEOUT_MS,
 ) {
   return async (url: RequestInfo, init?: RequestInit): Promise<Response> => {
     const apiKey = await getRequiredEnvValue("DATAFORSEO_API_KEY");
     const headers = new Headers(init?.headers);
     headers.set("Authorization", `Basic ${apiKey}`);
     // Resolve the signal once so retries share the overall request timeout
-    // rather than restarting a fresh 60s budget on each attempt.
-    const signal =
-      init?.signal ?? AbortSignal.timeout(DATAFORSEO_REQUEST_TIMEOUT_MS);
+    // rather than restarting the deadline on each attempt.
+    const signal = init?.signal ?? AbortSignal.timeout(requestTimeoutMs);
 
     for (let attempt = 0; ; attempt++) {
       const response = await fetch(url, { ...init, headers, signal });
@@ -122,8 +122,15 @@ function createAuthenticatedFetch(
 function http(
   classify?: DataforseoErrorClassifier,
   maxServerErrorRetries = DATAFORSEO_MAX_RETRIES,
+  requestTimeoutMs = DATAFORSEO_REQUEST_TIMEOUT_MS,
 ) {
-  return { fetch: createAuthenticatedFetch(classify, maxServerErrorRetries) };
+  return {
+    fetch: createAuthenticatedFetch(
+      classify,
+      maxServerErrorRetries,
+      requestTimeoutMs,
+    ),
+  };
 }
 
 // Per-section API factories. Each is created per-request so the auth secret is
@@ -133,7 +140,8 @@ export const keywordsDataApi = () => new KeywordsDataApi(API_BASE, http());
 export const serpApi = () => new SerpApi(API_BASE, http());
 // Paid rank live/task_post calls may be charged even when HTTP returns 5xx.
 // Keep free task_get polling on serpApi, but never replay paid submissions.
-export const serpTaskApi = () => new SerpApi(API_BASE, http(undefined, 0));
+export const serpTaskApi = (requestTimeoutMs = DATAFORSEO_REQUEST_TIMEOUT_MS) =>
+  new SerpApi(API_BASE, http(undefined, 0, requestTimeoutMs));
 export const businessDataApi = () => new BusinessDataApi(API_BASE, http());
 // task_post creates a billed task. A 5xx does not prove the provider skipped
 // the charge, so this client must not replay it (same rule as Lighthouse).

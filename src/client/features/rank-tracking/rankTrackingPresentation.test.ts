@@ -122,3 +122,18 @@ describe("rank check presentation", () => {
     ).toEqual([rows[1]]);
   });
 });
+
+it("sets an honest expectation for redirect resolution in the check confirmation", () => {
+  const html = renderToStaticMarkup(
+    createElement(CheckConfirmModal, {
+      keywords: ["example"],
+      devices: "mobile",
+      serpDepth: 20,
+      isPending: false,
+      onRunNow: () => {},
+      onCancel: () => {},
+    }),
+  );
+  expect(html).toContain("Google link resolution can take several minutes.");
+  expect(html).not.toContain("Results in ~");
+});
