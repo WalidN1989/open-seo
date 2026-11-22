@@ -68,15 +68,21 @@ export async function prepareRankCheckKeywords(input: {
     );
   }
 
-  await RankTrackingRepository.updateRun(input.runId, {
-    status: "running",
-  });
+  const frozenTargets = run.targetsPrepared
+    ? await RankTrackingRepository.getTargetsForRun(input.runId)
+    : null;
+  let trackingKeywords = frozenTargets
+    ? [
+        ...new Map(
+          frozenTargets.map((target) => [
+            target.trackingKeywordId,
+            { id: target.trackingKeywordId, keyword: target.keyword },
+          ]),
+        ).values(),
+      ]
+    : await RankTrackingRepository.getKeywordsForConfig(input.configId);
 
-  let trackingKeywords = await RankTrackingRepository.getKeywordsForConfig(
-    input.configId,
-  );
-
-  if (input.keywordIds && input.keywordIds.length > 0) {
+  if (!frozenTargets && input.keywordIds && input.keywordIds.length > 0) {
     const idSet = new Set(input.keywordIds);
     trackingKeywords = trackingKeywords.filter((kw) => idSet.has(kw.id));
   }
@@ -85,8 +91,24 @@ export async function prepareRankCheckKeywords(input: {
     throw new AppError("INTERNAL_ERROR", "No keywords to track");
   }
 
+  const targets = await RankTrackingRepository.prepareRunTargets(
+    input.runId,
+    trackingKeywords,
+    input.devices,
+  );
+  if (targets.length === 0) {
+    throw new NonRetryableError("Rank check is no longer active");
+  }
+  const preparedKeywords = [
+    ...new Map(
+      targets.map((target) => [
+        target.trackingKeywordId,
+        { id: target.trackingKeywordId, keyword: target.keyword },
+      ]),
+    ).values(),
+  ];
   const { costCredits } = estimateRankCheckCredits(
-    trackingKeywords.length,
+    preparedKeywords.map((keyword) => keyword.keyword),
     input.devices,
     input.serpDepth,
     input.trigger === "scheduled" ? "queued" : "live",
@@ -123,19 +145,10 @@ export async function prepareRankCheckKeywords(input: {
     }
   }
 
-  await RankTrackingRepository.updateRun(input.runId, {
-    keywordsTotal: trackingKeywords.length,
-  });
-
-  return {
-    keywords: trackingKeywords.map((kw) => ({
-      id: kw.id,
-      keyword: kw.keyword,
-    })),
-  };
+  return { keywords: preparedKeywords };
 }
 
-async function finalizeRankCheckRun(input: {
+export async function finalizeRankCheckRun(input: {
   runId: string;
   configId: string;
   projectId: string;
@@ -162,37 +175,63 @@ async function finalizeRankCheckRun(input: {
   const snapshots = await RankTrackingRepository.getSnapshotsForRun(
     input.runId,
   );
-  const keywordsChecked = new Set(snapshots.map((s) => s.trackingKeywordId))
-    .size;
-
+  const targets = run.targetsPrepared
+    ? await RankTrackingRepository.getTargetsForRun(input.runId)
+    : [];
+  const checkedPairs = new Set(
+    snapshots.map((s) => `${s.trackingKeywordId}:${s.device}`),
+  );
+  const intendedPairs = targets.length;
+  const checkedCount = targets.filter((t) =>
+    checkedPairs.has(`${t.trackingKeywordId}:${t.device}`),
+  ).length;
+  const incompleteKeywords = new Set(
+    targets
+      .filter(
+        (target) =>
+          !checkedPairs.has(`${target.trackingKeywordId}:${target.device}`),
+      )
+      .map((target) => target.trackingKeywordId),
+  );
+  const keywordsChecked = run.targetsPrepared
+    ? new Set(targets.map((target) => target.trackingKeywordId)).size -
+      incompleteKeywords.size
+    : new Set(snapshots.map((s) => s.trackingKeywordId)).size;
   const keywordsTotal = run.keywordsTotal || keywordsChecked;
-  const incompleteCount = keywordsTotal - keywordsChecked;
-
+  const incompleteCount = run.targetsPrepared
+    ? intendedPairs - checkedCount
+    : keywordsTotal - keywordsChecked;
+  const unit = run.targetsPrepared ? "keyword/device check(s)" : "keyword(s)";
+  const status = snapshots.length === 0 ? "failed" : "completed";
   let errorMessage: string | undefined;
+  if (incompleteCount > 0 || status === "failed") {
+    errorMessage = `${incompleteCount} ${unit} could not be checked. Previous reliable results are retained.`;
+  }
   if (input.batchError) {
-    errorMessage = `Completed ${keywordsChecked} of ${keywordsTotal} keyword(s). Error: ${input.batchError}`;
-  } else if (incompleteCount > 0) {
-    errorMessage = `${incompleteCount} keyword(s) could not be checked`;
+    errorMessage = `${errorMessage ?? "Some results were saved."} Error: ${input.batchError}`;
   }
 
   // Flipping status away from 'pending'/'running' is what releases the
   // partial-index slot for the next run.
-  await RankTrackingRepository.updateRun(input.runId, {
-    status: "completed",
+  const finalized = await RankTrackingRepository.updateRun(input.runId, {
+    status,
     keywordsChecked,
     completedAt: nowIso,
     ...(errorMessage ? { errorMessage } : {}),
   });
+  if (!finalized) return;
 
   // Clear any previous skip reason on success.
   // Note: nextCheckAt is NOT set here — the cron handler advances it eagerly
   // before starting the workflow to prevent retry storms.
-  await RankTrackingRepository.updateConfig(input.configId, input.projectId, {
-    lastCheckedAt: nowIso,
-    lastSkipReason: null,
-  });
+  if (snapshots.length > 0) {
+    await RankTrackingRepository.updateConfig(input.configId, input.projectId, {
+      lastCheckedAt: nowIso,
+      lastSkipReason: null,
+    });
+  }
 
-  // One-line summary per run so fallback rates are visible in Workers Logs.
+  // One-line summary per run for operational visibility.
   // Keys match the PostHog event properties for log/event correlation.
   const queueSummary = input.queueStats
     ? ` queue_tasks=${input.queueStats.queueTasks} queue_collected=${input.queueStats.queueCollected} fallback_tasks=${input.queueStats.fallbackTasks} fallback_checked=${input.queueStats.fallbackChecked}`
@@ -202,7 +241,7 @@ async function finalizeRankCheckRun(input: {
     ? ` error="${errorMessage.replace(/\s+/g, " ").slice(0, 200)}"`
     : "";
   console.log(
-    `[rank-check] ${input.runId} completed org=${input.billingCustomer.organizationId} project=${input.projectId} trigger=${input.trigger} keywords=${keywordsChecked}/${keywordsTotal}${queueSummary}${errorSummary}`,
+    `[rank-check] ${input.runId} ${status} org=${input.billingCustomer.organizationId} project=${input.projectId} trigger=${input.trigger} keywords=${keywordsChecked}/${keywordsTotal}${queueSummary}${errorSummary}`,
   );
 
   await captureServerEvent({
@@ -211,7 +250,9 @@ async function finalizeRankCheckRun(input: {
     organizationId: input.billingCustomer.organizationId,
     properties: {
       project_id: input.projectId,
-      status: "completed",
+      status,
+      checks_total: run.targetsPrepared ? intendedPairs : null,
+      checks_completed: snapshots.length,
       trigger: input.trigger,
       keywords_checked: keywordsChecked,
       ...(input.queueStats

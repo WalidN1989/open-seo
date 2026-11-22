@@ -252,6 +252,7 @@ export function KeywordTrendModal({
                         ) : (
                           <DeviceRankCell
                             result={{
+                              checkState: "checked",
                               position: r.position,
                               previousPosition: r.previousPosition,
                               rankingUrl: null,

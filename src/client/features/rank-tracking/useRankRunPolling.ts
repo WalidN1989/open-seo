@@ -4,7 +4,7 @@ import { getLatestRankRun } from "@/serverFunctions/rank-tracking";
 
 /**
  * Polls the latest rank check run for a config, auto-refreshing results
- * when a run transitions from "running" to "completed".
+ * when a run transitions to a terminal state.
  */
 export function useRankRunPolling(projectId: string, configId: string) {
   const queryClient = useQueryClient();
@@ -23,9 +23,16 @@ export function useRankRunPolling(projectId: string, configId: string) {
         run?.status === "completed" || run?.status === "failed";
       const wasActive = prev === "running" || prev === "pending";
       if (wasActive && isTerminal) {
-        void queryClient.invalidateQueries({
-          queryKey: ["rankTrackingResults", projectId, configId],
-        });
+        for (const key of [
+          "rankTrackingResults",
+          "rankPositionMatrix",
+          "rankConfigTrend",
+          "rankKeywordHistory",
+        ]) {
+          void queryClient.invalidateQueries({
+            queryKey: [key, projectId, configId],
+          });
+        }
       }
 
       // Keep polling active runs, including stale ones (they'll be cleaned up

@@ -20,6 +20,7 @@ import {
   projects,
 } from "@/db/schema";
 import { DB_BATCH_SIZE, executeInBatches } from "@/db/runBatch";
+import * as runQueries from "./runQueries";
 import type { RankTrackingSkipReason } from "@/shared/rank-tracking";
 import {
   getLatestSnapshotsForKeywords,
@@ -225,13 +226,6 @@ async function tryCreateRun(data: {
   return Boolean(inserted[0]);
 }
 
-async function updateRun(
-  runId: string,
-  data: Partial<InferInsertModel<typeof rankCheckRuns>>,
-) {
-  await db.update(rankCheckRuns).set(data).where(eq(rankCheckRuns.id, runId));
-}
-
 async function getRunById(runId: string) {
   const rows = await db
     .select()
@@ -296,10 +290,6 @@ async function insertSnapshots(
         ],
       }),
   );
-}
-
-async function getSnapshotsForRun(runId: string) {
-  return db.select().from(rankSnapshots).where(eq(rankSnapshots.runId, runId));
 }
 
 // ---------------------------------------------------------------------------
@@ -473,12 +463,14 @@ export const RankTrackingRepository = {
   getDueConfigsWithOrganization,
   claimDueConfig,
   tryCreateRun,
-  updateRun,
+  updateRun: runQueries.updateRun,
   getRunById,
   getLatestRunForConfig,
   getActiveRunForConfig,
   insertSnapshots,
-  getSnapshotsForRun,
+  getSnapshotsForRun: runQueries.getSnapshotsForRun,
+  prepareRunTargets: runQueries.prepareRunTargets,
+  getTargetsForRun: runQueries.getTargetsForRun,
   getKeywordsForConfig,
   addKeywordsToConfig,
   removeKeywordsFromConfig,

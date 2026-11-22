@@ -5,6 +5,7 @@ import { getTableConfig as getSqliteTableConfig } from "drizzle-orm/sqlite-core"
 import { getTableConfig as getPgTableConfig } from "drizzle-orm/pg-core";
 import { describe, expect, it } from "vitest";
 import * as sqliteApp from "./app.schema";
+import * as sqliteRankCheck from "./rank-check.schema";
 import * as sqliteOptimizations from "./optimizations.schema";
 import * as sqliteClients from "./clients.schema";
 import * as sqliteSearchHistory from "./search-history.schema";
@@ -21,6 +22,7 @@ import * as sqliteBusiness from "./business.schema";
 import * as sqliteResearchReports from "./research-reports.schema";
 import * as sqliteReportTemplates from "./report-templates.schema";
 import * as pgApp from "./pg/app.schema";
+import * as pgRankCheck from "./pg/rank-check.schema";
 import * as pgOptimizations from "./pg/optimizations.schema";
 import * as pgClients from "./pg/clients.schema";
 import * as pgSearchHistory from "./pg/search-history.schema";
@@ -159,6 +161,7 @@ function checkNames(table: Table, dialect: Dialect): string[] {
 
 const sqliteAppTables = tablesFrom(
   sqliteApp,
+  sqliteRankCheck,
   sqliteOptimizations,
   sqliteClients,
   sqliteSearchHistory,
@@ -176,6 +179,7 @@ const sqliteAppTables = tablesFrom(
 );
 const pgAppTables = tablesFrom(
   pgApp,
+  pgRankCheck,
   pgOptimizations,
   pgClients,
   pgSearchHistory,

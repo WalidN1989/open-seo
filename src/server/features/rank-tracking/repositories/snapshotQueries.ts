@@ -9,20 +9,24 @@ import {
   lte,
   max,
   min,
+  or,
   sql,
 } from "drizzle-orm";
 import { db } from "@/db";
-import { rankCheckRuns, rankSnapshots } from "@/db/schema";
+import { rankCheckRuns, rankSnapshots, rankCheckRunTargets } from "@/db/schema";
 import { toRankTrackingTimestamp } from "@/server/features/rank-tracking/rankTrackingTimestamps";
 
-function completedRunIdsForConfig(configId: string) {
+function observationRunIdsForConfig(configId: string) {
   return db
     .select({ id: rankCheckRuns.id })
     .from(rankCheckRuns)
     .where(
       and(
         eq(rankCheckRuns.configId, configId),
-        eq(rankCheckRuns.status, "completed"),
+        or(
+          eq(rankCheckRuns.status, "completed"),
+          eq(rankCheckRuns.targetsPrepared, true),
+        ),
       ),
     );
 }
@@ -34,7 +38,7 @@ function cutoffTimestamp(sinceDays: number): string {
 }
 
 /**
- * Flat per-keyword position series across completed runs, ordered oldest first.
+ * Flat per-keyword position series across reliable observations, ordered oldest first.
  * `null` position = checked but not found within serpDepth (a real event, not a
  * missing check). The client pivots these rows per device.
  */
@@ -52,7 +56,7 @@ export async function getKeywordHistory(
     .from(rankSnapshots)
     .where(
       and(
-        inArray(rankSnapshots.runId, completedRunIdsForConfig(configId)),
+        inArray(rankSnapshots.runId, observationRunIdsForConfig(configId)),
         eq(rankSnapshots.trackingKeywordId, trackingKeywordId),
         gte(rankSnapshots.checkedAt, cutoffTimestamp(sinceDays)),
       ),
@@ -74,31 +78,47 @@ export async function getConfigTrend(
 ) {
   return db
     .select({
-      runId: rankSnapshots.runId,
+      runId: rankCheckRuns.id,
       checkedAt: rankCheckRuns.startedAt,
-      total: count(),
+      total: count(rankSnapshots.id),
+      intendedTotal: sql<
+        number | null
+      >`case when ${rankCheckRuns.targetsPrepared} then (select count(*) from ${rankCheckRunTargets} where ${rankCheckRunTargets.runId} = ${rankCheckRuns.id} and ${rankCheckRunTargets.device} = ${device}) else null end`,
       top3: sql<number>`sum(case when ${rankSnapshots.position} between 1 and 3 then 1 else 0 end)`,
       top4to10: sql<number>`sum(case when ${rankSnapshots.position} between 4 and 10 then 1 else 0 end)`,
       top11to20: sql<number>`sum(case when ${rankSnapshots.position} between 11 and 20 then 1 else 0 end)`,
     })
-    .from(rankSnapshots)
-    .innerJoin(rankCheckRuns, eq(rankSnapshots.runId, rankCheckRuns.id))
+    .from(rankCheckRuns)
+    .leftJoin(
+      rankSnapshots,
+      and(
+        eq(rankSnapshots.runId, rankCheckRuns.id),
+        eq(rankSnapshots.device, device),
+      ),
+    )
     .where(
       and(
         eq(rankCheckRuns.configId, configId),
-        eq(rankCheckRuns.status, "completed"),
+        inArray(rankCheckRuns.status, ["completed", "failed"]),
+        or(
+          eq(rankCheckRuns.status, "completed"),
+          eq(rankCheckRuns.targetsPrepared, true),
+        ),
         eq(rankCheckRuns.isSubsetRun, false),
-        eq(rankSnapshots.device, device),
-        gte(rankSnapshots.checkedAt, cutoffTimestamp(sinceDays)),
+        gte(rankCheckRuns.startedAt, cutoffTimestamp(sinceDays)),
       ),
     )
-    .groupBy(rankSnapshots.runId, rankCheckRuns.startedAt)
+    .groupBy(
+      rankCheckRuns.id,
+      rankCheckRuns.startedAt,
+      rankCheckRuns.targetsPrepared,
+    )
     .orderBy(asc(rankCheckRuns.startedAt));
 }
 
 /**
  * Recent per-keyword positions for one device as a flat list, for the "by date"
- * history matrix. Bounded to the last `runLimit` completed runs; the client
+ * history matrix. Bounded to the last `runLimit` terminal runs; the client
  * pivots these into keyword rows × run (date) columns.
  */
 export async function getPositionMatrix(
@@ -112,51 +132,78 @@ export async function getPositionMatrix(
     .where(
       and(
         eq(rankCheckRuns.configId, configId),
-        eq(rankCheckRuns.status, "completed"),
-        eq(rankCheckRuns.isSubsetRun, false),
+        inArray(rankCheckRuns.status, ["completed", "failed"]),
+        or(
+          eq(rankCheckRuns.status, "completed"),
+          eq(rankCheckRuns.targetsPrepared, true),
+        ),
       ),
     )
     .orderBy(desc(rankCheckRuns.startedAt))
     .limit(runLimit);
-
-  return db
-    .select({
-      runId: rankSnapshots.runId,
-      checkedAt: rankCheckRuns.startedAt,
-      trackingKeywordId: rankSnapshots.trackingKeywordId,
-      position: rankSnapshots.position,
-    })
-    .from(rankSnapshots)
-    .innerJoin(rankCheckRuns, eq(rankSnapshots.runId, rankCheckRuns.id))
-    .where(
-      and(
-        inArray(rankSnapshots.runId, recentRunIds),
-        eq(rankSnapshots.device, device),
+  const [planned, legacy] = await Promise.all([
+    db
+      .select({
+        runId: rankCheckRuns.id,
+        checkedAt: rankCheckRuns.startedAt,
+        trackingKeywordId: rankCheckRunTargets.trackingKeywordId,
+        position: rankSnapshots.position,
+        checked: sql<boolean>`${rankSnapshots.id} is not null`,
+      })
+      .from(rankCheckRunTargets)
+      .innerJoin(rankCheckRuns, eq(rankCheckRunTargets.runId, rankCheckRuns.id))
+      .leftJoin(
+        rankSnapshots,
+        and(
+          eq(rankSnapshots.runId, rankCheckRunTargets.runId),
+          eq(
+            rankSnapshots.trackingKeywordId,
+            rankCheckRunTargets.trackingKeywordId,
+          ),
+          eq(rankSnapshots.device, rankCheckRunTargets.device),
+        ),
+      )
+      .where(
+        and(
+          inArray(rankCheckRunTargets.runId, recentRunIds),
+          eq(rankCheckRunTargets.device, device),
+        ),
       ),
-    )
-    .orderBy(asc(rankCheckRuns.startedAt));
+    db
+      .select({
+        runId: rankCheckRuns.id,
+        checkedAt: rankCheckRuns.startedAt,
+        trackingKeywordId: rankSnapshots.trackingKeywordId,
+        position: rankSnapshots.position,
+      })
+      .from(rankSnapshots)
+      .innerJoin(rankCheckRuns, eq(rankSnapshots.runId, rankCheckRuns.id))
+      .where(
+        and(
+          inArray(rankSnapshots.runId, recentRunIds),
+          eq(rankSnapshots.device, device),
+          eq(rankCheckRuns.targetsPrepared, false),
+        ),
+      ),
+  ]);
+  return [
+    ...planned.map((row) => ({ ...row, checked: Boolean(row.checked) })),
+    ...legacy.map((row) => ({ ...row, checked: true })),
+  ].toSorted((a, b) => a.checkedAt.localeCompare(b.checkedAt));
 }
 
 /**
- * Pick one snapshot per keyword+device from completed runs, using SQL GROUP BY
+ * Pick one snapshot per keyword+device from eligible runs, using SQL GROUP BY
  * + self-join instead of loading all snapshots into JS memory.
  *
- * No keywordIds needed — scoped to the config via a completed-runs subquery,
+ * No keywordIds needed — scoped to the config via an eligible-runs subquery,
  * so subset runs are included automatically.
  */
 export async function getSnapshotsForConfig(
   configId: string,
   opts: { beforeDate?: string; order: "latest" | "earliest" },
 ) {
-  const completedRunIds = db
-    .select({ id: rankCheckRuns.id })
-    .from(rankCheckRuns)
-    .where(
-      and(
-        eq(rankCheckRuns.configId, configId),
-        eq(rankCheckRuns.status, "completed"),
-      ),
-    );
+  const completedRunIds = observationRunIdsForConfig(configId);
 
   const aggFn = opts.order === "latest" ? max : min;
 
@@ -217,15 +264,7 @@ export async function getEarliestSnapshotsForKeywords(
 ) {
   if (keywordIds.length === 0) return [];
 
-  const completedRunIds = db
-    .select({ id: rankCheckRuns.id })
-    .from(rankCheckRuns)
-    .where(
-      and(
-        eq(rankCheckRuns.configId, configId),
-        eq(rankCheckRuns.status, "completed"),
-      ),
-    );
+  const completedRunIds = observationRunIdsForConfig(configId);
 
   // D1 caps bound parameters at 100 per statement. The query binds N keyword
   // IDs plus 4 params from the completedRunIds subquery (referenced twice).

@@ -61,12 +61,12 @@ export function RankTrackingHistoryMatrix({
                   {kw.keyword}
                 </td>
                 {runs.map((r, i) => {
-                  const position = byRun?.get(r.runId) ?? null;
+                  const cell = byRun?.get(r.runId);
                   const previous =
-                    i > 0 ? (byRun?.get(runs[i - 1].runId) ?? null) : undefined;
+                    i > 0 ? byRun?.get(runs[i - 1].runId) : undefined;
                   return (
                     <td key={r.runId} className="text-right">
-                      <MatrixCell position={position} previous={previous} />
+                      <MatrixCell cell={cell} previous={previous} />
                     </td>
                   );
                 })}
@@ -80,22 +80,35 @@ export function RankTrackingHistoryMatrix({
 }
 
 function MatrixCell({
-  position,
+  cell,
   previous,
 }: {
-  position: number | null;
-  previous: number | null | undefined;
+  cell: RankPositionMatrixCell | undefined;
+  previous: RankPositionMatrixCell | undefined;
 }) {
-  if (position === null) {
-    return <span className="text-base-content/30">—</span>;
+  if (!cell) {
+    return (
+      <span
+        className="text-base-content/40 text-xs"
+        title="Not requested in this run, or historical coverage is unknown"
+      >
+        No check
+      </span>
+    );
   }
-  // Only show a change arrow when both checks ranked (no subtracting through a
-  // null, matching the rest of the rank-tracking UI).
+  if (cell.checked === false) {
+    return <span className="text-base-content/60 text-xs">Not checked</span>;
+  }
+  if (cell.position === null) {
+    return <span className="text-base-content/40 text-xs">Not found</span>;
+  }
   const change =
-    previous != null && previous !== undefined ? previous - position : null;
+    previous?.checked !== false && previous?.position != null
+      ? previous.position - cell.position
+      : null;
   return (
     <span className="inline-flex items-center justify-end gap-1 font-mono text-xs">
-      <span>{position}</span>
+      <span>{cell.position}</span>
       {change != null && change > 0 && (
         <span className="text-success">▲{change}</span>
       )}
@@ -118,10 +131,10 @@ export function countMatrixRuns(cells: RankPositionMatrixCell[]): number {
 
 function buildMatrix(cells: RankPositionMatrixCell[]): {
   runs: MatrixRun[];
-  cellByKeyword: Map<string, Map<string, number | null>>;
+  cellByKeyword: Map<string, Map<string, RankPositionMatrixCell>>;
 } {
   const runMap = new Map<string, string>(); // runId -> checkedAt
-  const cellByKeyword = new Map<string, Map<string, number | null>>();
+  const cellByKeyword = new Map<string, Map<string, RankPositionMatrixCell>>();
   for (const c of cells) {
     runMap.set(c.runId, c.checkedAt);
     let byRun = cellByKeyword.get(c.trackingKeywordId);
@@ -129,7 +142,7 @@ function buildMatrix(cells: RankPositionMatrixCell[]): {
       byRun = new Map();
       cellByKeyword.set(c.trackingKeywordId, byRun);
     }
-    byRun.set(c.runId, c.position);
+    byRun.set(c.runId, c);
   }
   const runs = [...runMap.entries()]
     .map(([runId, checkedAt]) => ({ runId, checkedAt }))

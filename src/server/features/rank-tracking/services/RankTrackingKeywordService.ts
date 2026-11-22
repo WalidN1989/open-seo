@@ -59,7 +59,9 @@ async function addKeywords(
     | undefined;
   if (rows.length > 0 && scheduleInterval) {
     scheduledEstimate = estimateScheduledRankCheckCredits(
-      existing.length + rows.length,
+      [...existing, ...rows]
+        .toSorted((a, b) => a.id.localeCompare(b.id))
+        .map((row) => row.keyword),
       config.devices,
       config.serpDepth,
       scheduleInterval,
@@ -85,10 +87,12 @@ async function addKeywords(
     addedIds.length > 0 &&
     approval.kind === "credit_ceiling"
   ) {
-    const persistedKeywordCount =
-      await RankTrackingRepository.getKeywordCountForConfig(configId);
+    const persistedKeywords =
+      await RankTrackingRepository.getKeywordsForConfig(configId);
     scheduledEstimate = estimateScheduledRankCheckCredits(
-      persistedKeywordCount,
+      persistedKeywords
+        .toSorted((a, b) => a.id.localeCompare(b.id))
+        .map((row) => row.keyword),
       config.devices,
       config.serpDepth,
       scheduleInterval,
@@ -125,8 +129,9 @@ async function estimateCost(
   additionalKeywordCount = 0,
 ) {
   const config = await getValidatedConfig(configId, projectId);
-  const existingKeywordCount =
-    await RankTrackingRepository.getKeywordCountForConfig(configId);
+  const existingKeywords =
+    await RankTrackingRepository.getKeywordsForConfig(configId);
+  const existingKeywordCount = existingKeywords.length;
   const keywordCount = Math.max(
     existingKeywordCount,
     Math.min(
@@ -134,8 +139,16 @@ async function estimateCost(
       existingKeywordCount + additionalKeywordCount,
     ),
   );
+  // Prospective additions supplied only as a count assume ordinary queries;
+  // adding keywords validates their actual text before any scheduled spend.
+  const estimatedKeywords = [
+    ...existingKeywords
+      .toSorted((a, b) => a.id.localeCompare(b.id))
+      .map((row) => row.keyword),
+    ...Array<string>(keywordCount - existingKeywordCount).fill(""),
+  ];
   const { costUsd, costCredits } = estimateRankCheckCredits(
-    keywordCount,
+    estimatedKeywords,
     config.devices,
     config.serpDepth,
     "live",
@@ -156,7 +169,7 @@ async function estimateCost(
     additionalKeywordCount: keywordCount - existingKeywordCount,
     scheduledEstimate: scheduleInterval
       ? estimateScheduledRankCheckCredits(
-          keywordCount,
+          estimatedKeywords,
           config.devices,
           config.serpDepth,
           scheduleInterval,
@@ -182,7 +195,7 @@ function scheduledApprovalError(
 ) {
   return new AppError(
     "VALIDATION_ERROR",
-    `Adding these keywords would make each ${scheduleInterval} scheduled check cost a nominal queued estimate of ${estimate.costCredits} credits (~$${estimate.costUsd.toFixed(4)} per check; ~${estimate.monthlyCostCredits} credits/month). Call estimate_rank_tracker_cost with additionalKeywordCount, show the recurring estimate and live-fallback caveat to the user, then retry with maxEstimatedScheduledCheckCredits set to the approved per-check estimate. Live fallback for rejected, failed, or timed-out queued tasks may use additional separately billed credits.`,
+    `Adding these keywords would make each ${scheduleInterval} scheduled check cost a nominal queued estimate of ${estimate.costCredits} credits (~$${estimate.costUsd.toFixed(4)} per check; ~${estimate.monthlyCostCredits} credits/month). Show this recurring estimate to the user, then retry with maxEstimatedScheduledCheckCredits set to the approved per-check estimate. Operator queries include the provider's 5x charge. Failed or unfinished checks are not retried through a paid fallback.`,
   );
 }
 

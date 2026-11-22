@@ -36,6 +36,7 @@ import {
   EMPTY_FILTERS,
   type Filters,
 } from "./RankTrackingFilters";
+import { estimateRankCheckCredits } from "@/shared/rank-tracking";
 import { CheckConfirmModal } from "./CheckConfirmModal";
 import { useMetricsRefresh } from "./useMetricsRefresh";
 import { useRankCheckTrigger } from "./useRankCheckTrigger";
@@ -120,7 +121,7 @@ export function RankTrackingDomainDetail({
   });
 
   const [pendingCheck, setPendingCheck] = useState<{
-    count: number;
+    keywords: string[];
     keywordIds?: string[];
   } | null>(null);
 
@@ -160,14 +161,28 @@ export function RankTrackingDomainDetail({
   const { refresh: refreshMetrics, isRefreshing: metricsRefreshing } =
     useMetricsRefresh(projectId, config.id);
 
-  const requestCheck = (count: number, keywordIds?: string[]) => {
-    if (count < 50) {
-      startCheck({ keywordIds });
+  const requestCheck = (keywordIds?: string[]) => {
+    const selected = keywordIds ? new Set(keywordIds) : null;
+    const keywords = (resultsData?.rows ?? [])
+      .filter((row) => !selected || selected.has(row.trackingKeywordId))
+      .toSorted((a, b) =>
+        a.trackingKeywordId.localeCompare(b.trackingKeywordId),
+      )
+      .map((row) => row.keyword);
+    if (keywords.length === 0) return;
+    if (keywords.length < 50) {
+      const { costCredits } = estimateRankCheckCredits(
+        keywords,
+        config.devices,
+        config.serpDepth,
+        "live",
+      );
+      startCheck({ keywordIds, maxCostCredits: costCredits });
       return;
     }
 
     if (isBusy) return;
-    setPendingCheck({ count, keywordIds });
+    setPendingCheck({ keywords, keywordIds });
   };
 
   const rows = resultsData?.rows;
@@ -214,6 +229,17 @@ export function RankTrackingDomainDetail({
           </span>
         </div>
       )}
+
+      {run?.errorMessage &&
+        (run.status === "completed" || run.status === "failed") && (
+          <div className="alert alert-warning text-sm py-2">
+            <AlertTriangle className="size-4" />
+            <span>
+              {run.errorMessage} Missing results are not ranking losses. Last
+              known results keep their original check time.
+            </span>
+          </div>
+        )}
 
       <FreePlanAlert visible={isFreePlan} />
 
@@ -288,8 +314,7 @@ export function RankTrackingDomainDetail({
             toast.success("Keywords copied to clipboard");
           }}
           onCheckNow={() => {
-            const count = costEstimate?.keywordCount ?? rows?.length ?? 0;
-            if (count > 0) requestCheck(count);
+            requestCheck();
           }}
           onRefreshMetrics={refreshMetrics}
           metricsRefreshing={metricsRefreshing}
@@ -341,13 +366,14 @@ export function RankTrackingDomainDetail({
 
       {pendingCheck && (
         <CheckConfirmModal
-          keywordCount={pendingCheck.count}
+          keywords={pendingCheck.keywords}
           devices={config.devices}
           serpDepth={config.serpDepth}
           isPending={isPending}
-          onRunNow={() =>
+          onRunNow={(maxCostCredits) =>
             startCheck({
               keywordIds: pendingCheck.keywordIds,
+              maxCostCredits,
             })
           }
           onCancel={() => setPendingCheck(null)}

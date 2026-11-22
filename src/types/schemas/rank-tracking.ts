@@ -27,6 +27,12 @@ export type RankCheckTriggerResult =
     };
 
 export interface RankTrackingDeviceResult {
+  checkState?:
+    | "checked"
+    | "not_checked"
+    | "not_requested"
+    | "checking"
+    | "unknown";
   checkedAt?: string | null;
   position: number | null;
   previousPosition: number | null;
@@ -87,6 +93,7 @@ export const updateConfigSchema = z.object({
 });
 
 export const triggerCheckSchema = z.object({
+  maxCostCredits: z.number().finite().nonnegative().optional(),
   projectId: z.string().min(1),
   configId: z.string().uuid(),
   keywordIds: z.array(z.string().uuid()).max(2000).optional(),

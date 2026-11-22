@@ -5,6 +5,7 @@ vi.mock("@/server/lib/runtime-env", () => ({
 }));
 
 import {
+  fetchRankCheckSerp,
   fetchRankCheckTaskResult,
   postRankCheckTasks,
 } from "@/server/lib/dataforseo/serp";
@@ -174,4 +175,212 @@ describe("rank check task queue", () => {
       },
     });
   });
+});
+
+const rankInput = {
+  keywordId: "kw-1",
+  keyword: "alpha",
+  targetDomain: "example.com",
+  device: "desktop" as const,
+  locationCode: 2840,
+  languageCode: "en",
+  depth: 20,
+};
+const validOrganic = {
+  type: "organic",
+  rank_group: 3,
+  domain: "www.example.com",
+  url: "https://www.example.com/page",
+};
+
+function rankResponse(task: Record<string, unknown>) {
+  return Response.json({
+    status_code: 20000,
+    tasks: [
+      {
+        status_code: 20000,
+        cost: 0.002,
+        path: ["v3", "serp", "google", "organic", "live", "advanced"],
+        ...task,
+      },
+    ],
+  });
+}
+
+describe("rank check SERP reliability", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it.each([
+    ["missing result", {}],
+    ["null items", { result: [{ items: null }] }],
+    ["empty success", { result: [{ items: [] }] }],
+    ["no organic", { result: [{ items: [{ type: "people_also_ask" }] }] }],
+    ["malformed item", { result: [{ items: [{ type: 7 }] }] }],
+    [
+      "missing domain",
+      { result: [{ items: [{ ...validOrganic, domain: null }] }] },
+    ],
+    ["missing URL", { result: [{ items: [{ ...validOrganic, url: null }] }] }],
+    [
+      "invalid URL",
+      { result: [{ items: [{ ...validOrganic, url: "not a URL" }] }] },
+    ],
+    [
+      "invalid rank",
+      { result: [{ items: [{ ...validOrganic, rank_group: 0 }] }] },
+    ],
+    [
+      "fractional rank",
+      { result: [{ items: [{ ...validOrganic, rank_group: 1.2 }] }] },
+    ],
+    [
+      "unresolved redirect",
+      {
+        result: [
+          {
+            items: [
+              validOrganic,
+              {
+                ...validOrganic,
+                domain: "google.com",
+                url: "https://google.com/goto?token=123",
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  ])(
+    "rejects %s without a false not-found observation, preserving live billing",
+    async (_label, task) => {
+      const fetchMock = vi
+        .fn<typeof fetch>()
+        .mockImplementation(async () => rankResponse(task));
+      vi.stubGlobal("fetch", fetchMock);
+      await expect(fetchRankCheckSerp(rankInput)).rejects.toMatchObject({
+        name: "DataforseoChargedTaskError",
+        billing: { costUsd: 0.002 },
+      });
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      await expect(
+        fetchRankCheckTaskResult({ ...rankInput, taskId: "task-a" }),
+      ).resolves.toMatchObject({ status: "failed" });
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+    },
+  );
+
+  it("retains organic position rather than absolute SERP position", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn<typeof fetch>().mockResolvedValue(
+        rankResponse({
+          result: [
+            {
+              items: [
+                { ...validOrganic, domain: "example.com", rank_absolute: 7 },
+              ],
+            },
+          ],
+        }),
+      ),
+    );
+    await expect(fetchRankCheckSerp(rankInput)).resolves.toMatchObject({
+      data: { position: 3, url: validOrganic.url },
+    });
+  });
+
+  it.each([40102, 40501])(
+    "accepts explicit no-search-results status %s",
+    async (status_code) => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn<typeof fetch>().mockImplementation(async () =>
+          rankResponse({
+            status_code,
+            status_message: "No Search Results.",
+            result: null,
+          }),
+        ),
+      );
+      await expect(fetchRankCheckSerp(rankInput)).resolves.toMatchObject({
+        data: { position: null },
+        billing: { costUsd: 0.002 },
+      });
+      await expect(
+        fetchRankCheckTaskResult({ ...rankInput, taskId: "task-a" }),
+      ).resolves.toMatchObject({
+        status: "completed",
+        result: { position: null },
+      });
+    },
+  );
+
+  it("does not treat invalid-field task failures as empty rankings", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn<typeof fetch>().mockImplementation(async () =>
+        rankResponse({
+          status_code: 40501,
+          status_message: "Invalid Field: 'target'.",
+          result: null,
+        }),
+      ),
+    );
+    await expect(fetchRankCheckSerp(rankInput)).rejects.toMatchObject({
+      name: "DataforseoChargedTaskError",
+    });
+    await expect(
+      fetchRankCheckTaskResult({ ...rankInput, taskId: "task-a" }),
+    ).resolves.toMatchObject({ status: "failed" });
+  });
+
+  it("accepts a valid unmatched SERP as checked-not-found with one paid read", async () => {
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(rankResponse({ result: [{ items: [validOrganic] }] }));
+    vi.stubGlobal("fetch", fetchMock);
+    await expect(
+      fetchRankCheckSerp({ ...rankInput, targetDomain: "other.com" }),
+    ).resolves.toMatchObject({ data: { position: null } });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(
+      parseDataforseoRequestBody(fetchMock.mock.calls[0]?.[1]),
+    ).toMatchObject([{ device: "desktop", depth: 20 }]);
+    expect(
+      parseDataforseoRequestBody(fetchMock.mock.calls[0]?.[1]),
+    ).not.toMatchObject([{ resolve_poisoned_results: true }]);
+  });
+});
+
+describe("paid rank HTTP attempt boundary", () => {
+  it.each(["live", "task_post"])(
+    "sends one HTTP attempt for %s on 5xx",
+    async (endpoint) => {
+      const fetchMock = vi
+        .fn<typeof fetch>()
+        .mockImplementation(
+          async () => new Response("upstream failure", { status: 503 }),
+        );
+      vi.stubGlobal("fetch", fetchMock);
+      const request =
+        endpoint === "live"
+          ? fetchRankCheckSerp(rankInput)
+          : postRankCheckTasks({
+              ...rankInput,
+              tasks: [
+                {
+                  keywordId: rankInput.keywordId,
+                  keyword: rankInput.keyword,
+                  device: rankInput.device,
+                },
+              ],
+            });
+      await expect(request).rejects.toMatchObject({
+        code: "UPSTREAM_UNAVAILABLE",
+      });
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    },
+  );
 });
