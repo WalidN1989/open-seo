@@ -22,9 +22,21 @@ round each metered call. Provider-reported costs still determine actual metering
 this is not a reservation of the account balance or protection against provider
 price changes.
 
+Manual Live requests opt into DataForSEO's native `resolve_goto_urls` option,
+which resolves Google redirects inside the existing billed request. The installed
+SDK drops this new field in its default serialization, so rank checks serialize
+their explicit parameters. The request deadline is 280 seconds and the live
+workflow step has six minutes for resolution, metering and persistence. Research,
+queued task posting, and free queued collection retain their existing budgets.
+No external result URL is fetched by the application.
+
+If the provider leaves a redirect unresolved or returns conflicting URL/domain
+values, the check remains Not checked. Diagnostics distinguish these from unsafe
+URL schemes. This does not treat partial provider responses as complete results.
+
 A single well-formed but inaccurate provider response cannot be identified by
 structural validation alone. Upstream's conditional second-read strategy and
-paid redirect resolution need a separate pricing/consent change and remain
+additional paid redirect services need a separate pricing/consent change and remain
 outside this PR.
 
 ## Validation
@@ -59,3 +71,6 @@ matching provider migration. A code rollback can leave the additive table and
 column in place; do not drop saved coverage data during rollback. Old code
 restores the old check and fallback behavior. Keep existing workers, scheduler
 settings and all other module runtime settings unchanged.
+
+Native resolution references: [provider update](https://dataforseo.com/update/get-final-destination-urls-with-serp-api)
+and [Live request contract](https://docs.dataforseo.com/v3/serp/google/organic/live/advanced/).
