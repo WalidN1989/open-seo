@@ -1,3 +1,4 @@
+import { FRONTIER_CLAIM_SQL } from "./frontier-claim";
 /**
  * Per-audit crawl scratchpad — a SQLite-backed Durable Object.
  *
@@ -155,10 +156,14 @@ export class AuditScratchpad extends DurableObject {
   /**
    * Lease the next batch of pending URLs for one crawl chunk. Idempotent per
    * chunkNo: a retried step gets back exactly the URLs its failed attempt
-   * had leased (link-discovered URLs drain before sitemap-only ones, FIFO
-   * within each class — same ordering as the old in-memory queues).
+   * had leased. Link-first FIFO ordering reserves the remaining page budget
+   * for pending sitemap URLs.
    */
-  async claimChunk(chunkNo: number, limit: number): Promise<ClaimedChunk> {
+  async claimChunk(
+    chunkNo: number,
+    limit: number,
+    pagesLeft: number,
+  ): Promise<ClaimedChunk> {
     const existing = this.selectClaimed(
       `SELECT url, depth, in_sitemap FROM frontier WHERE state = 'leased' AND chunk_no = ?`,
       chunkNo,
@@ -179,8 +184,8 @@ export class AuditScratchpad extends DurableObject {
     if (limit <= 0) return { urls: [], isRetry: false };
 
     const fresh = this.selectClaimed(
-      `SELECT url, depth, in_sitemap FROM frontier WHERE state = 'pending'
-       ORDER BY CASE source WHEN 'link' THEN 0 ELSE 1 END, rowid LIMIT ?`,
+      FRONTIER_CLAIM_SQL,
+      Math.max(0, pagesLeft - limit),
       limit,
     );
     for (const row of fresh) {
@@ -345,11 +350,11 @@ export class AuditScratchpad extends DurableObject {
     }
   }
 
-  private selectClaimed(query: string, param: number): ClaimedUrl[] {
+  private selectClaimed(query: string, ...params: number[]): ClaimedUrl[] {
     return this.ctx.storage.sql
       .exec<{ url: string; depth: number | null; in_sitemap: number }>(
         query,
-        param,
+        ...params,
       )
       .toArray()
       .map((row) => ({

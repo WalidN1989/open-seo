@@ -1,3 +1,7 @@
+import {
+  excludePathsSchema,
+  splitExcludePathsInput,
+} from "@/shared/audit-exclude-paths";
 import { useForm } from "@tanstack/react-form";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -84,6 +88,9 @@ export function useLaunchController({
           projectId,
           startUrl: value.url,
           maxPages: effectiveMaxPages,
+          excludePaths: excludePathsSchema.parse(
+            splitExcludePathsInput(value.excludePathsInput),
+          ),
           lighthouseStrategy: value.runLighthouse ? "auto" : "none",
         });
         toast.success("Audit started!");
@@ -119,6 +126,7 @@ function useLaunchMutations({
       projectId: string;
       startUrl: string;
       maxPages: number;
+      excludePaths: string[];
       lighthouseStrategy: "auto" | "none";
     }) => startAudit({ data }),
   });

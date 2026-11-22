@@ -55,6 +55,12 @@ The project-context tools are free and shared with the app and other agents.
 6. Identify cannibalization risk when multiple pages would target the same intent. When Search Console is connected, confirm it from real data with `get_search_console_performance` (`dimensions: ["query","page"]`) — the same query sending impressions to multiple URLs.
 7. Ask before applying cluster tags with `save_keywords`.
 
+## Save the research report
+
+Before starting fresh research, call `list_reports` for this project and read the relevant report summaries with `get_report`. Reuse sound existing evidence; check its date before refreshing paid data. Follow `seo-report` for the final HTML document and `save_report` it to this project. The sections below are the report's content, not a second full answer in chat.
+
+If the same subject and period already has a report, pass its `reportId` to replace it; a different subject or new reporting period gets a new report. Replacement has no undo or version history, so validate the whole document first. Saved reports are retained until a person deletes them; research-log pruning does not delete reports. Return the report link, verdict and leading action. Keep reports private unless the user explicitly requests public sharing. Create a reusable template only when the user asks for one.
+
 ## Output format
 
 Start with a short mapping summary:

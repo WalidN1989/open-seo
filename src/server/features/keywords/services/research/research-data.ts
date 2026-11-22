@@ -19,6 +19,8 @@ type FetchResearchRowsParams = {
   resultLimit: number;
   source: KeywordSource;
   includeClickstreamData?: boolean;
+  ignoreSynonyms?: boolean;
+  filters?: unknown[];
   // Attribute the DataForSEO spend to a specific feature (e.g. "onboarding");
   // defaults to the path-derived feature when omitted.
   creditFeature?: CreditFeature;
@@ -126,6 +128,7 @@ async function fetchRelatedRows(
     limit: params.resultLimit,
     depth: 3,
     includeClickstreamData: params.includeClickstreamData,
+    ignoreSynonyms: params.ignoreSynonyms,
     creditFeature: params.creditFeature,
   });
 
@@ -156,6 +159,8 @@ export async function fetchResearchRowsBySource(
         languageCode: params.languageCode,
         limit: params.resultLimit,
         includeClickstreamData: params.includeClickstreamData,
+        filters: params.filters,
+        ignoreSynonyms: params.ignoreSynonyms,
         creditFeature: params.creditFeature,
       }),
     );
@@ -168,6 +173,7 @@ export async function fetchResearchRowsBySource(
       languageCode: params.languageCode,
       limit: params.resultLimit,
       includeClickstreamData: params.includeClickstreamData,
+      ignoreSynonyms: params.ignoreSynonyms,
       creditFeature: params.creditFeature,
     }),
   );

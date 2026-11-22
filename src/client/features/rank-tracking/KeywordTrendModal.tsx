@@ -1,3 +1,4 @@
+import { parseDbTimestamp } from "@/client/lib/db-timestamp";
 import { useMemo, useState } from "react";
 import { Copy, Download, Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -104,7 +105,7 @@ export function KeywordTrendModal({
     const keys = new Set<string>();
     for (const p of points) {
       if (p.position === null) {
-        keys.add(`${new Date(p.checkedAt).getTime()}:${p.device}`);
+        keys.add(`${parseDbTimestamp(p.checkedAt).getTime()}:${p.device}`);
       }
     }
     return keys;
@@ -114,7 +115,7 @@ export function KeywordTrendModal({
 
   const exportRows = () =>
     historyRows.map((r) => [
-      new Date(r.checkedAt).toISOString(),
+      parseDbTimestamp(r.checkedAt).toISOString(),
       DEVICE_STYLE[r.device].label,
       r.position ?? "",
       csvChange(r.position, r.previousPosition),
@@ -216,7 +217,7 @@ export function KeywordTrendModal({
                   return (
                     <tr key={`${r.device}-${r.checkedAt}-${idx}`}>
                       <td className="whitespace-nowrap text-xs">
-                        {new Date(r.checkedAt).toLocaleDateString()}
+                        {parseDbTimestamp(r.checkedAt).toLocaleDateString()}
                       </td>
                       {devices.length > 1 && (
                         <td className="text-xs">
@@ -358,7 +359,7 @@ function buildChartData(
 ): ChartRow[] {
   const byTime = new Map<number, ChartRow>();
   for (const p of points) {
-    const ts = new Date(p.checkedAt).getTime();
+    const ts = parseDbTimestamp(p.checkedAt).getTime();
     const row = byTime.get(ts) ?? { checkedAt: ts };
     row[p.device] = p.position === null ? serpDepth : p.position;
     byTime.set(ts, row);

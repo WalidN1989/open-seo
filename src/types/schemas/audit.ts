@@ -1,3 +1,4 @@
+import { excludePathsSchema } from "@/shared/audit-exclude-paths";
 import { z } from "zod";
 import {
   DEFAULT_AUDIT_PAGES,
@@ -9,6 +10,7 @@ import {
 
 export const startAuditSchema = z.object({
   projectId: z.string().min(1),
+  excludePaths: excludePathsSchema.optional(),
   startUrl: z.string().min(1, "URL is required").max(2048),
   maxPages: z
     .number()

@@ -213,7 +213,11 @@ export async function fetchBacklinksRows(input: BacklinksListRequest) {
   const filters = combineFilters(
     input.filters,
     spamFilterOptions.hideSpam
-      ? ["backlink_spam_score", "<=", spamFilterOptions.spamThreshold]
+      ? [
+          ["backlink_spam_score", "<", spamFilterOptions.spamThreshold],
+          "or",
+          ["backlink_spam_score", "=", null],
+        ]
       : undefined,
   );
   const response = await backlinksApi(classifyBacklinksError).backlinksLive([

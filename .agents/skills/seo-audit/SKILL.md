@@ -49,15 +49,21 @@ Keep total spend modest: one audit, one backlinks overview, at most one domain o
    - Blocked or noindexed pages: remove the block.
    It must be doable this week by a non-technical person, with copy-paste-ready mechanics included.
 7. When the site is healthy, propose a starting focus area: run one `research_keywords` call seeded from the site's actual topic, then pick one theme and 3 to 5 specific, low-difficulty keywords the site can realistically rank for, each with the page or post to make. This is a starting direction, not a keyword strategy; point the user at the `keyword-research` skill for the full workflow. Skip this step entirely when the site is down — the one thing is all that matters there.
-8. Write the report using `template.html` in this skill directory (see Output format).
+8. Write the report using the `seo-report` HTML starter and the content sections below.
 9. Review before delivering: run an adversarial pass with a second agent or model if your environment has one, otherwise do a fresh self-review. Give the reviewer the verified facts and have it attack four things: claims beyond the facts, unglossed jargon, anything overwhelming for a beginner, and dramatic language. The reviewer may also flag true facts it was not given; check those against your evidence instead of "fixing" them.
-10. Deliver the report: if your environment can publish or preview HTML (for example as an artifact), do that; otherwise save the HTML file and tell the user to open it in their browser.
+10. Save the report with `save_report` and return its app link. Public sharing needs an explicit request.
+
+## Save the research report
+
+Before starting fresh research, call `list_reports` for this project and read the relevant report summaries with `get_report`. Reuse sound existing evidence; check its date before refreshing paid data. Follow `seo-report` for the final HTML document and `save_report` it to this project. The sections below are the report's content, not a second full answer in chat.
+
+If the same subject and period already has a report, pass its `reportId` to replace it; a different subject or new reporting period gets a new report. Replacement has no undo or version history, so validate the whole document first. Saved reports are retained until a person deletes them; research-log pruning does not delete reports. Return the report link, verdict and leading action. Keep reports private unless the user explicitly requests public sharing. Create a reusable template only when the user asks for one.
 
 ## Output format
 
-Use `template.html` next to this file. Fill in content; keep the CSS and structure as they are (light palette only, no dark mode).
+Use the `seo-report` starter, with its security and print rules. Keep the site-specific sections below.
 
-- Header: domain as the title, the review date on its own line under it, then a 2-3 sentence summary of the whole report (overall state; the main gap and the one thing; what the report covers).
+- Header: the same report title and full date used by `save_report`, with the domain in the subtitle. Lead with the overall state and the one action.
 - Section order: verdict, the one thing, small fixes (5 to 10 max, ordered by impact), where to focus first (healthy sites only), already working, method footer.
 - Each fix row shows the exact evidence (a quoted tag or number) and concrete steps a non-technical person can follow.
 - "Where to focus first" names one topic area and 3 to 5 keywords, each with its search volume in plain words and the page or post to make. Omit the section when the site is down.

@@ -22,15 +22,16 @@ const SAM_SURFACE_NOTE = `> Surface note: you are SAM, running inside the Digita
 > authenticated and scoped to the user's current project — skip any "verify the
 > MCP connection", "choose a project", or skill-install steps. You have no
 > local filesystem: skip local-folder and file steps, and store durable
-> outputs in project context instead (sections, competitors, key pages,
-> research log).
+> factual context in project context (sections, competitors, key pages, research
+> log). Save finished research reports with save_report; they belong in Reports,
+> not in a context section or local file.
 >
 > Your project context is already in your system prompt — read it there; there
 > is no get_project_context tool here. Write changes with
 > update_project_context. If a skill step needs a tool you don't have (e.g.
 > project creation), say so and point the user at the app page rather than
-> improvising. Keep SAM's chat voice: a skill's output format is a
-> checklist of what to cover, not a document template to fill.`;
+> improvising. Keep coaching answers conversational. For research reports, follow
+> seo-report, save the document, and answer with the report link and a brief verdict.`;
 
 type SamSkill = { name: string; description: string; body: string };
 

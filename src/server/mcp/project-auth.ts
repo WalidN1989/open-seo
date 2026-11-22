@@ -45,7 +45,7 @@ async function requireProjectAccess(
   return {
     auth: resolvedAuth,
     baseUrl,
-    billing: buildBillingCustomer(resolvedAuth, projectId),
+    billing: buildBillingCustomer(resolvedAuth, project.id),
     // The row is already fetched for the auth gate; exposing it lets tools
     // fall back to the project's default market without another query.
     project,
@@ -62,6 +62,8 @@ export function withMcpProjectAuth<TArgs extends ProjectScopedArgs, TResult>(
 ) {
   return async (args: TArgs, toolContext: ToolContext) => {
     const context = await requireProjectAccess(toolContext, args.projectId);
-    return handler(args, context);
+    // Handlers and billing must use the row that membership authorized,
+    // not the address, which may be a project slug.
+    return handler({ ...args, projectId: context.project.id }, context);
   };
 }

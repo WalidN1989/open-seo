@@ -6,6 +6,7 @@ import {
 } from "./ProjectContextService";
 
 const mocks = vi.hoisted(() => ({
+  listTemplates: vi.fn(),
   listSections: vi.fn(),
   upsertSection: vi.fn(),
   deleteSection: vi.fn(),
@@ -19,6 +20,11 @@ const mocks = vi.hoisted(() => ({
   appendResearchLogEntry: vi.fn(),
   pruneResearchLogBefore: vi.fn(),
 }));
+
+vi.mock(
+  "@/server/features/research-reports/repositories/ReportTemplateRepository",
+  () => ({ ReportTemplateRepository: mocks }),
+);
 
 vi.mock(
   "@/server/features/project-context/repositories/ProjectContextRepository",
@@ -49,10 +55,29 @@ const section = (
 
 describe("project context service", () => {
   beforeEach(() => {
+    mocks.listTemplates.mockResolvedValue([]);
     mocks.listSections.mockResolvedValue([]);
     mocks.listCompetitors.mockResolvedValue([]);
     mocks.listKeyPages.mockResolvedValue([]);
     mocks.listResearchLog.mockResolvedValue([]);
+  });
+
+  it("includes only the current project's template names and descriptions in the digest", async () => {
+    mocks.listTemplates.mockResolvedValue([
+      {
+        name: "Monthly review",
+        description: "For owners",
+        instructions: "Not in context",
+      },
+    ]);
+    const context = await getProjectContext("project_1");
+    expect(mocks.listTemplates).toHaveBeenCalledWith("project_1");
+    expect(context.reportTemplates).toEqual([
+      { name: "Monthly review", description: "For owners" },
+    ]);
+    const digest = renderProjectContextMarkdown(context);
+    expect(digest).toContain("Monthly review: For owners");
+    expect(digest).not.toContain("Not in context");
   });
 
   it("splits typed from custom sections and reports the empty typed ones", async () => {
@@ -319,6 +344,7 @@ describe("project context service", () => {
       customSections: [],
       competitors: [],
       keyPages: [],
+      reportTemplates: [],
       researchLog: [],
     });
 
@@ -339,6 +365,7 @@ describe("project context service", () => {
         customSections: [],
         competitors: [],
         keyPages: [],
+        reportTemplates: [],
         researchLog: Array.from({ length: entryCount }, (_, index) => ({
           id: `log_${index}`,
           entryDate: "2026-08-15",

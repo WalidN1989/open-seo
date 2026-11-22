@@ -17,7 +17,12 @@ import {
 } from "@/server/mcp/schemas";
 
 const seedSchema = z.object({
-  seed: z.string().min(1).describe("Seed keyword to research."),
+  seed: z
+    .string()
+    .min(1)
+    .describe(
+      "Seed keyword to research. Use * between words for wildcard patterns, such as best * for dogs; unavailable in Google Ads-only countries.",
+    ),
   locationCode: locationCodeSchema.optional(),
   languageCode: languageCodeSchema.optional(),
 });
@@ -35,6 +40,12 @@ const inputSchema = {
     .union([z.literal(150), z.literal(300), z.literal(500)])
     .optional()
     .describe("Max keywords returned per seed. Defaults to 150."),
+  groupKeywords: z
+    .boolean()
+    .optional()
+    .describe(
+      "Include close keyword variants sharing Google Ads metrics. Default false returns core keywords; never sum shared variant volumes.",
+    ),
   includeClickstreamData: z
     .boolean()
     .optional()
@@ -121,6 +132,7 @@ export const researchKeywordsTool = {
               resultLimit: args.resultLimit ?? 150,
               mode: "auto",
               clickstream: args.includeClickstreamData ?? false,
+              groupKeywords: args.groupKeywords,
             },
             context.billing,
           );

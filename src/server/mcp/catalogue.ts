@@ -1,3 +1,13 @@
+import {
+  saveReportTool,
+  listReportsTool,
+  getReportTool,
+} from "@/server/mcp/tools/research-report-tools";
+import {
+  listReportTemplatesTool,
+  saveReportTemplateTool,
+} from "@/server/mcp/tools/report-template-tools";
+import { setReportSharingTool } from "@/server/mcp/tools/research-report-sharing-tools";
 import { customerWorkflowSurface } from "@/server/mcp/tools/customer-workflow-tools";
 /**
  * Every tool the MCP server offers, in one list.
@@ -97,6 +107,12 @@ export const MODULE_SURFACES: readonly McpModuleSurface[] = [
 ];
 
 export const ALL_MCP_TOOLS: readonly McpToolLike[] = [
+  saveReportTool,
+  listReportsTool,
+  getReportTool,
+  listReportTemplatesTool,
+  saveReportTemplateTool,
+  setReportSharingTool,
   whoamiTool,
   listProjectsTool,
   createProjectTool,

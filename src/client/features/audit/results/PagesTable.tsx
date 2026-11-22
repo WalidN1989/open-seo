@@ -1,3 +1,7 @@
+import {
+  numericNullsLast,
+  stringNullsLast,
+} from "@/client/components/table/nullSafeSort";
 import { useMemo, useState } from "react";
 import {
   createColumnHelper,
@@ -25,8 +29,6 @@ import {
 import {
   EMPTY_PAGES_FILTERS,
   filterPages,
-  nullableNumberSort,
-  nullableStringSort,
   type PageRow,
   type PagesFilters,
 } from "@/client/features/audit/results/AuditResultsTableFilterLogic";
@@ -112,7 +114,7 @@ function buildPagesColumns({
     pageColumnHelper.accessor("statusCode", {
       header: ({ column }) => <SortableHeader column={column} label="Status" />,
       cell: ({ getValue }) => <HttpStatusBadge code={getValue()} />,
-      sortingFn: nullableNumberSort,
+      sortingFn: numericNullsLast,
     }),
     pageColumnHelper.accessor("title", {
       header: ({ column }) => <SortableHeader column={column} label="Title" />,
@@ -137,7 +139,7 @@ function buildPagesColumns({
           <EmptyCell />
         );
       },
-      sortingFn: nullableStringSort,
+      sortingFn: stringNullsLast,
       meta: { cellClassName: "max-w-[360px]" },
     }),
     pageColumnHelper.accessor("h1Count", {
@@ -178,7 +180,7 @@ function buildPagesColumns({
           <EmptyCell />
         );
       },
-      sortingFn: nullableNumberSort,
+      sortingFn: numericNullsLast,
     }),
   ];
 }

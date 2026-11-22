@@ -1,3 +1,4 @@
+import { excludePathsSchema } from "@/shared/audit-exclude-paths";
 import { z } from "zod";
 import { AuditRepository } from "@/server/features/audit/repositories/AuditRepository";
 import { AuditService } from "@/server/features/audit/services/AuditService";
@@ -53,6 +54,11 @@ const runInputSchema = {
     .max(10_000)
     .optional()
     .describe("Page budget for the crawl (default 50)."),
+  excludePaths: excludePathsSchema
+    .optional()
+    .describe(
+      "URL paths to skip, for example /tags/ or /search*. Up to 20 patterns.",
+    ),
   runLighthouse: z
     .boolean()
     .optional()
@@ -98,6 +104,7 @@ export const runSiteAuditTool = {
         projectId: args.projectId,
         startUrl: args.url,
         maxPages: args.maxPages,
+        excludePaths: args.excludePaths,
         lighthouseStrategy,
         limitTier,
       }));
@@ -298,7 +305,7 @@ export const getAuditIssuesTool = {
       rows.length === 0
         ? args.severity || args.issueType
           ? `No issues found for audit ${audit.id} matching the given filters.`
-          : `No issues recorded for audit ${audit.id}. Note: audits run before issue checks existed have no issue data — re-run the audit with run_site_audit to get a real report.`
+          : `No issues recorded for audit ${audit.id}. ${audit.status === "completed" ? "The recorded checks returned no issues; pages outside the crawl were not assessed." : `The audit is ${audit.status}; this is not a completed clean result.`}`
         : [
             `Audit ${audit.id} (${audit.startUrl}): ${rows.length} issues${rows.length > limit ? ` (showing ${limit})` : ""}.`,
             "By type:",

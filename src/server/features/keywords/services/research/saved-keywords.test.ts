@@ -244,5 +244,7 @@ describe("saved keyword service", () => {
       }),
     ).rejects.toThrow("Replacement tags are required");
     expect(mocks.replaceTagsForSavedKeywords).not.toHaveBeenCalled();
+    expect(mocks.saveKeywordsToProject).not.toHaveBeenCalled();
+    expect(mocks.upsertKeywordMetric).not.toHaveBeenCalled();
   });
 });

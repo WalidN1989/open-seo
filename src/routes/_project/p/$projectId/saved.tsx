@@ -269,12 +269,20 @@ function SavedKeywordsPage() {
         ) : (
           <>
             <SavedKeywordsHeader
+              projectId={projectId}
               totalCount={totalCount}
               exporting={exporter.exporting}
               metricsRefreshing={refreshMetricsMutation.isPending}
               onExportCsv={() => void exporter.exportFilteredCsv()}
               onExportSheets={() => void exporter.exportFilteredSheets()}
-              onRefreshMetrics={() => refreshMetricsMutation.mutate()}
+              onRefreshMetrics={() => {
+                if (
+                  window.confirm(
+                    "Update saved keyword stats? This fetches fresh provider data and uses credits.",
+                  )
+                )
+                  refreshMetricsMutation.mutate();
+              }}
             />
 
             <div className="overflow-hidden rounded-lg border border-base-300 bg-base-100">

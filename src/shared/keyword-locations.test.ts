@@ -5,6 +5,7 @@ import {
   formatLocationLabel,
   getIsoCountryCode,
   getKeywordDataProvider,
+  getKeywordDataCountryCode,
   getLanguageCode,
   isLabsLocationCode,
   isSupportedLanguageCode,
@@ -181,5 +182,25 @@ describe("resolveKeywordDataLanguage", () => {
     expect(resolveKeywordDataLanguage(2203, "en")).toBe("cs");
     // Google-Ads countries keep their single default too.
     expect(resolveKeywordDataLanguage(2352, "en")).toBe("is");
+  });
+});
+
+describe("legacy city tracker keyword metrics", () => {
+  it("maps a city location to its country without replacing a supported country", () => {
+    expect(
+      getKeywordDataCountryCode({
+        locationCode: 1001634,
+        locationName: "Curitiba,State of Parana,Brazil",
+      }),
+    ).toBe(2076);
+    expect(
+      getKeywordDataCountryCode({
+        locationCode: 2840,
+        locationName: "Sydney,Australia",
+      }),
+    ).toBe(2840);
+    expect(
+      getKeywordDataCountryCode({ locationCode: 999, locationName: null }),
+    ).toBe(999);
   });
 });

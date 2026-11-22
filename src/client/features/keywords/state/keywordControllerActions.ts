@@ -65,6 +65,7 @@ export function buildKeywordSearchKey(params: {
   resultLimit: ResultLimit;
   mode: KeywordMode;
   clickstream: boolean;
+  groupKeywords?: boolean;
 }) {
   return [
     parseKeywordInput(params.keyword).join(""),
@@ -72,6 +73,7 @@ export function buildKeywordSearchKey(params: {
     params.resultLimit,
     params.mode,
     params.clickstream ? "cs" : "",
+    params.groupKeywords ? "group" : "",
   ].join("|");
 }
 

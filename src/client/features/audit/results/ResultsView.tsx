@@ -42,6 +42,18 @@ export function ResultsView({
 
   return (
     <>
+      {audit.config.excludePaths?.length ? (
+        <div className="rounded-lg border border-base-300 bg-base-200/30 p-3 text-sm">
+          <p className="font-medium">This audit excluded URL paths</p>
+          <p className="mt-1 break-words text-base-content/70">
+            {audit.config.excludePaths.join(", ")}
+          </p>
+          <p className="mt-1 text-xs text-base-content/60">
+            Excluded pages were not audited. Orphan-page checks are omitted
+            because excluded pages can contain links we did not read.
+          </p>
+        </div>
+      ) : null}
       {blockedCount > 0 && (
         <div className="flex items-start gap-3 rounded-lg border border-warning/30 bg-warning/5 px-4 py-3 text-sm">
           <ShieldAlert className="mt-0.5 size-4 shrink-0 text-warning" />

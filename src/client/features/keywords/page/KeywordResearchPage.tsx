@@ -62,6 +62,7 @@ export function KeywordResearchPage(input: Props) {
           kLimit: undefined,
           mode: undefined,
           cs: undefined,
+          group: undefined,
         });
         return;
       }
@@ -72,6 +73,7 @@ export function KeywordResearchPage(input: Props) {
         kLimit: tabInput.resultLimit === 150 ? undefined : tabInput.resultLimit,
         mode: tabInput.mode === "auto" ? undefined : tabInput.mode,
         cs: tabInput.clickstream ? true : undefined,
+        group: tabInput.groupKeywords ? true : undefined,
       });
     },
     [setSearchParams],
@@ -88,9 +90,11 @@ export function KeywordResearchPage(input: Props) {
       resultLimit: input.resultLimit,
       mode: input.keywordMode,
       clickstream: input.clickstream,
+      groupKeywords: input.groupKeywords ?? false,
     };
   }, [
     input.clickstream,
+    input.groupKeywords,
     input.keywordInput,
     input.keywordMode,
     locationCode,
@@ -137,6 +141,7 @@ export function KeywordResearchPage(input: Props) {
         resultLimit: value.resultLimit,
         mode: value.mode,
         clickstream: value.clickstream,
+        groupKeywords: value.groupKeywords,
       }));
 
       for (const tabInput of inputs) {
@@ -163,6 +168,7 @@ export function KeywordResearchPage(input: Props) {
             resultLimit: activeTab.input.resultLimit,
             keywordMode: activeTab.input.mode,
             clickstream: activeTab.input.clickstream,
+            groupKeywords: activeTab.input.groupKeywords,
           }
         : {
             ...input,

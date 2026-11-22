@@ -1,0 +1,378 @@
+import { omit } from "remeda";
+import { z } from "zod";
+import { ReportService } from "@/server/features/research-reports/services/ReportService";
+import { ReportTemplateService } from "@/server/features/research-reports/services/ReportTemplateService";
+import { captureServerEvent } from "@/server/lib/posthog";
+import { buildProjectMeta } from "@/server/mcp/context";
+import { mcpResponse } from "@/server/mcp/formatters";
+import {
+  looseObjectOutputSchema,
+  optionalMetaOutputSchema,
+} from "@/server/mcp/output-schemas";
+import { withMcpProjectAuth } from "@/server/mcp/project-auth";
+import { projectIdSchema } from "@/server/mcp/schemas";
+import { reportShareUrl } from "@/server/mcp/tools/research-report-sharing-tools";
+import { buildDashboardUrl } from "@/server/mcp/urls";
+const formatCount = (value: number) =>
+  new Intl.NumberFormat("en-US").format(value);
+import {
+  REPORT_DEFAULT_LIST_LIMIT,
+  REPORT_MAX_HTML_BYTES,
+  REPORT_MAX_LIST_LIMIT,
+  REPORT_MAX_SKILL_CHARS,
+  REPORT_MAX_SUMMARY_CHARS,
+  REPORT_MAX_TITLE_CHARS,
+  type ReportMetadata,
+} from "@/types/schemas/research-reports";
+
+// Report tools use only the app DB and authorize the project before access.
+// Reads/saves link to the report; deletion links back to the report list.
+
+const reportPath = (projectId: string, reportId: string) =>
+  `/p/${projectId}/research-reports/${reportId}`;
+
+// Small reports are real (a one-page summary is a few hundred bytes), and
+// rounding those to "0 KB" reads like a failed save.
+const size = (bytes: number) =>
+  bytes < 1000
+    ? `${formatCount(bytes)} bytes`
+    : `${formatCount(Math.round(bytes / 1000))} KB`;
+
+// Keep raw tokens out of metadata and bulk lists. Single-report tools return
+// the public URL explicitly when sharing is enabled.
+const forAgent = (report: ReportMetadata) =>
+  omit(report, ["shareToken", "sharedAt"]);
+
+const metaLine = (
+  report: Pick<
+    ReportMetadata,
+    "skill" | "createdBy" | "updatedAt" | "sizeBytes"
+  >,
+) =>
+  [
+    report.skill ?? "no skill",
+    report.createdBy,
+    `updated ${report.updatedAt.slice(0, 10)}`,
+    size(report.sizeBytes),
+  ].join(" · ");
+
+// ---------------------------------------------------------------- save_report
+
+const saveInputSchema = {
+  projectId: projectIdSchema,
+  title: z
+    .string()
+    .min(1)
+    .describe(
+      `Report type or specific subject and full report date, e.g. "Competitive Landscape — Sep 17, 2026". Omit the project's website; include the subject's bare hostname only when it differs from the project website or the project has no website. Use the same title in the HTML title and h1. Never a generic label like "SEO Report". Max ${REPORT_MAX_TITLE_CHARS} characters.`,
+    ),
+  summary: z
+    .string()
+    .min(1)
+    .describe(
+      `Markdown, under ${formatCount(REPORT_MAX_SUMMARY_CHARS)} characters: the verdict, the single top action, and the key numbers. This is what list_reports returns and what you or another agent read instead of the HTML.`,
+    ),
+  html: z
+    .string()
+    .min(1)
+    .describe(
+      `The complete self-contained HTML document. Inline all CSS; no external requests of any kind (no CDNs, no web fonts, no images by URL, no fetch) — they are blocked when the report renders, and scripts are blocked too. No backticks and no \${ anywhere, including inside CSS content strings: some clients (Codex) pass this argument through a JavaScript template literal and either sequence corrupts the document. It must be a whole document, ending in </html>: a save that stops mid-document is refused, because there is no version history to fall back on. Aim under 80 KB so the report can be read back whole in one call; the hard limit is ${formatCount(REPORT_MAX_HTML_BYTES)} bytes. Use the seo-report skill's starter template when you have it; otherwise a plain semantic document — heading, short sections, one table — reads fine.`,
+    ),
+  reportId: z
+    .string()
+    .min(1)
+    .optional()
+    .describe(
+      "Omit to create a new report. Pass an id from list_reports to replace that report in place — there is no version history and the old content is gone.",
+    ),
+  skill: z
+    .string()
+    .max(REPORT_MAX_SKILL_CHARS)
+    .optional()
+    .describe(
+      'The slug of the skill that produced this report — the name of the SKILL.md you are running, e.g. "seo-audit". The report list keys on it, so a save without it shows "—".',
+    ),
+  templateId: z
+    .string()
+    .min(1)
+    .optional()
+    .describe(
+      "The id of the report template you followed, from list_report_templates or the project context. Pass it only when you actually followed that template; it is what the report list and the report page show instead of the skill slug.",
+    ),
+} as const;
+
+const saveOutputSchema = z.looseObject({
+  reportId: z.string(),
+  title: z.string(),
+  created: z.boolean(),
+  htmlBytes: z.number(),
+  url: z.string(),
+  ...optionalMetaOutputSchema,
+});
+
+export const saveReportTool = {
+  name: "save_report",
+  config: {
+    title: "Save report",
+    description:
+      "Save a finished HTML report to a project, where anyone in the workspace can read and print it. Call list_reports first and pass the matching reportId to replace that report instead of creating a near-duplicate; a save whose title already exists in the project is refused. New reports are private; replacing a report preserves its sharing setting and updates what any existing public link shows. Uses no credits. Call set_report_sharing afterward only when the user explicitly requests public sharing, in their prompt or in instructions for the skill.",
+    inputSchema: saveInputSchema,
+    outputSchema: saveOutputSchema,
+    annotations: {
+      readOnlyHint: false,
+      openWorldHint: true,
+      // A save with a reportId overwrites the stored document, with no undo.
+      destructiveHint: true,
+    },
+  },
+  handler: withMcpProjectAuth(
+    async (args: z.infer<z.ZodObject<typeof saveInputSchema>>, context) => {
+      // Resolved against the authorized project before the save: an id from
+      // another project must not be stored, and a dangling one would render
+      // as no template at all.
+      if (args.templateId) {
+        await ReportTemplateService.getReportTemplate(
+          args.projectId,
+          args.templateId,
+        );
+      }
+      const saved = await ReportService.saveReport({
+        projectId: args.projectId,
+        organizationId: context.auth.organizationId,
+        reportId: args.reportId,
+        title: args.title,
+        summary: args.summary,
+        html: args.html,
+        skill: args.skill,
+        templateId: args.templateId,
+        // Never taken from the model: the label the transport derived from the
+        // request.
+        createdBy: context.auth.clientId ?? "Digital Urgency API",
+        createdByUserId: context.auth.userId,
+      });
+
+      const path = reportPath(args.projectId, saved.reportId);
+      const url = buildDashboardUrl(context.baseUrl, path);
+
+      await captureServerEvent({
+        distinctId: context.auth.userId,
+        event: "report:saved",
+        organizationId: context.auth.organizationId,
+        properties: {
+          project_id: args.projectId,
+          skill: args.skill,
+          used_template: Boolean(args.templateId),
+          size_bytes: saved.htmlBytes,
+          client: context.auth.clientId,
+          is_update: !saved.created,
+          source: "mcp",
+        },
+      });
+
+      return mcpResponse({
+        text: `${saved.created ? "Saved" : "Replaced"} report "${saved.title}" (${size(saved.htmlBytes)}). Open it at ${url}. Reply with this link, a one-line verdict, and the single top action — do not paste the report into chat.`,
+        meta: buildProjectMeta(context, args.projectId, path),
+        structuredContent: {
+          reportId: saved.reportId,
+          title: saved.title,
+          created: saved.created,
+          htmlBytes: saved.htmlBytes,
+          url,
+        },
+      });
+    },
+  ),
+};
+
+// --------------------------------------------------------------- list_reports
+
+const listInputSchema = {
+  projectId: projectIdSchema,
+  limit: z
+    .number()
+    .int()
+    .min(1)
+    .max(REPORT_MAX_LIST_LIMIT)
+    .optional()
+    .describe(
+      `Reports per page, newest update first. Default ${REPORT_DEFAULT_LIST_LIMIT}, max ${REPORT_MAX_LIST_LIMIT}.`,
+    ),
+  offset: z
+    .number()
+    .int()
+    .min(0)
+    .optional()
+    .describe("Rows to skip. Omit for the first page."),
+} as const;
+
+const listOutputSchema = z.looseObject({
+  reports: z.array(looseObjectOutputSchema),
+  totalCount: z.number(),
+  rowCount: z.number(),
+  remaining: z.number(),
+  ...optionalMetaOutputSchema,
+});
+
+export const listReportsTool = {
+  name: "list_reports",
+  config: {
+    title: "List reports",
+    description:
+      "List a project's saved reports, newest update first: id, title, skill, who saved it, when, and a short summary preview. Call it before save_report and reuse the id of the report you are redoing, so the project collects one good report per job instead of near-duplicates. Uses no credits. For a report's full summary, use get_report; the HTML is only worth fetching to edit a specific passage.",
+    inputSchema: listInputSchema,
+    outputSchema: listOutputSchema,
+    annotations: {
+      readOnlyHint: true,
+      openWorldHint: false,
+      destructiveHint: false,
+    },
+  },
+  handler: withMcpProjectAuth(
+    async (args: z.infer<z.ZodObject<typeof listInputSchema>>, context) => {
+      const limit = args.limit ?? REPORT_DEFAULT_LIST_LIMIT;
+      const offset = args.offset ?? 0;
+      const { reports, totalCount, remaining } =
+        await ReportService.listReports({
+          projectId: args.projectId,
+          limit,
+          offset,
+        });
+
+      const rows = reports.map((report) => ({
+        ...forAgent(report),
+        summary:
+          report.summary.length > 300
+            ? `${report.summary.slice(0, 300)}…`
+            : report.summary,
+      }));
+
+      const blocks = rows.map((report) =>
+        [
+          `${report.id}  ${report.title}`,
+          `  ${metaLine(report)}`,
+          `  ${report.summary}`,
+        ].join("\n"),
+      );
+      const shownEnd = offset + rows.length;
+      const more =
+        shownEnd < totalCount
+          ? `${rows.length} shown, more available — pass offset ${shownEnd} for the next page.`
+          : `${rows.length} shown.`;
+
+      return mcpResponse({
+        text: [
+          rows.length > 0
+            ? blocks.join("\n\n")
+            : "No reports saved for this project yet.",
+          "",
+          `${formatCount(totalCount)} reports. ${more}`,
+        ].join("\n"),
+        meta: buildProjectMeta(
+          context,
+          args.projectId,
+          `/p/${args.projectId}/research-reports`,
+        ),
+        structuredContent: {
+          reports: rows,
+          totalCount,
+          rowCount: rows.length,
+          remaining,
+        },
+      });
+    },
+  ),
+};
+
+// ----------------------------------------------------------------- get_report
+
+const getInputSchema = {
+  projectId: projectIdSchema,
+  reportId: z
+    .string()
+    .min(1)
+    .describe("Report id from list_reports or save_report."),
+  includeHtml: z
+    .boolean()
+    .optional()
+    .describe(
+      "Include the full HTML document. Leave it off unless you need to edit a specific passage: an 80 KB report is roughly 20,000 tokens, and a larger one is truncated by many clients. When you do fetch it, compare new TextEncoder().encode(html).length against the returned htmlBytes — if it is smaller your client truncated the read, so send the user to the app instead of saving the short version back over the good report.",
+    ),
+} as const;
+
+const getOutputSchema = z.looseObject({
+  // `html` is declared so clients see it in the tool's output schema; it is
+  // present only when includeHtml was set.
+  report: z.looseObject({
+    shareUrl: z.string().nullable(),
+    html: z.string().optional(),
+  }),
+  ...optionalMetaOutputSchema,
+});
+
+export const getReportTool = {
+  name: "get_report",
+  config: {
+    title: "Get report",
+    description:
+      "Read one saved report: title, skill, attribution, size, the full summary, and shareUrl (null when the report is private or public sharing is unavailable on this deployment). It is the cheap way to see what a report already says before revising it; pass includeHtml only when you need the document itself. Reading never publishes a report. Uses no credits. To change sharing, use set_report_sharing, and only when the user explicitly requests it.",
+    inputSchema: getInputSchema,
+    outputSchema: getOutputSchema,
+    annotations: {
+      readOnlyHint: true,
+      openWorldHint: false,
+      destructiveHint: false,
+    },
+  },
+  handler: withMcpProjectAuth(
+    async (args: z.infer<z.ZodObject<typeof getInputSchema>>, context) => {
+      // One read either way: includeHtml pulls the metadata and the document
+      // together rather than selecting the same row twice.
+      const { report, html } = args.includeHtml
+        ? await ReportService.getReportWithHtml(args.projectId, args.reportId)
+        : {
+            report: await ReportService.getReport(
+              args.projectId,
+              args.reportId,
+            ),
+            html: null,
+          };
+
+      const path = reportPath(args.projectId, report.id);
+      const url = buildDashboardUrl(context.baseUrl, path);
+      const shareUrl = await reportShareUrl(report, context.baseUrl);
+
+      return mcpResponse({
+        // The document rides in both blocks because clients read one or the
+        // other: Claude Code and other structuredContent-aware clients render
+        // structuredContent and never see the text block, while text-only
+        // clients see nothing else. Sending it once would silently drop the
+        // report for half of them.
+        text: [
+          `${report.title} (${report.id})`,
+          metaLine(report),
+          url,
+          shareUrl ? `Public link: ${shareUrl}` : "No public link available.",
+          "",
+          report.summary,
+          ...(html
+            ? [
+                "",
+                `HTML (${formatCount(report.sizeBytes)} bytes as stored — if what you received is shorter, your client truncated it and you must not save it back):`,
+                html,
+              ]
+            : []),
+        ].join("\n"),
+        meta: buildProjectMeta(context, args.projectId, path),
+        structuredContent: {
+          report: {
+            ...forAgent(report),
+            htmlBytes: report.sizeBytes,
+            url,
+            shareUrl,
+            ...(html ? { html } : {}),
+          },
+        },
+      });
+    },
+  ),
+};

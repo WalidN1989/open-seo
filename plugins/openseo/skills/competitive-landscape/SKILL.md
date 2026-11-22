@@ -59,6 +59,12 @@ The project-context tools are free and shared with the app and other agents.
 8. Use `get_backlinks_overview` when backlink authority appears important or the user asks why a domain is winning. Backlinks may be unavailable if the account has not enabled that data; continue with SERP/domain evidence if it fails.
 9. Synthesize patterns: content types, themes, SERP formats, local-pack signals, authority advantages, and underserved angles.
 
+## Save the research report
+
+Before starting fresh research, call `list_reports` for this project and read the relevant report summaries with `get_report`. Reuse sound existing evidence; check its date before refreshing paid data. Follow `seo-report` for the final HTML document and `save_report` it to this project. The sections below are the report's content, not a second full answer in chat.
+
+If the same subject and period already has a report, pass its `reportId` to replace it; a different subject or new reporting period gets a new report. Replacement has no undo or version history, so validate the whole document first. Saved reports are retained until a person deletes them; research-log pruning does not delete reports. Return the report link, verdict and leading action. Keep reports private unless the user explicitly requests public sharing. Create a reusable template only when the user asks for one.
+
 ## Output format
 
 Start with the market read:

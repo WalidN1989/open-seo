@@ -140,7 +140,7 @@ gsc/pages-last-16-months.csv
 
 ### 9. Set up a local folder only for file work
 
-Project knowledge lives in OpenSEO, not on disk. A local folder is still useful for the things that are actually files: GSC CSV exports, crawls, drafts, briefs, and reports.
+Project knowledge lives in OpenSEO, not on disk. Finished research reports live in the project's Reports page through `seo-report`; do not put report HTML in context sections. A local folder is still useful for the things that are actually files: GSC CSV exports, crawls, drafts, briefs, and reports.
 
 If the user wants one, suggest `~/SEO/<company-or-site>/` or a folder beside the website/content repo, with a structure like:
 

@@ -1,3 +1,13 @@
+import {
+  saveReportTool,
+  listReportsTool,
+  getReportTool,
+} from "@/server/mcp/tools/research-report-tools";
+import {
+  listReportTemplatesTool,
+  saveReportTemplateTool,
+} from "@/server/mcp/tools/report-template-tools";
+import { setReportSharingTool } from "@/server/mcp/tools/research-report-sharing-tools";
 import { tool, type Tool, type ToolSet } from "ai";
 import { z, type ZodRawShape } from "zod";
 import { withPgClient } from "@/db";
@@ -338,6 +348,12 @@ export function buildSamMcpTools(
       execute: () => Promise.resolve({ factSheet: openSeoFactSheet }),
     }),
     ...scrapeTools(project.domain),
+    save_report: adaptTool(saveReportTool),
+    list_reports: adaptTool(listReportsTool),
+    get_report: adaptTool(getReportTool),
+    list_report_templates: adaptTool(listReportTemplatesTool),
+    save_report_template: adaptTool(saveReportTemplateTool),
+    set_report_sharing: adaptTool(setReportSharingTool),
     whoami: adaptTool(whoamiTool),
     // Writes only: the project's memory is already injected into every turn as
     // a read-only context block, so get_project_context would just re-fetch it.

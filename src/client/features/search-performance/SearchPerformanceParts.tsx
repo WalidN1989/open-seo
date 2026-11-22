@@ -1,3 +1,4 @@
+import { TrackRankingsMenu } from "./TrackRankingsMenu";
 import { useMemo, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Copy, Loader2, Save } from "lucide-react";
@@ -371,6 +372,12 @@ export function StrikingDistanceTable({
         onClear={() => setRowSelection({})}
         actions={
           <div className="flex items-center gap-1 px-1.5">
+            <TrackRankingsMenu
+              key={`${projectId}:${selectedQueries.join("\u0000")}`}
+              projectId={projectId}
+              queries={selectedQueries}
+              onAdded={() => setRowSelection({})}
+            />
             <TableBulkActionButton
               icon={<Copy className="size-3.5" />}
               onClick={() => void copyKeywords()}

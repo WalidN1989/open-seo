@@ -16,6 +16,7 @@ function BacklinksRoute() {
   const navigate = useNavigate({ from: Route.fullPath });
   const {
     target = "",
+    includeSpam,
     scope: rawScope,
     tab = "backlinks",
     page = 1,
@@ -32,6 +33,7 @@ function BacklinksRoute() {
       navigate={navigate}
       searchState={{
         target,
+        includeSpam,
         scope,
         // Referring domains can't be filtered to a subfolder.
         tab: scope === "subfolder" && tab === "domains" ? "backlinks" : tab,

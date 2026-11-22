@@ -27,6 +27,7 @@ export const researchKeywordsSchema = z.object({
     .enum(["auto", "related", "suggestions", "ideas"])
     .optional()
     .default("auto"),
+  groupKeywords: z.boolean().optional(),
   // Clickstream-refined volumes double the DataForSEO request cost; opt-in.
   clickstream: z.boolean().optional().default(false),
 });
@@ -136,6 +137,7 @@ export const deleteSavedKeywordTagSchema = z.object({
 
 export const refreshSavedKeywordMetricsSchema = z.object({
   projectId: z.string().min(1),
+  savedKeywordIds: z.array(z.string().min(1)).min(1).max(500).optional(),
 });
 
 export type ResearchKeywordsInput = z.infer<typeof researchKeywordsSchema>;
@@ -172,6 +174,7 @@ export type RefreshSavedKeywordMetricsInput = z.infer<
   typeof refreshSavedKeywordMetricsSchema
 >;
 export const serpAnalysisSchema = z.object({
+  depth: z.union([z.literal(20), z.literal(100)]).optional(),
   projectId: z.string().min(1),
   keyword: z.string().min(1),
   locationCode: z.number().int().positive().optional(),
@@ -198,6 +201,7 @@ export const keywordsSearchSchema = z.object({
   kLimit: z.union([z.literal(150), z.literal(300), z.literal(500)]).optional(),
   mode: z.enum(keywordModes).optional(),
   cs: booleanSearchParamSchema.optional(),
+  group: booleanSearchParamSchema.optional(),
   sort: z.enum(keywordSortFields).optional(),
   order: z.enum(sortDirs).optional(),
   minVol: z.string().optional(),

@@ -70,11 +70,16 @@ export async function runAuditPhases(
     origin,
     startUrl,
     maxPages,
+    excludePaths: config.excludePaths,
   });
   // Parsed outside the step from checkpointed text, so replays see the exact
   // robots rules the original run used (a live re-fetch could differ and
   // desync the frontier from already-persisted crawl batches).
-  const robots = parseRobotsTxt(origin, discovery.robotsText);
+  const robots = parseRobotsTxt(
+    origin,
+    discovery.robotsText,
+    config.excludePaths,
+  );
   const crawl = await runCrawlPhase(step, {
     auditId,
     workflowInstanceId,
@@ -111,16 +116,24 @@ async function runDiscoveryPhase(
     origin: string;
     startUrl: string;
     maxPages: number;
+    excludePaths?: string[];
   },
 ) {
-  const { auditId, workflowInstanceId, origin, startUrl, maxPages } = input;
+  const {
+    auditId,
+    workflowInstanceId,
+    origin,
+    startUrl,
+    maxPages,
+    excludePaths,
+  } = input;
   // "-v2": the checkpoint shape changed (seeds now live in the scratchpad DO
   // instead of the step return). A pre-refactor instance replayed under this
   // code must re-run discovery — resuming from the old cached {sitemapUrls}
   // shape would leave the scratchpad empty and finalize a zero-page audit.
   return pgStep(step, "discover-urls-v2", DISCOVERY_STEP, async () => {
     const result = await discoverUrls(origin, maxPages);
-    const robots = parseRobotsTxt(origin, result.robotsText);
+    const robots = parseRobotsTxt(origin, result.robotsText, excludePaths);
     const scratchpad = getAuditScratchpad(auditId);
 
     // Seeds go straight into the scratchpad frontier — nothing large is
@@ -354,7 +367,12 @@ async function finalizeAudit(args: {
     }
 
     const issues = await runMultipageChecks({ auditId });
-    issues.push(...(await runScratchpadLinkChecks(auditId, startUrl, crawl)));
+    issues.push(
+      ...(await runScratchpadLinkChecks(auditId, startUrl, {
+        ...crawl,
+        completed: crawl.completed && !config.excludePaths?.length,
+      })),
+    );
     await AuditRepository.insertIssues(auditId, issues);
     return { issueCount: issues.length };
   });

@@ -47,7 +47,7 @@ export function KeywordResearchSearchBar({ controller }: Props) {
                   <textarea
                     className="grow min-w-0 resize-none bg-transparent text-sm leading-6 outline-none placeholder:text-base-content/40"
                     rows={rows}
-                    placeholder="Enter a keyword"
+                    placeholder="Enter a keyword or pattern, e.g. best * for dogs"
                     value={field.state.value}
                     onChange={(event) => field.handleChange(event.target.value)}
                     onKeyDown={(event) => {
@@ -128,6 +128,21 @@ export function KeywordResearchSearchBar({ controller }: Props) {
               <p className="text-sm text-error">{keywordError}</p>
             ) : null;
           }}
+        </controlsForm.Field>
+        <controlsForm.Field name="groupKeywords">
+          {(field) => (
+            <label className="label justify-start gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                className="checkbox checkbox-sm"
+                checked={field.state.value}
+                onChange={(event) => field.handleChange(event.target.checked)}
+              />
+              <span className="text-sm">
+                Include similar keyword variants (can share search volume)
+              </span>
+            </label>
+          )}
         </controlsForm.Field>
         <controlsForm.Field name="locationCode">
           {(locationField) =>

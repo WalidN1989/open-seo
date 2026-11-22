@@ -22,9 +22,9 @@ export const filterValuesSchema = z.object({
   intents: z.string().default(""),
 });
 
-function loadFiltersFromStorage(): KeywordFilterValues {
+function loadFiltersFromStorage(storageKey: string): KeywordFilterValues {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(storageKey);
     if (!raw) return EMPTY_FILTERS;
     return filterValuesSchema.parse(JSON.parse(raw));
   } catch {
@@ -32,29 +32,33 @@ function loadFiltersFromStorage(): KeywordFilterValues {
   }
 }
 
-function saveFiltersToStorage(filters: KeywordFilterValues) {
+function saveFiltersToStorage(
+  filters: KeywordFilterValues,
+  storageKey: string,
+) {
   try {
     const hasAnyFilter = Object.values(filters).some((v) => v.trim() !== "");
     if (hasAnyFilter) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(filters));
+      localStorage.setItem(storageKey, JSON.stringify(filters));
     } else {
-      localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem(storageKey);
     }
   } catch {
     // storage full or unavailable
   }
 }
 
-export function useLocalKeywordFilters() {
+export function useLocalKeywordFilters(projectId: string) {
+  const storageKey = `${STORAGE_KEY}:${projectId}`;
   const filtersForm = useForm({
-    defaultValues: loadFiltersFromStorage(),
+    defaultValues: loadFiltersFromStorage(storageKey),
   });
 
   const values = useStore(filtersForm.store, (s) => s.values);
 
   useEffect(() => {
-    saveFiltersToStorage(values);
-  }, [values]);
+    saveFiltersToStorage(values, storageKey);
+  }, [values, storageKey]);
 
   const resetFilters = useCallback(() => {
     const keys: Array<keyof KeywordFilterValues> = [

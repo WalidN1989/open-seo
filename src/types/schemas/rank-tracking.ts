@@ -27,6 +27,7 @@ export type RankCheckTriggerResult =
     };
 
 export interface RankTrackingDeviceResult {
+  checkedAt?: string | null;
   position: number | null;
   previousPosition: number | null;
   rankingUrl: string | null;

@@ -1,7 +1,7 @@
 {
   "name": "openseo",
   "version": "1.0.0",
-  "description": "Without good data, your agent gives generic advice. Keyword research, competitor research, backlinks, and site audits. All for $10/month.",
+  "description": "OpenSEO MCP and ten SEO workflows, including saved research reports and reusable report briefs.",
   "author": {
     "name": "OpenSEO",
     "url": "https://openseo.so"
@@ -28,7 +28,7 @@
   "interface": {
     "displayName": "OpenSEO",
     "shortDescription": "Without good data, your agent gives generic advice. Keyword research, competitor research, backlinks, and site audits. All for $10/month.",
-    "longDescription": "Without good data, your agent gives generic advice. Keyword research, competitor research, backlinks, and site audits. All for $10/month.",
+    "longDescription": "OpenSEO MCP and ten SEO workflows, including saved research reports and reusable report briefs.",
     "developerName": "OpenSEO",
     "category": "Productivity",
     "capabilities": ["Interactive"],

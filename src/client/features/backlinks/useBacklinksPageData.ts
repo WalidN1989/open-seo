@@ -115,6 +115,7 @@ export function useBacklinksPageData({
       rowsSort.order,
       rowsFilters,
       rowsMode,
+      searchState.includeSpam ?? false,
     ],
     enabled: targetReady && tab === "backlinks",
     staleTime: BACKLINKS_QUERY_STALE_TIME_MS,
@@ -126,6 +127,7 @@ export function useBacklinksPageData({
           sortOrder: rowsSort.order,
           filters: rowsFilters,
           mode: rowsMode,
+          hideSpam: !searchState.includeSpam,
         },
       }),
   });

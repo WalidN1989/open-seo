@@ -1,3 +1,4 @@
+import { parseDbTimestamp } from "@/client/lib/db-timestamp";
 import { Monitor, Plus, Settings, Smartphone } from "lucide-react";
 import { SegmentedToggle } from "@/client/components/SegmentedToggle";
 import { LOCATIONS } from "@/client/features/keywords/locations";
@@ -54,7 +55,8 @@ export function RankTrackingDetailHeader({
           {run?.lastCheckedAt && (
             <>
               {" "}
-              &middot; Last: {new Date(run.lastCheckedAt).toLocaleDateString()}
+              &middot; Last:{" "}
+              {parseDbTimestamp(run.lastCheckedAt).toLocaleDateString()}
             </>
           )}
           {costEstimate && costEstimate.keywordCount > 0 && (

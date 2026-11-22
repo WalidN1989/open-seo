@@ -1,3 +1,4 @@
+import { findExcludingPath } from "@/shared/audit-exclude-paths";
 /**
  * robots.txt and sitemap.xml discovery for the site audit crawler.
  */
@@ -56,14 +57,18 @@ async function fetchRobotsTxtText(origin: string): Promise<string | null> {
 export function parseRobotsTxt(
   origin: string,
   text: string | null,
+  excludePaths: readonly string[] = [],
 ): RobotsResult {
+  const excluded = (url: string) =>
+    findExcludingPath(excludePaths, url) !== undefined;
   if (text === null) {
-    return { isAllowed: () => true, sitemapUrls: [] };
+    return { isAllowed: (url) => !excluded(url), sitemapUrls: [] };
   }
 
   const robots = robotsParser(`${origin}/robots.txt`, text);
   return {
-    isAllowed: (url: string) => robots.isAllowed(url) ?? true,
+    isAllowed: (url: string) =>
+      !excluded(url) && (robots.isAllowed(url) ?? true),
     sitemapUrls: robots.getSitemaps(),
   };
 }

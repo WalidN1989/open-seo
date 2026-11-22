@@ -1,3 +1,4 @@
+import { parseDbTimestamp } from "@/client/lib/db-timestamp";
 import { useMemo, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
@@ -52,7 +53,7 @@ export function RankTrackingOverview({
   const chartData = useMemo(
     () =>
       (trend ?? []).map((p) => ({
-        checkedAt: new Date(p.checkedAt).getTime(),
+        checkedAt: parseDbTimestamp(p.checkedAt).getTime(),
         top3: p.top3,
         top4to10: p.top4to10,
         top11to20: p.top11to20,
