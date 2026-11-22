@@ -183,3 +183,26 @@ describe("rank check paid attempts and free collection", () => {
     });
   });
 });
+
+it("gives resolved live reads room to finish while retaining zero paid retries and the queue-post budget", async () => {
+  mocks.pgStep.mockImplementation(
+    (_step: unknown, _name: string, _config: unknown, fn: () => unknown) =>
+      fn(),
+  );
+  mocks.rankCheck.mockResolvedValue(result());
+  mocks.getSnapshotsForRun.mockResolvedValue([
+    { trackingKeywordId: "kw_0", device: "desktop" },
+  ]);
+  await runLiveCheck(step, context());
+  expect(
+    mocks.pgStep.mock.calls.find((call) => call[1] === "live-batch-0")?.[2],
+  ).toMatchObject({ timeout: "6 minutes", retries: { limit: 0 } });
+  expect(mocks.insertSnapshots).toHaveBeenCalledWith([
+    expect.objectContaining({ trackingKeywordId: "kw_0", device: "desktop" }),
+  ]);
+  mocks.rankCheckTaskPost.mockResolvedValue([]);
+  await runQueuedCheck(step, context());
+  expect(
+    mocks.pgStep.mock.calls.find((call) => call[1] === "post-tasks-0")?.[2],
+  ).toMatchObject({ timeout: "2 minutes", retries: { limit: 0 } });
+});
