@@ -19,6 +19,12 @@ const SINGLE_ATTEMPT_STEP_CONFIG = {
   timeout: "2 minutes" as const,
 };
 
+// A resolved Live SERP may take 260s; allow transport, metering and persistence.
+const LIVE_STEP_CONFIG = {
+  ...SINGLE_ATTEMPT_STEP_CONFIG,
+  timeout: "6 minutes" as const,
+};
+
 type KeywordEntry = { id: string; keyword: string };
 type RankCheckResultWithDevice = RankCheckResult & {
   device: "desktop" | "mobile";
@@ -138,7 +144,7 @@ async function checkBatchLive(
 /**
  * Check keywords via Live API, parallel devices per keyword, real-time progress.
  * Snapshots are written incrementally after each batch so partial results
- * survive batch failures. ~6s per keyword batch.
+ * survive batch failures. Redirect resolution can take several minutes.
  * Billing is handled per-call by the metered client.
  */
 export async function runLiveCheck(
@@ -153,7 +159,7 @@ export async function runLiveCheck(
     await pgStep(
       step,
       `live-batch-${batchIndex}`,
-      SINGLE_ATTEMPT_STEP_CONFIG,
+      LIVE_STEP_CONFIG,
       async () => {
         const written = await checkBatchLive(ctx, batchTasks);
         await updateProgress(ctx);

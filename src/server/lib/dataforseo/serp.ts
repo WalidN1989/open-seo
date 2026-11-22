@@ -18,6 +18,7 @@ import {
   type DataforseoApiResponse,
   type DataforseoTaskLike,
 } from "@/server/lib/dataforseo/envelope";
+import { assertReliableRankUrl } from "./rankCheckUrl";
 import { AppError } from "@/server/lib/errors";
 
 /** DataForSEO bills SERPs in pages of 10; depth outside 10-100 is rejected. */
@@ -161,27 +162,7 @@ function rankCheckItems(task: DataforseoTaskLike): SerpLiveItem[] {
         "DataForSEO returned an incomplete organic ranking",
       );
     }
-    let url: URL;
-    try {
-      url = new URL(item.url);
-    } catch {
-      throw new AppError(
-        "INTERNAL_ERROR",
-        "DataForSEO returned an invalid organic URL",
-      );
-    }
-    if (
-      !["https:", "http:"].includes(url.protocol) ||
-      (url.pathname === "/goto" &&
-        /^(www\.)?google\.[a-z.]+$/.test(url.hostname)) ||
-      url.hostname.toLowerCase().replace(/^www\./, "") !==
-        item.domain.toLowerCase().replace(/^www\./, "")
-    ) {
-      throw new AppError(
-        "INTERNAL_ERROR",
-        "DataForSEO returned an unresolved organic URL",
-      );
-    }
+    assertReliableRankUrl(item.url, item.domain);
   }
   return parsed.data.items;
 }
@@ -233,16 +214,23 @@ export async function fetchRankCheckSerp(input: {
   const locationParams = input.locationName
     ? { location_name: input.locationName }
     : { location_code: input.locationCode };
-  const response = await serpTaskApi().googleOrganicLiveAdvanced([
-    new SerpGoogleOrganicLiveAdvancedRequestInfo({
-      keyword: input.keyword,
-      ...locationParams,
-      language_code: input.languageCode,
-      device: input.device,
-      os: input.device === "desktop" ? "windows" : "android",
-      depth,
-      ...stopCrawlOnTarget(input.targetDomain),
-    }),
+  const params = {
+    keyword: input.keyword,
+    ...locationParams,
+    language_code: input.languageCode,
+    device: input.device,
+    os: input.device === "desktop" ? "windows" : "android",
+    depth,
+    ...stopCrawlOnTarget(input.targetDomain),
+    resolve_goto_urls: true,
+  };
+  const request = new SerpGoogleOrganicLiveAdvancedRequestInfo(params);
+  // SDK 2.0.19 drops this newer flag in toJSON. Serialize our exact request
+  // parameters, including the native resolver, without adding a second call.
+  request.toJSON = () => params;
+  // Redirect resolution can take 260 seconds; leave room for the response.
+  const response = await serpTaskApi(280_000).googleOrganicLiveAdvanced([
+    request,
   ]);
 
   const task = assertOk(response, { treatNoResultsAsEmpty: true });

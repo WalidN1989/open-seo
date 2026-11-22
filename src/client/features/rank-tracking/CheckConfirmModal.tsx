@@ -1,12 +1,7 @@
 import { Loader2, Zap } from "lucide-react";
 import { Modal } from "@/client/components/Modal";
 import type { RankTrackingConfig } from "@/types/schemas/rank-tracking";
-import {
-  estimateRankCheckCredits,
-  devicesCount,
-  KEYWORDS_PER_BATCH,
-  SECONDS_PER_BATCH,
-} from "@/shared/rank-tracking";
+import { estimateRankCheckCredits, devicesCount } from "@/shared/rank-tracking";
 
 export function CheckConfirmModal({
   keywords,
@@ -32,8 +27,6 @@ export function CheckConfirmModal({
   const keywordCount = keywords.length;
   const dc = devicesCount(devices);
   const totalChecks = keywordCount * dc;
-  const liveTime =
-    Math.ceil(totalChecks / KEYWORDS_PER_BATCH) * SECONDS_PER_BATCH;
 
   return (
     <Modal
@@ -63,8 +56,7 @@ export function CheckConfirmModal({
         <div className="flex-1">
           <p className="font-medium">Run Now</p>
           <p className="text-xs text-base-content/60">
-            Results in ~
-            {liveTime < 60 ? `${liveTime}s` : `${Math.ceil(liveTime / 60)} min`}
+            Google link resolution can take several minutes.
           </p>
         </div>
         <div className="text-right">

@@ -22,16 +22,13 @@ const QUEUED_BASE_PAGE_COST_USD = 0.0006;
 const QUEUED_EXTRA_PAGE_COST_USD = 0.00045;
 
 /**
- * How a rank check reaches DataForSEO: "live" is the instant endpoint used for
+ * How a rank check reaches DataForSEO: "live" is the on-demand endpoint used for
  * manual checks; "queued" is the cheaper task queue used for scheduled checks.
  */
 type RankCheckMethod = "live" | "queued";
 
 /** How many keywords are checked per batch */
 export const KEYWORDS_PER_BATCH = 10;
-
-/** Approximate seconds per batch */
-export const SECONDS_PER_BATCH = 6;
 
 /** Soft application limit for keywords per rank tracking config */
 export const MAX_KEYWORDS_PER_CONFIG = 1000;
