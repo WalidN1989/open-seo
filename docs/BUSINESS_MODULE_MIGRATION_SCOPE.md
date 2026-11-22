@@ -2859,3 +2859,63 @@ A code rollback can retain the additive report tables and saved content; it does
 not restore data or undo provider activity. Do not drop those tables to roll back.
 Private verification evidence is in the owner's seo-pr90 release preparation
 folder; secrets, customer records and backup contents are not committed.
+
+### 2026-11-22 — Rank-check reliability PR92 released
+
+The owner explicitly approved merging PR92 and deploying it through Coolify.
+PR92 merged as `da773bfb00c717a262a7a53c6959a478245202c1`. Its reviewed head and
+merged-main CI/Docker checks passed. Production image workflow `45009139508`
+published `ghcr.io/walidn1989/digital-urgency@sha256:7ba044db234d24fcf5fc1a6eb639de38b65f688705e5a3f8e24cb51c68ffead6`.
+Coolify deployment `c67d17d9-82a0-4d8c-bdb5-4cd1449e5275` finished healthy at
+2026-11-22 09:52:33 UTC. The running image/source label matches the approved
+revision, public health returns HTTP 200, and the old container has retired.
+The existing manual queue and image-scan setting were retained; no API, scan
+bypass, auto-deployment, scheduler or provider activation was introduced.
+
+This release freezes rank-check keyword/device intent, rejects unreliable
+observations, preserves previous positions/timestamps, distinguishes missing
+checks throughout results/history/trends/exports/MCP, and removes automatic
+paid retries/live fallbacks. Approval estimates use the actual selected words,
+including operator surcharges. See `RANK_CHECK_RELIABILITY.md` for scope and
+limitations; additional paid verification reads and redirect resolution remain
+separate work.
+
+SQLite migration 0120 and Postgres migration 0099 add normalized run targets and
+the preparation marker. Fresh encrypted database, runtime, Coolify database and
+configuration backups were captured in existing private storage, with encrypted
+copies retained on the owner's Mac and keys held separately. A network-isolated
+Postgres 18 restore preserved fingerprints across all 133 existing tables after
+the migration. The exact approved migration hash is present in production.
+The disposable restore container was removed. Code rollback can retain the
+additive schema and use the previous PR90 digest recorded above.
+
+All original IDs remained present across projects, contacts, leads, products,
+orders, invoices, quotes, integrations, mailboxes, conversations, voice configs
+and client reports. The persistent mount and configured runtime variables were
+preserved; only expected source-commit/container-name metadata changed. One
+WhatsApp reply runner and one mail bridge are running, with no global ticker.
+A new order and conversation arrived during verification; no original record
+was lost. Verification did not send test messages, create shipments, adjust
+stock, issue invoices or change customer reminders.
+
+Post-deployment authenticated reads loaded CRM, products, orders, inventory,
+WhatsApp, email, voice, integrations, quotations and the invoice workspace with
+its existing permission. The pre-existing invoice restriction in the other
+workspace remained unchanged. GSC displayed live metrics without reconnecting;
+Site Audit, Competitors, Backlinks, Research reports and Saved Keywords loaded.
+
+**Live rank retrieval remains unresolved.** One existing 22-keyword mobile
+tracker was checked. All 22 targets were frozen, but no new reliable snapshots
+were produced: 20 responses were rejected as unresolved organic URLs, one
+provider internal error occurred, and one response was partial. The run failed
+truthfully; previous ranks and observation times remained intact. UI/history
+and the 22-row CSV showed Not checked, with no false lost-rank changes. No
+additional paid check was issued after this result. This verifies the failure
+protection, not successful fresh live ranking retrieval. Follow-up must diagnose
+URL normalization/redirect resolution and provider partial-result handling
+without weakening the reliable-observation boundary or adding unapproved spend.
+
+Pre-release validation passed 3,580 tests plus two isolated Postgres checks,
+ci:check, self-host build and GitHub CI/Docker checks. The live failure above
+must remain visible in future release planning; a healthy deployment alone is
+not evidence that fresh rank data is available.
