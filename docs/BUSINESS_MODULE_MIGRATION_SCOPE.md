@@ -2805,3 +2805,57 @@ in `/private/tmp/gsc-insights-preview`; screenshots are
 This does not establish live Google OAuth/data behavior; no live Google query,
 paid research, customer send, production data change, merge or deployment was
 performed. Release follows `docs/VPS_RELEASES.md`.
+
+### 2026-11-22 — Upstream SEO parity PR90 released
+
+The owner explicitly approved merging PR90 and deploying it through Coolify.
+PR90 merged as `0e82583c01fe9d4c889091ac218c6d6bc1f4e642`; the reviewed head and
+merged-main `ci` and `docker-build` checks passed. Production image workflow
+`45002902206` published
+`ghcr.io/walidn1989/digital-urgency@sha256:a2fc64dfe8f98bf175e95c9b7072cabfa2d448a727968452b7c6f65adbff6b21`.
+Coolify deployment `f52ab458-839a-4b76-9072-3580db7fe3a8` finished at
+2026-11-22 08:42:46 UTC. The new container is healthy and public `/api/health`
+returns HTTP 200. Coolify's REST API remains disabled; the approved deployment
+used its existing manual queue over the authenticated VPS administrator connection.
+No scan gate, runtime configuration or global ticker was bypassed or enabled.
+
+This selectively adapts research reports/templates, backlinks/keyword/domain
+improvements, audit exclusions/sitemap budgeting, rank correctness and GSC
+query-to-tracker controls. See `UPSTREAM_PARITY_2026_11.md` for implemented
+capabilities and remaining upstream gaps; this is not complete upstream parity.
+Custom Competitors, researched-keyword storage, SERP observations, business
+modules, existing client reports and short links remain integrated.
+
+The release adds SQLite migration 0119 and PostgreSQL migration 0098 for
+`research_reports` and `report_templates`. A fresh encrypted database/runtime/
+configuration backup was captured before cutover. The database was restored to
+a network-isolated PostgreSQL 18 container, and the approved migration preserved
+all existing business-record fingerprints. The exact migration hash was verified
+in production afterward. The disposable restore database was removed.
+Encrypted recovery material is retained privately on the VPS and in the owner's
+existing Mac release storage, with recovery keys stored separately.
+
+All original IDs remained present across projects, CRM, products, orders,
+invoices, quotes, integrations, mailboxes, WhatsApp conversations, voice configs
+and client reports. Verified counts: 5,994 products, 333 orders, 206 CRM contacts,
+83 leads, five invoices, six quotes and 33 integration connections. All compared
+runtime variables and the persistent mount were preserved. One WhatsApp reply
+runner and one mail bridge are running; no global cron ticker is present. The
+old application container retired after the rolling cutover.
+
+Authenticated live checks loaded Research reports, GSC, Saved Keywords, Rank
+Tracking, Site Audit, Competitors, Backlinks, Domain Overview and Keyword
+Research. Period.lk GSC metrics rendered without reconnection. A temporary
+private report template was created/read/deleted successfully. Existing products,
+orders, CRM, inventory, WhatsApp, email, voice and integrations screens loaded.
+Verification did not buy research or send customer messages. The verification
+browser is returned to Period.lk GSC Insights.
+
+Local/full hosted validation passed 3,502 tests, ci:check, app/website builds,
+website types and the selfhost Docker build before production image publication.
+The previous known-good digest remains
+`ghcr.io/walidn1989/digital-urgency@sha256:6f38994d81ad8c5f385835325b38114406473aa0273254aac72fb05233c5922d`.
+A code rollback can retain the additive report tables and saved content; it does
+not restore data or undo provider activity. Do not drop those tables to roll back.
+Private verification evidence is in the owner's seo-pr90 release preparation
+folder; secrets, customer records and backup contents are not committed.
