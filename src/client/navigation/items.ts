@@ -19,6 +19,11 @@ import { GoogleGlyphMuted } from "@/client/features/gsc/GoogleGlyph";
 
 const projectNavItems = [
   {
+    to: "/p/$projectId/research-reports" as const,
+    label: "Research reports",
+    icon: FileText,
+  },
+  {
     to: "/p/$projectId" as const,
     label: "Dashboard",
     icon: LayoutDashboard,
@@ -150,6 +155,7 @@ export function getProjectNavGroups(projectId: string) {
         byPath("/p/$projectId/competitors"),
         byPath("/p/$projectId/brand-lookup"),
         byPath("/p/$projectId/prompt-explorer"),
+        byPath("/p/$projectId/research-reports"),
       ],
     },
     {

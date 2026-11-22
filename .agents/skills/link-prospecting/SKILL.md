@@ -88,6 +88,12 @@ Use `get_serp_results` in batches for the most relevant patterns. Send at most 1
 8. For the strongest prospects, visit or search the prospect site to find the best contact path.
 9. Draft outreach messages. If contact details were found, include the source. If not, list the next best contact-discovery path.
 
+## Save the research report
+
+Before starting fresh research, call `list_reports` for this project and read the relevant report summaries with `get_report`. Reuse sound existing evidence; check its date before refreshing paid data. Follow `seo-report` for the final HTML document and `save_report` it to this project. The sections below are the report's content, not a second full answer in chat.
+
+If the same subject and period already has a report, pass its `reportId` to replace it; a different subject or new reporting period gets a new report. Replacement has no undo or version history, so validate the whole document first. Saved reports are retained until a person deletes them; research-log pruning does not delete reports. Return the report link, verdict and leading action. Keep reports private unless the user explicitly requests public sharing. Create a reusable template only when the user asks for one.
+
 ## Output format
 
 Start with:

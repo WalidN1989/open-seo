@@ -1,3 +1,4 @@
+import { ReportTemplateRepository } from "@/server/features/research-reports/repositories/ReportTemplateRepository";
 import { runBatch } from "@/db/runBatch";
 import { ProjectContextRepository } from "@/server/features/project-context/repositories/ProjectContextRepository";
 import { resolveContextUpdates } from "@/server/features/project-context/services/contextUpdateOps";
@@ -50,6 +51,7 @@ type ProjectContext = {
     updatedAt: string;
     updatedBy: ContextAuthor;
   }[];
+  reportTemplates: { name: string; description: string }[];
   researchLog: {
     id: string;
     entryDate: string;
@@ -61,12 +63,14 @@ type ProjectContext = {
 export async function getProjectContext(
   projectId: string,
 ): Promise<ProjectContext> {
-  const [sectionRows, competitors, keyPages, researchLog] = await Promise.all([
-    ProjectContextRepository.listSections(projectId),
-    ProjectContextRepository.listCompetitors(projectId),
-    ProjectContextRepository.listKeyPages(projectId),
-    ProjectContextRepository.listResearchLog(projectId, RESEARCH_LOG_LIMIT),
-  ]);
+  const [sectionRows, competitors, keyPages, researchLog, reportTemplates] =
+    await Promise.all([
+      ProjectContextRepository.listSections(projectId),
+      ProjectContextRepository.listCompetitors(projectId),
+      ProjectContextRepository.listKeyPages(projectId),
+      ProjectContextRepository.listResearchLog(projectId, RESEARCH_LOG_LIMIT),
+      ReportTemplateRepository.listTemplates(projectId),
+    ]);
 
   const stored = new Map(sectionRows.map((row) => [row.key, row]));
   // Typed sections keep their declared order, which is also the order the
@@ -101,6 +105,10 @@ export async function getProjectContext(
       })),
     competitors,
     keyPages,
+    reportTemplates: reportTemplates.map(({ name, description }) => ({
+      name,
+      description,
+    })),
     researchLog: researchLog.map((row) => ({
       id: row.id,
       entryDate: row.entryDate,
@@ -292,6 +300,16 @@ export function renderProjectContextMarkdown(context: ProjectContext): string {
         : []),
     ],
   );
+
+  if (context.reportTemplates.length > 0) {
+    pushSection(
+      lines,
+      "Report templates",
+      context.reportTemplates.map(
+        (template) => `- ${template.name}: ${template.description}`,
+      ),
+    );
+  }
 
   lines.push(
     context.missingSections.length > 0

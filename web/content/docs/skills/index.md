@@ -35,6 +35,10 @@ MCP connects your agent to OpenSEO data. Skills tell your agent which SEO workfl
 - [Competitor Analysis](/docs/skills/competitor-analysis): analyze one competitor and turn the research into strategic takeaways.
 - [Local SEO](/docs/skills/local-seo): audit a Google Business Profile, compare it to local competitors, and map Maps visibility around a location.
 
+## Saved reports
+
+- [SEO Report](/docs/skills/seo-report): save finished research in the project, reuse a report brief, and print the result to PDF.
+
 ## Promotion workflows
 
 - [Link Prospecting](/docs/skills/link-prospecting): find qualified outreach prospects and the angle that makes each one relevant.

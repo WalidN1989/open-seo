@@ -56,6 +56,8 @@ Good starting points:
 - `local-seo`: audits a Google Business Profile against local competitors and maps Maps visibility around a location.
 - `link-prospecting`: finds likely link opportunities, discovers contact paths, and drafts outreach.
 
+- `seo-report`: saves finished research as a printable project report, with optional reusable briefs and explicitly requested public links.
+
 ## Tool coaching
 
 Explain the difference between data sources:
@@ -65,7 +67,8 @@ Explain the difference between data sources:
 - Web search can find current market context, recent pages, reviews, docs, social profiles, and contact paths outside OpenSEO.
 - Browser/page scraping can extract page copy, headings, author names, contact links, schema, and content structure.
 - Project context (`get_project_context` / `update_project_context`) is the project's shared memory: business, goal, positioning, writing preferences, competitors, key pages, and a research log. It is free, every skill reads it, and the user can edit it on the project's Context settings page.
-- Local files are for file work: GSC CSVs, crawls, drafts, briefs, and reports.
+- Saved reports (`list_reports` / `get_report`) preserve finished research beyond the 90-day research-log window. Read their summaries before repeating paid work; save finished output with `seo-report`. Public sharing is a separate explicit action.
+- Local files are for source files such as GSC CSVs, crawls and drafts.
 
 Encourage the user to keep project knowledge in project context rather than in a local file, so it follows them across sessions and agents.
 

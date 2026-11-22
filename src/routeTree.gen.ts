@@ -35,8 +35,11 @@ import { Route as AppBillingRouteImport } from './routes/_app/billing'
 import { Route as AppAiRouteImport } from './routes/_app/ai'
 import { Route as Char91DotwellKnownChar93OpenaiAppsChallengeRouteImport } from './routes/[.well-known]/openai-apps-challenge'
 import { Route as AppModulesRouteRouteImport } from './routes/_app/modules/route'
+import { Route as STokenIndexRouteImport } from './routes/s/$token/index'
 import { Route as AuthenticatedOnboardingIndexRouteImport } from './routes/_authenticated.onboarding.index'
 import { Route as AppModulesIndexRouteImport } from './routes/_app/modules/index'
+import { Route as STokenRawRouteImport } from './routes/s/$token/raw'
+import { Route as ResearchReportsReportIdRawRouteImport } from './routes/research-reports/$reportId/raw'
 import { Route as ApiWhatsappMetaRouteImport } from './routes/api/whatsapp/meta'
 import { Route as ApiWhatsappConnectionIdRouteImport } from './routes/api/whatsapp/$connectionId'
 import { Route as ApiVoiceTurnRouteImport } from './routes/api/voice/turn'
@@ -79,6 +82,7 @@ import { Route as ProjectPProjectIdAuditRouteImport } from './routes/_project/p/
 import { Route as ProjectPProjectIdAiRouteImport } from './routes/_project/p/$projectId/ai'
 import { Route as ProjectPProjectIdModulesRouteRouteImport } from './routes/_project/p/$projectId/modules/route'
 import { Route as ProjectPProjectIdSettingsIndexRouteImport } from './routes/_project/p/$projectId/settings/index'
+import { Route as ProjectPProjectIdResearchReportsIndexRouteImport } from './routes/_project/p/$projectId/research-reports/index'
 import { Route as ProjectPProjectIdRankTrackingIndexRouteImport } from './routes/_project/p/$projectId/rank-tracking/index'
 import { Route as ProjectPProjectIdOptimizationsIndexRouteImport } from './routes/_project/p/$projectId/optimizations/index'
 import { Route as ProjectPProjectIdModulesIndexRouteImport } from './routes/_project/p/$projectId/modules/index'
@@ -88,6 +92,8 @@ import { Route as ApiVoiceCallsCallIdRecordingRouteImport } from './routes/api/v
 import { Route as ApiEmailAttachmentsMessageIdAttachmentIdRouteImport } from './routes/api/email/attachments/$messageId/$attachmentId'
 import { Route as ProjectPProjectIdSettingsIntegrationsRouteImport } from './routes/_project/p/$projectId/settings/integrations'
 import { Route as ProjectPProjectIdSettingsContextRouteImport } from './routes/_project/p/$projectId/settings/context'
+import { Route as ProjectPProjectIdResearchReportsTemplatesRouteImport } from './routes/_project/p/$projectId/research-reports/templates'
+import { Route as ProjectPProjectIdResearchReportsReportIdRouteImport } from './routes/_project/p/$projectId/research-reports/$reportId'
 import { Route as ProjectPProjectIdRankTrackingConfigIdRouteImport } from './routes/_project/p/$projectId/rank-tracking/$configId'
 import { Route as ProjectPProjectIdModulesOverviewRouteImport } from './routes/_project/p/$projectId/modules/overview'
 import { Route as ProjectPProjectIdModulesIntegrationsRouteImport } from './routes/_project/p/$projectId/modules/integrations'
@@ -245,6 +251,11 @@ const AppModulesRouteRoute = AppModulesRouteRouteImport.update({
   path: '/modules',
   getParentRoute: () => AppRouteRoute,
 } as any)
+const STokenIndexRoute = STokenIndexRouteImport.update({
+  id: '/s/$token/',
+  path: '/s/$token/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthenticatedOnboardingIndexRoute =
   AuthenticatedOnboardingIndexRouteImport.update({
     id: '/onboarding/',
@@ -256,6 +267,17 @@ const AppModulesIndexRoute = AppModulesIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AppModulesRouteRoute,
 } as any)
+const STokenRawRoute = STokenRawRouteImport.update({
+  id: '/s/$token/raw',
+  path: '/s/$token/raw',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResearchReportsReportIdRawRoute =
+  ResearchReportsReportIdRawRouteImport.update({
+    id: '/research-reports/$reportId/raw',
+    path: '/research-reports/$reportId/raw',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiWhatsappMetaRoute = ApiWhatsappMetaRouteImport.update({
   id: '/api/whatsapp/meta',
   path: '/api/whatsapp/meta',
@@ -485,6 +507,12 @@ const ProjectPProjectIdSettingsIndexRoute =
     path: '/',
     getParentRoute: () => ProjectPProjectIdSettingsRoute,
   } as any)
+const ProjectPProjectIdResearchReportsIndexRoute =
+  ProjectPProjectIdResearchReportsIndexRouteImport.update({
+    id: '/research-reports/',
+    path: '/research-reports/',
+    getParentRoute: () => ProjectPProjectIdRouteRoute,
+  } as any)
 const ProjectPProjectIdRankTrackingIndexRoute =
   ProjectPProjectIdRankTrackingIndexRouteImport.update({
     id: '/',
@@ -538,6 +566,18 @@ const ProjectPProjectIdSettingsContextRoute =
     id: '/context',
     path: '/context',
     getParentRoute: () => ProjectPProjectIdSettingsRoute,
+  } as any)
+const ProjectPProjectIdResearchReportsTemplatesRoute =
+  ProjectPProjectIdResearchReportsTemplatesRouteImport.update({
+    id: '/research-reports/templates',
+    path: '/research-reports/templates',
+    getParentRoute: () => ProjectPProjectIdRouteRoute,
+  } as any)
+const ProjectPProjectIdResearchReportsReportIdRoute =
+  ProjectPProjectIdResearchReportsReportIdRouteImport.update({
+    id: '/research-reports/$reportId',
+    path: '/research-reports/$reportId',
+    getParentRoute: () => ProjectPProjectIdRouteRoute,
   } as any)
 const ProjectPProjectIdRankTrackingConfigIdRoute =
   ProjectPProjectIdRankTrackingConfigIdRouteImport.update({
@@ -739,8 +779,11 @@ export interface FileRoutesByFullPath {
   '/api/voice/turn': typeof ApiVoiceTurnRoute
   '/api/whatsapp/$connectionId': typeof ApiWhatsappConnectionIdRoute
   '/api/whatsapp/meta': typeof ApiWhatsappMetaRoute
+  '/research-reports/$reportId/raw': typeof ResearchReportsReportIdRawRoute
+  '/s/$token/raw': typeof STokenRawRoute
   '/modules/': typeof AppModulesIndexRoute
   '/onboarding/': typeof AuthenticatedOnboardingIndexRoute
+  '/s/$token/': typeof STokenIndexRoute
   '/p/$projectId/modules': typeof ProjectPProjectIdModulesRouteRouteWithChildren
   '/p/$projectId/ai': typeof ProjectPProjectIdAiRoute
   '/p/$projectId/audit': typeof ProjectPProjectIdAuditRouteWithChildren
@@ -773,6 +816,8 @@ export interface FileRoutesByFullPath {
   '/p/$projectId/modules/integrations': typeof ProjectPProjectIdModulesIntegrationsRouteWithChildren
   '/p/$projectId/modules/overview': typeof ProjectPProjectIdModulesOverviewRoute
   '/p/$projectId/rank-tracking/$configId': typeof ProjectPProjectIdRankTrackingConfigIdRoute
+  '/p/$projectId/research-reports/$reportId': typeof ProjectPProjectIdResearchReportsReportIdRoute
+  '/p/$projectId/research-reports/templates': typeof ProjectPProjectIdResearchReportsTemplatesRoute
   '/p/$projectId/settings/context': typeof ProjectPProjectIdSettingsContextRoute
   '/p/$projectId/settings/integrations': typeof ProjectPProjectIdSettingsIntegrationsRoute
   '/api/email/attachments/$messageId/$attachmentId': typeof ApiEmailAttachmentsMessageIdAttachmentIdRoute
@@ -782,6 +827,7 @@ export interface FileRoutesByFullPath {
   '/p/$projectId/modules/': typeof ProjectPProjectIdModulesIndexRoute
   '/p/$projectId/optimizations/': typeof ProjectPProjectIdOptimizationsIndexRoute
   '/p/$projectId/rank-tracking/': typeof ProjectPProjectIdRankTrackingIndexRoute
+  '/p/$projectId/research-reports/': typeof ProjectPProjectIdResearchReportsIndexRoute
   '/p/$projectId/settings/': typeof ProjectPProjectIdSettingsIndexRoute
   '/p/$projectId/audit/issues/$resultId': typeof ProjectPProjectIdAuditIssuesResultIdRoute
   '/p/$projectId/modules/crm/analytics': typeof ProjectPProjectIdModulesCrmAnalyticsRoute
@@ -841,8 +887,11 @@ export interface FileRoutesByTo {
   '/api/voice/turn': typeof ApiVoiceTurnRoute
   '/api/whatsapp/$connectionId': typeof ApiWhatsappConnectionIdRoute
   '/api/whatsapp/meta': typeof ApiWhatsappMetaRoute
+  '/research-reports/$reportId/raw': typeof ResearchReportsReportIdRawRoute
+  '/s/$token/raw': typeof STokenRawRoute
   '/modules': typeof AppModulesIndexRoute
   '/onboarding': typeof AuthenticatedOnboardingIndexRoute
+  '/s/$token': typeof STokenIndexRoute
   '/p/$projectId/ai': typeof ProjectPProjectIdAiRoute
   '/p/$projectId/backlinks': typeof ProjectPProjectIdBacklinksRoute
   '/p/$projectId/brand-lookup': typeof ProjectPProjectIdBrandLookupRoute
@@ -869,6 +918,8 @@ export interface FileRoutesByTo {
   '/p/$projectId/modules/$moduleKey': typeof ProjectPProjectIdModulesModuleKeyRoute
   '/p/$projectId/modules/overview': typeof ProjectPProjectIdModulesOverviewRoute
   '/p/$projectId/rank-tracking/$configId': typeof ProjectPProjectIdRankTrackingConfigIdRoute
+  '/p/$projectId/research-reports/$reportId': typeof ProjectPProjectIdResearchReportsReportIdRoute
+  '/p/$projectId/research-reports/templates': typeof ProjectPProjectIdResearchReportsTemplatesRoute
   '/p/$projectId/settings/context': typeof ProjectPProjectIdSettingsContextRoute
   '/p/$projectId/settings/integrations': typeof ProjectPProjectIdSettingsIntegrationsRoute
   '/api/email/attachments/$messageId/$attachmentId': typeof ApiEmailAttachmentsMessageIdAttachmentIdRoute
@@ -878,6 +929,7 @@ export interface FileRoutesByTo {
   '/p/$projectId/modules': typeof ProjectPProjectIdModulesIndexRoute
   '/p/$projectId/optimizations': typeof ProjectPProjectIdOptimizationsIndexRoute
   '/p/$projectId/rank-tracking': typeof ProjectPProjectIdRankTrackingIndexRoute
+  '/p/$projectId/research-reports': typeof ProjectPProjectIdResearchReportsIndexRoute
   '/p/$projectId/settings': typeof ProjectPProjectIdSettingsIndexRoute
   '/p/$projectId/audit/issues/$resultId': typeof ProjectPProjectIdAuditIssuesResultIdRoute
   '/p/$projectId/modules/crm/analytics': typeof ProjectPProjectIdModulesCrmAnalyticsRoute
@@ -943,8 +995,11 @@ export interface FileRoutesById {
   '/api/voice/turn': typeof ApiVoiceTurnRoute
   '/api/whatsapp/$connectionId': typeof ApiWhatsappConnectionIdRoute
   '/api/whatsapp/meta': typeof ApiWhatsappMetaRoute
+  '/research-reports/$reportId/raw': typeof ResearchReportsReportIdRawRoute
+  '/s/$token/raw': typeof STokenRawRoute
   '/_app/modules/': typeof AppModulesIndexRoute
   '/_authenticated/onboarding/': typeof AuthenticatedOnboardingIndexRoute
+  '/s/$token/': typeof STokenIndexRoute
   '/_project/p/$projectId/modules': typeof ProjectPProjectIdModulesRouteRouteWithChildren
   '/_project/p/$projectId/ai': typeof ProjectPProjectIdAiRoute
   '/_project/p/$projectId/audit': typeof ProjectPProjectIdAuditRouteWithChildren
@@ -977,6 +1032,8 @@ export interface FileRoutesById {
   '/_project/p/$projectId/modules/integrations': typeof ProjectPProjectIdModulesIntegrationsRouteWithChildren
   '/_project/p/$projectId/modules/overview': typeof ProjectPProjectIdModulesOverviewRoute
   '/_project/p/$projectId/rank-tracking/$configId': typeof ProjectPProjectIdRankTrackingConfigIdRoute
+  '/_project/p/$projectId/research-reports/$reportId': typeof ProjectPProjectIdResearchReportsReportIdRoute
+  '/_project/p/$projectId/research-reports/templates': typeof ProjectPProjectIdResearchReportsTemplatesRoute
   '/_project/p/$projectId/settings/context': typeof ProjectPProjectIdSettingsContextRoute
   '/_project/p/$projectId/settings/integrations': typeof ProjectPProjectIdSettingsIntegrationsRoute
   '/api/email/attachments/$messageId/$attachmentId': typeof ApiEmailAttachmentsMessageIdAttachmentIdRoute
@@ -986,6 +1043,7 @@ export interface FileRoutesById {
   '/_project/p/$projectId/modules/': typeof ProjectPProjectIdModulesIndexRoute
   '/_project/p/$projectId/optimizations/': typeof ProjectPProjectIdOptimizationsIndexRoute
   '/_project/p/$projectId/rank-tracking/': typeof ProjectPProjectIdRankTrackingIndexRoute
+  '/_project/p/$projectId/research-reports/': typeof ProjectPProjectIdResearchReportsIndexRoute
   '/_project/p/$projectId/settings/': typeof ProjectPProjectIdSettingsIndexRoute
   '/_project/p/$projectId/audit/issues/$resultId': typeof ProjectPProjectIdAuditIssuesResultIdRoute
   '/_project/p/$projectId/modules/crm/analytics': typeof ProjectPProjectIdModulesCrmAnalyticsRoute
@@ -1049,8 +1107,11 @@ export interface FileRouteTypes {
     | '/api/voice/turn'
     | '/api/whatsapp/$connectionId'
     | '/api/whatsapp/meta'
+    | '/research-reports/$reportId/raw'
+    | '/s/$token/raw'
     | '/modules/'
     | '/onboarding/'
+    | '/s/$token/'
     | '/p/$projectId/modules'
     | '/p/$projectId/ai'
     | '/p/$projectId/audit'
@@ -1083,6 +1144,8 @@ export interface FileRouteTypes {
     | '/p/$projectId/modules/integrations'
     | '/p/$projectId/modules/overview'
     | '/p/$projectId/rank-tracking/$configId'
+    | '/p/$projectId/research-reports/$reportId'
+    | '/p/$projectId/research-reports/templates'
     | '/p/$projectId/settings/context'
     | '/p/$projectId/settings/integrations'
     | '/api/email/attachments/$messageId/$attachmentId'
@@ -1092,6 +1155,7 @@ export interface FileRouteTypes {
     | '/p/$projectId/modules/'
     | '/p/$projectId/optimizations/'
     | '/p/$projectId/rank-tracking/'
+    | '/p/$projectId/research-reports/'
     | '/p/$projectId/settings/'
     | '/p/$projectId/audit/issues/$resultId'
     | '/p/$projectId/modules/crm/analytics'
@@ -1151,8 +1215,11 @@ export interface FileRouteTypes {
     | '/api/voice/turn'
     | '/api/whatsapp/$connectionId'
     | '/api/whatsapp/meta'
+    | '/research-reports/$reportId/raw'
+    | '/s/$token/raw'
     | '/modules'
     | '/onboarding'
+    | '/s/$token'
     | '/p/$projectId/ai'
     | '/p/$projectId/backlinks'
     | '/p/$projectId/brand-lookup'
@@ -1179,6 +1246,8 @@ export interface FileRouteTypes {
     | '/p/$projectId/modules/$moduleKey'
     | '/p/$projectId/modules/overview'
     | '/p/$projectId/rank-tracking/$configId'
+    | '/p/$projectId/research-reports/$reportId'
+    | '/p/$projectId/research-reports/templates'
     | '/p/$projectId/settings/context'
     | '/p/$projectId/settings/integrations'
     | '/api/email/attachments/$messageId/$attachmentId'
@@ -1188,6 +1257,7 @@ export interface FileRouteTypes {
     | '/p/$projectId/modules'
     | '/p/$projectId/optimizations'
     | '/p/$projectId/rank-tracking'
+    | '/p/$projectId/research-reports'
     | '/p/$projectId/settings'
     | '/p/$projectId/audit/issues/$resultId'
     | '/p/$projectId/modules/crm/analytics'
@@ -1252,8 +1322,11 @@ export interface FileRouteTypes {
     | '/api/voice/turn'
     | '/api/whatsapp/$connectionId'
     | '/api/whatsapp/meta'
+    | '/research-reports/$reportId/raw'
+    | '/s/$token/raw'
     | '/_app/modules/'
     | '/_authenticated/onboarding/'
+    | '/s/$token/'
     | '/_project/p/$projectId/modules'
     | '/_project/p/$projectId/ai'
     | '/_project/p/$projectId/audit'
@@ -1286,6 +1359,8 @@ export interface FileRouteTypes {
     | '/_project/p/$projectId/modules/integrations'
     | '/_project/p/$projectId/modules/overview'
     | '/_project/p/$projectId/rank-tracking/$configId'
+    | '/_project/p/$projectId/research-reports/$reportId'
+    | '/_project/p/$projectId/research-reports/templates'
     | '/_project/p/$projectId/settings/context'
     | '/_project/p/$projectId/settings/integrations'
     | '/api/email/attachments/$messageId/$attachmentId'
@@ -1295,6 +1370,7 @@ export interface FileRouteTypes {
     | '/_project/p/$projectId/modules/'
     | '/_project/p/$projectId/optimizations/'
     | '/_project/p/$projectId/rank-tracking/'
+    | '/_project/p/$projectId/research-reports/'
     | '/_project/p/$projectId/settings/'
     | '/_project/p/$projectId/audit/issues/$resultId'
     | '/_project/p/$projectId/modules/crm/analytics'
@@ -1344,6 +1420,9 @@ export interface RootRouteChildren {
   ApiVoiceTurnRoute: typeof ApiVoiceTurnRoute
   ApiWhatsappConnectionIdRoute: typeof ApiWhatsappConnectionIdRoute
   ApiWhatsappMetaRoute: typeof ApiWhatsappMetaRoute
+  ResearchReportsReportIdRawRoute: typeof ResearchReportsReportIdRawRoute
+  STokenRawRoute: typeof STokenRawRoute
+  STokenIndexRoute: typeof STokenIndexRoute
   ApiEmailMicrosoftCallbackRoute: typeof ApiEmailMicrosoftCallbackRoute
   ApiGa4OauthCallbackRoute: typeof ApiGa4OauthCallbackRoute
   ApiGscOauthCallbackRoute: typeof ApiGscOauthCallbackRoute
@@ -1543,6 +1622,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppModulesRouteRouteImport
       parentRoute: typeof AppRouteRoute
     }
+    '/s/$token/': {
+      id: '/s/$token/'
+      path: '/s/$token'
+      fullPath: '/s/$token/'
+      preLoaderRoute: typeof STokenIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated/onboarding/': {
       id: '/_authenticated/onboarding/'
       path: '/onboarding'
@@ -1556,6 +1642,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/modules/'
       preLoaderRoute: typeof AppModulesIndexRouteImport
       parentRoute: typeof AppModulesRouteRoute
+    }
+    '/s/$token/raw': {
+      id: '/s/$token/raw'
+      path: '/s/$token/raw'
+      fullPath: '/s/$token/raw'
+      preLoaderRoute: typeof STokenRawRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/research-reports/$reportId/raw': {
+      id: '/research-reports/$reportId/raw'
+      path: '/research-reports/$reportId/raw'
+      fullPath: '/research-reports/$reportId/raw'
+      preLoaderRoute: typeof ResearchReportsReportIdRawRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/api/whatsapp/meta': {
       id: '/api/whatsapp/meta'
@@ -1851,6 +1951,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProjectPProjectIdSettingsIndexRouteImport
       parentRoute: typeof ProjectPProjectIdSettingsRoute
     }
+    '/_project/p/$projectId/research-reports/': {
+      id: '/_project/p/$projectId/research-reports/'
+      path: '/research-reports'
+      fullPath: '/p/$projectId/research-reports/'
+      preLoaderRoute: typeof ProjectPProjectIdResearchReportsIndexRouteImport
+      parentRoute: typeof ProjectPProjectIdRouteRoute
+    }
     '/_project/p/$projectId/rank-tracking/': {
       id: '/_project/p/$projectId/rank-tracking/'
       path: '/'
@@ -1913,6 +2020,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/p/$projectId/settings/context'
       preLoaderRoute: typeof ProjectPProjectIdSettingsContextRouteImport
       parentRoute: typeof ProjectPProjectIdSettingsRoute
+    }
+    '/_project/p/$projectId/research-reports/templates': {
+      id: '/_project/p/$projectId/research-reports/templates'
+      path: '/research-reports/templates'
+      fullPath: '/p/$projectId/research-reports/templates'
+      preLoaderRoute: typeof ProjectPProjectIdResearchReportsTemplatesRouteImport
+      parentRoute: typeof ProjectPProjectIdRouteRoute
+    }
+    '/_project/p/$projectId/research-reports/$reportId': {
+      id: '/_project/p/$projectId/research-reports/$reportId'
+      path: '/research-reports/$reportId'
+      fullPath: '/p/$projectId/research-reports/$reportId'
+      preLoaderRoute: typeof ProjectPProjectIdResearchReportsReportIdRouteImport
+      parentRoute: typeof ProjectPProjectIdRouteRoute
     }
     '/_project/p/$projectId/rank-tracking/$configId': {
       id: '/_project/p/$projectId/rank-tracking/$configId'
@@ -2346,8 +2467,11 @@ interface ProjectPProjectIdRouteRouteChildren {
   ProjectPProjectIdSettingsRoute: typeof ProjectPProjectIdSettingsRouteWithChildren
   ProjectPProjectIdWorkspaceSettingsRoute: typeof ProjectPProjectIdWorkspaceSettingsRoute
   ProjectPProjectIdIndexRoute: typeof ProjectPProjectIdIndexRoute
+  ProjectPProjectIdResearchReportsReportIdRoute: typeof ProjectPProjectIdResearchReportsReportIdRoute
+  ProjectPProjectIdResearchReportsTemplatesRoute: typeof ProjectPProjectIdResearchReportsTemplatesRoute
   ProjectPProjectIdCompetitorsIndexRoute: typeof ProjectPProjectIdCompetitorsIndexRoute
   ProjectPProjectIdOptimizationsIndexRoute: typeof ProjectPProjectIdOptimizationsIndexRoute
+  ProjectPProjectIdResearchReportsIndexRoute: typeof ProjectPProjectIdResearchReportsIndexRoute
 }
 
 const ProjectPProjectIdRouteRouteChildren: ProjectPProjectIdRouteRouteChildren =
@@ -2372,10 +2496,16 @@ const ProjectPProjectIdRouteRouteChildren: ProjectPProjectIdRouteRouteChildren =
     ProjectPProjectIdWorkspaceSettingsRoute:
       ProjectPProjectIdWorkspaceSettingsRoute,
     ProjectPProjectIdIndexRoute: ProjectPProjectIdIndexRoute,
+    ProjectPProjectIdResearchReportsReportIdRoute:
+      ProjectPProjectIdResearchReportsReportIdRoute,
+    ProjectPProjectIdResearchReportsTemplatesRoute:
+      ProjectPProjectIdResearchReportsTemplatesRoute,
     ProjectPProjectIdCompetitorsIndexRoute:
       ProjectPProjectIdCompetitorsIndexRoute,
     ProjectPProjectIdOptimizationsIndexRoute:
       ProjectPProjectIdOptimizationsIndexRoute,
+    ProjectPProjectIdResearchReportsIndexRoute:
+      ProjectPProjectIdResearchReportsIndexRoute,
   }
 
 const ProjectPProjectIdRouteRouteWithChildren =
@@ -2450,6 +2580,9 @@ const rootRouteChildren: RootRouteChildren = {
   ApiVoiceTurnRoute: ApiVoiceTurnRoute,
   ApiWhatsappConnectionIdRoute: ApiWhatsappConnectionIdRoute,
   ApiWhatsappMetaRoute: ApiWhatsappMetaRoute,
+  ResearchReportsReportIdRawRoute: ResearchReportsReportIdRawRoute,
+  STokenRawRoute: STokenRawRoute,
+  STokenIndexRoute: STokenIndexRoute,
   ApiEmailMicrosoftCallbackRoute: ApiEmailMicrosoftCallbackRoute,
   ApiGa4OauthCallbackRoute: ApiGa4OauthCallbackRoute,
   ApiGscOauthCallbackRoute: ApiGscOauthCallbackRoute,
