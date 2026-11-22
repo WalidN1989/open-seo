@@ -126,3 +126,64 @@ it("persists reports across independent MCP requests and withholds foreign proje
   });
   expect(incomplete).toMatch(/error|isError/);
 });
+
+it("keeps canonical project scope when an owned slug is another project's ID", async () => {
+  const address = "9a73036c-144e-4be1-b970-7166c0bb2244";
+  await fixture.client.execute({
+    sql: "INSERT INTO projects(id,organization_id,name,slug) VALUES (?,?,?,?),(?,?,?,?)",
+    args: [
+      address,
+      "org_beta",
+      "Other workspace",
+      "other-workspace",
+      "canonical-owned-project",
+      "org_alpha",
+      "Owned project",
+      address,
+    ],
+  });
+  const saved = structured(
+    await rpc("tools/call", {
+      name: "save_report",
+      arguments: {
+        projectId: address,
+        title: "Canonical scope report",
+        summary: "Local tenancy regression.",
+        html: "<html><body>Local scope evidence</body></html>",
+      },
+    }),
+  );
+  const id = z.string().parse(saved.reportId);
+  expect(
+    (
+      await fixture.client.execute({
+        sql: "SELECT project_id FROM research_reports WHERE id=?",
+        args: [id],
+      })
+    ).rows,
+  ).toEqual([{ project_id: "canonical-owned-project" }]);
+  expect(saved.url).toContain("/p/canonical-owned-project/research-reports/");
+  await fixture.client.execute({
+    sql: "INSERT INTO research_reports(id,project_id,title,summary,html,created_by,created_by_user_id,size_bytes) VALUES (?,?,?,?,?,?,?,?)",
+    args: [
+      "foreign-report",
+      address,
+      "Private foreign report",
+      "Private foreign summary",
+      "<html>Private foreign evidence</html>",
+      "Test",
+      "test-owner",
+      37,
+    ],
+  });
+  const foreign = await rpc("tools/call", {
+    name: "get_report",
+    arguments: {
+      projectId: address,
+      reportId: "foreign-report",
+      includeHtml: true,
+    },
+  });
+  expect(foreign).not.toContain("Private foreign evidence");
+  expect(foreign).toMatch(/error|isError/);
+});

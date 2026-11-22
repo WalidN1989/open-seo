@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
   listCompetitors: vi.fn(),
   listKeyPages: vi.fn(),
   listResearchLog: vi.fn(),
+  listTemplates: vi.fn(),
 }));
 
 vi.mock("cloudflare:workers", () => ({ env: {} }));
@@ -31,12 +32,18 @@ vi.mock(
   () => ({ ProjectContextRepository: mocks }),
 );
 
+vi.mock(
+  "@/server/features/research-reports/repositories/ReportTemplateRepository",
+  () => ({ ReportTemplateRepository: mocks }),
+);
+
 beforeEach(() => {
   mocks.getProjectForOrganization.mockResolvedValue({ id: "project_1" });
   mocks.listSections.mockResolvedValue([]);
   mocks.listCompetitors.mockResolvedValue([]);
   mocks.listKeyPages.mockResolvedValue([]);
   mocks.listResearchLog.mockResolvedValue([]);
+  mocks.listTemplates.mockResolvedValue([]);
 });
 
 describe("update_project_context", () => {

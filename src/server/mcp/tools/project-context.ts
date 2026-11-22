@@ -23,6 +23,7 @@ const contextOutputSchema = {
   competitors: z.array(looseObjectOutputSchema),
   keyPages: z.array(looseObjectOutputSchema),
   researchLog: z.array(looseObjectOutputSchema),
+  reportTemplates: z.array(looseObjectOutputSchema),
   ...optionalMetaOutputSchema,
 } as const;
 

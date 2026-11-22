@@ -114,7 +114,10 @@ function withoutRefreshMeta(html: string): string {
     sourceCodeLocationInfo: true,
     scriptingEnabled: true,
   });
-  function visit(node: DefaultTreeAdapterMap["node"]) {
+  const pending: DefaultTreeAdapterMap["node"][] = [document];
+  while (pending.length) {
+    const node = pending.pop();
+    if (!node) continue;
     if ("tagName" in node && node.tagName === "meta") {
       const directive = node.attrs.find(
         (attribute) => attribute.name === "http-equiv",
@@ -124,9 +127,9 @@ function withoutRefreshMeta(html: string): string {
         ranges.push({ start: location.startOffset, end: location.endOffset });
       }
     }
-    if ("childNodes" in node) for (const child of node.childNodes) visit(child);
+    if ("childNodes" in node)
+      for (const child of node.childNodes) pending.push(child);
   }
-  visit(document);
   ranges.sort((a, b) => a.start - b.start);
   let result = html;
   for (const range of ranges.toReversed()) {

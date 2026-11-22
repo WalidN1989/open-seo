@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
-  resolve: vi.fn(),
+  resolve: vi.fn<(headers: Headers) => Promise<unknown>>(),
   project: vi.fn(),
   projectId: vi.fn(),
   html: vi.fn(),
@@ -71,6 +71,16 @@ describe("research report routes", () => {
     ).toBe(404);
     expect(mocks.html).not.toHaveBeenCalled();
   });
+
+  it("requires the exact owning project identity when an address resolves as a slug", async () => {
+    mocks.project.mockResolvedValue({ id: "different-project" });
+    const response = await handleReportRequest(
+      "report-a",
+      new Request("https://app.test/research-reports/report-a/raw"),
+    );
+    expect(response.status).toBe(404);
+    expect(mocks.html).not.toHaveBeenCalled();
+  });
   it("redirects an expired account session without reading HTML", async () => {
     mocks.resolve.mockRejectedValue(new AppError("UNAUTHENTICATED"));
     const response = await handleReportRequest(
@@ -81,6 +91,19 @@ describe("research report routes", () => {
     expect(response.headers.get("Location")).toBe(
       "/sign-in?redirect=%2Fp%2Fproject-a%2Fresearch-reports%2Freport-a",
     );
+    expect(mocks.html).not.toHaveBeenCalled();
+  });
+  it("does not render sign-in inside an opaque report iframe", async () => {
+    mocks.resolve.mockRejectedValue(new AppError("UNAUTHENTICATED"));
+    const response = await handleReportRequest(
+      "report-a",
+      new Request("https://app.test/research-reports/report-a/raw", {
+        headers: { "Sec-Fetch-Dest": "iframe" },
+      }),
+    );
+    expect(response.status).toBe(401);
+    expect(response.headers.has("Location")).toBe(false);
+    expect(await response.text()).toContain("Reload Digital Urgency");
     expect(mocks.html).not.toHaveBeenCalled();
   });
   it("does not disguise auth infrastructure failures as a signed-out session", async () => {

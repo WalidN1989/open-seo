@@ -83,4 +83,14 @@ describe("research report sandbox", () => {
       '<meta charset="utf-8"><meta name="viewport" content="width=device-width"><meta http-equiv=other http-equiv=refresh content="keep">',
     );
   });
+  it("prints deeply nested saved HTML without overflowing the traversal stack", async () => {
+    const html = `<html><body>${"<div>".repeat(10000)}<meta http-equiv=refresh content="0;url=/canary">Evidence${"</div>".repeat(10000)}</body></html>`;
+    const response = reportDocumentResponse(html, {
+      print: true,
+      cacheControl: "private, no-store",
+    });
+    const body = await response.text();
+    expect(body).toContain("Evidence");
+    expect(body).not.toContain("/canary");
+  });
 });

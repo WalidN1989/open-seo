@@ -40,6 +40,12 @@ async function handleReportRequest(
     if (!isUserAuthMode(env.AUTH_MODE)) {
       return textResponse("Sign in to read this report.", 401);
     }
+    if (request.headers.get("Sec-Fetch-Dest") === "iframe") {
+      return textResponse(
+        "Your session expired. Reload Digital Urgency to sign in again.",
+        401,
+      );
+    }
     // The most likely real entry: someone opening a report link in a browser
     // whose session expired.
     const target = `/p/${encodeURIComponent(projectId)}/research-reports/${encodeURIComponent(reportId)}`;
@@ -64,7 +70,7 @@ async function handleReportRequest(
     projectId,
     context.organizationId,
   );
-  if (!project) {
+  if (!project || project.id !== projectId) {
     return reportNotFound();
   }
 

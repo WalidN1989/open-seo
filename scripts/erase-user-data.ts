@@ -297,6 +297,14 @@ async function buildInventory(db: Db, user: UserRow) {
       schema.audits,
       eq(schema.audits.startedByUserId, user.id),
     ),
+    attributed_research_reports: await db.$count(
+      schema.researchReports,
+      eq(schema.researchReports.createdByUserId, user.id),
+    ),
+    attributed_report_templates: await db.$count(
+      schema.reportTemplates,
+      eq(schema.reportTemplates.createdByUserId, user.id),
+    ),
     gsc_connections: await db.$count(
       schema.gscConnections,
       eq(schema.gscConnections.connectedByUserId, user.id),
@@ -482,7 +490,7 @@ async function erasePostgres(db: Db, user: UserRow, organizationIds: string[]) {
         ),
       );
     // These columns intentionally have no user FK. Remove connection records
-    // and anonymize retained audit attribution even if the user left that
+    // and anonymize retained audit/report attribution even if the user left that
     // workspace before making this request.
     await tx
       .delete(schema.gscConnections)
@@ -499,6 +507,14 @@ async function erasePostgres(db: Db, user: UserRow, organizationIds: string[]) {
       .update(schema.audits)
       .set({ startedByUserId: "gdpr-deleted-user" })
       .where(eq(schema.audits.startedByUserId, user.id));
+    await tx
+      .update(schema.researchReports)
+      .set({ createdByUserId: "gdpr-deleted-user" })
+      .where(eq(schema.researchReports.createdByUserId, user.id));
+    await tx
+      .update(schema.reportTemplates)
+      .set({ createdByUserId: "gdpr-deleted-user" })
+      .where(eq(schema.reportTemplates.createdByUserId, user.id));
     if (organizationIds.length > 0) {
       // Re-assert the solo-membership guard at delete time: anyone who
       // accepted an invite after the inventory was taken must abort the

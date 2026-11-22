@@ -60,4 +60,20 @@ describe("withMcpProjectAuth", () => {
       "project_1",
     );
   });
+  it("passes the authorized canonical project ID to handlers and billing for a slug address", async () => {
+    mocks.getProjectForMember.mockResolvedValue({
+      id: "canonical-project",
+      organizationId: "org-project",
+    });
+    const handler = withMcpProjectAuth(async (args, context) => ({
+      projectId: args.projectId,
+      billingProjectId: context.billing.projectId,
+    }));
+    const input = { projectId: "project-slug" };
+    await expect(handler(input, toolContext("org-token"))).resolves.toEqual({
+      projectId: "canonical-project",
+      billingProjectId: "canonical-project",
+    });
+    expect(input.projectId).toBe("project-slug");
+  });
 });
